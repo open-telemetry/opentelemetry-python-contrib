@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import io
 import json
@@ -62,9 +51,7 @@ class TestLambdaExtension(TestBase):
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.region = "us-west-2"
         self.client = session.create_client("lambda", region_name=self.region)
         self.iam_client = session.create_client("iam", region_name=self.region)
@@ -113,12 +100,10 @@ class TestLambdaExtension(TestBase):
 
         self.client.create_function(
             FunctionName=function_name,
-            Runtime="python3.9",
+            Runtime="python3.10",
             Role=role_arn,
             Handler="lambda_function.lambda_handler",
-            Code={
-                "ZipFile": get_as_zip_file("lambda_function.py", function_code)
-            },
+            Code={"ZipFile": get_as_zip_file("lambda_function.py", function_code)},
             Description="test lambda function",
             Timeout=3,
             MemorySize=128,
@@ -136,9 +121,7 @@ class TestLambdaExtension(TestBase):
         try:
             set_global_textmap(MockTextMapPropagator())
             function_name = "testFunction"
-            self._create_lambda_function(
-                function_name, return_headers_lambda_str()
-            )
+            self._create_lambda_function(function_name, return_headers_lambda_str())
             # 2 spans for create IAM + create lambda
             self.assertEqual(2, len(self.memory_exporter.get_finished_spans()))
             self.memory_exporter.clear()

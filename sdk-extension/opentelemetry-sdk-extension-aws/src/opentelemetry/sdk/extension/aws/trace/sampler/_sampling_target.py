@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # Includes work from:
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
@@ -19,7 +8,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import List
+from typing import Any, List, cast
 
 _logger = getLogger(__name__)
 
@@ -54,33 +43,27 @@ class _UnprocessedStatistics:
         self.RuleName = RuleName if ErrorCode is not None else ""
 
 
-class _SamplingTargetResponse:
+class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         LastRuleModification: float | None,
         SamplingTargetDocuments: List[_SamplingTarget] | None = None,
         UnprocessedStatistics: List[_UnprocessedStatistics] | None = None,
     ):
-        self.LastRuleModification: float = (
-            LastRuleModification if LastRuleModification is not None else 0.0
-        )
+        self.LastRuleModification: float = LastRuleModification if LastRuleModification is not None else 0.0
 
         self.SamplingTargetDocuments: List[_SamplingTarget] = []
         if SamplingTargetDocuments is not None:
             for document in SamplingTargetDocuments:
                 try:
-                    self.SamplingTargetDocuments.append(
-                        _SamplingTarget(**document)
-                    )
-                except TypeError as e:
-                    _logger.debug("TypeError occurred: %s", e)
+                    self.SamplingTargetDocuments.append(_SamplingTarget(**cast(Any, document)))
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    _logger.debug("Error creating _SamplingTarget: %s", e)
 
         self.UnprocessedStatistics: List[_UnprocessedStatistics] = []
         if UnprocessedStatistics is not None:
             for unprocessed in UnprocessedStatistics:
                 try:
-                    self.UnprocessedStatistics.append(
-                        _UnprocessedStatistics(**unprocessed)
-                    )
-                except TypeError as e:
-                    _logger.debug("TypeError occurred: %s", e)
+                    self.UnprocessedStatistics.append(_UnprocessedStatistics(**cast(Any, unprocessed)))
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    _logger.debug("Error creating _UnprocessedStatistics: %s", e)

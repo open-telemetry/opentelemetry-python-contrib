@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument kafka-python to report instrumentation-kafka produced and consumed messages
@@ -39,15 +28,26 @@ Usage
         # process message
         process_msg(message)
 
-The _instrument() method accepts the following keyword args:
-tracer_provider (TracerProvider) - an optional tracer provider
-produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
-this function signature is:
-def produce_hook(span: Span, args, kwargs)
-consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
-this function signature is:
-def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
-for example:
+The ``_instrument()`` method accepts the following keyword args:
+
+- **tracer_provider** (TracerProvider) - an optional tracer provider
+- **produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending the message
+
+  Function signature:
+
+  .. code:: python
+
+      def produce_hook(span: Span, args, kwargs): ...
+
+- **consume_hook** (Callable) - a function with extra user-defined logic to be performed after consuming a message
+
+  Function signature:
+
+  .. code:: python
+
+      def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
+
+For example:
 
 .. code:: python
 
@@ -79,10 +79,9 @@ for example:
         process_msg(message)
 
 API
-___
+---
 """
 
-from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import kafka
@@ -90,11 +89,7 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.kafka.package import (
-    _instruments_any,
-    _instruments_kafka_python,
-    _instruments_kafka_python_ng,
-)
+from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -106,24 +101,7 @@ class KafkaInstrumentor(BaseInstrumentor):
     """
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        # Determine which package of kafka-python is installed
-        # Right now there are two packages, kafka-python and kafka-python-ng
-        # The latter is a fork of the former because the former is connected
-        # to a pypi namespace that the current maintainers cannot access
-        # https://github.com/dpkp/kafka-python/issues/2431
-        try:
-            distribution("kafka-python-ng")
-            return (_instruments_kafka_python_ng,)
-        except PackageNotFoundError:
-            pass
-
-        try:
-            distribution("kafka-python")
-            return (_instruments_kafka_python,)
-        except PackageNotFoundError:
-            pass
-
-        return _instruments_any
+        return _instruments
 
     def _instrument(self, **kwargs):
         """Instruments the kafka module
@@ -145,9 +123,7 @@ class KafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        wrap_function_wrapper(
-            kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
-        )
+        wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",

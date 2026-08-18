@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import os
 
 # pylint: disable=protected-access,too-many-lines
@@ -32,9 +21,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 def _mock_netconnection():
-    NetConnection = namedtuple(
-        "NetworkConnection", ["family", "type", "status"]
-    )
+    NetConnection = namedtuple("NetworkConnection", ["family", "type", "status"])
     Type = namedtuple("Type", ["value"])
     return [
         NetConnection(
@@ -61,9 +48,7 @@ class TestSystemMetrics(TestBase):
     def setUp(self):
         super().setUp()
         self.implementation = python_implementation().lower()
-        self._patch_net_connections = mock.patch(
-            "psutil.net_connections", _mock_netconnection
-        )
+        self._patch_net_connections = mock.patch("psutil.net_connections", _mock_netconnection)
         self._patch_net_connections.start()
 
         # Reset the singleton class on each test run
@@ -121,6 +106,7 @@ class TestSystemMetrics(TestBase):
             "process.cpu.time",
             "process.cpu.utilization",
             "process.memory.usage",
+            "process.disk.io",
             "process.memory.virtual",
             "process.thread.count",
             f"process.runtime.{self.implementation}.memory",
@@ -162,6 +148,7 @@ class TestSystemMetrics(TestBase):
             "process.memory.virtual": None,
             "process.open_file_descriptor.count": None,
             "process.thread.count": None,
+            "process.disk.io": ["read", "write"],
         }
 
         reader = InMemoryMetricReader()
@@ -180,6 +167,7 @@ class TestSystemMetrics(TestBase):
             "process.memory.virtual",
             "process.cpu.time",
             "process.thread.count",
+            "process.disk.io",
             "process.context_switches",
             "process.cpu.utilization",
         ]
@@ -222,9 +210,7 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
         if self.implementation != "pypy":
-            observer_names.append(
-                f"process.runtime.{self.implementation}.gc_count"
-            )
+            observer_names.append(f"process.runtime.{self.implementation}.gc_count")
 
         self.assertEqual(sorted(metric_names), sorted(observer_names))
 
@@ -236,11 +222,7 @@ class TestSystemMetrics(TestBase):
                 for metric in scope_metrics.metrics:
                     for data_point in metric.data.data_points:
                         for expect in expected:
-                            if (
-                                dict(data_point.attributes)
-                                == expect.attributes
-                                and metric.name == observer_name
-                            ):
+                            if dict(data_point.attributes) == expect.attributes and metric.name == observer_name:
                                 self.assertEqual(
                                     data_point.value,
                                     expect.value,
@@ -344,9 +326,7 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.cpu_times_percent")
     def test_system_cpu_utilization(self, mock_cpu_times_percent):
-        CPUTimesPercent = namedtuple(
-            "CPUTimesPercent", ["idle", "user", "system", "irq"]
-        )
+        CPUTimesPercent = namedtuple("CPUTimesPercent", ["idle", "user", "system", "irq"])
         mock_cpu_times_percent.return_value = [
             CPUTimesPercent(idle=1.2, user=3.4, system=5.6, irq=7.8),
             CPUTimesPercent(idle=1.2, user=3.4, system=5.6, irq=7.8),
@@ -366,12 +346,8 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.virtual_memory")
     def test_system_memory_usage(self, mock_virtual_memory):
-        VirtualMemory = namedtuple(
-            "VirtualMemory", ["used", "free", "cached", "total"]
-        )
-        mock_virtual_memory.return_value = VirtualMemory(
-            used=1, free=2, cached=3, total=4
-        )
+        VirtualMemory = namedtuple("VirtualMemory", ["used", "free", "cached", "total"])
+        mock_virtual_memory.return_value = VirtualMemory(used=1, free=2, cached=3, total=4)
 
         expected = [
             _SystemMetricsResult({"state": "used"}, 1),
@@ -382,12 +358,8 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.virtual_memory")
     def test_system_memory_utilization(self, mock_virtual_memory):
-        VirtualMemory = namedtuple(
-            "VirtualMemory", ["used", "free", "cached", "total"]
-        )
-        mock_virtual_memory.return_value = VirtualMemory(
-            used=1, free=2, cached=3, total=4
-        )
+        VirtualMemory = namedtuple("VirtualMemory", ["used", "free", "cached", "total"])
+        mock_virtual_memory.return_value = VirtualMemory(used=1, free=2, cached=3, total=4)
 
         expected = [
             _SystemMetricsResult({"state": "used"}, 1 / 4),
@@ -549,18 +521,10 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult(
-                {"device": "sda", "direction": "read"}, 5 / 1000
-            ),
-            _SystemMetricsResult(
-                {"device": "sda", "direction": "write"}, 6 / 1000
-            ),
-            _SystemMetricsResult(
-                {"device": "sdb", "direction": "read"}, 13 / 1000
-            ),
-            _SystemMetricsResult(
-                {"device": "sdb", "direction": "write"}, 14 / 1000
-            ),
+            _SystemMetricsResult({"device": "sda", "direction": "read"}, 5 / 1000),
+            _SystemMetricsResult({"device": "sda", "direction": "write"}, 6 / 1000),
+            _SystemMetricsResult({"device": "sdb", "direction": "read"}, 13 / 1000),
+            _SystemMetricsResult({"device": "sdb", "direction": "write"}, 14 / 1000),
         ]
         self._test_metrics("system.disk.time", expected)
 
@@ -603,18 +567,10 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "receive"}, 1
-            ),
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "transmit"}, 2
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "receive"}, 9
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "transmit"}, 10
-            ),
+            _SystemMetricsResult({"device": "eth0", "direction": "receive"}, 1),
+            _SystemMetricsResult({"device": "eth0", "direction": "transmit"}, 2),
+            _SystemMetricsResult({"device": "eth1", "direction": "receive"}, 9),
+            _SystemMetricsResult({"device": "eth1", "direction": "transmit"}, 10),
         ]
         self._test_metrics("system.network.dropped_packets", expected)
 
@@ -657,18 +613,10 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "receive"}, 4
-            ),
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "transmit"}, 3
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "receive"}, 12
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "transmit"}, 11
-            ),
+            _SystemMetricsResult({"device": "eth0", "direction": "receive"}, 4),
+            _SystemMetricsResult({"device": "eth0", "direction": "transmit"}, 3),
+            _SystemMetricsResult({"device": "eth1", "direction": "receive"}, 12),
+            _SystemMetricsResult({"device": "eth1", "direction": "transmit"}, 11),
         ]
         self._test_metrics("system.network.packets", expected)
 
@@ -711,18 +659,10 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "receive"}, 5
-            ),
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "transmit"}, 6
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "receive"}, 13
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "transmit"}, 14
-            ),
+            _SystemMetricsResult({"device": "eth0", "direction": "receive"}, 5),
+            _SystemMetricsResult({"device": "eth0", "direction": "transmit"}, 6),
+            _SystemMetricsResult({"device": "eth1", "direction": "receive"}, 13),
+            _SystemMetricsResult({"device": "eth1", "direction": "transmit"}, 14),
         ]
         self._test_metrics("system.network.errors", expected)
 
@@ -765,27 +705,17 @@ class TestSystemMetrics(TestBase):
         }
 
         expected = [
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "receive"}, 8
-            ),
-            _SystemMetricsResult(
-                {"device": "eth0", "direction": "transmit"}, 7
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "receive"}, 16
-            ),
-            _SystemMetricsResult(
-                {"device": "eth1", "direction": "transmit"}, 15
-            ),
+            _SystemMetricsResult({"device": "eth0", "direction": "receive"}, 8),
+            _SystemMetricsResult({"device": "eth0", "direction": "transmit"}, 7),
+            _SystemMetricsResult({"device": "eth1", "direction": "receive"}, 16),
+            _SystemMetricsResult({"device": "eth1", "direction": "transmit"}, 15),
         ]
         self._test_metrics("system.network.io", expected)
 
     @skipIf(sys.platform == "darwin", "No network connections on macOS")
     @mock.patch("psutil.net_connections")
     def test_system_network_connections(self, mock_net_connections):
-        NetConnection = namedtuple(
-            "NetworkConnection", ["family", "type", "status"]
-        )
+        NetConnection = namedtuple("NetworkConnection", ["family", "type", "status"])
         Type = namedtuple("Type", ["value"])
         mock_net_connections.return_value = [
             NetConnection(
@@ -833,9 +763,7 @@ class TestSystemMetrics(TestBase):
     def test_memory_usage(self, mock_process_memory_info):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
-        mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
-        )
+        mock_process_memory_info.configure_mock(**{"return_value": PMem(rss=1, vms=2)})
 
         expected = [
             _SystemMetricsResult({}, 1),
@@ -846,9 +774,7 @@ class TestSystemMetrics(TestBase):
     def test_memory_virtual(self, mock_process_memory_info):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
-        mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
-        )
+        mock_process_memory_info.configure_mock(**{"return_value": PMem(rss=1, vms=2)})
 
         expected = [
             _SystemMetricsResult({}, 2),
@@ -859,9 +785,7 @@ class TestSystemMetrics(TestBase):
     def test_cpu_time(self, mock_process_cpu_times):
         PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
 
-        mock_process_cpu_times.configure_mock(
-            **{"return_value": PCPUTimes(user=1.1, system=2.2)}
-        )
+        mock_process_cpu_times.configure_mock(**{"return_value": PCPUTimes(user=1.1, system=2.2)})
 
         expected = [
             _SystemMetricsResult({"type": "user"}, 1.1),
@@ -873,9 +797,7 @@ class TestSystemMetrics(TestBase):
     def test_context_switches(self, mock_process_num_ctx_switches):
         PCtxSwitches = namedtuple("PCtxSwitches", ["voluntary", "involuntary"])
 
-        mock_process_num_ctx_switches.configure_mock(
-            **{"return_value": PCtxSwitches(voluntary=1, involuntary=2)}
-        )
+        mock_process_num_ctx_switches.configure_mock(**{"return_value": PCtxSwitches(voluntary=1, involuntary=2)})
 
         expected = [
             _SystemMetricsResult({"type": "voluntary"}, 1),
@@ -884,9 +806,7 @@ class TestSystemMetrics(TestBase):
         self._test_metrics("process.context_switches", expected)
 
     @mock.patch("psutil.Process.num_ctx_switches")
-    def test_context_switches_not_implemented_error(
-        self, mock_process_num_ctx_switches
-    ):
+    def test_context_switches_not_implemented_error(self, mock_process_num_ctx_switches):
         mock_process_num_ctx_switches.side_effect = NotImplementedError
 
         self._assert_metrics_not_found("process.context_switches")
@@ -897,6 +817,24 @@ class TestSystemMetrics(TestBase):
 
         expected = [_SystemMetricsResult({}, 42)]
         self._test_metrics("process.thread.count", expected)
+
+    @mock.patch("psutil.Process.io_counters")
+    def test_process_disk_io(self, mock_process_io_counters):
+        PIOCounters = namedtuple("PIOCounters", ["read_bytes", "write_bytes"])
+
+        mock_process_io_counters.configure_mock(**{"return_value": PIOCounters(read_bytes=1024, write_bytes=2048)})
+
+        expected = [
+            _SystemMetricsResult({"direction": "read"}, 1024),
+            _SystemMetricsResult({"direction": "write"}, 2048),
+        ]
+        self._test_metrics("process.disk.io", expected)
+
+    @mock.patch("psutil.Process.io_counters")
+    def test_process_disk_io_not_implemented_error(self, mock_process_io_counters):
+        mock_process_io_counters.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found("process.disk.io")
 
     @mock.patch("psutil.Process.cpu_percent")
     @mock.patch("psutil.cpu_count")
@@ -923,38 +861,28 @@ class TestSystemMetrics(TestBase):
     def test_runtime_memory(self, mock_process_memory_info):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
-        mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
-        )
+        mock_process_memory_info.configure_mock(**{"return_value": PMem(rss=1, vms=2)})
 
         expected = [
             _SystemMetricsResult({"type": "rss"}, 1),
             _SystemMetricsResult({"type": "vms"}, 2),
         ]
-        self._test_metrics(
-            f"process.runtime.{self.implementation}.memory", expected
-        )
+        self._test_metrics(f"process.runtime.{self.implementation}.memory", expected)
 
     @mock.patch("psutil.Process.cpu_times")
     def test_runtime_cpu_time(self, mock_process_cpu_times):
         PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
 
-        mock_process_cpu_times.configure_mock(
-            **{"return_value": PCPUTimes(user=1.1, system=2.2)}
-        )
+        mock_process_cpu_times.configure_mock(**{"return_value": PCPUTimes(user=1.1, system=2.2)})
 
         expected = [
             _SystemMetricsResult({"type": "user"}, 1.1),
             _SystemMetricsResult({"type": "system"}, 2.2),
         ]
-        self._test_metrics(
-            f"process.runtime.{self.implementation}.cpu_time", expected
-        )
+        self._test_metrics(f"process.runtime.{self.implementation}.cpu_time", expected)
 
     @mock.patch("gc.get_count")
-    @skipIf(
-        python_implementation().lower() == "pypy", "not supported for pypy"
-    )
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_count(self, mock_gc_get_count):
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
@@ -969,9 +897,7 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_stats")
-    @skipIf(
-        python_implementation().lower() == "pypy", "not supported for pypy"
-    )
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_gc_collections(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             **{
@@ -983,15 +909,9 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_collections = [
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 0, "generation": "0"}, 10
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 1, "generation": "1"}, 20
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 2, "generation": "2"}, 30
-            ),
+            _SystemMetricsResult({"cpython.gc.generation": 0, "generation": "0"}, 10),
+            _SystemMetricsResult({"cpython.gc.generation": 1, "generation": "1"}, 20),
+            _SystemMetricsResult({"cpython.gc.generation": 2, "generation": "2"}, 30),
         ]
         self._test_metrics(
             "cpython.gc.collections",
@@ -999,9 +919,7 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_stats")
-    @skipIf(
-        python_implementation().lower() == "pypy", "not supported for pypy"
-    )
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_gc_collected_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             **{
@@ -1013,15 +931,9 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_collected_objects = [
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 0, "generation": "0"}, 100
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 1, "generation": "1"}, 200
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 2, "generation": "2"}, 300
-            ),
+            _SystemMetricsResult({"cpython.gc.generation": 0, "generation": "0"}, 100),
+            _SystemMetricsResult({"cpython.gc.generation": 1, "generation": "1"}, 200),
+            _SystemMetricsResult({"cpython.gc.generation": 2, "generation": "2"}, 300),
         ]
         self._test_metrics(
             "cpython.gc.collected_objects",
@@ -1029,9 +941,7 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("gc.get_stats")
-    @skipIf(
-        python_implementation().lower() == "pypy", "not supported for pypy"
-    )
+    @skipIf(python_implementation().lower() == "pypy", "not supported for pypy")
     def test_runtime_get_gc_uncollectable_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             **{
@@ -1043,15 +953,9 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_uncollectable_objects = [
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 0, "generation": "0"}, 1
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 1, "generation": "1"}, 2
-            ),
-            _SystemMetricsResult(
-                {"cpython.gc.generation": 2, "generation": "2"}, 3
-            ),
+            _SystemMetricsResult({"cpython.gc.generation": 0, "generation": "0"}, 1),
+            _SystemMetricsResult({"cpython.gc.generation": 1, "generation": "1"}, 2),
+            _SystemMetricsResult({"cpython.gc.generation": 2, "generation": "2"}, 3),
         ]
         self._test_metrics(
             "cpython.gc.uncollectable_objects",
@@ -1062,22 +966,16 @@ class TestSystemMetrics(TestBase):
     def test_runtime_context_switches(self, mock_process_num_ctx_switches):
         PCtxSwitches = namedtuple("PCtxSwitches", ["voluntary", "involuntary"])
 
-        mock_process_num_ctx_switches.configure_mock(
-            **{"return_value": PCtxSwitches(voluntary=1, involuntary=2)}
-        )
+        mock_process_num_ctx_switches.configure_mock(**{"return_value": PCtxSwitches(voluntary=1, involuntary=2)})
 
         expected = [
             _SystemMetricsResult({"type": "voluntary"}, 1),
             _SystemMetricsResult({"type": "involuntary"}, 2),
         ]
-        self._test_metrics(
-            f"process.runtime.{self.implementation}.context_switches", expected
-        )
+        self._test_metrics(f"process.runtime.{self.implementation}.context_switches", expected)
 
     @mock.patch("psutil.Process.num_ctx_switches")
-    def test_runtime_context_switches_not_implemented_error(
-        self, mock_process_num_ctx_switches
-    ):
+    def test_runtime_context_switches_not_implemented_error(self, mock_process_num_ctx_switches):
         mock_process_num_ctx_switches.side_effect = NotImplementedError
 
         self._assert_metrics_not_found(
@@ -1089,18 +987,14 @@ class TestSystemMetrics(TestBase):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 42)]
-        self._test_metrics(
-            f"process.runtime.{self.implementation}.thread_count", expected
-        )
+        self._test_metrics(f"process.runtime.{self.implementation}.thread_count", expected)
 
     @mock.patch("psutil.Process.cpu_percent")
     def test_runtime_cpu_utilization(self, mock_process_cpu_percent):
         mock_process_cpu_percent.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 0.42)]
-        self._test_metrics(
-            f"process.runtime.{self.implementation}.cpu.utilization", expected
-        )
+        self._test_metrics(f"process.runtime.{self.implementation}.cpu.utilization", expected)
 
 
 class TestConfigSystemMetrics(TestBase):
@@ -1147,11 +1041,7 @@ class TestBuildDefaultConfig(unittest.TestCase):
                 else:
                     with mock.patch.dict(
                         "os.environ",
-                        {
-                            OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
-                                "env_value"
-                            ]
-                        },
+                        {OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case["env_value"]},
                     ):
                         result = _build_default_config()
 
@@ -1197,23 +1087,15 @@ class TestBuildDefaultConfig(unittest.TestCase):
             with self.subTest(test_case["name"]):
                 with mock.patch.dict(
                     "os.environ",
-                    {
-                        OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
-                            "pattern"
-                        ]
-                    },
+                    {OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case["pattern"]},
                 ):
                     result = _build_default_config()
 
                     for metric in test_case["excluded"]:
-                        self.assertNotIn(
-                            metric, result, f"{metric} should be excluded"
-                        )
+                        self.assertNotIn(metric, result, f"{metric} should be excluded")
 
                     for metric in test_case["included"]:
-                        self.assertIn(
-                            metric, result, f"{metric} should be included"
-                        )
+                        self.assertIn(metric, result, f"{metric} should be included")
 
                     self.assertEqual(len(result), test_case["expected_count"])
 
@@ -1248,11 +1130,7 @@ class TestBuildDefaultConfig(unittest.TestCase):
             with self.subTest(test_case["name"]):
                 with mock.patch.dict(
                     "os.environ",
-                    {
-                        OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
-                            "pattern"
-                        ]
-                    },
+                    {OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case["pattern"]},
                 ):
                     result = _build_default_config()
 
@@ -1266,9 +1144,7 @@ class TestBuildDefaultConfig(unittest.TestCase):
 
                     if "excluded_prefixes" in test_case:
                         for prefix in test_case["excluded_prefixes"]:
-                            excluded_metrics = [
-                                k for k in result if k.startswith(prefix)
-                            ]
+                            excluded_metrics = [k for k in result if k.startswith(prefix)]
                             self.assertEqual(
                                 len(excluded_metrics),
                                 0,
@@ -1276,9 +1152,7 @@ class TestBuildDefaultConfig(unittest.TestCase):
 
                     if "included_prefixes" in test_case:
                         for prefix in test_case["included_prefixes"]:
-                            included_metrics = [
-                                k for k in result if k.startswith(prefix)
-                            ]
+                            included_metrics = [k for k in result if k.startswith(prefix)]
                             self.assertGreater(
                                 len(included_metrics),
                                 0,
@@ -1286,15 +1160,11 @@ class TestBuildDefaultConfig(unittest.TestCase):
 
                     if "excluded_suffixes" in test_case:
                         for suffix in test_case["excluded_suffixes"]:
-                            suffix_metrics = [
-                                k for k in result if k.endswith(suffix)
-                            ]
+                            suffix_metrics = [k for k in result if k.endswith(suffix)]
                             self.assertEqual(
                                 len(suffix_metrics),
                                 0,
                             )
 
                     if "expected_count" in test_case:
-                        self.assertEqual(
-                            len(result), test_case["expected_count"]
-                        )
+                        self.assertEqual(len(result), test_case["expected_count"])

@@ -74,6 +74,29 @@ populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2Re
 Refer to each detectors' docstring to determine any possible requirements for that
 detector.
 
+
+Usage (AWS X-Ray Remote Sampler)
+--------------------------------
+
+Use the provided AWS X-Ray Remote Sampler by setting this sampler in your instrumented application:
+
+.. code-block:: python
+
+    from opentelemetry.sdk.extension.aws.trace.sampler import AwsXRayRemoteSampler
+    from opentelemetry import trace
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.semconv.resource import ResourceAttributes
+    from opentelemetry.util.types import Attributes
+
+    resource = Resource.create(attributes={
+        ResourceAttributes.SERVICE_NAME: "myService",
+        ResourceAttributes.CLOUD_PLATFORM: "aws_ec2",
+    })
+    xraySampler = AwsXRayRemoteSampler(resource=resource, polling_interval=300)
+    trace.set_tracer_provider(TracerProvider(sampler=xraySampler))
+
+
 References
 ----------
 

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import wsgiref.util as wsgiref_util
 from logging import getLogger
@@ -42,6 +31,7 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
@@ -54,6 +44,7 @@ from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
+_SETTING_CALLBACKS_REGISTERED = "opentelemetry-pyramid.callbacks_registered"
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-pyramid.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-pyramid.span_key"
@@ -71,6 +62,10 @@ _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 def includeme(config):
     config.add_settings({SETTING_TRACE_ENABLED: True})
 
+    if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
+        return
+
+    config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
     config.add_subscriber(_before_traversal, BeforeTraversal)
     _insert_tween(config)
 
@@ -115,9 +110,7 @@ def _before_traversal(event):
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
-    attributes = otel_wsgi.collect_request_attributes(
-        request_environ, _sem_conv_opt_in_mode
-    )
+    attributes = otel_wsgi.collect_request_attributes(request_environ, _sem_conv_opt_in_mode)
     if request.matched_route:
         attributes[HTTP_ROUTE] = request.matched_route.pattern
 
@@ -139,16 +132,12 @@ def _before_traversal(event):
         )
         span.set_attributes(attributes)
         if span.kind == trace.SpanKind.SERVER:
-            custom_attributes = (
-                otel_wsgi.collect_custom_request_headers_attributes(
-                    request_environ
-                )
-            )
+            custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(request_environ)
             if len(custom_attributes) > 0:
                 span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
-    activation.__enter__()  # pylint: disable=E1101
+    activation.__enter__()  # pylint: disable=unnecessary-dunder-call
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
     if token:
@@ -212,26 +201,18 @@ def trace_tween_factory(handler, registry):
     # make a request tracing function
     # pylint: disable=too-many-branches
     def trace_tween(request):
-        # pylint: disable=E1101, too-many-locals
+        # pylint: disable=unnecessary-dunder-call, too-many-locals
         if _excluded_urls.url_disabled(request.url):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything
             return handler(request)
 
-        attributes = otel_wsgi.collect_request_attributes(
-            request.environ, _sem_conv_opt_in_mode
-        )
+        attributes = otel_wsgi.collect_request_attributes(request.environ, _sem_conv_opt_in_mode)
 
         request.environ[_ENVIRON_ENABLED_KEY] = True
         request.environ[_ENVIRON_STARTTIME_KEY] = time_ns()
-        active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(
-                attributes, _sem_conv_opt_in_mode
-            )
-        )
-        duration_attrs = otel_wsgi._parse_duration_attrs(
-            attributes, _sem_conv_opt_in_mode
-        )
+        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(attributes, _sem_conv_opt_in_mode)
+        duration_attrs = otel_wsgi._parse_duration_attrs(attributes, _sem_conv_opt_in_mode)
 
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)
@@ -265,27 +246,18 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[HTTP_STATUS_CODE] = (
-                    otel_wsgi._parse_status_code(status)
-                )
+                duration_attrs[HTTP_STATUS_CODE] = status_code
+                duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
             # Record metrics for old semconv (milliseconds)
             if duration_histogram_old:
-                duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                    duration_attrs, _StabilityMode.DEFAULT
-                )
-                duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
-                )
+                duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
+                duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
 
             # Record metrics for new semconv (seconds)
             if duration_histogram_new:
-                duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                    duration_attrs, _StabilityMode.HTTP
-                )
-                duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
-                )
+                duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
+                duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
 
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
@@ -307,24 +279,17 @@ def trace_tween_factory(handler, registry):
                     )
 
                     if recordable_exc is not None:
-                        if (
-                            _report_new(_sem_conv_opt_in_mode)
-                            and span.is_recording()
-                        ):
+                        if _report_new(_sem_conv_opt_in_mode) and span.is_recording():
                             span.set_attribute(
                                 ERROR_TYPE,
                                 type(recordable_exc).__qualname__,
                             )
-                        span.set_status(
-                            Status(StatusCode.ERROR, str(recordable_exc))
-                        )
+                        span.set_status(Status(StatusCode.ERROR, str(recordable_exc)))
                         span.record_exception(recordable_exc)
 
                 if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                    custom_attributes = (
-                        otel_wsgi.collect_custom_response_headers_attributes(
-                            getattr(response, "headerlist", None)
-                        )
+                    custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
+                        getattr(response, "headerlist", None)
                     )
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)

@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # Generated via `sam local generate-event apigateway http-api-proxy`
 
 MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT = {

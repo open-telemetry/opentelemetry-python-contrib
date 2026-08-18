@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from concurrent import futures
 
@@ -29,9 +18,7 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
         if request.request_data == "error":
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return test_server_pb2.Response()
-        response = test_server_pb2.Response(
-            server_id=SERVER_ID, response_data="data"
-        )
+        response = test_server_pb2.Response(server_id=SERVER_ID, response_data="data")
         return response
 
     def ClientStreamingMethod(self, request_iterator, context):
@@ -39,9 +26,7 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
         if data[0].request_data == "error":
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return test_server_pb2.Response()
-        response = test_server_pb2.Response(
-            server_id=SERVER_ID, response_data="data"
-        )
+        response = test_server_pb2.Response(server_id=SERVER_ID, response_data="data")
         return response
 
     def ServerStreamingMethod(self, request, context):
@@ -55,9 +40,7 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
         # create a generator
         def response_messages():
             for _ in range(5):
-                response = test_server_pb2.Response(
-                    server_id=SERVER_ID, response_data="data"
-                )
+                response = test_server_pb2.Response(server_id=SERVER_ID, response_data="data")
                 yield response
 
         return response_messages()
@@ -72,18 +55,14 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
             return
 
         for _ in range(5):
-            yield test_server_pb2.Response(
-                server_id=SERVER_ID, response_data="data"
-            )
+            yield test_server_pb2.Response(server_id=SERVER_ID, response_data="data")
 
 
 def create_test_server(port):
     # pylint: disable=consider-using-with
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
 
-    test_server_pb2_grpc.add_GRPCTestServerServicer_to_server(
-        TestServer(), server
-    )
+    test_server_pb2_grpc.add_GRPCTestServerServicer_to_server(TestServer(), server)
 
     server.add_insecure_port(f"localhost:{port}")
 

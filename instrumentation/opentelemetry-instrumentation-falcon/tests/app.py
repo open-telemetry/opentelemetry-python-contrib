@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import falcon
 from packaging import version as package_version
 
@@ -48,9 +51,7 @@ class CustomResponseHeaderResource:
         resp.status = falcon.HTTP_201
         resp.set_header("content-type", "text/plain; charset=utf-8")
         resp.set_header("content-length", "0")
-        resp.set_header(
-            "my-custom-header", "my-custom-value-1,my-custom-header-2"
-        )
+        resp.set_header("my-custom-header", "my-custom-value-1,my-custom-header-2")
         resp.set_header("dont-capture-me", "test-value")
         resp.set_header(
             "my-custom-regex-header-1",
@@ -86,9 +87,7 @@ def make_app():
     app.add_route("/hello", HelloWorldResource())
     app.add_route("/ping", HelloWorldResource())
     app.add_route("/error", ErrorResource())
-    app.add_route(
-        "/test_custom_response_headers", CustomResponseHeaderResource()
-    )
+    app.add_route("/test_custom_response_headers", CustomResponseHeaderResource())
     app.add_route("/user/{user_id}", UserResource())
 
     return app

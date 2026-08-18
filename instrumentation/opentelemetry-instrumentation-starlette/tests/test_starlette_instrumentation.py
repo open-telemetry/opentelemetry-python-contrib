@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import unittest
 from timeit import default_timer
@@ -63,6 +52,8 @@ _recommended_attrs = {
     "http.server.response.size": _duration_attrs,
     "http.server.request.size": _duration_attrs,
 }
+
+SCOPE = "opentelemetry.instrumentation.starlette"
 
 
 class TestStarletteManualInstrumentation(TestBase):
@@ -125,9 +116,7 @@ class TestStarletteManualInstrumentation(TestBase):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # expect only one span to have the attributes
@@ -146,9 +135,7 @@ class TestStarletteManualInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         for span in spans_with_http_attributes:
@@ -182,9 +169,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self._client.get("/foobar")
         number_data_point_seen = False
         histogram_data_point_seen = False
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertTrue(len(metrics) == 3)
         for metric in metrics:
             self.assertIn(metric.name, _expected_metric_names)
@@ -225,16 +210,12 @@ class TestStarletteManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
-                    self.assertDictEqual(
-                        dict(point.attributes), expected_duration_attributes
-                    )
+                    self.assertDictEqual(dict(point.attributes), expected_duration_attributes)
                     if metric.name == "http.server.duration":
                         self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
@@ -254,9 +235,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -275,9 +254,7 @@ class TestStarletteManualInstrumentation(TestBase):
         client.get("/foobar")
         client.get("/foobar")
         client.get("/foobar")
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -311,9 +288,7 @@ class TestStarletteManualInstrumentation(TestBase):
         return app
 
 
-class TestStarletteManualInstrumentationHooks(
-    TestStarletteManualInstrumentation
-):
+class TestStarletteManualInstrumentationHooks(TestStarletteManualInstrumentation):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -348,9 +323,7 @@ class TestStarletteManualInstrumentationHooks(
 
         self._client.get("/foobar")
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
-        self.assertEqual(
-            len(spans), 3
-        )  # 1 server span and 2 response spans (response start and body)
+        self.assertEqual(len(spans), 3)  # 1 server span and 2 response spans (response start and body)
 
         server_span = spans[2]
         self.assertEqual(server_span.name, "name from server hook")
@@ -358,9 +331,7 @@ class TestStarletteManualInstrumentationHooks(
         response_spans = spans[:2]
         for span in response_spans:
             self.assertEqual(span.name, "name from response hook")
-            self.assertSpanHasAttributes(
-                span, {"attr-from-response-hook": "value"}
-            )
+            self.assertSpanHasAttributes(span, {"attr-from-response-hook": "value"})
 
 
 class TestAutoInstrumentation(TestStarletteManualInstrumentation):
@@ -461,9 +432,7 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -473,11 +442,7 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         # check only the server kind spans for the correct attributes
         # The internal one generated by the sub app is not yet producing the correct attributes
         server_span = next(
-            (
-                span
-                for span in spans_with_http_attributes
-                if span.kind == SpanKind.SERVER
-            ),
+            (span for span in spans_with_http_attributes if span.kind == SpanKind.SERVER),
             None,
         )
 
@@ -542,9 +507,7 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -554,11 +517,7 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
         # check only the server kind spans for the correct attributes
         # The internal one generated by the sub app is not yet producing the correct attributes
         server_span = next(
-            (
-                span
-                for span in spans_with_http_attributes
-                if span.kind == SpanKind.SERVER
-            ),
+            (span for span in spans_with_http_attributes if span.kind == SpanKind.SERVER),
             None,
         )
 
@@ -593,19 +552,13 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
 class TestConditonalServerSpanCreation(TestStarletteManualInstrumentation):
     def test_mark_span_internal_in_presence_of_another_span(self):
         tracer = get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "test", kind=SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             self._client.get("/foobar")
-            spans = self.sorted_spans(
-                self.memory_exporter.get_finished_spans()
-            )
+            spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
             starlette_span = spans[2]
             self.assertEqual(SpanKind.INTERNAL, starlette_span.kind)
             self.assertEqual(SpanKind.SERVER, parent_span.kind)
-            self.assertEqual(
-                parent_span.context.span_id, starlette_span.parent.span_id
-            )
+            self.assertEqual(parent_span.context.span_id, starlette_span.parent.span_id)
 
 
 class TestBaseWithCustomHeaders(TestBase):
@@ -630,7 +583,7 @@ class TestBaseWithCustomHeaders(TestBase):
         app = applications.Starlette()
 
         @app.route("/foobar")
-        def _(request):
+        def _foobar(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -643,7 +596,7 @@ class TestBaseWithCustomHeaders(TestBase):
             )
 
         @app.websocket_route("/foobar_web")
-        async def _(websocket: WebSocket) -> None:
+        async def _foobar_web(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(
@@ -691,16 +644,10 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self._client.get(
@@ -717,9 +664,7 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
@@ -732,9 +677,7 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
     )
     def test_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self._client.get(
             "/foobar",
@@ -750,27 +693,17 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         for key in not_expected:
             self.assertNotIn(key, server_span.attributes)
 
     def test_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self._client.get("/foobar")
@@ -778,26 +711,20 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         for key in not_expected:
             self.assertNotIn(key, server_span.attributes)
@@ -822,16 +749,10 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         with self._client.websocket_connect(
@@ -850,16 +771,12 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
         with self._client.websocket_connect(
             "/foobar_web",
@@ -877,27 +794,17 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
 
     def test_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         with self._client.websocket_connect("/foobar_web") as websocket:
@@ -907,17 +814,13 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         with self._client.websocket_connect("/foobar_web") as websocket:
             data = websocket.receive_json()
@@ -926,9 +829,7 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)

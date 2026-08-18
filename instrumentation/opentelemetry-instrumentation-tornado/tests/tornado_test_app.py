@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: disable=W0223,R0201
 import asyncio
 import time
@@ -101,9 +104,7 @@ class CustomResponseHeaderHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header("content-type", "text/plain; charset=utf-8")
         self.set_header("content-length", "0")
-        self.set_header(
-            "my-custom-header", "my-custom-value-1,my-custom-header-2"
-        )
+        self.set_header("my-custom-header", "my-custom-value-1,my-custom-header-2")
         self.set_status(200)
 
 
@@ -117,6 +118,17 @@ class SlowHandler(tornado.web.RequestHandler):
 class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
     def get(self):
         raise tornado.web.HTTPError(403)
+
+
+class ParametrizedHandler(tornado.web.RequestHandler):
+    async def get(self, message: str):
+        self.write(message)
+        self.set_status(200)
+
+
+class NoGroupHandler(tornado.web.RequestHandler):
+    async def get(self):
+        self.set_status(200)
 
 
 class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -143,6 +155,8 @@ def make_app(tracer):
             (r"/raise_403", RaiseHTTPErrorHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
+            (r"/parametrized/(.*)/", ParametrizedHandler),
+            (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
     )
     app.tracer = tracer

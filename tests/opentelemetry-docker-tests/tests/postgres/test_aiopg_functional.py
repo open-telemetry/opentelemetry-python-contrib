@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 import asyncio
 import os
 
@@ -20,7 +9,15 @@ import pytest
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "127.0.0.1")
@@ -74,21 +71,11 @@ class TestFunctionalAiopgConnect(TestBase):
         self.assertIsNotNone(child_span.parent)
         self.assertIs(child_span.parent, root_span.get_span_context())
         self.assertIs(child_span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_SYSTEM], "postgresql"
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_NAME], POSTGRES_DB_NAME
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_USER], POSTGRES_USER
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
-        )
+        self.assertEqual(child_span.attributes[DB_SYSTEM], "postgresql")
+        self.assertEqual(child_span.attributes[DB_NAME], POSTGRES_DB_NAME)
+        self.assertEqual(child_span.attributes[DB_USER], POSTGRES_USER)
+        self.assertEqual(child_span.attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(child_span.attributes[NET_PEER_PORT], POSTGRES_PORT)
 
     def test_execute(self):
         """Should create a child span for execute method"""
@@ -114,6 +101,44 @@ class TestFunctionalAiopgConnect(TestBase):
         ):
             async_call(self._cursor.callproc("test", ()))
             self.validate_spans("test")
+
+
+class TestFunctionalAiopgInstrumentConnection(TestBase):
+    def setUp(self):
+        super().setUp()
+
+        async def connect():
+            connection = await aiopg.connect(
+                dbname=POSTGRES_DB_NAME,
+                user=POSTGRES_USER,
+                password=POSTGRES_PASSWORD,
+                host=POSTGRES_HOST,
+                port=POSTGRES_PORT,
+            )
+            return AiopgInstrumentor().instrument_connection(connection, tracer_provider=self.tracer_provider)
+
+        self._connection = async_call(connect())
+        self._cursor = async_call(self._connection.cursor())
+
+    def tearDown(self):
+        self._cursor.close()
+        self._connection.close()
+        super().tearDown()
+
+    def test_execute(self):
+        """Should emit connection attributes for a manually instrumented connection."""
+        async_call(self._cursor.execute("SELECT 1"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+        self.assertEqual(span.attributes[DB_NAME], POSTGRES_DB_NAME)
+        self.assertEqual(span.attributes[DB_USER], POSTGRES_USER)
+        self.assertEqual(span.attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(span.attributes[NET_PEER_PORT], POSTGRES_PORT)
 
 
 class TestFunctionalAiopgCreatePool(TestBase):
@@ -161,21 +186,11 @@ class TestFunctionalAiopgCreatePool(TestBase):
         self.assertIsNotNone(child_span.parent)
         self.assertIs(child_span.parent, root_span.get_span_context())
         self.assertIs(child_span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_SYSTEM], "postgresql"
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_NAME], POSTGRES_DB_NAME
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_USER], POSTGRES_USER
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
-        )
-        self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
-        )
+        self.assertEqual(child_span.attributes[DB_SYSTEM], "postgresql")
+        self.assertEqual(child_span.attributes[DB_NAME], POSTGRES_DB_NAME)
+        self.assertEqual(child_span.attributes[DB_USER], POSTGRES_USER)
+        self.assertEqual(child_span.attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(child_span.attributes[NET_PEER_PORT], POSTGRES_PORT)
 
     def test_execute(self):
         """Should create a child span for execute method"""

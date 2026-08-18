@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import logging
@@ -86,9 +75,7 @@ def _pip_check(libraries):
     'opentelemetry-instrumentation-flask 1.0.1 has requirement opentelemetry-sdk<2.0,>=1.0, but you have opentelemetry-sdk 0.5.'
     To not be too restrictive, we'll only check for relevant packages.
     """
-    with Popen(
-        [sys.executable, "-m", "pip", "check"], stdout=PIPE
-    ) as check_pipe:
+    with Popen([sys.executable, "-m", "pip", "check"], stdout=PIPE) as check_pipe:
         pip_check = check_pipe.communicate()[0].decode()
         pip_check_lower = pip_check.lower()
     for package_tup in libraries:
@@ -107,8 +94,7 @@ def _is_installed(req):
 
     if not req.specifier.filter(dist_version):
         logger.warning(
-            "instrumentation for package %s is available"
-            " but version %s is installed. Skipping.",
+            "instrumentation for package %s is available but version %s is installed. Skipping.",
             req,
             dist_version,
         )
@@ -117,8 +103,7 @@ def _is_installed(req):
 
 
 def _find_installed_libraries(default_instrumentations, libraries):
-    for lib in default_instrumentations:
-        yield lib
+    yield from default_instrumentations
 
     for lib in libraries:
         if _is_installed(lib["library"]):
@@ -127,11 +112,7 @@ def _find_installed_libraries(default_instrumentations, libraries):
 
 def _run_requirements(default_instrumentations, libraries):
     logger.setLevel(logging.ERROR)
-    print(
-        "\n".join(
-            _find_installed_libraries(default_instrumentations, libraries)
-        )
-    )
+    print("\n".join(_find_installed_libraries(default_instrumentations, libraries)))
 
 
 def _run_install(default_instrumentations, libraries):

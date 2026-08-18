@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 
 from openai import OpenAI
@@ -20,9 +23,7 @@ def main():
     )
 
     # Print a sample of the embedding vector (first 5 dimensions)
-    print(
-        f"Embedding sample (first 5 dimensions): {embedding_response.data[0].embedding[:5]}"
-    )
+    print(f"Embedding sample (first 5 dimensions): {embedding_response.data[0].embedding[:5]}")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -27,60 +30,33 @@ settings.configure()
 source_dirs = []
 
 exp = "../exporter"
-exp_dirs = [
-    os.path.abspath("/".join(["../exporter", f, "src"]))
-    for f in listdir(exp)
-    if isdir(join(exp, f))
-]
+exp_dirs = [os.path.abspath("/".join([exp, f, "src"])) for f in listdir(exp) if isdir(join(exp, f))]
 
 instr = "../instrumentation"
-instr_dirs = [
-    os.path.abspath("/".join(["../instrumentation", f, "src"]))
-    for f in listdir(instr)
-    if isdir(join(instr, f))
-]
+instr_dirs = [os.path.abspath("/".join([instr, f, "src"])) for f in listdir(instr) if isdir(join(instr, f))]
 
 instr_genai = "../instrumentation-genai"
 instr_genai_dirs = [
-    os.path.abspath("/".join(["../instrumentation-genai", f, "src"]))
-    for f in listdir(instr_genai)
-    if isdir(join(instr_genai, f))
+    os.path.abspath("/".join([instr_genai, f, "src"])) for f in listdir(instr_genai) if isdir(join(instr_genai, f))
 ]
 
 prop = "../propagator"
-prop_dirs = [
-    os.path.abspath("/".join([prop, f, "src"]))
-    for f in listdir(prop)
-    if isdir(join(prop, f))
-]
+prop_dirs = [os.path.abspath("/".join([prop, f, "src"])) for f in listdir(prop) if isdir(join(prop, f))]
 
 sdk_ext = "../sdk-extension"
-sdk_ext_dirs = [
-    os.path.abspath("/".join(["../sdk-extension", f, "src"]))
-    for f in listdir(sdk_ext)
-    if isdir(join(sdk_ext, f))
-]
+sdk_ext_dirs = [os.path.abspath("/".join([sdk_ext, f, "src"])) for f in listdir(sdk_ext) if isdir(join(sdk_ext, f))]
 
 resource = "../resource"
-resource_dirs = [
-    os.path.abspath("/".join(["../resource", f, "src"]))
-    for f in listdir(resource)
-    if isdir(join(resource, f))
-]
+resource_dirs = [os.path.abspath("/".join([resource, f, "src"])) for f in listdir(resource) if isdir(join(resource, f))]
+
 util = "../util"
-util_dirs = [
-    os.path.abspath("/".join([util, f, "src"]))
-    for f in listdir(util)
-    if isdir(join(util, f))
-]
+util_dirs = [os.path.abspath("/".join([util, f, "src"])) for f in listdir(util) if isdir(join(util, f))]
+
+opamp = "../opamp"
+opamp_dirs = [os.path.abspath("/".join([opamp, f, "src"])) for f in listdir(opamp) if isdir(join(opamp, f))]
+
 sys.path[:0] = (
-    exp_dirs
-    + instr_dirs
-    + instr_genai_dirs
-    + sdk_ext_dirs
-    + prop_dirs
-    + resource_dirs
-    + util_dirs
+    exp_dirs + instr_dirs + instr_genai_dirs + sdk_ext_dirs + prop_dirs + resource_dirs + util_dirs + opamp_dirs
 )
 
 # -- Project information -----------------------------------------------------
@@ -118,11 +94,13 @@ extensions = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
+    "psycopg": ("https://www.psycopg.org/psycopg3/docs/", None),
+    "psycopg2": ("https://www.psycopg.org/docs/", None),
     "opentracing": (
         "https://opentracing-python.readthedocs.io/en/latest/",
         None,
     ),
-    "aiohttp": ("https://aiohttp.readthedocs.io/en/stable/", None),
+    "aiohttp": ("https://docs.aiohttp.org/en/stable/", None),
     "wrapt": ("https://wrapt.readthedocs.io/en/latest/", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
     "opentelemetry": (
@@ -139,7 +117,20 @@ nitpicky = True
 # Sphinx does not recognize generic type TypeVars
 # Container supposedly were fixed, but does not work
 # https://github.com/sphinx-doc/sphinx/pull/3744
-nitpick_ignore = []
+nitpick_ignore = [
+    (
+        "py:class",
+        "opamp_pb2.RemoteConfigStatus",
+    ),
+    (
+        "py:class",
+        "opamp_pb2.EffectiveConfig",
+    ),
+    (
+        "py:class",
+        "opamp_pb2.AgentRemoteConfig",
+    ),
+]
 
 cfg = ConfigParser()
 cfg.read("./nitpick-exceptions.ini")
@@ -147,12 +138,7 @@ mcfg = cfg["default"]
 
 
 def getlistcfg(strval):
-    return [
-        val.strip()
-        for line in strval.split("\n")
-        for val in line.split(",")
-        if val.strip()
-    ]
+    return [val.strip() for line in strval.split("\n") for val in line.split(",") if val.strip()]
 
 
 ignore_categories = [

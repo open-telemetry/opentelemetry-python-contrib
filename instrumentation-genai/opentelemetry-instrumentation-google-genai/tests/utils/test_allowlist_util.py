@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import os
 from unittest import mock
@@ -67,9 +56,7 @@ def test_includes_and_excludes():
 
 
 def test_includes_and_excludes_with_wildcards():
-    allow_list = AllowList(
-        includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"]
-    )
+    allow_list = AllowList(includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"])
     assert allow_list.allowed("abc")
     assert allow_list.allowed("xyz")
     assert not allow_list.allowed("xyz.foo")
@@ -110,9 +97,7 @@ def test_can_load_from_env_with_just_include_list():
     assert not allow_list.allowed("other value not in includes")
 
 
-@mock.patch.dict(
-    os.environ, {"TEST_ALLOW_LIST_INCLUDE_KEYS": " abc , , xyz ,"}
-)
+@mock.patch.dict(os.environ, {"TEST_ALLOW_LIST_INCLUDE_KEYS": " abc , , xyz ,"})
 def test_can_handle_spaces_and_empty_entries():
     allow_list = AllowList.from_env("TEST_ALLOW_LIST_INCLUDE_KEYS")
     assert allow_list.allowed("abc")

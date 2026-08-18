@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 # type: ignore
 
 from io import StringIO
@@ -38,14 +27,10 @@ class TestBootstrap(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.installed_libraries = sample_packages(
-            [lib["instrumentation"] for lib in libraries], 0.6
-        )
+        cls.installed_libraries = sample_packages([lib["instrumentation"] for lib in libraries], 0.6)
 
         # treat 50% of sampled packages as pre-installed
-        cls.installed_instrumentations = sample_packages(
-            cls.installed_libraries, 0.5
-        )
+        cls.installed_instrumentations = sample_packages(cls.installed_libraries, 0.5)
 
         cls.pkg_patcher = patch(
             "opentelemetry.instrumentation.bootstrap._find_installed_libraries",

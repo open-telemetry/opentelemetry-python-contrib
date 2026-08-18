@@ -51,3 +51,4 @@ grpcio<1.60.0; implementation_name == "pypy"
 
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2
+-e util/opentelemetry-util-genai

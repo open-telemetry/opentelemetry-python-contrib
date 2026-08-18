@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-name-in-module
 from unittest.mock import MagicMock, patch
@@ -56,9 +45,7 @@ class TestMiddleware(WsgiTestBase):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter")
     def test_middleware_added(self, sqlcommenter_middleware):
         instance = sqlcommenter_middleware.return_value
         instance.get_response = HttpResponse()
@@ -68,13 +55,10 @@ class TestMiddleware(WsgiTestBase):
             middleware = conf.settings.MIDDLEWARE_CLASSES
 
         self.assertTrue(
-            "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
-            in middleware
+            "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter" in middleware
         )
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter")
     def test_middleware_added_at_position(self, sqlcommenter_middleware):
         _django_instrumentor.uninstrument()
         if DJANGO_2_0:
@@ -103,9 +87,7 @@ class TestMiddleware(WsgiTestBase):
             "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter",
         )
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values")
     def test_query_wrapper(self, trace_capture):
         requests_mock = MagicMock()
         requests_mock.resolver_match.view_name = "view"
@@ -131,9 +113,7 @@ class TestMiddleware(WsgiTestBase):
             "00000000000000000deadbeef-000000000000beef-00'*/;",
         )
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values")
     def test_query_wrapper_non_string_queries(self, trace_capture):
         """Test that non-string queries and psycopg2 composable objects are handled correctly."""
         requests_mock = MagicMock()
@@ -163,9 +143,7 @@ class TestMiddleware(WsgiTestBase):
             f"Query should start with {expected_query_start!r}, got {output_sql!r}",
         )
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper")
     def test_multiple_connection_support(self, query_wrapper):
         if not DJANGO_2_0:
             pytest.skip()
@@ -179,9 +157,7 @@ class TestMiddleware(WsgiTestBase):
         # check if query_wrapper is added to the context for 2 databases
         self.assertEqual(query_wrapper.call_count, 2)
 
-    @patch(
-        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
-    )
+    @patch("opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values")
     def test_empty_sql(self, trace_capture):
         requests_mock = MagicMock()
         requests_mock.resolver_match.view_name = "view"

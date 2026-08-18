@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 VertexAI client instrumentation supporting `google-cloud-aiplatform` SDK, it can be enabled by
@@ -110,18 +99,12 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
-        completion_hook = (
-            kwargs.get("completion_hook") or load_completion_hook()
-        )
+        completion_hook = kwargs.get("completion_hook") or load_completion_hook()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI,
         )
         tracer_provider = kwargs.get("tracer_provider")
-        schema = (
-            Schemas.V1_28_0.value
-            if sem_conv_opt_in_mode == _StabilityMode.DEFAULT
-            else Schemas.V1_36_0.value
-        )
+        schema = Schemas.V1_28_0.value if sem_conv_opt_in_mode == _StabilityMode.DEFAULT else Schemas.V1_36_0.value
         tracer = get_tracer(
             __name__,
             "",
@@ -158,13 +141,11 @@ class VertexAIInstrumentor(BaseInstrumentor):
             )
         else:
             raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
-        for client_class, method_name, wrapper in _methods_to_wrap(
-            method_wrappers
-        ):
+        for client_class, method_name, wrapper in _methods_to_wrap(method_wrappers):
             wrap_function_wrapper(
                 client_class,
-                name=method_name,
-                wrapper=wrapper,
+                method_name,
+                wrapper,
             )
             self._methods_to_unwrap.append((client_class, method_name))
 

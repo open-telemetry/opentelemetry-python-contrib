@@ -5,8 +5,10 @@ on:
       package:
         type: choice
         options:
+        - opentelemetry-opamp-client
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
+        - opentelemetry-resourcedetector-gcp
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
         - opentelemetry-instrumentation-openai-agents-v2
@@ -85,7 +87,7 @@ jobs:
         # next few steps publish to pypi
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Build wheels
         run: ./scripts/build_a_package.sh
@@ -143,10 +145,10 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
-      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: otelbot-token
         with:
-          app-id: ${{ vars.OTELBOT_APP_ID }}
+          client-id: ${{ vars.OTELBOT_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
 
       - name: Create pull request against main

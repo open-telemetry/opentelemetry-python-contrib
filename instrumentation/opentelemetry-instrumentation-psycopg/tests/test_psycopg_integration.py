@@ -1,27 +1,59 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+# pylint: disable=no-member,too-many-lines  # psycopg stubs reference string.templatelib on 3.14+
 
 import asyncio
+import contextlib
+import sys
 import types
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
+import pytest
+from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class MockCursor:
@@ -33,6 +65,8 @@ class MockCursor:
 
     callproc = mock.MagicMock(spec=types.MethodType)
     callproc.__name__ = "callproc"
+
+    connection = None
 
     rowcount = "SomeRowCount"
 
@@ -51,9 +85,7 @@ class MockAsyncCursor:
         pass
 
     # pylint: disable=unused-argument, no-self-use
-    async def execute(
-        self, query, params=None, throw_exception=False, delay=0.0
-    ):
+    async def execute(self, query, params=None, throw_exception=False, delay=0.0):
         if throw_exception:
             raise psycopg.Error("Test Exception")
 
@@ -133,24 +165,37 @@ class MockAsyncConnection(psycopg.AsyncConnection):
         return mock.MagicMock(spec=types.MethodType)
 
 
+class MockConnectionInfo:
+    dbname = "test"
+    host = "localhost"
+    port = 5432
+    user = "testuser"
+
+
+class MockConnectionWithInfo(MockConnection):
+    info = MockConnectionInfo()
+
+
+class MockAsyncConnectionWithInfo(MockAsyncConnection):
+    info = MockConnectionInfo()
+
+    @staticmethod
+    async def connect(*args, **kwargs):
+        return MockAsyncConnectionWithInfo(**kwargs)
+
+
 class PostgresqlIntegrationTestMixin:
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
-        self.cursor_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor
-        )
+        self.cursor_mock = mock.patch("opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor)
         self.cursor_async_mock = mock.patch(
             "opentelemetry.instrumentation.psycopg.psycopg.AsyncCursor",
             MockAsyncCursor,
         )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
-        self.connection_sync_mock = mock.patch(
-            "psycopg.Connection.connect", MockConnection
-        )
-        self.connection_async_mock = mock.patch(
-            "psycopg.AsyncConnection.connect", MockAsyncConnection.connect
-        )
+        self.connection_sync_mock = mock.patch("psycopg.Connection.connect", MockConnection)
+        self.connection_async_mock = mock.patch("psycopg.AsyncConnection.connect", MockAsyncConnection.connect)
 
         self.cursor_mock.start()
         self.cursor_async_mock.start()
@@ -171,6 +216,7 @@ class PostgresqlIntegrationTestMixin:
             PsycopgInstrumentor().uninstrument()
 
 
+# pylint: disable=too-many-public-methods
 class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
     # pylint: disable=unused-argument
     def test_instrumentor(self):
@@ -190,9 +236,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -223,9 +267,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -284,9 +326,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(spans_list[0].name, "SELECT")
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
-        self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"], str(params)
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement.parameters"], str(params))
 
     # pylint: disable=unused-argument
     def test_not_recording(self):
@@ -347,6 +387,37 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_typed_sql_query(self):
+        cnx = psycopg.connect(database="test")
+        query = SQL("SELECT * FROM test")
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(spans_list[0].attributes["db.statement"], "SELECT * FROM test")
+
+    def test_instrument_connection_composed_query(self):
+        cnx = psycopg.connect(database="test")
+        query: Composed = SQL("SELECT * FROM test").format()
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(spans_list[0].attributes["db.statement"], "SELECT * FROM test")
 
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):
@@ -413,6 +484,152 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
 
+    def test_sqlcommenter_enabled_instrument_connection_defaults(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.paramstyle",
+                "test",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                "Select 1",
+            )
+
+    def test_sqlcommenter_enabled_instrument_connection_stmt_enabled(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.paramstyle",
+                "test",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
+            )
+
+    def test_sqlcommenter_enabled_instrument_connection_with_options(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+                commenter_options={
+                    "dbapi_level": False,
+                    "dbapi_threadsafety": True,
+                    "driver_paramstyle": False,
+                    "foo": "ignored",
+                },
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_threadsafety='123',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                "Select 1",
+            )
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_disabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -423,19 +640,157 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
 
+    def test_sqlcommenter_disabled_default_instrument_connection(self):
+        cnx = psycopg.connect(database="test")
+        cnx = PsycopgInstrumentor().instrument_connection(
+            cnx,
+        )
+        query = "Select 1"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        self.assertEqual(
+            MockCursor.execute.call_args[0][0],
+            "Select 1",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "Select 1",
+        )
 
-class TestPostgresqlIntegrationAsync(
-    PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+    def test_sqlcommenter_disabled_explicit_instrument_connection(self):
+        cnx = psycopg.connect(database="test")
+        cnx = PsycopgInstrumentor().instrument_connection(
+            cnx,
+            enable_commenter=False,
+        )
+        query = "Select 1"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        self.assertEqual(
+            MockCursor.execute.call_args[0][0],
+            "Select 1",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "Select 1",
+        )
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_span_attributes(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument()
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor()
+        value = 42
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
+        cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo")
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_commenter(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument(enable_commenter=True)
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor()
+        MockCursor.executemany.reset_mock()
+        value = 42
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo;")
+        cursor.executemany(template)
+        called_query = MockCursor.executemany.call_args[0][0]
+        self.assertIsInstance(called_query, Template)
+        self.assertRegex(
+            called_query.strings[-1],
+            r" FROM foo /\*.*traceparent=.*\*/;",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo;")
+
+    def test_semconv_stable(self):
+        """database,http opt-in emits only stable attributes."""
+        with (
+            use_semconv_opt_in("database,http"),
+            mock.patch("psycopg.connect", MockConnectionWithInfo),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            cnx = psycopg.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    def test_semconv_dup(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with (
+            use_semconv_opt_in("database/dup,http/dup"),
+            mock.patch("psycopg.connect", MockConnectionWithInfo),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            cnx = psycopg.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+
+
+class TestPostgresqlIntegrationAsync(PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase):
     async def test_wrap_async_connection_class_with_cursor(self):
         PsycopgInstrumentor().instrument()
 
         async def test_async_connection():
             acnx = await psycopg.AsyncConnection.connect("test")
             async with acnx as cnx:
-                self.assertTrue(
-                    issubclass(cnx.cursor_factory, MockAsyncCursor)
-                )
+                self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
                 async with cnx.cursor() as cursor:
                     await cursor.execute("SELECT * FROM test")
 
@@ -445,9 +800,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -464,9 +817,7 @@ class TestPostgresqlIntegrationAsync(
         async def test_async_connection():
             acnx = await psycopg.AsyncConnection.connect("test")
             async with acnx as cnx:
-                self.assertTrue(
-                    issubclass(cnx.cursor_factory, MockAsyncCursor)
-                )
+                self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
                 await cnx.execute("SELECT * FROM test")
 
         await test_async_connection()
@@ -476,9 +827,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -501,9 +850,7 @@ class TestPostgresqlIntegrationAsync(
             )
             await cursor.execute("tab\tseparated query")
             await cursor.execute("/* leading comment */ query")
-            await cursor.execute(
-                "/* leading comment */ query /* trailing comment */"
-            )
+            await cursor.execute("/* leading comment */ query /* trailing comment */")
             await cursor.execute("query /* trailing comment */")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -529,9 +876,7 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(spans_list[0].name, "SELECT")
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
-        self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"], str(params)
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement.parameters"], str(params))
 
     # pylint: disable=unused-argument
     async def test_not_recording_async(self):
@@ -604,6 +949,89 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    async def test_t_string_span_attributes_async(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument()
+        cnx = await psycopg.AsyncConnection.connect("test")
+        self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
+        async with cnx.cursor() as cursor:
+            value = 42
+            template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
+            await cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo")
+
+    async def test_semconv_stable_async(self):
+        """database,http opt-in emits only stable attributes."""
+        with (
+            use_semconv_opt_in("database,http"),
+            mock.patch(
+                "psycopg.AsyncConnection.connect",
+                MockAsyncConnectionWithInfo.connect,
+            ),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    async def test_semconv_dup_async(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with (
+            use_semconv_opt_in("database/dup,http/dup"),
+            mock.patch(
+                "psycopg.AsyncConnection.connect",
+                MockAsyncConnectionWithInfo.connect,
+            ),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)

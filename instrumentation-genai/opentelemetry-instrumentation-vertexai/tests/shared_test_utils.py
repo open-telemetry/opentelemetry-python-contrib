@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from vertexai.generative_models import (
     Content,
@@ -53,9 +42,7 @@ def ask_about_weather(generate_content: callable) -> None:
             Content(
                 role="user",
                 parts=[
-                    Part.from_text(
-                        "Get weather details in New Delhi and San Francisco?"
-                    ),
+                    Part.from_text("Get weather details in New Delhi and San Francisco?"),
                 ],
             ),
         ],
@@ -73,9 +60,7 @@ def ask_about_weather_function_response(
             Content(
                 role="user",
                 parts=[
-                    Part.from_text(
-                        "Get weather details in New Delhi and San Francisco?"
-                    ),
+                    Part.from_text("Get weather details in New Delhi and San Francisco?"),
                 ],
             ),
             # Model requests two function calls
@@ -106,15 +91,11 @@ def ask_about_weather_function_response(
                 parts=[
                     Part.from_function_response(
                         name="get_current_weather",
-                        response={
-                            "content": '{"temperature": 35, "unit": "C"}'
-                        },
+                        response={"content": '{"temperature": 35, "unit": "C"}'},
                     ),
                     Part.from_function_response(
                         name="get_current_weather",
-                        response={
-                            "content": '{"temperature": 25, "unit": "C"}'
-                        },
+                        response={"content": '{"temperature": 25, "unit": "C"}'},
                     ),
                 ],
             ),

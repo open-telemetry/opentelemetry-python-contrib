@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import os
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -39,12 +28,8 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
         self.server = create_test_server(25565)
         self.server.start()
 
-        interceptors = aio_client_interceptors(
-            filter_=filters.method_name("NotSimpleMethod")
-        )
-        self._channel = grpc.aio.insecure_channel(
-            "localhost:25565", interceptors=interceptors
-        )
+        interceptors = aio_client_interceptors(filter_=filters.method_name("NotSimpleMethod"))
+        self._channel = grpc.aio.insecure_channel("localhost:25565", interceptors=interceptors)
 
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self._channel)
 
@@ -56,9 +41,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
         await self._channel.close()
 
     async def test_instrument_filtered(self):
-        instrumentor = GrpcAioInstrumentorClient(
-            filter_=filters.method_name("NotSimpleMethod")
-        )
+        instrumentor = GrpcAioInstrumentorClient(filter_=filters.method_name("NotSimpleMethod"))
 
         try:
             instrumentor.instrument()
@@ -77,9 +60,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
     async def test_instrument_filtered_env(self):
         with mock.patch.dict(
             os.environ,
-            {
-                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"
-            },
+            {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"},
         ):
             instrumentor = GrpcAioInstrumentorClient()
 
@@ -102,9 +83,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
             os.environ,
             {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"},
         ):
-            instrumentor = GrpcAioInstrumentorClient(
-                filter_=filters.service_prefix("GRPCTestServer")
-            )
+            instrumentor = GrpcAioInstrumentorClient(filter_=filters.service_prefix("GRPCTestServer"))
 
         try:
             instrumentor.instrument()

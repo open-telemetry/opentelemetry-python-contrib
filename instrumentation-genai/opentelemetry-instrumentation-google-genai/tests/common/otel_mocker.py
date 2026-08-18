@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 import opentelemetry._logs._internal
@@ -160,9 +149,7 @@ class OTelMocker:
                 for scope_metrics in resource_metric.scope_metrics:
                     scope = scope_metrics.scope
                     for metric in scope_metrics.metrics:
-                        wrapper = _MetricDataPointWrapper(
-                            resource, scope, metric
-                        )
+                        wrapper = _MetricDataPointWrapper(resource, scope, metric)
                         self._metrics_data.append(wrapper)
         return self._metrics_data
 
@@ -175,9 +162,7 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert span is not None, (
-            f'Could not find span named "{name}"; finished spans: {finished_spans}'
-        )
+        assert span is not None, f'Could not find span named "{name}"; finished spans: {finished_spans}'
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
@@ -185,27 +170,17 @@ class OTelMocker:
 
     def get_event_named(self, event_name):
         return next(
-            (
-                event
-                for event in self.get_finished_logs()
-                if event.event_name == event_name
-            ),
+            (event for event in self.get_finished_logs() if event.event_name == event_name),
             None,
         )
 
     def get_events_named(self, event_name):
-        return [
-            event
-            for event in self.get_finished_logs()
-            if event.event_name == event_name
-        ]
+        return [event for event in self.get_finished_logs() if event.event_name == event_name]
 
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert event is not None, (
-            f'Could not find event named "{name}"; finished logs: {finished_logs}'
-        )
+        assert event is not None, f'Could not find event named "{name}"; finished logs: {finished_logs}'
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)

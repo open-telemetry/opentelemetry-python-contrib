@@ -16,6 +16,7 @@ DISTDIR=dist
   mkdir -p $DISTDIR
   rm -rf ${DISTDIR:?}/*
 
+ # this is called by release workflow so don't list here independently released packages
  for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"

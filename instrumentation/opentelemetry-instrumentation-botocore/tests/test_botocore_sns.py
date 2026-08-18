@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import contextlib
 from typing import Any, Dict
@@ -39,14 +28,10 @@ class TestSnsExtension(TestBase):
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.client = session.create_client("sns", region_name="us-west-2")
         self.topic_name = "my-topic"
-        self.topic_arn = (
-            f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
-        )
+        self.topic_arn = f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
 
     def tearDown(self):
         super().tearDown()
@@ -64,9 +49,7 @@ class TestSnsExtension(TestBase):
     @contextlib.contextmanager
     def _mocked_aws_endpoint(self, response):
         response_func = self._make_aws_response_func(response)
-        with mock.patch(
-            "botocore.endpoint.Endpoint.make_request", new=response_func
-        ):
+        with mock.patch("botocore.endpoint.Endpoint.make_request", new=response_func):
             yield
 
     @staticmethod
@@ -83,9 +66,7 @@ class TestSnsExtension(TestBase):
 
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(name, span.name)
-        self.assertEqual(
-            "aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM]
-        )
+        self.assertEqual("aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM])
 
         return span
 

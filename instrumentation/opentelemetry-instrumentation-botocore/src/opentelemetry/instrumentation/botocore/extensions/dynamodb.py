@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import abc
 import inspect
@@ -51,11 +40,7 @@ def _conv_dict_to_key_tuple(value: Dict[str, Any]) -> Optional[Tuple[str]]:
 
 
 def _conv_list_to_json_list(value: List) -> Optional[List[str]]:
-    return (
-        [json.dumps(item) for item in value]
-        if isinstance(value, List)
-        else None
-    )
+    return [json.dumps(item) for item in value] if isinstance(value, List) else None
 
 
 def _conv_val_to_single_json_tuple(value: str) -> Optional[Tuple[str]]:
@@ -118,15 +103,11 @@ class _DynamoDbOperation(abc.ABC):
         pass
 
     @classmethod
-    def add_start_attributes(
-        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
-    ):
+    def add_start_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
         pass
 
     @classmethod
-    def add_response_attributes(
-        cls, call_context: _AwsSdkCallContext, span: Span, result: _BotoResultT
-    ):
+    def add_response_attributes(cls, call_context: _AwsSdkCallContext, span: Span, result: _BotoResultT):
         pass
 
 
@@ -245,9 +226,7 @@ class _OpListTables(_DynamoDbOperation):
 
 
 class _OpPutItem(_DynamoDbOperation):
-    start_attributes = {
-        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME
-    }
+    start_attributes = {aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME}
     response_attributes = {
         aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
         aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
@@ -348,9 +327,7 @@ class _OpUpdateTable(_DynamoDbOperation):
 _OPERATION_MAPPING = {
     op.operation_name(): op
     for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _DynamoDbOperation)
-    and not inspect.isabstract(op)
+    if inspect.isclass(op) and issubclass(op, _DynamoDbOperation) and not inspect.isabstract(op)
 }  # type: Dict[str, _DynamoDbOperation]
 
 
@@ -360,9 +337,7 @@ class _DynamoDbExtension(_AwsSdkExtension):
         self._op = _OPERATION_MAPPING.get(call_context.operation)
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        attributes[db_attributes.DB_SYSTEM] = (
-            db_attributes.DbSystemValues.DYNAMODB.value
-        )
+        attributes[db_attributes.DB_SYSTEM] = db_attributes.DbSystemValues.DYNAMODB.value
         attributes[db_attributes.DB_OPERATION] = self._call_context.operation
         attributes[NET_PEER_NAME] = self._get_peer_name()
 
@@ -372,16 +347,12 @@ class _DynamoDbExtension(_AwsSdkExtension):
         def attr_setter(key: str, value: AttributeValue):
             attributes[key] = value
 
-        self._add_attributes(
-            self._call_context.params, self._op.start_attributes, attr_setter
-        )
+        self._add_attributes(self._call_context.params, self._op.start_attributes, attr_setter)
 
     def _get_peer_name(self) -> str:
         return urlparse(self._call_context.endpoint_url).netloc
 
-    def before_service_call(
-        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
-    ):
+    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
         if not span.is_recording() or self._op is None:
             return
 
@@ -403,9 +374,7 @@ class _DynamoDbExtension(_AwsSdkExtension):
         if self._op is None:
             return
 
-        self._add_attributes(
-            result, self._op.response_attributes, span.set_attribute
-        )
+        self._add_attributes(result, self._op.response_attributes, span.set_attribute)
 
     def _add_attributes(
         self,

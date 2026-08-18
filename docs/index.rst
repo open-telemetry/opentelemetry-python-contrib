@@ -50,7 +50,6 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
     cd opentelemetry-python-contrib
     pip install -e ./instrumentation/opentelemetry-instrumentation-flask
     pip install -e ./instrumentation/opentelemetry-instrumentation-botocore
-    pip install -e ./instrumentation-genai/opentelemetry-instrumentation-openai-v2
     pip install -e ./sdk-extension/opentelemetry-sdk-extension-aws
     pip install -e ./resource/opentelemetry-resource-detector-containerid
 
@@ -102,6 +101,14 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
     :glob:
 
     resource/**
+
+.. toctree::
+    :maxdepth: 2
+    :caption: OpAMP
+    :name: OpAMP
+    :glob:
+
+    opamp/**
 
 Indices and tables
 ------------------

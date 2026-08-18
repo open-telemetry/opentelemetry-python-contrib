@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """High level end-to-end test of the generate content instrumentation.
 
@@ -24,11 +13,9 @@ secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
 import asyncio
-import gzip
 import json
 import os
 import subprocess
-import sys
 import time
 
 import fsspec
@@ -39,6 +26,14 @@ import pytest
 import yaml
 from google.genai import types
 from vcr.record_mode import RecordMode
+
+try:
+    # These modules are only supported in python >= 3.10
+    from aiohttp.client_exceptions import ClientConnectionError
+    from vcr.stubs import aiohttp_stubs
+except ImportError:
+    ClientConnectionError = None
+    aiohttp_stubs = None
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -64,9 +59,7 @@ _DEFAULT_REAL_LOCATION = "us-central1"
 
 
 def _get_project_from_env():
-    return (
-        os.getenv("GCLOUD_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
-    )
+    return os.getenv("GCLOUD_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
 
 
 def _get_project_from_gcloud_cli():
@@ -99,11 +92,7 @@ def _get_real_project():
 
 
 def _get_location_from_env():
-    return (
-        os.getenv("GCLOUD_LOCATION")
-        or os.getenv("GOOGLE_CLOUD_LOCATION")
-        or ""
-    )
+    return os.getenv("GCLOUD_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or ""
 
 
 def _get_real_location():
@@ -135,6 +124,9 @@ def _redact_headers(headers):
 
 
 def _before_record_request(request):
+    # aiohttp reports the request method in lower case while it is recorded in the cassette in upper case.
+    if request.method:
+        request.method = request.method.upper()
     if request.headers:
         _redact_headers(request.headers)
     uri = request.uri
@@ -143,9 +135,7 @@ def _before_record_request(request):
         uri = uri.replace(f"projects/{project}", f"projects/{_FAKE_PROJECT}")
     location = _get_real_location()
     if location:
-        uri = uri.replace(
-            f"locations/{location}", f"locations/{_FAKE_LOCATION}"
-        )
+        uri = uri.replace(f"locations/{location}", f"locations/{_FAKE_LOCATION}")
         uri = uri.replace(
             f"//{location}-aiplatform.googleapis.com",
             f"//{_FAKE_LOCATION}-aiplatform.googleapis.com",
@@ -207,9 +197,7 @@ def _literal_block_scalar_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-@pytest.fixture(
-    name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True
-)
+@pytest.fixture(name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True)
 def fixture_setup_yaml_pretty_formatting():
     yaml.add_representer(_LiteralBlockScalar, _literal_block_scalar_presenter)
 
@@ -247,66 +235,17 @@ def _convert_body_to_literal(data):
     return data
 
 
-# Helper for enforcing GZIP compression where it was originally.
-def _ensure_gzip_single_response(data: bytes):
-    try:
-        # Attempt to decompress, first, to avoid double compression.
-        gzip.decompress(data)
-        return data
-    except gzip.BadGzipFile:
-        # It must not have been compressed in the first place.
-        return gzip.compress(data)
-
-
-# VCRPy automatically decompresses responses before saving them, but it may forget to
-# re-encode them when the data is loaded. This can create issues with decompression.
-# This is why we re-encode on load; to accurately replay what was originally sent.
-#
-# https://vcrpy.readthedocs.io/en/latest/advanced.html#decode-compressed-response
-def _ensure_casette_gzip(loaded_casette):
-    for interaction in loaded_casette["interactions"]:
-        response = interaction["response"]
-        headers = response["headers"]
-        if (
-            "content-encoding" not in headers
-            and "Content-Encoding" not in headers
-        ):
-            continue
-        if (
-            "content-encoding" in headers
-            and "gzip" not in headers["content-encoding"]
-        ):
-            continue
-        if (
-            "Content-Encoding" in headers
-            and "gzip" not in headers["Content-Encoding"]
-        ):
-            continue
-        response["body"]["string"] = _ensure_gzip_single_response(
-            response["body"]["string"].encode()
-        )
-
-
-def _maybe_ensure_casette_gzip(result):
-    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
-        _ensure_casette_gzip(result)
-
-
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = _convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):
-        result = yaml.load(cassette_string, Loader=yaml.Loader)
-        _maybe_ensure_casette_gzip(result)
-        return result
+        return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
 @pytest.fixture(name="fully_initialized_vcr", scope="module", autouse=True)
@@ -314,6 +253,46 @@ def setup_vcr(vcr):
     vcr.register_serializer("yaml", _PrettyPrintJSONBody)
     vcr.serializer = "yaml"
     return vcr
+
+
+@pytest.fixture(name="patch_vcr_aiohttp_stream", scope="module", autouse=True)
+def fixture_patch_vcr_aiohttp_stream():
+    # Allows the async tests to not be stuck in infinite loop when streaming
+    # a VCR cassette with aiohttp stubs.
+    # https://github.com/kevin1024/vcrpy/issues/927
+    if ClientConnectionError is None or aiohttp_stubs is None:
+        return
+
+    class _ReplayMockStream(aiohttp_stubs.MockStream):
+        # Keep vcrpy's stream behavior, but ignore aiohttp's
+        # close-time ClientConnectionError("Connection closed") during
+        # cassette replay, where the full response is already buffered
+        # and this condition should be treated as normal EOF.
+        def set_exception(self, exc):
+            if isinstance(exc, ClientConnectionError) and exc.args == ("Connection closed",):
+                return
+            super().set_exception(exc)
+
+    class _ReplayMockClientResponse(aiohttp_stubs.MockClientResponse):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._mock_content_stream = None
+
+        @property
+        def content(self):
+            # vcrpy's aiohttp MockClientResponse.content creates a fresh stream object
+            # on every property access. google-genai async streaming repeatedly reads
+            # response.content.readline() and expects the same stream instance until EOF is
+            # reached.
+            if self._mock_content_stream is None:
+                body = self._body or b""
+                stream = _ReplayMockStream()
+                stream.feed_data(body)
+                stream.feed_eof()
+                self._mock_content_stream = stream
+            return self._mock_content_stream
+
+    aiohttp_stubs.MockClientResponse = _ReplayMockClientResponse
 
 
 @pytest.fixture(name="instrumentor")
@@ -372,14 +351,10 @@ def fixture_setup_content_recording(request, semconv_version):
             }
         )
         _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.update(
-            {
-                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-            }
+            {_OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL}
         )
     else:
-        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = str(
-            enabled
-        )
+        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = str(enabled)
     yield
     _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = orig_dict
 
@@ -416,9 +391,7 @@ def fixture_gcloud_credentials(in_replay_mode):
     if in_replay_mode:
         return FakeCredentials()
     creds, _ = google.auth.default()
-    return google.auth.credentials.with_scopes_if_required(
-        creds, ["https://www.googleapis.com/auth/cloud-platform"]
-    )
+    return google.auth.credentials.with_scopes_if_required(creds, ["https://www.googleapis.com/auth/cloud-platform"])
 
 
 @pytest.fixture(name="gemini_api_key")
@@ -451,18 +424,14 @@ def fixture_nonvertex_client_factory(gemini_api_key):
 
 
 @pytest.fixture(name="vertex_client_factory")
-def fixture_vertex_client_factory(
-    gcloud_project, gcloud_location, gcloud_credentials
-):
+def fixture_vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
     def _factory():
         return google.genai.Client(
             vertexai=True,
             project=gcloud_project,
             location=gcloud_location,
             credentials=gcloud_credentials,
-            http_options=types.HttpOptions(
-                headers={"accept-encoding": "identity"}
-            ),
+            http_options=types.HttpOptions(headers={"accept-encoding": "identity"}),
         )
 
     return _factory
@@ -481,9 +450,7 @@ def fixture_use_vertex(genai_sdk_backend):
 
 
 @pytest.fixture(name="client")
-def fixture_client(
-    vertex_client_factory, nonvertex_client_factory, use_vertex
-):
+def fixture_client(vertex_client_factory, nonvertex_client_factory, use_vertex):
     if use_vertex:
         return vertex_client_factory()
     return nonvertex_client_factory()
@@ -523,11 +490,7 @@ def fixture_generate_content_stream(client, is_async):
     def _async_impl(*args, **kwargs):
         async def _gather_all():
             results = []
-            async for (
-                result
-            ) in await client.aio.models.generate_content_stream(
-                *args, **kwargs
-            ):
+            async for result in await client.aio.models.generate_content_stream(*args, **kwargs):
                 results.append(result)
             return results
 
@@ -541,9 +504,7 @@ def fixture_generate_content_stream(client, is_async):
 @pytest.mark.parametrize("semconv_version", ["default"], indirect=True)
 @pytest.mark.vcr
 def test_non_streaming(generate_content, model, otel_mocker):
-    response = generate_content(
-        model=model, contents="Create a poem about Open Telemetry."
-    )
+    response = generate_content(model=model, contents="Create a poem about Open Telemetry.")
     assert response is not None
     assert response.text is not None
     assert len(response.text) > 0
@@ -554,9 +515,7 @@ def test_non_streaming(generate_content, model, otel_mocker):
 @pytest.mark.vcr
 def test_streaming(generate_content_stream, model, otel_mocker):
     count = 0
-    for response in generate_content_stream(
-        model=model, contents="Create a poem about Open Telemetry."
-    ):
+    for response in generate_content_stream(model=model, contents="Create a poem about Open Telemetry."):
         assert response is not None
         assert response.text is not None
         assert len(response.text) > 0
@@ -566,13 +525,9 @@ def test_streaming(generate_content_stream, model, otel_mocker):
 
 
 @pytest.mark.parametrize("semconv_version", ["experimental"], indirect=True)
-@pytest.mark.parametrize(
-    "enable_completion_hook", ["enable_completion_hook"], indirect=True
-)
+@pytest.mark.parametrize("enable_completion_hook", ["enable_completion_hook"], indirect=True)
 @pytest.mark.vcr
-def test_upload_hook_non_streaming(
-    generate_content, model, otel_mocker: OTelMocker
-):
+def test_upload_hook_non_streaming(generate_content, model, otel_mocker: OTelMocker):
     expected_input = [
         {
             "parts": [
@@ -596,22 +551,14 @@ def test_upload_hook_non_streaming(
             "finish_reason": "stop",
         }
     ]
-    _ = generate_content(
-        model=model, contents="Create a haiku about Open Telemetry."
-    )
+    _ = generate_content(model=model, contents="Create a haiku about Open Telemetry.")
     time.sleep(2)
 
-    event = otel_mocker.get_event_named(
-        "gen_ai.client.inference.operation.details"
-    )
-    assert_fsspec_equal(
-        event.attributes["gen_ai.input.messages_ref"], expected_input
-    )
+    event = otel_mocker.get_event_named("gen_ai.client.inference.operation.details")
+    assert_fsspec_equal(event.attributes["gen_ai.input.messages_ref"], expected_input)
 
     span = otel_mocker.get_span_named(f"generate_content {model}")
-    assert_fsspec_equal(
-        span.attributes["gen_ai.output.messages_ref"], expected_output
-    )
+    assert_fsspec_equal(span.attributes["gen_ai.output.messages_ref"], expected_output)
 
 
 def assert_fsspec_equal(path, value):

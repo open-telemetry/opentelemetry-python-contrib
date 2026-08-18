@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import contextlib
 import logging
@@ -22,7 +11,11 @@ from sqlalchemy.orm import close_all_sessions, scoped_session, sessionmaker
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 
 Base = declarative_base()
@@ -97,9 +90,7 @@ class SQLAlchemyTestMixin(TestBase):
         Base.metadata.create_all(self.engine, checkfirst=False)
         self.session = sessionmaker(bind=self.engine)()
         # trace the engine
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine, tracer_provider=self.tracer_provider
-        )
+        SQLAlchemyInstrumentor().instrument(engine=self.engine, tracer_provider=self.tracer_provider)
         self.memory_exporter.clear()
 
     def tearDown(self):
@@ -115,9 +106,7 @@ class SQLAlchemyTestMixin(TestBase):
         if self.SQL_DB:
             name = f"{name} {self.SQL_DB}"
         self.assertEqual(span.name, name)
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
-        )
+        self.assertEqual(span.attributes.get(DB_NAME), self.SQL_DB)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertGreater((span.end_time - span.start_time), 0)
 
@@ -132,14 +121,14 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         stmt = "INSERT INTO players (id, name) VALUES "
-        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
+        if span.attributes.get(DB_SYSTEM) == "sqlite":
             stmt += "(?, ?)"
         else:
             stmt += "(%(id)s, %(name)s)"
         self._check_span(span, "INSERT")
         self.assertIn(
             "INSERT INTO players",
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
         )
         self.check_meta(span)
 
@@ -153,14 +142,14 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         stmt = "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name = "
-        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
+        if span.attributes.get(DB_SYSTEM) == "sqlite":
             stmt += "?"
         else:
             stmt += "%(name_1)s"
         self._check_span(span, "SELECT")
         self.assertIn(
             "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name",
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
         )
         self.check_meta(span)
 
@@ -177,7 +166,7 @@ class SQLAlchemyTestMixin(TestBase):
         span = spans[1]
         self._check_span(span, "SELECT")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SELECT * FROM players",
         )
         self.check_meta(span)
@@ -250,6 +239,4 @@ class SQLAlchemyTestMixin(TestBase):
         # SQLAlchemy 1.4 uses the `execute_values` extension of the psycopg2 dialect to
         # batch inserts together which means `insert_players` only generates one span.
         # See https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#orm-batch-inserts-with-psycopg2-now-batch-statements-with-returning-in-most-cases
-        self.assertEqual(
-            len(spans), 8 if self.VENDOR not in ["postgresql"] else 6
-        )
+        self.assertEqual(len(spans), 8 if self.VENDOR not in ["postgresql"] else 6)

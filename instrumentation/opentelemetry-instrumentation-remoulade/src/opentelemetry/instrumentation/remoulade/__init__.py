@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Usage
@@ -35,9 +24,11 @@ Run instrumented actor
     broker = RabbitmqBroker()
     remoulade.set_broker(broker)
 
+
     @remoulade.actor
     def multiply(x, y):
         return x * y
+
 
     broker.declare_actor(multiply)
 
@@ -77,9 +68,7 @@ class _InstrumentationMiddleware(Middleware):
 
         trace_ctx = extract(message.options["trace_ctx"])
         retry_count = message.options.get("retries", 0)
-        operation_name = utils.get_operation_name(
-            "before_process_message", retry_count
-        )
+        operation_name = utils.get_operation_name("before_process_message", retry_count)
         span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
@@ -90,18 +79,12 @@ class _InstrumentationMiddleware(Middleware):
         )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
-        utils.attach_span(
-            self._span_registry, message.message_id, (span, activation)
-        )
+        utils.attach_span(self._span_registry, message.message_id, (span, activation))
 
-    def after_process_message(
-        self, _broker, message, *, result=None, exception=None
-    ):
-        span, activation = utils.retrieve_span(
-            self._span_registry, message.message_id
-        )
+    def after_process_message(self, _broker, message, *, result=None, exception=None):
+        span, activation = utils.retrieve_span(self._span_registry, message.message_id)
 
         if span is None:
             # no existing span found for message_id
@@ -121,9 +104,7 @@ class _InstrumentationMiddleware(Middleware):
 
     def before_enqueue(self, _broker, message, delay):
         retry_count = message.options.get("retries", 0)
-        operation_name = utils.get_operation_name(
-            "before_enqueue", retry_count
-        )
+        operation_name = utils.get_operation_name("before_enqueue", retry_count)
         span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
@@ -142,7 +123,7 @@ class _InstrumentationMiddleware(Middleware):
             )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         utils.attach_span(
             self._span_registry,
@@ -156,18 +137,14 @@ class _InstrumentationMiddleware(Middleware):
         inject(message.options["trace_ctx"])
 
     def after_enqueue(self, _broker, message, delay, exception=None):
-        _, activation = utils.retrieve_span(
-            self._span_registry, message.message_id, is_publish=True
-        )
+        _, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
 
         if activation is None:
             # no existing span found for message_id
             return
 
         activation.__exit__(None, None, None)
-        utils.detach_span(
-            self._span_registry, message.message_id, is_publish=True
-        )
+        utils.detach_span(self._span_registry, message.message_id, is_publish=True)
 
 
 class RemouladeInstrumentor(BaseInstrumentor):
@@ -177,7 +154,6 @@ class RemouladeInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
 
-        # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
             __name__,
             __version__,

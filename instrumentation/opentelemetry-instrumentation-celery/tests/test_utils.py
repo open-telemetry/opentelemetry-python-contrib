@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import unittest
 from unittest import mock
@@ -57,22 +46,16 @@ class TestUtils(unittest.TestCase):
             span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
             "44b7f305",
         )
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
-        )
+        self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery")
 
-        self.assertEqual(
-            span.attributes["celery.delivery_info"], str({"eager": True})
-        )
+        self.assertEqual(span.attributes["celery.delivery_info"], str({"eager": True}))
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
-        self.assertEqual(
-            span.attributes.get("celery.timelimit"), ("now", "later")
-        )
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
         self.assertNotIn("custom_meta", span.attributes)
 
     def test_set_attributes_not_recording(self):
@@ -135,9 +118,7 @@ class TestUtils(unittest.TestCase):
         }
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
         utils.set_attributes_from_context(span, context)
-        self.assertEqual(
-            span.attributes.get("celery.timelimit"), ("", "later")
-        )
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("", "later"))
 
     def test_set_attributes_from_context_empty_keys(self):
         # it should not extract empty keys
@@ -195,9 +176,7 @@ class TestUtils(unittest.TestCase):
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
 
         # assert this is is a no-aop
-        self.assertIsNone(
-            utils.attach_context(None, task_id, span, mock.Mock(), "")
-        )
+        self.assertIsNone(utils.attach_context(None, task_id, span, mock.Mock(), ""))
 
     def test_span_delete_empty(self):
         # ensure detach_span doesn't raise an exception if span is not present

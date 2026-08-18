@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import asyncio
 from unittest import TestCase, mock, skipIf
 
@@ -76,9 +65,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
     def test_decorate_callback(self):
         queue = Queue(CHANNEL_7, QUEUE_NAME, False, False, False, None)
         callback = mock.MagicMock(return_value=asyncio.sleep(0))
-        with mock.patch.object(
-            CallbackDecorator, "_get_span"
-        ) as mocked_get_callback_span:
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
             callback_decorator = CallbackDecorator(self.tracer, queue)
             decorated_callback = callback_decorator.decorate(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))
@@ -116,9 +103,7 @@ class TestInstrumentedQueueAioRmq8(TestCase):
     def test_decorate_callback(self):
         queue = Queue(CHANNEL_8, QUEUE_NAME, False, False, False, None)
         callback = mock.MagicMock(return_value=asyncio.sleep(0))
-        with mock.patch.object(
-            CallbackDecorator, "_get_span"
-        ) as mocked_get_callback_span:
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
             callback_decorator = CallbackDecorator(self.tracer, queue)
             decorated_callback = callback_decorator.decorate(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))

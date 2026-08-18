@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # Note: This package is not named "flask" because of
 # https://github.com/PyCQA/pylint/issues/2648
@@ -36,9 +25,11 @@ Usage
 
     FlaskInstrumentor().instrument_app(app)
 
+
     @app.route("/")
     def hello():
         return "Hello!"
+
 
     if __name__ == "__main__":
         app.run(debug=True)
@@ -87,13 +78,16 @@ For example,
 
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
+
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
+
     def response_hook(span: Span, status: str, response_headers: List):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
 
     FlaskInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
@@ -254,7 +248,6 @@ API
 ---
 """
 
-import sys
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -287,6 +280,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_ROUTE,
     HTTP_TARGET,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    create_http_server_active_requests,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -300,11 +296,6 @@ from opentelemetry.util.http import (
 
 _logger = getLogger(__name__)
 
-# Global constants for Flask 3.1+ streaming context cleanup
-_IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
-    flask.__version__
-) >= package_version.parse("3.1.0")
-
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
@@ -314,6 +305,9 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 flask_version = version("flask")
+
+# Global constant for Flask 3.1+ streaming context cleanup
+_IS_FLASK_31_PLUS = package_version.parse(flask_version) >= package_version.parse("3.1.0")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
@@ -327,9 +321,7 @@ else:
 
 
 def get_default_span_name():
-    method = sanitize_method(
-        flask.request.environ.get("REQUEST_METHOD", "").strip()
-    )
+    method = sanitize_method(flask.request.environ.get("REQUEST_METHOD", "").strip())
     if method == "_OTHER":
         method = "HTTP"
     try:
@@ -356,14 +348,10 @@ def _rewrapped_app(
         # we better avoid it.
         wrapped_app_environ[_ENVIRON_STARTTIME_KEY] = time_ns()
         start = default_timer()
-        attributes = otel_wsgi.collect_request_attributes(
-            wrapped_app_environ, sem_conv_opt_in_mode
-        )
-        active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(
-                attributes,
-                sem_conv_opt_in_mode,
-            )
+        attributes = otel_wsgi.collect_request_attributes(wrapped_app_environ, sem_conv_opt_in_mode)
+        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(
+            attributes,
+            sem_conv_opt_in_mode,
         )
 
         active_requests_counter.add(1, active_requests_count_attrs)
@@ -395,76 +383,62 @@ def _rewrapped_app(
                         attributes,
                         sem_conv_opt_in_mode,
                     )
-                    if (
-                        span.is_recording()
-                        and span.kind == trace.SpanKind.SERVER
-                    ):
-                        custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
-                            response_headers
-                        )
+                    if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                        custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(response_headers)
                         if len(custom_attributes) > 0:
                             span.set_attributes(custom_attributes)
                 else:
                     _logger.warning(
-                        "Flask environ's OpenTelemetry span "
-                        "missing at _start_response(%s)",
+                        "Flask environ's OpenTelemetry span missing at _start_response(%s)",
                         status,
                     )
                 if response_hook is not None:
                     response_hook(span, status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
-        result = wsgi_app(wrapped_app_environ, _start_response)
+        try:
+            result = wsgi_app(wrapped_app_environ, _start_response)
 
-        # Note: Streaming response context cleanup is now handled in the Flask teardown function
-        # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
-        # for OpenTelemetry generator context management
+            # Note: Streaming response context cleanup is now handled in the Flask teardown function
+            # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
+            # for OpenTelemetry generator context management
 
-        if should_trace:
-            duration_s = default_timer() - start
-            # Get the span from wrapped_app_environ and re-create context manually
-            # to pass to histogram for exemplars generation
-            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-            metrics_context = trace.set_span_in_context(span)
+            if should_trace:
+                duration_s = default_timer() - start
+                # Get the span from wrapped_app_environ and re-create context manually
+                # to pass to histogram for exemplars generation
+                span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+                metrics_context = trace.set_span_in_context(span)
 
-            if duration_histogram_old:
-                duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.DEFAULT
-                )
+                if duration_histogram_old:
+                    duration_attrs_old = otel_wsgi._parse_duration_attrs(attributes, _StabilityMode.DEFAULT)
 
-                if request_route:
-                    # http.target to be included in old semantic conventions
-                    duration_attrs_old[HTTP_TARGET] = str(request_route)
-                duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0),
-                    duration_attrs_old,
-                    context=metrics_context,
-                )
-            if duration_histogram_new:
-                duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.HTTP
-                )
+                    if request_route:
+                        # http.target to be included in old semantic conventions
+                        duration_attrs_old[HTTP_TARGET] = str(request_route)
+                    duration_histogram_old.record(
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                        context=metrics_context,
+                    )
+                if duration_histogram_new:
+                    duration_attrs_new = otel_wsgi._parse_duration_attrs(attributes, _StabilityMode.HTTP)
 
-                if request_route:
-                    duration_attrs_new[HTTP_ROUTE] = str(request_route)
+                    if request_route:
+                        duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-                duration_histogram_new.record(
-                    max(duration_s, 0),
-                    duration_attrs_new,
-                    context=metrics_context,
-                )
+                    duration_histogram_new.record(
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=metrics_context,
+                    )
 
-        active_requests_counter.add(-1, active_requests_count_attrs)
-        return result
+            return result
+        finally:
+            active_requests_counter.add(-1, active_requests_count_attrs)
 
     def _should_trace(excluded_urls) -> bool:
-        return bool(
-            flask.request
-            and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
-            )
-        )
+        return bool(flask.request and (excluded_urls is None or not excluded_urls.url_disabled(flask.request.url)))
 
     return _wrapped_app
 
@@ -507,16 +481,12 @@ def _wrapped_before_request(
             for key, value in attributes.items():
                 span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = (
-                    otel_wsgi.collect_custom_request_headers_attributes(
-                        flask_request_environ
-                    )
-                )
+                custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(flask_request_environ)
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
@@ -530,20 +500,11 @@ def _wrapped_before_request(
             if flask and flask.request:
                 if commenter_options.get("framework", True):
                     flask_info["framework"] = f"flask:{flask_version}"
-                if (
-                    commenter_options.get("controller", True)
-                    and flask.request.endpoint
-                ):
+                if commenter_options.get("controller", True) and flask.request.endpoint:
                     flask_info["controller"] = flask.request.endpoint
-                if (
-                    commenter_options.get("route", True)
-                    and flask.request.url_rule
-                    and flask.request.url_rule.rule
-                ):
+                if commenter_options.get("route", True) and flask.request.url_rule and flask.request.url_rule.rule:
                     flask_info["route"] = flask.request.url_rule.rule
-            sqlcommenter_context = context.set_value(
-                "SQLCOMMENTER_ORM_TAGS_AND_VALUES", flask_info, current_context
-            )
+            sqlcommenter_context = context.set_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES", flask_info, current_context)
             context.attach(sqlcommenter_context)
 
     return _before_request
@@ -553,16 +514,14 @@ def _wrapped_teardown_request(
     excluded_urls=None,
 ):
     def _teardown_request(exc):
-        # pylint: disable=E1101
+        # pylint: disable=unnecessary-dunder-call
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
         token = flask.request.environ.get(_ENVIRON_TOKEN)
 
-        original_reqctx_ref = flask.request.environ.get(
-            _ENVIRON_REQCTX_REF_KEY
-        )
+        original_reqctx_ref = flask.request.environ.get(_ENVIRON_REQCTX_REF_KEY)
         current_reqctx_ref = _request_ctx_ref()
         if not activation or original_reqctx_ref != current_reqctx_ref:
             # This request didn't start a span, maybe because it was created in
@@ -580,19 +539,11 @@ def _wrapped_teardown_request(
         try:
             # For Flask 3.1+, check if this is a streaming response that might
             # have already been cleaned up to prevent double cleanup
-            # Only check for streaming in Flask 3.1+ and Python 3.10+ to avoid interference with older versions
-            is_flask_31_plus = _IS_FLASK_31_PLUS and sys.version_info >= (
-                3,
-                10,
-            )
-
             is_streaming = False
-            if is_flask_31_plus:
+            if _IS_FLASK_31_PLUS:
                 try:
                     # Additional safety check: verify we're in a Flask request context
-                    if hasattr(flask, "request") and hasattr(
-                        flask.request, "response"
-                    ):
+                    if hasattr(flask, "request") and hasattr(flask.request, "response"):
                         is_streaming = (
                             hasattr(flask.request, "response")
                             and flask.request.response
@@ -603,7 +554,7 @@ def _wrapped_teardown_request(
                     # Not in a proper Flask request context, don't check for streaming
                     is_streaming = False
 
-            if is_flask_31_plus and is_streaming:
+            if _IS_FLASK_31_PLUS and is_streaming:
                 # For Flask 3.1+ streaming responses, ensure OpenTelemetry contexts are cleaned up
                 # This addresses the generator context leak issues documented by Logfire
                 # (open-telemetry/opentelemetry-python#2606)
@@ -616,9 +567,7 @@ def _wrapped_teardown_request(
                     flask.request.environ[_ENVIRON_ACTIVATION_KEY] = None
                     flask.request.environ[_ENVIRON_TOKEN] = None
 
-                    _logger.debug(
-                        "Streaming response context cleanup completed in teardown function"
-                    )
+                    _logger.debug("Streaming response context cleanup completed in teardown function")
 
                 except (
                     RuntimeError,
@@ -635,12 +584,12 @@ def _wrapped_teardown_request(
             if exc is None:
                 activation.__exit__(None, None, None)
             else:
-                activation.__exit__(
-                    type(exc), exc, getattr(exc, "__traceback__", None)
-                )
+                activation.__exit__(type(exc), exc, getattr(exc, "__traceback__", None))
 
             if token:
                 context.detach(token)
+                flask.request.environ.pop(_ENVIRON_ACTIVATION_KEY, None)
+                flask.request.environ.pop(_ENVIRON_TOKEN, None)
 
         except (RuntimeError, AttributeError, ValueError) as teardown_exc:
             # Log the error but don't raise it to avoid breaking the request handling
@@ -673,9 +622,7 @@ class _InstrumentedFlask(flask.Flask):
             __name__,
             __version__,
             _InstrumentedFlask._meter_provider,
-            schema_url=_get_schema_url(
-                _InstrumentedFlask._sem_conv_opt_in_mode
-            ),
+            schema_url=_get_schema_url(_InstrumentedFlask._sem_conv_opt_in_mode),
         )
         duration_histogram_old = None
         if _report_old(_InstrumentedFlask._sem_conv_opt_in_mode):
@@ -692,11 +639,15 @@ class _InstrumentedFlask(flask.Flask):
                 description="Duration of HTTP server requests.",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        active_requests_counter = meter.create_up_down_counter(
-            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
-        )
+
+        if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
+            active_requests_counter = create_http_server_active_requests(meter)
+        else:
+            active_requests_counter = meter.create_up_down_counter(
+                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                unit="requests",
+                description="Measures the number of concurrent HTTP requests that are currently in-flight.",
+            )
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app,
@@ -712,9 +663,7 @@ class _InstrumentedFlask(flask.Flask):
             __name__,
             __version__,
             _InstrumentedFlask._tracer_provider,
-            schema_url=_get_schema_url(
-                _InstrumentedFlask._sem_conv_opt_in_mode
-            ),
+            schema_url=_get_schema_url(_InstrumentedFlask._sem_conv_opt_in_mode),
         )
 
         _before_request = _wrapped_before_request(
@@ -735,7 +684,7 @@ class _InstrumentedFlask(flask.Flask):
 
 
 class FlaskInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for flask.Flask
 
     See `BaseInstrumentor`
@@ -756,9 +705,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         _InstrumentedFlask._tracer_provider = tracer_provider
         excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFlask._excluded_urls = (
-            _excluded_urls_from_env
-            if excluded_urls is None
-            else parse_excluded_urls(excluded_urls)
+            _excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)
         )
         enable_commenter = kwargs.get("enable_commenter", True)
         _InstrumentedFlask._enable_commenter = enable_commenter
@@ -800,11 +747,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.HTTP,
             )
-            excluded_urls = (
-                parse_excluded_urls(excluded_urls)
-                if excluded_urls is not None
-                else _excluded_urls_from_env
-            )
+            excluded_urls = parse_excluded_urls(excluded_urls) if excluded_urls is not None else _excluded_urls_from_env
             meter = get_meter(
                 __name__,
                 __version__,
@@ -826,11 +769,14 @@ class FlaskInstrumentor(BaseInstrumentor):
                     description="Duration of HTTP server requests.",
                     explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
-            active_requests_counter = meter.create_up_down_counter(
-                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-                unit="{request}",
-                description="Number of active HTTP server requests.",
-            )
+            if _report_new(sem_conv_opt_in_mode):
+                active_requests_counter = create_http_server_active_requests(meter)
+            else:
+                active_requests_counter = meter.create_up_down_counter(
+                    name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                    unit="requests",
+                    description="Measures the number of concurrent HTTP requests that are currently in-flight.",
+                )
 
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(
@@ -855,9 +801,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 tracer,
                 excluded_urls=excluded_urls,
                 enable_commenter=enable_commenter,
-                commenter_options=(
-                    commenter_options if commenter_options else {}
-                ),
+                commenter_options=(commenter_options if commenter_options else {}),
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             )
             app._before_request = _before_request
@@ -870,9 +814,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             app.teardown_request(_teardown_request)
             app._is_instrumented_by_opentelemetry = True
         else:
-            _logger.warning(
-                "Attempting to instrument Flask app while already instrumented"
-            )
+            _logger.warning("Attempting to instrument Flask app while already instrumented")
 
     @staticmethod
     def uninstrument_app(app):
@@ -885,7 +827,4 @@ class FlaskInstrumentor(BaseInstrumentor):
             del app._original_wsgi_app
             app._is_instrumented_by_opentelemetry = False
         else:
-            _logger.warning(
-                "Attempting to uninstrument Flask "
-                "app while already uninstrumented"
-            )
+            _logger.warning("Attempting to uninstrument Flask app while already uninstrumented")

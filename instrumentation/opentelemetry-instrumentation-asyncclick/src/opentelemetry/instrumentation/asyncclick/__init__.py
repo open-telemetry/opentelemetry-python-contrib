@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument `asyncclick`_ CLI applications. The instrumentor will avoid instrumenting
@@ -32,9 +21,11 @@ Usage
 
     AsyncClickInstrumentor().instrument()
 
+
     @asyncclick.command()
     async def hello():
-        asyncclick.echo(f'Hello world!')
+        asyncclick.echo(f"Hello world!")
+
 
     if __name__ == "__main__":
         asyncio.run(hello())
@@ -132,9 +123,7 @@ async def _command_invoke_wrapper(
             span.set_status(StatusCode.ERROR, str(exc))
             if span.is_recording():
                 span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
-                span.set_attribute(
-                    PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1)
-                )
+                span.set_attribute(PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1))
             raise
 
 

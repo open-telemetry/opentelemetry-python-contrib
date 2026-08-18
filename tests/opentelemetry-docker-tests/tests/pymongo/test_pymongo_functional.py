@@ -1,24 +1,39 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import os
+from unittest import mock
 
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_COLLECTION_NAME,
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
@@ -27,22 +42,41 @@ MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "opentelemetry-tests")
 MONGODB_COLLECTION_NAME = "test"
 
 
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+
 class TestFunctionalPymongo(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
+        PymongoInstrumentor._instance = None
+        PymongoInstrumentor._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.instrumentor = PymongoInstrumentor()
         self.instrumentor.instrument()
         self.instrumentor._commandtracer_instance._tracer = self._tracer
         self.instrumentor._commandtracer_instance.capture_statement = True
-        client = MongoClient(
-            MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
-        )
+        client = MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
         db = client[MONGODB_DB_NAME]
         self._collection = db[MONGODB_COLLECTION_NAME]
 
     def tearDown(self):
         self.instrumentor.uninstrument()
+        PymongoInstrumentor._instance = None
+        PymongoInstrumentor._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
         super().tearDown()
 
     def validate_spans(self, expected_db_statement):
@@ -60,44 +94,33 @@ class TestFunctionalPymongo(TestBase):
         self.assertIsNotNone(pymongo_span.parent)
         self.assertIs(pymongo_span.parent, root_span.get_span_context())
         self.assertIs(pymongo_span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(pymongo_span.attributes[DB_NAME], MONGODB_DB_NAME)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_NAME], MONGODB_HOST)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_PORT], MONGODB_PORT)
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_NAME], MONGODB_DB_NAME
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_NAME], MONGODB_HOST
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_PORT], MONGODB_PORT
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_MONGODB_COLLECTION],
+            pymongo_span.attributes[DB_MONGODB_COLLECTION],
             MONGODB_COLLECTION_NAME,
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
+            pymongo_span.attributes[DB_STATEMENT],
             expected_db_statement,
         )
 
     def test_insert(self):
         """Should create a child span for insert"""
         with self._tracer.start_as_current_span("rootSpan"):
-            insert_result = self._collection.insert_one(
-                {"name": "testName", "value": "testValue"}
-            )
+            insert_result = self._collection.insert_one({"name": "testName", "value": "testValue"})
             insert_result_id = insert_result.inserted_id
 
         expected_db_statement = (
-            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': "
-            f"ObjectId('{insert_result_id}')}}]"
+            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': ObjectId('{insert_result_id}')}}]"
         )
         self.validate_spans(expected_db_statement)
 
     def test_update(self):
         """Should create a child span for update"""
         with self._tracer.start_as_current_span("rootSpan"):
-            self._collection.update_one(
-                {"name": "testName"}, {"$set": {"value": "someOtherValue"}}
-            )
+            self._collection.update_one({"name": "testName"}, {"$set": {"value": "someOtherValue"}})
 
         expected_db_statement = (
             "update [SON([('q', {'name': 'testName'}), ('u', "
@@ -118,9 +141,7 @@ class TestFunctionalPymongo(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.delete_one({"name": "testName"})
 
-        expected_db_statement = (
-            "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
-        )
+        expected_db_statement = "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
         self.validate_spans(expected_db_statement)
 
     def test_find_without_capture_statement(self):
@@ -152,3 +173,57 @@ class TestFunctionalPymongo(TestBase):
         self._collection.find_one()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
+
+    def test_find_stable_semconv(self):
+        with use_semconv_opt_in("database"):
+            self.instrumentor.uninstrument()
+            self.instrumentor._commandtracer_instance = None
+            self.instrumentor.instrument()
+            self.instrumentor._commandtracer_instance._tracer = self._tracer
+            self.instrumentor._commandtracer_instance.capture_statement = True
+            client = MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
+            collection = client[MONGODB_DB_NAME][MONGODB_COLLECTION_NAME]
+            with self._tracer.start_as_current_span("rootSpan"):
+                collection.find_one({"name": "testName"})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        pymongo_span = next(s for s in spans if s.name != "rootSpan")
+        self.assertEqual(pymongo_span.attributes[DB_SYSTEM_NAME], "mongodb")
+        self.assertEqual(pymongo_span.attributes[DB_NAMESPACE], MONGODB_DB_NAME)
+        self.assertEqual(
+            pymongo_span.attributes[DB_QUERY_TEXT],
+            "find {'name': 'testName'}",
+        )
+        self.assertEqual(pymongo_span.attributes[SERVER_ADDRESS], MONGODB_HOST)
+        self.assertEqual(pymongo_span.attributes[SERVER_PORT], MONGODB_PORT)
+        self.assertEqual(
+            pymongo_span.attributes[DB_COLLECTION_NAME],
+            MONGODB_COLLECTION_NAME,
+        )
+
+    def test_failed_command_stable_semconv_records_error_type(self):
+        with use_semconv_opt_in("database"):
+            self.instrumentor.uninstrument()
+            self.instrumentor._commandtracer_instance = None
+            self.instrumentor.instrument()
+            self.instrumentor._commandtracer_instance._tracer = self._tracer
+            client = MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
+            db = client[MONGODB_DB_NAME]
+
+            with self._tracer.start_as_current_span("rootSpan"):
+                with self.assertRaises(OperationFailure):
+                    db.command({"fakeCommand": 1})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        pymongo_span = next(s for s in spans if s.name != "rootSpan")
+        self.assertEqual(
+            pymongo_span.status.status_code,
+            trace_api.StatusCode.ERROR,
+        )
+        self.assertEqual(pymongo_span.status.description, "no such command: 'fakeCommand'")
+        self.assertEqual(
+            pymongo_span.attributes[ERROR_TYPE],
+            "CommandNotFound",
+        )

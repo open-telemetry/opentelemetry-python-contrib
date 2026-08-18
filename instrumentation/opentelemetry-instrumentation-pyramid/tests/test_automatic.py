@@ -1,21 +1,11 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from timeit import default_timer
 from unittest.mock import patch
 
 from pyramid.config import Configurator
+from pyramid.config.adapters import AdaptersConfiguratorMixin
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -92,6 +82,8 @@ _recommended_attrs = {
     MetricInstruments.HTTP_SERVER_DURATION: _server_duration_attrs_old,
 }
 
+SCOPE = "opentelemetry.instrumentation.pyramid.callbacks"
+
 
 class TestAutomatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
@@ -151,9 +143,36 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
 
     def test_registry_name_is_this_module(self):
         config = Configurator()
-        self.assertEqual(
-            config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0]
-        )
+        self.assertEqual(config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0])
+
+    def test_before_traversal_subscriber_not_duplicated_after_commit(self):
+        registrations = []
+
+        def library_that_commits(config):
+            config.add_route("example", "/example")
+            config.commit()
+
+        def another_library(config):
+            pass
+
+        original_add_subscriber = AdaptersConfiguratorMixin.add_subscriber
+
+        def counting_add_subscriber(config, subscriber, iface=None, **kwargs):
+            if getattr(subscriber, "__name__", "") == "_before_traversal":
+                registrations.append(subscriber)
+
+            return original_add_subscriber(config, subscriber, iface=iface, **kwargs)
+
+        with patch.object(
+            AdaptersConfiguratorMixin,
+            "add_subscriber",
+            counting_add_subscriber,
+        ):
+            config = Configurator()
+            config.include(library_that_commits)
+            config.include(another_library)
+
+        self.assertEqual(len(registrations), 1)
 
     def test_redirect_response_is_not_an_error(self):
         tween_list = "pyramid.tweens.excview_tween_factory"
@@ -223,7 +242,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         self.client.get("/hello/756")
         self.client.get("/hello/756")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertEqual(len(metrics), 2)
@@ -262,10 +281,8 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.flavor": "1.1",
             "http.server_name": "localhost",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -287,10 +304,8 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.config = Configurator()
         self._common_initialization(self.config)
         self.client.get("/hello/756")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -314,9 +329,7 @@ class TestWrappedWithOtherFramework(InstrumentationTest, WsgiTestBase):
         tracer_provider, _ = self.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
 
-        with tracer.start_as_current_span(
-            "test", kind=SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             resp = self.client.get("/hello/123")
             self.assertEqual(200, resp.status_code)
             span_list = self.memory_exporter.get_finished_spans()
@@ -361,13 +374,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
-                "TestValue2,TestValue3",
-            ),
+            "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
@@ -390,9 +399,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
-                    "TestValue2,TestValue3",
-                ),
+                "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             }
             self.assertEqual(span.kind, SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -403,24 +410,14 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(200, resp.status_code)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
             "http.response.header.content_length": ("7",),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
-        not_expected = {
-            "http.response.header.dont_capture_me": ("test-value",)
-        }
+        not_expected = {"http.response.header.dont_capture_me": ("test-value",)}
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
         for key, _ in not_expected.items():
@@ -433,13 +430,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(200, resp.status_code)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.content_type": (
-                    "text/plain; charset=utf-8",
-                ),
+                "http.response.header.content_type": ("text/plain; charset=utf-8",),
                 "http.response.header.content_length": ("7",),
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
+                "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
             }
             self.assertEqual(span.kind, SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -468,25 +461,23 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
         with self.disable_logging():
             PyramidInstrumentor().uninstrument()
 
-    def _verify_metric_names(
-        self, metrics_list, expected_names, not_expected_names=None
-    ):
+    def _verify_metric_names(self, metrics, expected_names, not_expected_names=None):
         metric_names = []
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    metric_names.append(metric.name)
-                    if expected_names:
-                        self.assertIn(metric.name, expected_names)
-                    if not_expected_names:
-                        self.assertNotIn(metric.name, not_expected_names)
+        for metric in metrics:
+            metric_names.append(metric.name)
+            if expected_names:
+                self.assertIn(metric.name, expected_names)
+            if not_expected_names:
+                self.assertNotIn(metric.name, not_expected_names)
         return metric_names
 
     def _verify_duration_point(self, point):
         self.assertIn(HTTP_REQUEST_METHOD, point.attributes)
+        self.assertIn(HTTP_RESPONSE_STATUS_CODE, point.attributes)
         self.assertIn(URL_SCHEME, point.attributes)
         self.assertNotIn(HTTP_METHOD, point.attributes)
         self.assertNotIn(HTTP_SCHEME, point.attributes)
+        self.assertNotIn(HTTP_STATUS_CODE, point.attributes)
 
     def _verify_metric_duration(self, metric):
         if "duration" in metric.name:
@@ -494,11 +485,9 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self._verify_duration_point(point)
 
-    def _verify_duration_attributes(self, metrics_list):
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    self._verify_metric_duration(metric)
+    def _verify_duration_attributes(self, metrics):
+        for metric in metrics:
+            self._verify_metric_duration(metric)
 
 
 class TestSemConvDefault(_SemConvTestBase):
@@ -535,36 +524,30 @@ class TestSemConvDefault(_SemConvTestBase):
     def test_metrics_old_semconv(self):
         self.client.get("/hello/123")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
 
         expected_metrics = [
             HTTP_SERVER_ACTIVE_REQUESTS,
             MetricInstruments.HTTP_SERVER_DURATION,
         ]
-        self._verify_metric_names(
-            metrics_list, expected_metrics, [HTTP_SERVER_REQUEST_DURATION]
-        )
+        self._verify_metric_names(metrics, expected_metrics, [HTTP_SERVER_REQUEST_DURATION])
 
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in metric.data.data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertIn("http.method", point.attributes)
-                            self.assertIn("http.scheme", point.attributes)
-                            self.assertNotIn(
-                                HTTP_REQUEST_METHOD, point.attributes
-                            )
+        for metric in metrics:
+            for point in metric.data.data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertIn("http.method", point.attributes)
+                    self.assertIn("http.scheme", point.attributes)
+                    self.assertIn(HTTP_STATUS_CODE, point.attributes)
+                    self.assertNotIn(HTTP_REQUEST_METHOD, point.attributes)
+                    self.assertNotIn(HTTP_RESPONSE_STATUS_CODE, point.attributes)
 
 
 class TestSemConvNew(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP
 
     def test_basic_new_semconv(self):
-        resp = self.client.get(
-            "/hello/456?query=test", headers={"User-Agent": "test-agent"}
-        )
+        resp = self.client.get("/hello/456?query=test", headers={"User-Agent": "test-agent"})
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
@@ -601,30 +584,26 @@ class TestSemConvNew(_SemConvTestBase):
 
     def test_metrics_new_semconv(self):
         self.client.get("/hello/456")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
 
         expected_metrics = [
             HTTP_SERVER_REQUEST_DURATION,
             HTTP_SERVER_ACTIVE_REQUESTS,
         ]
-        metric_names = self._verify_metric_names(
-            metrics_list, expected_metrics
-        )
+        metric_names = self._verify_metric_names(metrics, expected_metrics)
 
         self.assertIn(HTTP_SERVER_REQUEST_DURATION, metric_names)
         self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metric_names)
 
-        self._verify_duration_attributes(metrics_list)
+        self._verify_duration_attributes(metrics)
 
 
 class TestSemConvDup(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP_DUP
 
     def test_basic_both_semconv(self):
-        resp = self.client.get(
-            "/hello/789?query=test", headers={"User-Agent": "test-agent"}
-        )
+        resp = self.client.get("/hello/789?query=test", headers={"User-Agent": "test-agent"})
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
@@ -656,15 +635,15 @@ class TestSemConvDup(_SemConvTestBase):
     def test_metrics_both_semconv(self):
         self.client.get("/hello/789")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 3)
 
         expected_metrics = [
             MetricInstruments.HTTP_SERVER_DURATION,
             HTTP_SERVER_REQUEST_DURATION,
             HTTP_SERVER_ACTIVE_REQUESTS,
         ]
-        metric_names = self._verify_metric_names(metrics_list, None)
+        metric_names = self._verify_metric_names(metrics, None)
 
         for metric_name in expected_metrics:
             self.assertIn(metric_name, metric_names)

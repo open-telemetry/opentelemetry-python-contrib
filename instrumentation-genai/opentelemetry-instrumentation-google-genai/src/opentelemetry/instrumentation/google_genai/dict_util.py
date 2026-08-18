@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import json
 import logging
@@ -78,9 +67,7 @@ def _is_homogenous_primitive_list(v):
     return True
 
 
-def _get_flatten_func(
-    flatten_functions: Dict[str, FlattenFunc], key_names: set[str]
-) -> Optional[FlattenFunc]:
+def _get_flatten_func(flatten_functions: Dict[str, FlattenFunc], key_names: set[str]) -> Optional[FlattenFunc]:
     for key in key_names:
         flatten_func = flatten_functions.get(key)
         if flatten_func is not None:
@@ -108,9 +95,7 @@ def _flatten_with_flatten_func(
     )
     if func_output is None:
         return True, {}
-    if _is_primitive(func_output) or _is_homogenous_primitive_list(
-        func_output
-    ):
+    if _is_primitive(func_output) or _is_homogenous_primitive_list(func_output):
         return True, {key: func_output}
     return False, func_output
 
@@ -124,9 +109,7 @@ def _flatten_compound_value_using_json(
     _from_json=False,
 ) -> FlattenedDict:
     if _from_json:
-        _logger.debug(
-            "Cannot flatten value with key %s; value: %s", key, value
-        )
+        _logger.debug("Cannot flatten value with key %s; value: %s", key, value)
         return {}
     try:
         json_string = json.dumps(value)

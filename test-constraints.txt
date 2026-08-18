@@ -1,0 +1,3 @@
+# Source install of cassandra-driver requires pkg_resources, if
+# it's not found the install script is broken and fails to build
+setuptools<82.0.0

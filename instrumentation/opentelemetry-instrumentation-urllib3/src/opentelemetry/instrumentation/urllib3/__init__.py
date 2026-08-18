@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 This library allows tracing HTTP requests made by the
@@ -23,8 +12,10 @@ Usage
     import urllib3
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 
+
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
+
 
     URLLib3Instrumentor().instrument(
         # Remove all query params from the URL attribute on the span.
@@ -262,9 +253,7 @@ class RequestInfo:
     method: str
     url: str
     headers: typing.Optional[typing.Mapping[str, str]]
-    body: typing.Union[
-        bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None
-    ]
+    body: typing.Union[bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None]
 
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
@@ -368,13 +357,9 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
             # http.client.request.body.size histogram
-            request_size_histogram_new = create_http_client_request_body_size(
-                meter
-            )
+            request_size_histogram_new = create_http_client_request_body_size(meter)
             # http.client.response.body.size histogram
-            response_size_histogram_new = (
-                create_http_client_response_body_size(meter)
-            )
+            response_size_histogram_new = create_http_client_response_body_size(meter)
 
         _instrument(
             tracer,
@@ -387,29 +372,19 @@ class URLLib3Instrumentor(BaseInstrumentor):
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
-            excluded_urls=(
-                _excluded_urls_from_env
-                if excluded_urls is None
-                else parse_excluded_urls(excluded_urls)
-            ),
+            excluded_urls=(_excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)),
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             captured_request_headers=kwargs.get(
                 "captured_request_headers",
-                get_custom_headers(
-                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
-                ),
+                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST),
             ),
             captured_response_headers=kwargs.get(
                 "captured_response_headers",
-                get_custom_headers(
-                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
-                ),
+                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE),
             ),
             sensitive_headers=kwargs.get(
                 "sensitive_headers",
-                get_custom_headers(
-                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-                ),
+                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS),
             ),
         )
 
@@ -417,14 +392,13 @@ class URLLib3Instrumentor(BaseInstrumentor):
         _uninstrument()
 
 
-def _get_span_name(method: str) -> str:
-    method = sanitize_method(method.strip())
-    if method == "_OTHER":
-        method = "HTTP"
-    return method
+def _get_span_name(sanitized_method: str) -> str:
+    if sanitized_method == "_OTHER":
+        return "HTTP"
+    return sanitized_method
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-positional-arguments
 def _instrument(
     tracer: Tracer,
     duration_histogram_old: Histogram,
@@ -442,9 +416,7 @@ def _instrument(
     captured_response_headers: typing.Optional[list[str]] = None,
     sensitive_headers: typing.Optional[list[str]] = None,
 ):
-    urlopen_signature = inspect.signature(
-        urllib3.connectionpool.HTTPConnectionPool.urlopen
-    )
+    urlopen_signature = inspect.signature(urllib3.connectionpool.HTTPConnectionPool.urlopen)
 
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
@@ -468,13 +440,14 @@ def _instrument(
         # avoid modifying original headers on inject
         headers = headers.copy() if headers is not None else {}
 
-        span_name = _get_span_name(method)
+        sanitized_method = sanitize_method(method)
+        span_name = _get_span_name(sanitized_method)
         span_attributes = {}
 
         _set_http_method(
             span_attributes,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
@@ -489,9 +462,7 @@ def _instrument(
         )
 
         with (
-            tracer.start_as_current_span(
-                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-            ) as span,
+            tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span,
             set_ip_on_next_http_connection(span),
         ):
             if callable(request_hook):
@@ -515,9 +486,7 @@ def _instrument(
                 duration_s = default_timer() - start_time
             # set http status code based on semconv
             metric_attributes = {}
-            _set_status_code_attribute(
-                span, response.status, metric_attributes, sem_conv_opt_in_mode
-            )
+            _set_status_code_attribute(span, response.status, metric_attributes, sem_conv_opt_in_mode)
 
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -530,6 +499,7 @@ def _instrument(
                 instance,
                 response,
                 method,
+                sanitized_method,
                 sem_conv_opt_in_mode,
             )
 
@@ -636,31 +606,24 @@ def _set_metric_attributes(
     instance: urllib3.connectionpool.HTTPConnectionPool,
     response: urllib3.response.HTTPResponse,
     method: str,
+    sanitized_method: str,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
-    _set_http_host_client(
-        metric_attributes, instance.host, sem_conv_opt_in_mode
-    )
+    _set_http_host_client(metric_attributes, instance.host, sem_conv_opt_in_mode)
     _set_http_scheme(metric_attributes, instance.scheme, sem_conv_opt_in_mode)
     _set_http_method(
         metric_attributes,
         method,
-        sanitize_method(method),
+        sanitized_method,
         sem_conv_opt_in_mode,
     )
-    _set_http_net_peer_name_client(
-        metric_attributes, instance.host, sem_conv_opt_in_mode
-    )
-    _set_http_peer_port_client(
-        metric_attributes, instance.port, sem_conv_opt_in_mode
-    )
+    _set_http_net_peer_name_client(metric_attributes, instance.host, sem_conv_opt_in_mode)
+    _set_http_peer_port_client(metric_attributes, instance.port, sem_conv_opt_in_mode)
 
     version = getattr(response, "version")
     if version:
         http_version = "1.1" if version == 11 else "1.0"
-        _set_http_network_protocol_version(
-            metric_attributes, http_version, sem_conv_opt_in_mode
-        )
+        _set_http_network_protocol_version(metric_attributes, http_version, sem_conv_opt_in_mode)
 
 
 def _filter_attributes_semconv(
@@ -700,9 +663,7 @@ def _record_metrics(
     response_size: int,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
-    attrs_old, attrs_new = _filter_attributes_semconv(
-        metric_attributes, sem_conv_opt_in_mode
-    )
+    attrs_old, attrs_new = _filter_attributes_semconv(metric_attributes, sem_conv_opt_in_mode)
     if duration_histogram_old:
         # Default behavior is to record the duration in milliseconds
         duration_histogram_old.record(
@@ -719,14 +680,10 @@ def _record_metrics(
 
     if request_size is not None:
         if request_size_histogram_old:
-            request_size_histogram_old.record(
-                request_size, attributes=attrs_old
-            )
+            request_size_histogram_old.record(request_size, attributes=attrs_old)
 
         if request_size_histogram_new:
-            request_size_histogram_new.record(
-                request_size, attributes=attrs_new
-            )
+            request_size_histogram_new.record(request_size, attributes=attrs_new)
 
     if response_size_histogram_old:
         response_size_histogram_old.record(response_size, attributes=attrs_old)

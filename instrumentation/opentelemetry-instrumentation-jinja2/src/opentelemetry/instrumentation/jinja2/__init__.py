@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 
@@ -65,12 +54,8 @@ R = TypeVar("R")
 
 
 def _with_tracer_wrapper(
-    func: Callable[
-        [Tracer, Callable[..., R], Any, list[Any], dict[str, Any]], R
-    ],
-) -> Callable[
-    [Tracer], Callable[[Callable[..., R], Any, list[Any], dict[str, Any]], R]
-]:
+    func: Callable[[Tracer, Callable[..., R], Any, list[Any], dict[str, Any]], R],
+) -> Callable[[Tracer], Callable[[Callable[..., R], Any, list[Any], dict[str, Any]], R]]:
     """Helper for providing tracer for wrapper functions."""
 
     def _with_tracer(
@@ -121,11 +106,7 @@ def _wrap_compile(
         kind=SpanKind.INTERNAL,
     ) as span:
         if span.is_recording():
-            template_name = (
-                args[1]
-                if len(args) > 1
-                else kwargs.get("name", DEFAULT_TEMPLATE_NAME)
-            )
+            template_name = args[1] if len(args) > 1 else kwargs.get("name", DEFAULT_TEMPLATE_NAME)
             span.set_attribute(ATTRIBUTE_JINJA2_TEMPLATE_NAME, template_name)
         return wrapped(*args, **kwargs)
 
@@ -151,9 +132,7 @@ def _wrap_load_template(
             return template
         finally:
             if template and span.is_recording():
-                span.set_attribute(
-                    ATTRIBUTE_JINJA2_TEMPLATE_PATH, template.filename
-                )
+                span.set_attribute(ATTRIBUTE_JINJA2_TEMPLATE_PATH, template.filename)
 
 
 class Jinja2Instrumentor(BaseInstrumentor):

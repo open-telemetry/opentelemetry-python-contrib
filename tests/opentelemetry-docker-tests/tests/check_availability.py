@@ -1,20 +1,10 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import logging
 import os
 import time
 
+import kafka
 import mysql.connector
 import psycopg2
 import pymongo
@@ -42,6 +32,8 @@ MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
 MSSQL_USER = os.getenv("MSSQL_USER", "sa")
 MSSQL_PASSWORD = os.getenv("MSSQL_PASSWORD", "yourStrong(!)Password")
+KAFKA_HOST = os.getenv("KAFKA_HOST", "localhost")
+KAFKA_PORT = int(os.getenv("KAFKA_PORT", "9092"))
 RETRY_COUNT = 5
 RETRY_INITIAL_INTERVAL = 2  # Seconds
 
@@ -73,9 +65,7 @@ def retryable(func):
 
 @retryable
 def check_pymongo_connection():
-    client = pymongo.MongoClient(
-        MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
-    )
+    client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
     db = client[MONGODB_DB_NAME]
     collection = db[MONGODB_COLLECTION_NAME]
     collection.find_one()
@@ -112,6 +102,12 @@ def check_redis_connection():
     connection.hgetall("*")
 
 
+@retryable
+def check_kafka_connection():
+    client = kafka.KafkaAdminClient(bootstrap_servers=[f"{KAFKA_HOST}:{KAFKA_PORT}"])
+    client.close()
+
+
 def new_mssql_connection() -> pyodbc.Connection:
     connection = pyodbc.connect(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={MSSQL_HOST},"
@@ -141,8 +137,12 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
-    check_mssql_connection()
-    setup_mssql_db()
+    check_kafka_connection()
+
+    # make accepting EULA for ms sql odbc driver optional
+    if "ODBC Driver 18 for SQL Server" in pyodbc.drivers():
+        check_mssql_connection()
+        setup_mssql_db()
 
 
 check_docker_services_availability()

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import unittest
 from unittest.mock import patch
 
@@ -363,18 +352,14 @@ WINDOWS_ATTRIBUTES = {
 class TestAzureVMResourceDetector(unittest.TestCase):
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_linux(self, mock_urlopen):
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
-            LINUX_JSON
-        )
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = LINUX_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
-            WINDOWS_JSON
-        )
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = WINDOWS_JSON
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in WINDOWS_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
@@ -382,9 +367,7 @@ class TestAzureVMResourceDetector(unittest.TestCase):
     @patch("opentelemetry.resource.detector.azure.vm._can_ignore_vm_detect")
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_in_another_rp(self, mock_urlopen, detect_mock):
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
-            LINUX_JSON
-        )
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = LINUX_JSON
         detect_mock.return_value = True
         attributes = AzureVMResourceDetector().detect().attributes
         self.assertEqual(attributes, {})

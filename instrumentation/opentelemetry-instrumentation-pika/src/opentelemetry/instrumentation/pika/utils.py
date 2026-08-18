@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from logging import getLogger
 from typing import Any, Callable, List, Optional
 
@@ -69,9 +72,7 @@ def _decorate_callback(
             tracer,
             channel,
             properties,
-            destination=(
-                method.exchange if method.exchange else method.routing_key
-            ),
+            destination=(method.exchange if method.exchange else method.routing_key),
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,
@@ -118,18 +119,14 @@ def _decorate_basic_publish(
             operation=None,
         )
         if not span:
-            return original_function(
-                exchange, routing_key, body, properties, mandatory
-            )
+            return original_function(exchange, routing_key, body, properties, mandatory)
         with trace.use_span(span, end_on_exit=True):
             propagate.inject(properties.headers)
             try:
                 publish_hook(span, body, properties)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
-            retval = original_function(
-                exchange, routing_key, body, properties, mandatory
-            )
+            retval = original_function(exchange, routing_key, body, properties, mandatory)
         return retval
 
     return decorated_function
@@ -152,13 +149,11 @@ def _get_span(
         kind=span_kind,
     )
     if span.is_recording():
-        _enrich_span(span, channel, properties, task_name, operation)
+        _enrich_span(span, channel, properties, destination, operation)
     return span
 
 
-def _generate_span_name(
-    task_name: str, operation: Optional[MessagingOperationValues]
-) -> str:
+def _generate_span_name(task_name: str, operation: Optional[MessagingOperationValues]) -> str:
     if not operation:
         return f"{task_name} send"
     return f"{task_name} {operation.value}"
@@ -178,13 +173,9 @@ def _enrich_span(
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
     if properties.message_id:
-        span.set_attribute(
-            SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
-        )
+        span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id)
     if properties.correlation_id:
-        span.set_attribute(
-            SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id
-        )
+        span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id)
     if not channel:
         return
     if not hasattr(channel.connection, "params"):
@@ -218,7 +209,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
 
-        evt = self.__wrapped__.popleft(*args, **kwargs)
+        evt = self.__wrapped__.popleft(*args, **kwargs)  # pylint:disable=no-member
 
         try:
             # If a new message was received, create a span and set as active context
@@ -229,9 +220,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     properties = BasicProperties(headers={})
                 if properties.headers is None:
                     properties.headers = {}
-                ctx = propagate.extract(
-                    properties.headers, getter=_pika_getter
-                )
+                ctx = propagate.extract(properties.headers, getter=_pika_getter)
                 if not ctx:
                     ctx = context.get_current()
                 message_ctx_token = context.attach(ctx)
@@ -239,11 +228,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     self._self_tracer,
                     None,
                     properties,
-                    destination=(
-                        method.exchange
-                        if method.exchange
-                        else method.routing_key
-                    ),
+                    destination=(method.exchange if method.exchange else method.routing_key),
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,
                     operation=MessagingOperationValues.RECEIVE,
@@ -251,9 +236,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 try:
                     if message_ctx_token:
                         context.detach(message_ctx_token)
-                    self._self_active_token = context.attach(
-                        trace.set_span_in_context(span)
-                    )
+                    self._self_active_token = context.attach(trace.set_span_in_context(span))
                     self._self_consume_hook(span, evt.body, properties)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)

@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import asyncio
@@ -32,9 +35,7 @@ if TYPE_CHECKING:
     from aiokafka.structs import RecordMetadata
 
     class AIOKafkaGetOneProto(Protocol):
-        async def __call__(
-            self, *partitions: aiokafka.TopicPartition
-        ) -> aiokafka.ConsumerRecord[object, object]: ...
+        async def __call__(self, *partitions: aiokafka.TopicPartition) -> aiokafka.ConsumerRecord[object, object]: ...
 
     class AIOKafkaGetManyProto(Protocol):
         async def __call__(
@@ -58,9 +59,7 @@ if TYPE_CHECKING:
             headers: HeadersT | None = None,
         ) -> asyncio.Future[RecordMetadata]: ...
 
-    ProduceHookT = Callable[
-        [Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]
-    ]
+    ProduceHookT = Callable[[Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]]
 
     ConsumeHookT = Callable[
         [
@@ -110,30 +109,22 @@ def _extract_send_topic(args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
     return _extract_argument("topic", 0, "unknown", args, kwargs)
 
 
-def _extract_send_value(
-    args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> object | None:
+def _extract_send_value(args: tuple[Any, ...], kwargs: dict[str, Any]) -> object | None:
     """extract value from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("value", 1, None, args, kwargs)
 
 
-def _extract_send_key(
-    args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> object | None:
+def _extract_send_key(args: tuple[Any, ...], kwargs: dict[str, Any]) -> object | None:
     """extract key from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("key", 2, None, args, kwargs)
 
 
-def _extract_send_headers(
-    args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> HeadersT | None:
+def _extract_send_headers(args: tuple[Any, ...], kwargs: dict[str, Any]) -> HeadersT | None:
     """extract headers from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("headers", 5, None, args, kwargs)
 
 
-def _move_headers_to_kwargs(
-    args: Tuple[Any], kwargs: Dict[str, Any]
-) -> Tuple[Tuple[Any], Dict[str, Any]]:
+def _move_headers_to_kwargs(args: Tuple[Any], kwargs: Dict[str, Any]) -> Tuple[Tuple[Any], Dict[str, Any]]:
     """Move headers from args to kwargs"""
     if len(args) > 5:
         kwargs["headers"] = args[5]
@@ -162,15 +153,20 @@ async def _extract_send_partition(
         key = _extract_send_key(args, kwargs)
         value = _extract_send_value(args, kwargs)
         partition = _extract_argument("partition", 3, None, args, kwargs)
-        key_bytes, value_bytes = cast(
-            "tuple[bytes | None, bytes | None]",
-            instance._serialize(topic, key, value),  # type: ignore[reportUnknownMemberType]
+        key_bytes = cast(
+            "bytes | None",
+            instance._key_serializer(key)  # type: ignore[reportUnknownMemberType]
+            if instance._key_serializer  # type: ignore[reportUnknownMemberType]
+            else key,
+        )
+        value_bytes = cast(
+            "bytes | None",
+            instance._value_serializer(value)  # type: ignore[reportUnknownMemberType]
+            if instance._value_serializer  # type: ignore[reportUnknownMemberType]
+            else value,
         )
         valid_types = (bytes, bytearray, memoryview, type(None))
-        if (
-            type(key_bytes) not in valid_types
-            or type(value_bytes) not in valid_types
-        ):
+        if type(key_bytes) not in valid_types or type(value_bytes) not in valid_types:
             return None
 
         await instance.client._wait_on_metadata(topic)  # type: ignore[reportUnknownMemberType]
@@ -196,16 +192,12 @@ class AIOKafkaContextGetter(textmap.Getter["HeadersT"]):
 
 
 class AIOKafkaContextSetter(textmap.Setter["HeadersT"]):
-    def set(
-        self, carrier: HeadersT, key: str | None, value: str | None
-    ) -> None:
+    def set(self, carrier: HeadersT, key: str | None, value: str | None) -> None:
         if key is None:
             return
 
         if not isinstance(carrier, MutableSequence):
-            _LOG.warning(
-                "Unable to set context in headers. Headers is immutable"
-            )
+            _LOG.warning("Unable to set context in headers. Headers is immutable")
             return
 
         if value is not None:
@@ -231,9 +223,7 @@ def _enrich_base_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(
-        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
-    )
+    span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
     span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
 
@@ -244,9 +234,7 @@ def _enrich_base_span(
         )
 
     if key is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key
-        )
+        span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key)
 
 
 def _enrich_send_span(
@@ -301,21 +289,15 @@ def _enrich_getone_span(
     )
 
     if consumer_group is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group
-        )
+        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
         messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
     )
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
@@ -341,23 +323,15 @@ def _enrich_getmany_poll_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(
-        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
-    )
+    span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
 
     if consumer_group is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group
-        )
+        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count)
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
         messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
@@ -387,17 +361,11 @@ def _enrich_getmany_topic_span(
     )
 
     if consumer_group is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group
-        )
+        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count)
 
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
-    )
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
         messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
@@ -429,9 +397,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
         key = _deserialize_key(_extract_send_key(args, kwargs))
         partition = await _extract_send_partition(instance, args, kwargs)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.PRODUCER
-        ) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             _enrich_send_span(
                 span,
                 bootstrap_servers=bootstrap_servers,
@@ -512,9 +478,7 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_aiokafka_getter
-            )
+            extracted_context = propagate.extract(record.headers, getter=_aiokafka_getter)
             await _create_consumer_span(
                 tracer,
                 async_consume_hook,
@@ -547,9 +511,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
         instance: aiokafka.AIOKafkaConsumer,
         args: tuple[aiokafka.TopicPartition, ...],
         kwargs: dict[str, Any],
-    ) -> dict[
-        aiokafka.TopicPartition, list[aiokafka.ConsumerRecord[object, object]]
-    ]:
+    ) -> dict[aiokafka.TopicPartition, list[aiokafka.ConsumerRecord[object, object]]]:
         records = await func(*args, **kwargs)
 
         if records:
@@ -561,9 +523,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                 "receive",
                 ", ".join(sorted({topic.topic for topic in records.keys()})),
             )
-            with tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.CONSUMER
-            ) as poll_span:
+            with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CONSUMER) as poll_span:
                 _enrich_getmany_poll_span(
                     poll_span,
                     bootstrap_servers=bootstrap_servers,
@@ -574,9 +534,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
 
                 for topic, topic_records in records.items():
                     span_name = _get_span_name("receive", topic.topic)
-                    with tracer.start_as_current_span(
-                        span_name, kind=trace.SpanKind.CONSUMER
-                    ) as topic_span:
+                    with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CONSUMER) as topic_span:
                         _enrich_getmany_topic_span(
                             topic_span,
                             bootstrap_servers=bootstrap_servers,
@@ -588,9 +546,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                         )
 
                         for record in topic_records:
-                            extracted_context = propagate.extract(
-                                record.headers, getter=_aiokafka_getter
-                            )
+                            extracted_context = propagate.extract(record.headers, getter=_aiokafka_getter)
                             record_span = await _create_consumer_span(
                                 tracer,
                                 async_consume_hook,

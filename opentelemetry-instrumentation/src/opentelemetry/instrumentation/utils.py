@@ -1,26 +1,20 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
+import sys
 import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
 from typing import Any, Dict, Generator, Sequence
 
-from wrapt import ObjectProxy
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import context, trace
 
@@ -40,9 +34,7 @@ from opentelemetry.trace.propagation.tracecontext import (
 
 propagator = TraceContextTextMapPropagator()
 
-_SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
-    "suppress_instrumentation"  # Set for backward compatibility
-)
+_SUPPRESS_INSTRUMENTATION_KEY_PLAIN = "suppress_instrumentation"  # Set for backward compatibility
 
 
 def extract_attributes_from_object(
@@ -96,19 +88,18 @@ def unwrap(obj: object, attr: str):
         try:
             module_path, class_name = obj.rsplit(".", 1)
         except ValueError as exc:
-            raise ImportError(
-                f"Cannot parse '{obj}' as dotted import path"
-            ) from exc
+            raise ImportError(f"Cannot parse '{obj}' as dotted import path") from exc
+        if module_path not in sys.modules:
+            # Was never imported, meaning it could never have been wrapped
+            return
         module = import_module(module_path)
         try:
             obj = getattr(module, class_name)
         except AttributeError as exc:
-            raise ImportError(
-                f"Cannot import '{class_name}' from '{module}'"
-            ) from exc
+            raise ImportError(f"Cannot import '{class_name}' from '{module}'") from exc
 
     func = getattr(obj, attr, None)
-    if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
+    if func and isinstance(func, BaseObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
 
 
@@ -186,15 +177,12 @@ def _python_path_without_directory(python_path, directory, path_separator):
 
 def is_instrumentation_enabled() -> bool:
     return not (
-        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
-        or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY_PLAIN)
+        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY) or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY_PLAIN)
     )
 
 
 def is_http_instrumentation_enabled() -> bool:
-    return is_instrumentation_enabled() and not context.get_value(
-        _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-    )
+    return is_instrumentation_enabled() and not context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
 
 
 @contextmanager
@@ -214,9 +202,7 @@ def _suppress_instrumentation(*keys: str) -> Generator[None]:
 @contextmanager
 def suppress_instrumentation() -> Generator[None]:
     """Suppress instrumentation within the context."""
-    with _suppress_instrumentation(
-        _SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN
-    ):
+    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN):
         yield
 
 

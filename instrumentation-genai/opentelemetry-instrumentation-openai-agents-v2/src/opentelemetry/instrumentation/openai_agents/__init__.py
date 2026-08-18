@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """OpenAI Agents instrumentation for OpenTelemetry."""
 
 # pylint: disable=too-many-locals
@@ -8,6 +11,8 @@ import importlib
 import logging
 import os
 from typing import Any, Collection
+
+from typing_extensions import deprecated
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
@@ -71,11 +76,7 @@ def _resolve_content_mode(value: Any) -> ContentCaptureMode:
     if isinstance(value, ContentCaptureMode):
         return value
     if isinstance(value, bool):
-        return (
-            ContentCaptureMode.SPAN_AND_EVENT
-            if value
-            else ContentCaptureMode.NO_CONTENT
-        )
+        return ContentCaptureMode.SPAN_AND_EVENT if value else ContentCaptureMode.NO_CONTENT
 
     if value is None:
         return ContentCaptureMode.SPAN_AND_EVENT
@@ -121,8 +122,18 @@ def _resolve_bool(value: Any, default: bool) -> bool:
     return default
 
 
+@deprecated(
+    "opentelemetry-instrumentation-openai-agents-v2 is deprecated. Use the "
+    "opentelemetry-instrumentation-genai-openai-agents package instead. This "
+    "package only receives security patches."
+)
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
-    """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry."""
+    """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry.
+
+    .. deprecated:: 0.2.0
+        Use the ``opentelemetry-instrumentation-genai-openai-agents`` package
+        instead. This package only receives security patches.
+    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -140,16 +151,12 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_28_0.value,
         )
 
-        system_override = kwargs.get("system") or os.getenv(
-            _SYSTEM_OVERRIDE_ENV
-        )
+        system_override = kwargs.get("system") or os.getenv(_SYSTEM_OVERRIDE_ENV)
         system = _resolve_system(system_override)
 
         content_override = kwargs.get("capture_message_content")
         if content_override is None:
-            content_override = os.getenv(_CONTENT_CAPTURE_ENV) or os.getenv(
-                _CAPTURE_CONTENT_ENV
-            )
+            content_override = os.getenv(_CONTENT_CAPTURE_ENV) or os.getenv(_CAPTURE_CONTENT_ENV)
         content_mode = _resolve_content_mode(content_override)
 
         metrics_override = kwargs.get("capture_metrics")
@@ -167,8 +174,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
         processor = GenAISemanticProcessor(
             tracer=tracer,
             system_name=system,
-            include_sensitive_data=content_mode
-            != ContentCaptureMode.NO_CONTENT,
+            include_sensitive_data=content_mode != ContentCaptureMode.NO_CONTENT,
             content_mode=content_mode,
             metrics_enabled=metrics_enabled,
             agent_name=agent_name,

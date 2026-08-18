@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # We skip linting this file with pylint, because the linter is not
 # configured with the "requirements.txt" dependencies and therefore
@@ -49,16 +38,12 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 def setup_otel_tracing():
     otel_trace.set_tracer_provider(TracerProvider())
-    otel_trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter())
-    )
+    otel_trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
 
 def setup_otel_logs():
     otel_logs.set_logger_provider(LoggerProvider())
-    otel_logs.get_logger_provider().add_log_record_processor(
-        BatchLogRecordProcessor(OTLPLogExporter())
-    )
+    otel_logs.get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
 
 
 def setup_otel_metrics():

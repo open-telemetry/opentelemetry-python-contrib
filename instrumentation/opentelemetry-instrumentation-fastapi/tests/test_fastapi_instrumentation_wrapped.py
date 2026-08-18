@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import fastapi
 from starlette.testclient import TestClient
 
@@ -39,9 +28,7 @@ class TestWrappedApplication(TestBase):
             otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
 
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace.SpanKind.SERVER
-        ) as parent_span:
+        with self.tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER) as parent_span:
             resp = self.client.get("/foobar")
             self.assertEqual(200, resp.status_code)
 
@@ -54,11 +41,7 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[1].kind)
         # main INTERNAL span - child of test
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[2].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[2].parent.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[2].parent.span_id)
         # SERVER "test"
         self.assertEqual(trace.SpanKind.SERVER, span_list[3].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[3].context.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[3].context.span_id)

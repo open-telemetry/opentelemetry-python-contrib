@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
@@ -27,6 +16,7 @@ from opentelemetry.util.genai._upload.completion_hook import (
 )
 from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
+    _SafeCompletionHook,
 )
 from opentelemetry.util.genai.completion_hook import (
     load_completion_hook as real_load_completion_hook,
@@ -43,6 +33,10 @@ def fixture_load_completion_hook():
 
         def load_completion_hook():
             hook = real_load_completion_hook()
+            # load_completion_hook wraps user-provided hooks in _SafeCompletionHook;
+            # unwrap here so test bodies can introspect the underlying upload hook.
+            if isinstance(hook, _SafeCompletionHook):
+                hook = hook._wrapped
             if isinstance(hook, UploadCompletionHook):
                 stack.callback(hook.shutdown)
             return hook
@@ -82,9 +76,7 @@ def test_upload_entry_point_no_fsspec(load_completion_hook):
 
 
 def test_upload_no_base_path(load_completion_hook, caplog):
-    with patch.dict(
-        "os.environ", {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": ""}
-    ):
+    with patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": ""}):
         assert isinstance(load_completion_hook(), _NoOpCompletionHook)
 
     assert caplog.records[0].levelno == logging.WARNING
@@ -105,14 +97,10 @@ def test_upload_no_base_path(load_completion_hook, caplog):
         ("jSoNl", "jsonl", False),
     ),
 )
-def test_parse_upload_format_envvar(
-    envvar_value, expect_format, expect_warn, load_completion_hook, caplog
-):
+def test_parse_upload_format_envvar(envvar_value, expect_format, expect_warn, load_completion_hook, caplog):
     with patch.dict(
         "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value}
-        if envvar_value is not None
-        else {},
+        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value} if envvar_value is not None else {},
     ):
         assert isinstance(hook := load_completion_hook(), UploadCompletionHook)
         assert hook._format == expect_format, (
@@ -136,14 +124,10 @@ def test_parse_upload_format_envvar(
         ("100", 100, False),
     ),
 )
-def test_parse_max_queue_size_envvar(
-    envvar_value, expect_size, expect_warn, load_completion_hook, caplog
-):
+def test_parse_max_queue_size_envvar(envvar_value, expect_size, expect_warn, load_completion_hook, caplog):
     with patch.dict(
         "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE": envvar_value}
-        if envvar_value is not None
-        else {},
+        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE": envvar_value} if envvar_value is not None else {},
     ):
         assert isinstance(hook := load_completion_hook(), UploadCompletionHook)
         assert hook._max_queue_size == expect_size, (

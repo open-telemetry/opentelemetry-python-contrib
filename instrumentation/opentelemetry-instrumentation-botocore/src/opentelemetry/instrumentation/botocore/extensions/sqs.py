@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import logging
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
@@ -36,9 +25,7 @@ class _SqsExtension(_AwsSdkExtension):
             attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
             attributes[SpanAttributes.MESSAGING_URL] = queue_url
             try:
-                attributes[SpanAttributes.MESSAGING_DESTINATION] = (
-                    queue_url.split("/")[-1]
-                )
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = queue_url.split("/")[-1]
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",
@@ -59,9 +46,7 @@ class _SqsExtension(_AwsSdkExtension):
                         SpanAttributes.MESSAGING_MESSAGE_ID,
                         result.get("MessageId"),
                     )
-                elif operation == "SendMessageBatch" and result.get(
-                    "Successful"
-                ):
+                elif operation == "SendMessageBatch" and result.get("Successful"):
                     span.set_attribute(
                         SpanAttributes.MESSAGING_MESSAGE_ID,
                         result["Successful"][0]["MessageId"],

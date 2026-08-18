@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=E0611
 # pylint: disable=too-many-lines
@@ -99,6 +88,8 @@ urlpatterns = [
 ]
 _django_instrumentor = DjangoInstrumentor()
 
+SCOPE = "opentelemetry.instrumentation.django"
+
 
 # pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
@@ -171,9 +162,7 @@ class TestMiddleware(WsgiTestBase):
         middleware.append(temprory_middelware)
 
         middleware_position = 1
-        _django_instrumentor.instrument(
-            middleware_position=middleware_position
-        )
+        _django_instrumentor.instrument(middleware_position=middleware_position)
         self.assertEqual(
             middleware[middleware_position],
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
@@ -188,12 +177,8 @@ class TestMiddleware(WsgiTestBase):
         # adding middleware
         temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
         middleware.append(temprory_middelware)
-        middleware_position = (
-            756  # wrong position out of bound of middleware length
-        )
-        _django_instrumentor.instrument(
-            middleware_position=middleware_position
-        )
+        middleware_position = 756  # wrong position out of bound of middleware length
+        _django_instrumentor.instrument(middleware_position=middleware_position)
         self.assertEqual(
             middleware[0],
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
@@ -209,11 +194,7 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            (
-                "GET ^route/(?P<year>[0-9]{4})/template/$"
-                if DJANGO_2_2
-                else "GET"
-            ),
+            ("GET ^route/(?P<year>[0-9]{4})/template/$" if DJANGO_2_2 else "GET"),
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -543,9 +524,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "GET")
 
     def test_nonstandard_http_method_span_name(self):
-        Client().request(
-            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
-        )
+        Client().request(REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/")
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
@@ -554,23 +533,17 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes["http.method"], "_OTHER")
 
     def test_nonstandard_http_method_span_name_new_semconv(self):
-        Client().request(
-            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
-        )
+        Client().request(REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/")
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
         span = span_list[0]
         self.assertEqual(span.name, "HTTP")
         self.assertEqual(span.attributes["http.request.method"], "_OTHER")
-        self.assertEqual(
-            span.attributes["http.request.method_original"], "NONSTANDARD"
-        )
+        self.assertEqual(span.attributes["http.request.method_original"], "NONSTANDARD")
 
     def test_nonstandard_http_method_span_name_both_semconv(self):
-        Client().request(
-            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
-        )
+        Client().request(REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/")
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
@@ -578,9 +551,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "HTTP")
         self.assertEqual(span.attributes["http.method"], "_OTHER")
         self.assertEqual(span.attributes["http.request.method"], "_OTHER")
-        self.assertEqual(
-            span.attributes["http.request.method_original"], "NONSTANDARD"
-        )
+        self.assertEqual(span.attributes["http.request.method_original"], "NONSTANDARD")
 
     def test_traced_request_attrs(self):
         Client().get("/span_name/1234/", CONTENT_TYPE="test/ct")
@@ -609,9 +580,7 @@ class TestMiddleware(WsgiTestBase):
         _DjangoMiddleware._otel_response_hook = response_hook
 
         response = Client().get("/span_name/1234/")
-        _DjangoMiddleware._otel_request_hook = (
-            _DjangoMiddleware._otel_response_hook
-        ) = None
+        _DjangoMiddleware._otel_request_hook = _DjangoMiddleware._otel_response_hook = None
 
         self.assertEqual(response["hook-header"], "set by hook")
 
@@ -737,7 +706,7 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -786,7 +755,7 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = default_timer() - start
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -855,7 +824,7 @@ class TestMiddleware(WsgiTestBase):
             self.assertEqual(response.status_code, 200)
         duration_s = max(default_timer() - start, 0)
         duration = max(round(duration_s * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -901,7 +870,7 @@ class TestMiddleware(WsgiTestBase):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
         Client().get("/span_name/1234/")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -919,9 +888,7 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        resource = resources.Resource.create(
-            {"resource-key": "resource-value"}
-        )
+        resource = resources.Resource.create({"resource-key": "resource-value"})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
         self.exporter = exporter
@@ -946,15 +913,11 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
 
         span = spans[0]
 
-        self.assertEqual(
-            span.resource.attributes["resource-key"], "resource-value"
-        )
+        self.assertEqual(span.resource.attributes["resource-key"], "resource-value")
 
     def test_django_with_wsgi_instrumented(self):
         tracer = self.tracer_provider.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "test", kind=SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
@@ -999,16 +962,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         Client(
@@ -1028,9 +985,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
         Client(HTTP_CUSTOM_TEST_HEADER_1="test-header-value-1").get("/traced/")
         spans = self.exporter.get_finished_spans()
@@ -1044,18 +999,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         Client().get("/traced_custom_header/")
@@ -1069,9 +1016,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         Client().get("/traced_custom_header/")
         spans = self.exporter.get_finished_spans()

@@ -1,18 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import ast
 import logging
@@ -64,22 +53,10 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-google-genai",
-    # Langchain instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
-    "opentelemetry-instrumentation-langchain",
-    # Weaviate instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
-    "opentelemetry-instrumentation-weaviate",
     # OpenAI Agents instrumentation is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-openai-agents-v2",
-    # Anthropic instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
-    "opentelemetry-instrumentation-anthropic",
 ]
 
 # Static version specifiers for instrumentations that are released independently
@@ -94,9 +71,7 @@ def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
-    for pkg in get_instrumentation_packages(
-        independent_packages=independent_packages
-    ):
+    for pkg in get_instrumentation_packages(independent_packages=independent_packages):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
@@ -123,9 +98,7 @@ def main():
     tree.body[1].value = default_instrumentations
     source = astor.to_source(tree)
 
-    with open(
-        os.path.join(scripts_path, "license_header.txt"), encoding="utf-8"
-    ) as header_file:
+    with open(os.path.join(scripts_path, "license_header.txt"), encoding="utf-8") as header_file:
         header = header_file.read()
         source = _template.format(header=header, source=source)
 

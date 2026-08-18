@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -102,17 +91,12 @@ def get_dist_dependency_conflicts(
                 instrumentation_deps.append(req)  # type: ignore
             if req.marker.evaluate(instruments_any_marker):  # type: ignore
                 instrumentation_any_deps.append(req)  # type: ignore
-    return get_dependency_conflicts(
-        instrumentation_deps, instrumentation_any_deps
-    )  # type: ignore
+    return get_dependency_conflicts(instrumentation_deps, instrumentation_any_deps)  # type: ignore
 
 
 def get_dependency_conflicts(
-    deps: Collection[
-        str | Requirement
-    ],  # Dependencies all of which are required
-    deps_any: Collection[str | Requirement]
-    | None = None,  # Dependencies any of which are required
+    deps: Collection[str | Requirement],  # Dependencies all of which are required
+    deps_any: Collection[str | Requirement] | None = None,  # Dependencies any of which are required
 ) -> DependencyConflict | None:
     for dep in deps:
         if isinstance(dep, Requirement):

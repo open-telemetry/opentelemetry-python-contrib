@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 # pylint: disable=no-name-in-module
@@ -44,7 +33,7 @@ FAKE_INPUTS = [
     types.InputMessage(
         role="assistant",
         parts=[
-            types.ToolCall(
+            types.ToolCallRequest(
                 id="get_capital_0",
                 name="get_capital",
                 arguments={"city": "Paris"},
@@ -53,11 +42,7 @@ FAKE_INPUTS = [
     ),
     types.InputMessage(
         role="user",
-        parts=[
-            types.ToolCallResponse(
-                id="get_capital_0", response={"capital": "Paris"}
-            )
-        ],
+        parts=[types.ToolCallResponse(id="get_capital_0", response={"capital": "Paris"})],
     ),
 ]
 FAKE_OUTPUTS = [
@@ -68,6 +53,15 @@ FAKE_OUTPUTS = [
     ),
 ]
 FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
+
+FAKE_TOOL_DEFINITIONS: list[types.ToolDefinition] = [
+    types.FunctionToolDefinition(
+        name="test_tool",
+        description="does something",
+        parameters=None,
+        type="function",
+    ),
+]
 
 
 class ThreadSafeMagicMock(MagicMock):
@@ -82,17 +76,15 @@ class ThreadSafeMagicMock(MagicMock):
 
 class TestUploadCompletionHook(TestCase):
     def setUp(self):
-        self._fsspec_patcher = patch(
-            "opentelemetry.util.genai._upload.completion_hook.fsspec"
-        )
+        self._fsspec_patcher = patch("opentelemetry.util.genai._upload.completion_hook.fsspec")
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
         self.mock_fs.exists.return_value = False
 
-        self.hook = UploadCompletionHook(
-            base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5
-        )
+        self.hook = UploadCompletionHook(base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5)
+        # 1 upload is done when creating the UploadHook to ensure upload works. Reset mock.
+        self.mock_fs.reset_mock()
 
     def tearDown(self) -> None:
         self.hook.shutdown()
@@ -124,6 +116,7 @@ class TestUploadCompletionHook(TestCase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
         )
         # all items should be consumed
         self.hook.shutdown()
@@ -131,9 +124,21 @@ class TestUploadCompletionHook(TestCase):
         time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
-            3,
-            "should have uploaded 3 files",
+            4,
+            "should have uploaded 4 files",
         )
+
+    def test_failed_upload_causes_initializer_to_throw(self):
+        self.mock_fs.open.side_effect = ValueError("Failed for some reason!")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Failed to write file to the following path, upload is not working:",
+        ):
+            UploadCompletionHook(
+                base_path=BASE_PATH,
+                max_queue_size=MAXSIZE,
+                lru_cache_max_size=5,
+            )
 
     def test_lru_cache_works(self):
         record = LogRecord()
@@ -141,32 +146,24 @@ class TestUploadCompletionHook(TestCase):
             inputs=[],
             outputs=[],
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=[],
             log_record=record,
         )
         # Wait a bit for file upload to finish..
         time.sleep(0.5)
         self.assertIsNotNone(record.attributes)
-        self.assertTrue(
-            self.hook._file_exists(
-                record.attributes["gen_ai.system_instructions_ref"]
-            )
-        )
+        self.assertTrue(self.hook._file_exists(record.attributes["gen_ai.system_instructions_ref"]))
         # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
         for iteration in range(5):
-            self.assertTrue(
-                record.attributes["gen_ai.system_instructions_ref"]
-                in self.hook.lru_dict
-            )
+            self.assertTrue(record.attributes["gen_ai.system_instructions_ref"] in self.hook.lru_dict)
             self.hook.on_completion(
                 inputs=[],
                 outputs=[],
                 system_instruction=[types.Text(content=str(iteration))],
+                tool_definitions=[],
             )
         self.hook.shutdown()
-        self.assertFalse(
-            record.attributes["gen_ai.system_instructions_ref"]
-            in self.hook.lru_dict
-        )
+        self.assertFalse(record.attributes["gen_ai.system_instructions_ref"] in self.hook.lru_dict)
 
     def test_upload_when_inputs_outputs_empty(self):
         record = LogRecord()
@@ -174,6 +171,7 @@ class TestUploadCompletionHook(TestCase):
             inputs=[],
             outputs=[],
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=[],
             log_record=record,
         )
         # all items should be consumed
@@ -203,6 +201,7 @@ class TestUploadCompletionHook(TestCase):
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                    tool_definitions=FAKE_TOOL_DEFINITIONS,
                 )
 
             self.assertLessEqual(
@@ -216,11 +215,10 @@ class TestUploadCompletionHook(TestCase):
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                    tool_definitions=FAKE_TOOL_DEFINITIONS,
                 )
 
-            self.assertIn(
-                "upload queue is full, dropping upload", logs.output[0]
-            )
+            self.assertIn("upload queue is full, dropping upload", logs.output[0])
 
     def test_shutdown_timeout(self):
         with self.block_upload():
@@ -228,6 +226,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
 
             # shutdown should timeout and return even though there are still items in the queue
@@ -241,6 +240,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
             self.hook.shutdown()
 
@@ -255,21 +255,18 @@ class TestUploadCompletionHook(TestCase):
             ("json", "application/json"),
             ("jsonl", "application/jsonl"),
         ):
-            hook = UploadCompletionHook(
-                base_path=BASE_PATH, upload_format=upload_format
-            )
+            hook = UploadCompletionHook(base_path=BASE_PATH, upload_format=upload_format)
             self.addCleanup(hook.shutdown)
 
             hook.on_completion(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
             hook.shutdown()
 
-            self.mock_fs.open.assert_called_with(
-                ANY, "w", content_type=expect_content_type
-            )
+            self.mock_fs.open.assert_called_with(ANY, "w", content_type=expect_content_type)
 
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
@@ -278,8 +275,9 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
-        self.assertEqual(len(logs.output), 3)
+        self.assertEqual(len(logs.output), 4)
         self.assertIn(
             "attempting to upload file after UploadCompletionHook.shutdown() was already called",
             logs.output[0],
@@ -287,16 +285,10 @@ class TestUploadCompletionHook(TestCase):
 
     def test_threadpool_max_workers(self):
         for max_queue_size, expect_threadpool_workers in ((10, 10), (100, 64)):
-            with patch(
-                "opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor"
-            ) as mock:
-                hook = UploadCompletionHook(
-                    base_path=BASE_PATH, max_queue_size=max_queue_size
-                )
+            with patch("opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor") as mock:
+                hook = UploadCompletionHook(base_path=BASE_PATH, max_queue_size=max_queue_size)
                 self.addCleanup(hook.shutdown)
-                mock.assert_called_once_with(
-                    max_workers=expect_threadpool_workers
-                )
+                mock.assert_called_once_with(max_workers=expect_threadpool_workers)
 
 
 class TestUploadCompletionHookIntegration(TestBase):
@@ -317,13 +309,9 @@ class TestUploadCompletionHookIntegration(TestBase):
             self.assertEqual(file.read(), value)
 
     def test_system_insruction_is_hashed_to_avoid_reupload(self):
-        expected_hash = (
-            "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
-        )
+        expected_hash = "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
         # Create the file before upload..
-        expected_file_name = (
-            f"memory://{expected_hash}_system_instruction.json"
-        )
+        expected_file_name = f"memory://{expected_hash}_system_instruction.json"
         with fsspec.open(expected_file_name, "wb") as file:
             file.write(b"asg")
         # FIle should exist.
@@ -337,6 +325,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=[],
             outputs=[],
             system_instruction=system_instructions,
+            tool_definitions=[],
             log_record=record,
         )
         self.hook.shutdown()
@@ -344,6 +333,40 @@ class TestUploadCompletionHookIntegration(TestBase):
 
         self.assertEqual(
             record.attributes["gen_ai.system_instructions_ref"],
+            expected_file_name,
+        )
+        # Content should not have been overwritten.
+        self.assert_fsspec_equal(expected_file_name, "asg")
+
+    def test_tool_definitions_is_hashed_to_avoid_reupload(self):
+        expected_hash = "1f559d0102f8c440a667fd5ed587beeed488ec9f3ce0828d39c424bed6546cf5"
+        # Create the file before upload..
+        expected_file_name = f"memory://{expected_hash}_tool.definitions.json"
+        with fsspec.open(expected_file_name, "wb") as file:
+            file.write(b"asg")
+        # FIle should exist.
+        self.assertTrue(self.hook._file_exists(expected_file_name))
+        tool_definitions = [
+            types.FunctionToolDefinition(
+                name="some_tool",
+                description="does something",
+                parameters=None,
+                type="function",
+            ),
+        ]
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=[],
+            tool_definitions=tool_definitions,
+            log_record=record,
+        )
+        self.hook.shutdown()
+        self.assertIsNotNone(record.attributes)
+
+        self.assertEqual(
+            record.attributes["gen_ai.tool.definitions_ref"],
             expected_file_name,
         )
         # Content should not have been overwritten.
@@ -358,6 +381,7 @@ class TestUploadCompletionHookIntegration(TestBase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
                 span=span,
                 log_record=log_record,
             )
@@ -376,6 +400,7 @@ class TestUploadCompletionHookIntegration(TestBase):
                 "gen_ai.input.messages_ref",
                 "gen_ai.output.messages_ref",
                 "gen_ai.system_instructions_ref",
+                "gen_ai.tool.definitions_ref",
             ]:
                 self.assertIn(ref_key, attributes)
 
@@ -391,6 +416,10 @@ class TestUploadCompletionHookIntegration(TestBase):
             span.attributes["gen_ai.system_instructions_ref"],
             '[{"content":"You are a helpful assistant.","type":"text"}]\n',
         )
+        self.assert_fsspec_equal(
+            span.attributes["gen_ai.tool.definitions_ref"],
+            '[{"name":"test_tool","description":"does something","parameters":null,"type":"function"}]\n',
+        )
 
     def test_stamps_empty_log(self):
         log_record = LogRecord()
@@ -398,6 +427,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
 
@@ -405,6 +435,7 @@ class TestUploadCompletionHookIntegration(TestBase):
         self.assertIn("gen_ai.input.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.output.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.system_instructions_ref", log_record.attributes)
+        self.assertIn("gen_ai.tool.definitions_ref", log_record.attributes)
 
     def test_upload_bytes(self) -> None:
         log_record = LogRecord()
@@ -420,6 +451,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             ],
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         self.hook.shutdown()
@@ -438,14 +470,13 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()
 
         ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
-        self.assertTrue(
-            ref_uri.endswith(".json"), f"{ref_uri=} does not end with .json"
-        )
+        self.assertTrue(ref_uri.endswith(".json"), f"{ref_uri=} does not end with .json")
 
         self.assert_fsspec_equal(
             ref_uri,
@@ -461,14 +492,13 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()
 
         ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
-        self.assertTrue(
-            ref_uri.endswith(".jsonl"), f"{ref_uri=} does not end with .jsonl"
-        )
+        self.assertTrue(ref_uri.endswith(".jsonl"), f"{ref_uri=} does not end with .jsonl")
 
         self.assert_fsspec_equal(
             ref_uri,
@@ -492,6 +522,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()

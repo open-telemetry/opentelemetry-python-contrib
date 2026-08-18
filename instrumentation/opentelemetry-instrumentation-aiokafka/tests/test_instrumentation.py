@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -41,33 +30,19 @@ class TestAIOKafkaInstrumentor(TestCase):
         instrumentation = AIOKafkaInstrumentor()
 
         instrumentation.instrument()
-        self.assertTrue(
-            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
-        )
-        self.assertTrue(
-            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
-        )
-        self.assertTrue(
-            isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper)
-        )
+        self.assertTrue(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
+        self.assertTrue(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
+        self.assertTrue(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
 
         instrumentation.uninstrument()
-        self.assertFalse(
-            isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
-        )
-        self.assertFalse(
-            isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper)
-        )
-        self.assertFalse(
-            isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper)
-        )
+        self.assertFalse(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
+        self.assertFalse(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
+        self.assertFalse(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
 
 
 class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     @staticmethod
-    def consumer_record_factory(
-        number: int, headers: tuple[tuple[str, bytes], ...]
-    ) -> ConsumerRecord:
+    def consumer_record_factory(number: int, headers: tuple[tuple[str, bytes], ...]) -> ConsumerRecord:
         return ConsumerRecord(
             f"topic_{number}",
             number,
@@ -88,11 +63,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     ) -> dict[aiokafka.TopicPartition, list[aiokafka.ConsumerRecord]]:
         records = {}
         for number, record_headers in enumerate(headers, start=1):
-            records[
-                aiokafka.TopicPartition(
-                    topic=f"topic_{number}", partition=number
-                )
-            ] = [
+            records[aiokafka.TopicPartition(topic=f"topic_{number}", partition=number)] = [
                 ConsumerRecord(
                     f"topic_{number}",
                     number,
@@ -126,7 +97,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
     @staticmethod
     async def producer_factory() -> AIOKafkaProducer:
-        producer = AIOKafkaProducer(api_version="1.0")
+        producer = AIOKafkaProducer()
 
         producer.client._wait_on_metadata = mock.AsyncMock()
         producer.client.bootstrap = mock.AsyncMock()
@@ -149,9 +120,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_getone(self) -> None:
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
-        consumer = await self.consumer_factory(
-            client_id=client_id, group_id=group_id
-        )
+        consumer = await self.consumer_factory(client_id=client_id, group_id=group_id)
         self.addAsyncCleanup(consumer.stop)
         next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
 
@@ -261,29 +230,18 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_getone_consume_hook(self) -> None:
         async_consume_hook_mock = mock.AsyncMock()
 
-        def is_async_consume_hook_mock(obj: Any) -> bool:
-            return obj is async_consume_hook_mock
-
         AIOKafkaInstrumentor().uninstrument()
 
-        # TODO: remove mock.patch when we drop Python 3.9 support
-        with mock.patch(
-            "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
-        ) as iscoro:
-            iscoro.side_effect = is_async_consume_hook_mock
-
-            AIOKafkaInstrumentor().instrument(
-                tracer_provider=self.tracer_provider,
-                async_consume_hook=async_consume_hook_mock,
-            )
+        AIOKafkaInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            async_consume_hook=async_consume_hook_mock,
+        )
 
         consumer = await self.consumer_factory()
         self.addAsyncCleanup(consumer.stop)
         next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
 
-        next_record_mock.side_effect = [
-            self.consumer_record_factory(1, headers=())
-        ]
+        next_record_mock.side_effect = [self.consumer_record_factory(1, headers=())]
 
         await consumer.getone()
 
@@ -292,13 +250,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_getmany(self) -> None:
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
-        consumer = await self.consumer_factory(
-            client_id=client_id, group_id=group_id
-        )
+        consumer = await self.consumer_factory(client_id=client_id, group_id=group_id)
         self.addAsyncCleanup(consumer.stop)
-        fetched_records_mock = cast(
-            mock.AsyncMock, consumer._fetcher.fetched_records
-        )
+        fetched_records_mock = cast(mock.AsyncMock, consumer._fetcher.fetched_records)
 
         expected_spans = [
             {
@@ -402,9 +356,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_send(self) -> None:
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
-        add_message_mock = cast(
-            mock.AsyncMock, producer._message_accumulator.add_message
-        )
+        add_message_mock = cast(mock.AsyncMock, producer._message_accumulator.add_message)
 
         tracer = self.tracer_provider.get_tracer(__name__)
         with tracer.start_as_current_span("test_span") as span:
@@ -435,9 +387,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_send_baggage(self) -> None:
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
-        add_message_mock = cast(
-            mock.AsyncMock, producer._message_accumulator.add_message
-        )
+        add_message_mock = cast(mock.AsyncMock, producer._message_accumulator.add_message)
 
         tracer = self.tracer_provider.get_tracer(__name__)
         ctx = baggage.set_baggage("foo", "bar")
@@ -458,20 +408,11 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_send_produce_hook(self) -> None:
         async_produce_hook_mock = mock.AsyncMock()
 
-        def is_async_produce_hook_mock(obj: Any) -> bool:
-            return obj is async_produce_hook_mock
-
         AIOKafkaInstrumentor().uninstrument()
-        # TODO: remove mock.patch when we drop Python 3.9 support
-        with mock.patch(
-            "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
-        ) as iscoro:
-            iscoro.side_effect = is_async_produce_hook_mock
-
-            AIOKafkaInstrumentor().instrument(
-                tracer_provider=self.tracer_provider,
-                async_produce_hook=async_produce_hook_mock,
-            )
+        AIOKafkaInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            async_produce_hook=async_produce_hook_mock,
+        )
 
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
@@ -480,9 +421,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         async_produce_hook_mock.assert_awaited_once()
 
-    def _compare_spans(
-        self, spans: Sequence[ReadableSpan], expected_spans: list[dict]
-    ) -> None:
+    def _compare_spans(self, spans: Sequence[ReadableSpan], expected_spans: list[dict]) -> None:
         self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):
             self.assertEqual(expected_span["name"], span.name, msg=span.name)
@@ -498,37 +437,39 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
         producer = await self.producer_factory()
-        add_message_mock: mock.AsyncMock = (
-            producer._message_accumulator.add_message
-        )
-        add_message_mock.side_effect = [mock.AsyncMock()(), mock.AsyncMock()()]
+        try:
+            add_message_mock: mock.AsyncMock = producer._message_accumulator.add_message
+            add_message_mock.side_effect = [
+                mock.AsyncMock()(),
+                mock.AsyncMock()(),
+            ]
 
-        tracer = self.tracer_provider.get_tracer(__name__)
-        with tracer.start_as_current_span("test_span") as span:
-            await producer.send_and_wait("topic_1", b"value_1")
+            tracer = self.tracer_provider.get_tracer(__name__)
+            with tracer.start_as_current_span("test_span") as span:
+                await producer.send_and_wait("topic_1", b"value_1")
 
-        add_message_mock.assert_awaited_with(
-            TopicPartition(topic="topic_1", partition=1),
-            None,
-            b"value_1",
-            40.0,
-            timestamp_ms=None,
-            headers=[("traceparent", mock.ANY)],
-        )
-        assert (
-            add_message_mock.call_args_list[0]
-            .kwargs["headers"][0][1]
-            .startswith(
-                f"00-{format_trace_id(span.get_span_context().trace_id)}-".encode()
+            add_message_mock.assert_awaited_with(
+                TopicPartition(topic="topic_1", partition=1),
+                None,
+                b"value_1",
+                40.0,
+                timestamp_ms=None,
+                headers=[("traceparent", mock.ANY)],
             )
-        )
+            assert (
+                add_message_mock.call_args_list[0]
+                .kwargs["headers"][0][1]
+                .startswith(f"00-{format_trace_id(span.get_span_context().trace_id)}-".encode())
+            )
 
-        await producer.send_and_wait("topic_2", b"value_2")
-        add_message_mock.assert_awaited_with(
-            TopicPartition(topic="topic_2", partition=1),
-            None,
-            b"value_2",
-            40.0,
-            timestamp_ms=None,
-            headers=[("traceparent", mock.ANY)],
-        )
+            await producer.send_and_wait("topic_2", b"value_2")
+            add_message_mock.assert_awaited_with(
+                TopicPartition(topic="topic_2", partition=1),
+                None,
+                b"value_2",
+                40.0,
+                timestamp_ms=None,
+                headers=[("traceparent", mock.ANY)],
+            )
+        finally:
+            await producer.stop()

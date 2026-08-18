@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: disable=wrong-import-position,wrong-import-order,import-error,no-name-in-module,unexpected-keyword-arg,no-value-for-parameter,redefined-outer-name,too-many-locals,too-many-statements,too-many-branches
 
 from __future__ import annotations
@@ -76,9 +79,7 @@ _ensure_semconv_enums()
 
 ServerAttributes = _server_attributes
 
-sp = importlib.import_module(
-    "opentelemetry.instrumentation.openai_agents.span_processor"
-)
+sp = importlib.import_module("opentelemetry.instrumentation.openai_agents.span_processor")
 
 try:
     from opentelemetry.sdk.trace.export import (  # type: ignore[attr-defined]
@@ -139,52 +140,27 @@ def test_operation_and_span_naming(processor_setup):
     processor, _ = processor_setup
 
     generation = GenerationSpanData(input=[{"role": "user"}], model="gpt-4o")
-    assert (
-        processor._get_operation_name(generation) == sp.GenAIOperationName.CHAT
-    )
+    assert processor._get_operation_name(generation) == sp.GenAIOperationName.CHAT
 
     completion = GenerationSpanData(input=[])
-    assert (
-        processor._get_operation_name(completion)
-        == sp.GenAIOperationName.TEXT_COMPLETION
-    )
+    assert processor._get_operation_name(completion) == sp.GenAIOperationName.TEXT_COMPLETION
 
     embeddings = GenerationSpanData(input=None)
     setattr(embeddings, "embedding_dimension", 128)
-    assert (
-        processor._get_operation_name(embeddings)
-        == sp.GenAIOperationName.EMBEDDINGS
-    )
+    assert processor._get_operation_name(embeddings) == sp.GenAIOperationName.EMBEDDINGS
 
-    agent_create = AgentSpanData(operation=" CREATE ")
-    assert (
-        processor._get_operation_name(agent_create)
-        == sp.GenAIOperationName.CREATE_AGENT
-    )
+    # AgentSpanData always maps to invoke_agent (no operation field in OpenAI Agents SDK)
+    agent_data = AgentSpanData(name="bot")
+    assert processor._get_operation_name(agent_data) == sp.GenAIOperationName.INVOKE_AGENT
 
-    agent_invoke = AgentSpanData(operation="invoke_agent")
-    assert (
-        processor._get_operation_name(agent_invoke)
-        == sp.GenAIOperationName.INVOKE_AGENT
-    )
-
-    agent_default = AgentSpanData(operation=None)
-    assert (
-        processor._get_operation_name(agent_default)
-        == sp.GenAIOperationName.INVOKE_AGENT
-    )
+    agent_default = AgentSpanData()
+    assert processor._get_operation_name(agent_default) == sp.GenAIOperationName.INVOKE_AGENT
 
     function_data = FunctionSpanData()
-    assert (
-        processor._get_operation_name(function_data)
-        == sp.GenAIOperationName.EXECUTE_TOOL
-    )
+    assert processor._get_operation_name(function_data) == sp.GenAIOperationName.EXECUTE_TOOL
 
     response_data = ResponseSpanData()
-    assert (
-        processor._get_operation_name(response_data)
-        == sp.GenAIOperationName.CHAT
-    )
+    assert processor._get_operation_name(response_data) == sp.GenAIOperationName.CHAT
 
     class UnknownSpanData:
         pass
@@ -195,24 +171,10 @@ def test_operation_and_span_naming(processor_setup):
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL
 
-    assert (
-        sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o")
-        == "chat gpt-4o"
-    )
-    assert (
-        sp.get_span_name(
-            sp.GenAIOperationName.EXECUTE_TOOL, tool_name="weather"
-        )
-        == "execute_tool weather"
-    )
-    assert (
-        sp.get_span_name(sp.GenAIOperationName.INVOKE_AGENT, agent_name=None)
-        == "invoke_agent"
-    )
-    assert (
-        sp.get_span_name(sp.GenAIOperationName.CREATE_AGENT, agent_name=None)
-        == "create_agent"
-    )
+    assert sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o") == "chat gpt-4o"
+    assert sp.get_span_name(sp.GenAIOperationName.EXECUTE_TOOL, tool_name="weather") == "execute_tool weather"
+    assert sp.get_span_name(sp.GenAIOperationName.INVOKE_AGENT, agent_name=None) == "invoke_agent"
+    assert sp.get_span_name(sp.GenAIOperationName.CREATE_AGENT, agent_name=None) == "create_agent"
 
 
 def test_attribute_builders(processor_setup):
@@ -256,11 +218,7 @@ def test_attribute_builders(processor_setup):
             "total_tokens": 13,
         },
     )
-    gen_attrs = _collect(
-        processor._get_attributes_from_generation_span_data(
-            generation_span, payload
-        )
-    )
+    gen_attrs = _collect(processor._get_attributes_from_generation_span_data(generation_span, payload))
     assert gen_attrs[sp.GEN_AI_REQUEST_MODEL] == "gpt-4o"
     assert gen_attrs[sp.GEN_AI_REQUEST_MAX_TOKENS] == 128
     assert gen_attrs[sp.GEN_AI_REQUEST_STOP_SEQUENCES] == [
@@ -274,14 +232,8 @@ def test_attribute_builders(processor_setup):
     assert gen_attrs[sp.GEN_AI_USAGE_OUTPUT_TOKENS] == 3
     assert gen_attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["stop"]
     assert json.loads(gen_attrs[sp.GEN_AI_INPUT_MESSAGES])[0]["role"] == "user"
-    assert (
-        json.loads(gen_attrs[sp.GEN_AI_OUTPUT_MESSAGES])[0]["role"]
-        == "assistant"
-    )
-    assert (
-        json.loads(gen_attrs[sp.GEN_AI_SYSTEM_INSTRUCTIONS])[0]["content"]
-        == "be helpful"
-    )
+    assert json.loads(gen_attrs[sp.GEN_AI_OUTPUT_MESSAGES])[0]["role"] == "assistant"
+    assert json.loads(gen_attrs[sp.GEN_AI_SYSTEM_INSTRUCTIONS])[0]["content"] == "be helpful"
     assert gen_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT
 
     class _Usage:
@@ -300,11 +252,7 @@ def test_attribute_builders(processor_setup):
             self.output = [{"finish_reason": "stop"}]
 
     response_span = ResponseSpanData(response=_Response())
-    response_attrs = _collect(
-        processor._get_attributes_from_response_span_data(
-            response_span, sp.ContentPayload()
-        )
-    )
+    response_attrs = _collect(processor._get_attributes_from_response_span_data(response_span, sp.ContentPayload()))
     assert response_attrs[sp.GEN_AI_RESPONSE_ID] == "resp-1"
     assert response_attrs[sp.GEN_AI_RESPONSE_MODEL] == "gpt-4o"
     assert response_attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["stop"]
@@ -315,26 +263,17 @@ def test_attribute_builders(processor_setup):
     agent_span = AgentSpanData(
         name="helper",
         output_type="json",
-        description="desc",
-        agent_id="agent-123",
-        model="model-x",
-        operation="invoke_agent",
     )
-    agent_attrs = _collect(
-        processor._get_attributes_from_agent_span_data(agent_span, None)
-    )
+    agent_attrs = _collect(processor._get_attributes_from_agent_span_data(agent_span, None))
     assert agent_attrs[sp.GEN_AI_AGENT_NAME] == "helper"
-    assert agent_attrs[sp.GEN_AI_AGENT_ID] == "agent-123"
-    assert agent_attrs[sp.GEN_AI_REQUEST_MODEL] == "model-x"
+    assert sp.GEN_AI_AGENT_ID not in agent_attrs
+    assert sp.GEN_AI_REQUEST_MODEL not in agent_attrs
     assert agent_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT
 
     # Fallback to aggregated model when span data lacks it
     agent_span_no_model = AgentSpanData(
         name="helper-2",
         output_type="json",
-        description="desc",
-        agent_id="agent-456",
-        operation="invoke_agent",
     )
     agent_content = {
         "input_messages": [],
@@ -342,11 +281,7 @@ def test_attribute_builders(processor_setup):
         "system_instructions": [],
         "request_model": "gpt-fallback",
     }
-    agent_attrs_fallback = _collect(
-        processor._get_attributes_from_agent_span_data(
-            agent_span_no_model, agent_content
-        )
-    )
+    agent_attrs_fallback = _collect(processor._get_attributes_from_agent_span_data(agent_span_no_model, agent_content))
     assert agent_attrs_fallback[sp.GEN_AI_REQUEST_MODEL] == "gpt-fallback"
 
     function_span = FunctionSpanData(name="lookup_weather")
@@ -357,11 +292,7 @@ def test_attribute_builders(processor_setup):
         tool_arguments={"city": "seattle"},
         tool_result={"temperature": 70},
     )
-    function_attrs = _collect(
-        processor._get_attributes_from_function_span_data(
-            function_span, function_payload
-        )
-    )
+    function_attrs = _collect(processor._get_attributes_from_function_span_data(function_span, function_payload))
     assert function_attrs[sp.GEN_AI_TOOL_NAME] == "lookup_weather"
     assert function_attrs[sp.GEN_AI_TOOL_TYPE] == "extension"
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ID] == "call-42"
@@ -381,20 +312,14 @@ def test_extract_genai_attributes_unknown_type(processor_setup):
         def __init__(self) -> None:
             self.span_data = UnknownSpanData()
 
-    attrs = _collect(
-        processor._extract_genai_attributes(
-            StubSpan(), sp.ContentPayload(), None
-        )
-    )
+    attrs = _collect(processor._extract_genai_attributes(StubSpan(), sp.ContentPayload(), None))
     assert attrs[sp.GEN_AI_PROVIDER_NAME] == "openai"
     assert attrs[sp.GEN_AI_SYSTEM_KEY] == "openai"
     assert sp.GEN_AI_OPERATION_NAME not in attrs
 
 
 def test_span_status_helper():
-    status = sp._get_span_status(
-        SimpleNamespace(error={"message": "boom", "data": "bad"})
-    )
+    status = sp._get_span_status(SimpleNamespace(error={"message": "boom", "data": "bad"}))
     assert status.status_code is StatusCode.ERROR
     assert status.description == "boom: bad"
 
@@ -435,9 +360,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     parent_span = FakeSpan(
         trace_id="trace-1",
         span_id="span-1",
-        span_data=AgentSpanData(
-            operation="invoke", name="agent", model="gpt-4o"
-        ),
+        span_data=AgentSpanData(name="agent"),
         started_at="2024-01-01T00:00:00Z",
         ended_at="2024-01-01T00:00:02Z",
     )
@@ -476,7 +399,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     linger_span = FakeSpan(
         trace_id="trace-2",
         span_id="span-3",
-        span_data=AgentSpanData(operation=None),
+        span_data=AgentSpanData(),
         started_at="2024-01-01T00:00:06Z",
     )
     processor.on_span_start(linger_span)
@@ -498,14 +421,10 @@ def test_span_lifecycle_and_shutdown(processor_setup):
         and statuses["invoke_agent"].description == "Application shutdown"
     )
     assert (
-        statuses["linger"].status_code is StatusCode.ERROR
-        and statuses["linger"].description == "Application shutdown"
+        statuses["linger"].status_code is StatusCode.ERROR and statuses["linger"].description == "Application shutdown"
     )
     workflow_span = next(span for span in finished if span.name == "workflow")
-    assert (
-        workflow_span.attributes[sp.GEN_AI_OPERATION_NAME]
-        == sp.GenAIOperationName.INVOKE_AGENT
-    )
+    assert workflow_span.attributes[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.INVOKE_AGENT
 
 
 def test_chat_span_renamed_with_model(processor_setup):
@@ -518,7 +437,6 @@ def test_chat_span_renamed_with_model(processor_setup):
         trace_id=trace.trace_id,
         span_id="agent-span",
         span_data=AgentSpanData(
-            operation="invoke_agent",
             name="Agent",
         ),
         started_at="2025-01-01T00:00:00Z",

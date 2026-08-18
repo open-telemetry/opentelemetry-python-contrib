@@ -1,16 +1,7 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=too-many-lines
 
 from enum import Enum
 from http import HTTPStatus
@@ -52,6 +43,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -72,6 +64,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -97,13 +90,19 @@ class HTTPMethod(Enum):
     TRACE = "TRACE"
 
 
+SCOPE = "opentelemetry.instrumentation.aiohttp_server"
+
+
 @pytest.fixture(name="test_base", scope="function")
 def fixture_test_base():
     test_base = TestBase()
     test_base.setUp()
+    _OpenTelemetrySemanticConventionStability._initialized = False
     try:
         yield test_base
     finally:
+        # Reset semconv stability state otherwise tests can interfere with each other
+        _OpenTelemetrySemanticConventionStability._initialized = False
         test_base.tearDown()
 
 
@@ -133,7 +132,13 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     AioHttpServerInstrumentor().instrument(tracer_provider=tracer_provider)
 
     app = aiohttp.web.Application()
-    app.add_routes([aiohttp.web.get("/test-path", default_handler)])
+    app.add_routes(
+        [
+            aiohttp.web.get("/test-path", default_handler),
+            aiohttp.web.get("/test-path/{url_param}", default_handler),
+            aiohttp.web.get("/object/{object_id}/action/{another_param}", default_handler),
+        ]
+    )
     if suppress:
         with suppress_http_instrumentation():
             server = await aiohttp_server(app)
@@ -146,9 +151,7 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
 
 
 def test_checking_instrumentor_pkg_installed():
-    (instrumentor_entrypoint,) = entry_points(
-        group="opentelemetry_instrumentor", name="aiohttp-server"
-    )
+    (instrumentor_entrypoint,) = entry_points(group="opentelemetry_instrumentor", name="aiohttp-server")
     instrumentor = instrumentor_entrypoint.load()()
     assert isinstance(instrumentor, AioHttpServerInstrumentor)
 
@@ -172,14 +175,14 @@ async def test_status_code_instrumentation(
     server, _ = server_fixture
 
     assert len(test_base.get_finished_spans()) == 0
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 0
 
     client = await aiohttp_client(server)
     await client.get(url)
 
     assert len(test_base.get_finished_spans()) == 1
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 2
 
     [span] = test_base.get_finished_spans()
@@ -189,10 +192,82 @@ async def test_status_code_instrumentation(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("suppress", [True])
-async def test_suppress_instrumentation(
-    test_base: TestBase, server_fixture, aiohttp_client
+@pytest.mark.parametrize(
+    "span_name, example_paths",
+    [
+        (
+            "GET /test-path/{url_param}",
+            (
+                "/test-path/foo",
+                "/test-path/bar",
+            ),
+        ),
+        (
+            "GET /object/{object_id}/action/{another_param}",
+            (
+                "/object/1/action/bar",
+                "/object/234/action/baz",
+            ),
+        ),
+        (
+            "GET",
+            (
+                "/i/dont/exist",
+                "/me-neither",
+            ),
+        ),
+    ],
+)
+async def test_url_params_instrumentation(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+    span_name,
+    example_paths,
 ):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+    for path in example_paths:
+        await client.get(path)
+
+    assert len(memory_exporter.get_finished_spans()) == 2
+
+    for request_path, span in zip(example_paths, memory_exporter.get_finished_spans()):
+        assert span_name == span.name
+        assert request_path == span.attributes[HTTP_TARGET]
+        full_url = f"http://{server.host}:{server.port}{request_path}"
+        assert full_url == span.attributes[HTTP_URL]
+
+
+@pytest.mark.asyncio
+async def test_span_name_handler_unknown_method(
+    tracer,
+    server_fixture,
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    async with aiohttp.ClientSession(base_url=f"http://{server.host}:{server.port}") as session:
+        # PURGE is accepted by aiohttp but not recognized by sanitize_method.
+        async with session.request("PURGE", "/test-path") as response:
+            assert response.status == HTTPStatus.METHOD_NOT_ALLOWED
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    assert "_OTHER" == spans[0].attributes[HTTP_METHOD]
+    assert "HTTP" == spans[0].name
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suppress", [True])
+async def test_suppress_instrumentation(test_base: TestBase, server_fixture, aiohttp_client):
     server, _ = server_fixture
     assert len(test_base.get_finished_spans()) == 0
 
@@ -203,15 +278,10 @@ async def test_suppress_instrumentation(
 
 
 @pytest.mark.asyncio
-async def test_remove_sensitive_params(
-    test_base: TestBase, aiohttp_server, monkeypatch
-):
+async def test_remove_sensitive_params(test_base: TestBase, aiohttp_server, monkeypatch):
     """Test that sensitive information in URLs is properly redacted."""
     # Use old semconv to test HTTP_URL redaction
-    monkeypatch.setenv(
-        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
-    )
-    _OpenTelemetrySemanticConventionStability._initialized = False
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value)
 
     # Set up instrumentation
     AioHttpServerInstrumentor().instrument()
@@ -241,25 +311,17 @@ async def test_remove_sensitive_params(
     span = spans[0]
     assert span.attributes[HTTP_METHOD] == "GET"
     assert span.attributes[HTTP_STATUS_CODE] == 200
-    assert (
-        span.attributes[HTTP_URL]
-        == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
-    )
+    assert span.attributes[HTTP_URL] == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
 
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
 
 
 @pytest.mark.asyncio
-async def test_remove_sensitive_params_new(
-    test_base: TestBase, aiohttp_server, monkeypatch
-):
+async def test_remove_sensitive_params_new(test_base: TestBase, aiohttp_server, monkeypatch):
     """Test URL handling with new semantic conventions (no redaction for URL_PATH/URL_QUERY)."""
     # Use new semconv
-    monkeypatch.setenv(
-        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
-    )
-    _OpenTelemetrySemanticConventionStability._initialized = False
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
 
     # Set up instrumentation
     AioHttpServerInstrumentor().instrument()
@@ -302,9 +364,7 @@ async def test_remove_sensitive_params_new(
     "env_var",
     ["OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS", "OTEL_PYTHON_EXCLUDED_URLS"],
 )
-async def test_excluded_urls(
-    test_base: TestBase, aiohttp_server, monkeypatch, env_var
-):
+async def test_excluded_urls(test_base: TestBase, aiohttp_server, monkeypatch, env_var):
     """Test that excluded env vars are taken into account."""
     monkeypatch.setenv(env_var, "/status/200")
     AioHttpServerInstrumentor().instrument()
@@ -327,7 +387,7 @@ async def test_excluded_urls(
     spans = test_base.get_finished_spans()
     assert len(spans) == 0
 
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 0
 
     AioHttpServerInstrumentor().uninstrument()
@@ -336,11 +396,7 @@ async def test_excluded_urls(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tracer",
-    [
-        TestBase().create_tracer_provider(
-            sampler=ParentBased(TraceIdRatioBased(0.05))
-        )
-    ],
+    [TestBase().create_tracer_provider(sampler=ParentBased(TraceIdRatioBased(0.05)))],
 )
 async def test_non_global_tracer_provider(
     tracer,
@@ -360,22 +416,12 @@ async def test_non_global_tracer_provider(
     for _ in range(n_requests):
         await client.get("/test-path")
 
-    trace_ids = {
-        span.context.trace_id
-        for span in memory_exporter.get_finished_spans()
-        if span.context is not None
-    }
-    assert (
-        0.5 * n_expected_trace_ids
-        <= len(trace_ids)
-        <= 1.5 * n_expected_trace_ids
-    )
+    trace_ids = {span.context.trace_id for span in memory_exporter.get_finished_spans() if span.context is not None}
+    assert 0.5 * n_expected_trace_ids <= len(trace_ids) <= 1.5 * n_expected_trace_ids
 
 
 @pytest.mark.asyncio
-async def test_custom_request_headers(
-    test_base: TestBase, aiohttp_server, monkeypatch
-):
+async def test_custom_request_headers(test_base: TestBase, aiohttp_server, monkeypatch):
     # pylint: disable=too-many-locals
     monkeypatch.setenv(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -417,9 +463,7 @@ async def test_custom_request_headers(
         "http.request.header.custom_test_header_1": ("test-header-value-1",),
         "http.request.header.custom_test_header_2": ("test-header-value-2",),
         "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-        "http.request.header.regex_test_header_2": (
-            "RegexTestValue2,RegexTestValue3",
-        ),
+        "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
         "http.request.header.my_secret_header": ("[REDACTED]",),
     }
 
@@ -432,9 +476,7 @@ async def test_custom_request_headers(
 
 
 @pytest.mark.asyncio
-async def test_custom_response_headers(
-    test_base: TestBase, aiohttp_server, monkeypatch
-):
+async def test_custom_response_headers(test_base: TestBase, aiohttp_server, monkeypatch):
     monkeypatch.setenv(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
         ".*my-secret.*",
@@ -476,12 +518,8 @@ async def test_custom_response_headers(
     expected = {
         "http.response.header.custom_test_header_1": ("test-header-value-1",),
         "http.response.header.custom_test_header_2": ("test-header-value-2",),
-        "http.response.header.my_custom_regex_header_1": (
-            "my-custom-regex-value-1,my-custom-regex-value-2",
-        ),
-        "http.response.header.my_custom_regex_header_2": (
-            "my-custom-regex-value-3,my-custom-regex-value-4",
-        ),
+        "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+        "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
         "http.response.header.my_secret_header": ("[REDACTED]",),
     }
 
@@ -495,21 +533,16 @@ async def test_custom_response_headers(
 
 # pylint: disable=too-many-locals
 @pytest.mark.asyncio
-async def test_semantic_conventions_metrics_old_default(
-    test_base: TestBase, aiohttp_server, monkeypatch
-):
-    monkeypatch.setenv(
-        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
-    )
-    _OpenTelemetrySemanticConventionStability._initialized = False
+async def test_semantic_conventions_metrics_old_default(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value)
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
-    app.router.add_get("/test-path", default_handler)
+    app.router.add_get("/test-path/{param}", default_handler)
     server = await aiohttp_server(app)
     client_session = aiohttp.ClientSession()
     try:
-        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        url = f"http://{server.host}:{server.port}/test-path/test-param?query=test"
         async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
@@ -519,21 +552,18 @@ async def test_semantic_conventions_metrics_old_default(
         span = spans[0]
 
         # Verify old semconv schema URL
-        assert (
-            span.instrumentation_scope.schema_url
-            == "https://opentelemetry.io/schemas/1.11.0"
-        )
+        assert span.instrumentation_scope.schema_url == "https://opentelemetry.io/schemas/1.11.0"
 
         # Old semconv span attributes present
         assert span.attributes.get(HTTP_METHOD) == "GET"
         assert span.attributes.get(HTTP_SCHEME) == "http"
         assert span.attributes.get(NET_HOST_NAME) == server.host
         assert span.attributes.get(NET_HOST_PORT) == server.port
-        assert span.attributes.get(HTTP_TARGET) == "/test-path?query=test"
+        assert span.attributes.get(HTTP_TARGET) == "/test-path/test-param?query=test"
         assert span.attributes.get(HTTP_USER_AGENT) == "test-agent"
         assert span.attributes.get(HTTP_FLAVOR) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path/{param}"
         # New semconv span attributes NOT present
         assert HTTP_REQUEST_METHOD not in span.attributes
         assert URL_SCHEME not in span.attributes
@@ -545,7 +575,7 @@ async def test_semantic_conventions_metrics_old_default(
         assert NETWORK_PROTOCOL_VERSION not in span.attributes
         assert HTTP_RESPONSE_STATUS_CODE not in span.attributes
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.duration",
@@ -569,21 +599,16 @@ async def test_semantic_conventions_metrics_old_default(
 
 # pylint: disable=too-many-locals
 @pytest.mark.asyncio
-async def test_semantic_conventions_metrics_new(
-    test_base: TestBase, meter, aiohttp_server, monkeypatch
-):
-    monkeypatch.setenv(
-        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
-    )
-    _OpenTelemetrySemanticConventionStability._initialized = False
+async def test_semantic_conventions_metrics_new(test_base: TestBase, meter, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
-    app.router.add_get("/test-path", default_handler)
+    app.router.add_get("/test-path/{param}", default_handler)
     server = await aiohttp_server(app)
     client_session = aiohttp.ClientSession()
     try:
-        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        url = f"http://{server.host}:{server.port}/test-path/test-param?query=test"
         async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
@@ -593,22 +618,19 @@ async def test_semantic_conventions_metrics_new(
         span = spans[0]
 
         # Verify new semconv schema URL
-        assert (
-            span.instrumentation_scope.schema_url
-            == "https://opentelemetry.io/schemas/1.21.0"
-        )
+        assert span.instrumentation_scope.schema_url == "https://opentelemetry.io/schemas/1.21.0"
 
         # New semconv span attributes present
         assert span.attributes.get(HTTP_REQUEST_METHOD) == "GET"
         assert span.attributes.get(URL_SCHEME) == "http"
         assert span.attributes.get(SERVER_ADDRESS) == server.host
         assert span.attributes.get(SERVER_PORT) == server.port
-        assert span.attributes.get(URL_PATH) == "/test-path"
+        assert span.attributes.get(URL_PATH) == "/test-path/test-param"
         assert span.attributes.get(URL_QUERY) == "query=test"
         assert span.attributes.get(USER_AGENT_ORIGINAL) == "test-agent"
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path/{param}"
         # Old semconv span attributes NOT present
         assert HTTP_METHOD not in span.attributes
         assert HTTP_SCHEME not in span.attributes
@@ -619,7 +641,7 @@ async def test_semantic_conventions_metrics_new(
         assert HTTP_FLAVOR not in span.attributes
         assert HTTP_STATUS_CODE not in span.attributes
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.request.duration",
@@ -633,14 +655,8 @@ async def test_semantic_conventions_metrics_new(
             if metric.name == "http.server.request.duration":
                 assert metric.unit == "s"
             for point in metric.data.data_points:
-                if (
-                    isinstance(point, HistogramDataPoint)
-                    and metric.name == "http.server.request.duration"
-                ):
-                    assert (
-                        point.explicit_bounds
-                        == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
-                    )
+                if isinstance(point, HistogramDataPoint) and metric.name == "http.server.request.duration":
+                    assert point.explicit_bounds == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
                 for attr in point.attributes:
                     assert attr in recommended_metrics_attrs[metric.name]
 
@@ -652,13 +668,8 @@ async def test_semantic_conventions_metrics_new(
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 @pytest.mark.asyncio
-async def test_semantic_conventions_metrics_both(
-    test_base: TestBase, meter, aiohttp_server, monkeypatch
-):
-    monkeypatch.setenv(
-        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value
-    )
-    _OpenTelemetrySemanticConventionStability._initialized = False
+async def test_semantic_conventions_metrics_both(test_base: TestBase, meter, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value)
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
@@ -676,10 +687,7 @@ async def test_semantic_conventions_metrics_both(
         span = spans[0]
 
         # Verify new semconv schema URL (both mode uses new schema)
-        assert (
-            span.instrumentation_scope.schema_url
-            == "https://opentelemetry.io/schemas/1.21.0"
-        )
+        assert span.instrumentation_scope.schema_url == "https://opentelemetry.io/schemas/1.21.0"
 
         # Both old and new semconv span attributes present
         assert span.attributes.get(HTTP_METHOD) == "GET"
@@ -699,16 +707,12 @@ async def test_semantic_conventions_metrics_both(
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path"
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         assert len(metrics) == 3  # Both duration metrics + active requests
-        server_active_requests_count_attrs_both = list(
-            _server_active_requests_count_attrs_old
-        )
-        server_active_requests_count_attrs_both.extend(
-            _server_active_requests_count_attrs_new
-        )
+        server_active_requests_count_attrs_both = list(_server_active_requests_count_attrs_old)
+        server_active_requests_count_attrs_both.extend(_server_active_requests_count_attrs_new)
         recommended_metrics_attrs = {
             "http.server.active_requests": server_active_requests_count_attrs_both,
             "http.server.duration": _server_duration_attrs_old,
@@ -723,17 +727,340 @@ async def test_semantic_conventions_metrics_both(
                 assert metric.name == "http.server.active_requests"
 
             for point in metric.data.data_points:
-                if (
-                    isinstance(point, HistogramDataPoint)
-                    and metric.name == "http.server.request.duration"
-                ):
-                    assert (
-                        point.explicit_bounds
-                        == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
-                    )
+                if isinstance(point, HistogramDataPoint) and metric.name == "http.server.request.duration":
+                    assert point.explicit_bounds == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
                 for attr in point.attributes:
                     assert attr in recommended_metrics_attrs[metric.name]
 
     finally:
         await client_session.close()
         AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPOk, 200),
+        (aiohttp.web.HTTPCreated, 201),
+    ],
+)
+async def test_http_successful_no_error(test_base: TestBase, aiohttp_server, exception_class, expected_status):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status,kwargs",
+    [
+        (aiohttp.web.HTTPMovedPermanently, 301, {"location": "/destination"}),
+        (aiohttp.web.HTTPFound, 302, {"location": "/destination"}),
+    ],
+)
+async def test_http_redirection_no_error(
+    test_base: TestBase,
+    aiohttp_server,
+    exception_class,
+    expected_status,
+    kwargs,
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(**kwargs)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, allow_redirects=False) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status,kwargs",
+    [
+        (aiohttp.web.HTTPMovedPermanently, 301, {"location": "/destination"}),
+        (aiohttp.web.HTTPFound, 302, {"location": "/destination"}),
+    ],
+)
+async def test_http_redirection_no_error_new_semconv(
+    test_base: TestBase,
+    aiohttp_server,
+    monkeypatch,
+    exception_class,
+    expected_status,
+    kwargs,
+):
+    # Use new semconv
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(**kwargs)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, allow_redirects=False) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPBadRequest, 400),
+        (aiohttp.web.HTTPNotFound, 404),
+    ],
+)
+async def test_http_client_error_no_error(test_base: TestBase, aiohttp_server, exception_class, expected_status):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPInternalServerError, 500),
+        (aiohttp.web.HTTPBadGateway, 502),
+    ],
+)
+async def test_http_server_error_records_error(test_base: TestBase, aiohttp_server, exception_class, expected_status):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.events[0].name == "exception"
+    assert span.events[0].attributes["exception.type"] == f"aiohttp.web_exceptions.{exception_class.__name__}"
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,message",
+    [
+        (ValueError, "Something went wrong"),
+        (RuntimeError, "Unexpected runtime error"),
+    ],
+)
+async def test_generic_exception_records_error(test_base: TestBase, aiohttp_server, exception_class, message):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(message)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 500
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.events[0].name == "exception"
+    assert span.events[0].attributes["exception.type"] == exception_class.__qualname__
+    assert span.events[0].attributes["exception.message"] == message
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPInternalServerError, 500),
+        (aiohttp.web.HTTPBadGateway, 502),
+    ],
+)
+async def test_http_server_error_records_error_new_semconv(
+    test_base: TestBase,
+    aiohttp_server,
+    monkeypatch,
+    exception_class,
+    expected_status,
+):
+    # Use new semconv
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
+
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.attributes[ERROR_TYPE] == str(expected_status)
+    assert span.events[0].name == "exception"
+    assert span.events[0].attributes["exception.type"] == f"aiohttp.web_exceptions.{exception_class.__name__}"
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,message",
+    [
+        (ValueError, "Something went wrong"),
+        (RuntimeError, "Unexpected runtime error"),
+    ],
+)
+async def test_generic_exception_records_error_new_semconv(
+    test_base: TestBase, aiohttp_server, monkeypatch, exception_class, message
+):
+    # Use new semconv
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
+
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(message)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 500
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    print(span.to_json())
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.attributes[ERROR_TYPE] == exception_class.__qualname__
+    assert span.events[0].name == "exception"
+    assert span.events[0].attributes["exception.type"] == exception_class.__qualname__
+
+    AioHttpServerInstrumentor().uninstrument()

@@ -1,6 +1,13 @@
 OpenTelemetry VertexAI Instrumentation
 ======================================
 
+.. warning::
+
+   This package is deprecated as part of the GenAI package migration. It is not
+   being migrated to the
+   `opentelemetry-python-genai <https://github.com/open-telemetry/opentelemetry-python-genai>`_
+   repository, and no replacement package is planned there.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-vertexai.svg
@@ -76,4 +83,3 @@ References
 * `OpenTelemetry VertexAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/vertexai/vertexai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
-

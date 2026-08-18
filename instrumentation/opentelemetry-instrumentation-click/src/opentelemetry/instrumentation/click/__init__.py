@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument `click`_ CLI applications. The instrumentor will avoid instrumenting
@@ -29,9 +18,11 @@ Usage
 
     ClickInstrumentor().instrument()
 
+
     @click.command()
     def hello():
-       click.echo(f'Hello world!')
+        click.echo(f"Hello world!")
+
 
     if __name__ == "__main__":
         hello()
@@ -76,11 +67,7 @@ _logger = getLogger(__name__)
 
 def _skip_servers(ctx: click.Context):
     # flask run
-    if (
-        ctx.info_name == "run"
-        and FlaskScriptInfo
-        and isinstance(ctx.obj, FlaskScriptInfo)
-    ):
+    if ctx.info_name == "run" and FlaskScriptInfo and isinstance(ctx.obj, FlaskScriptInfo):
         return True
     # uvicorn
     if ctx.info_name == "uvicorn":
@@ -121,9 +108,7 @@ def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
             span.set_status(StatusCode.ERROR, str(exc))
             if span.is_recording():
                 span.set_attribute(ERROR_TYPE, exc.__class__.__qualname__)
-                span.set_attribute(
-                    PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1)
-                )
+                span.set_attribute(PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1))
             raise
 
 

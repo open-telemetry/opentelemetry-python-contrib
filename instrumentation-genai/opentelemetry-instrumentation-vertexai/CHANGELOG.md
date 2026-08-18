@@ -1,11 +1,19 @@
 # Changelog
 
+> [!WARNING]
+> This package is deprecated and will not be replaced — it only receives security patches and will be removed in the future.
+> Google [deprecated the generative AI modules of the Vertex AI SDK](https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk)
+> that this package instruments.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+
+- Fix compatibility with wrapt 2.x by using positional arguments in `wrap_function_wrapper()` calls
+  ([#4445](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4445))
 
 ## Version 2.2b0 (2025-12-19)
 - Fix overwritten log attributes in vertexai instrumentation

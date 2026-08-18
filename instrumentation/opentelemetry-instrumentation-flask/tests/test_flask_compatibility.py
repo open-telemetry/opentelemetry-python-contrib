@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Tests for Flask compatibility across versions, focusing on
@@ -18,15 +7,17 @@ context cleanup and streaming response handling.
 """
 
 import io
-import sys
 import threading
 import time
+from importlib.metadata import version
 from unittest import mock, skipIf
 
 import flask
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import (
+    _ENVIRON_ACTIVATION_KEY,
+    _ENVIRON_TOKEN,
     FlaskInstrumentor,
     _request_ctx_ref,
 )
@@ -36,7 +27,7 @@ from opentelemetry.test.wsgitestutil import WsgiTestBase
 class TestFlaskCompatibility(WsgiTestBase):
     def setUp(self):
         super().setUp()
-        self.flask_version = flask.__version__
+        self.flask_version = version("flask")
 
     def test_streaming_response_context_cleanup(self):
         """Test that streaming responses properly clean up context"""
@@ -92,9 +83,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         response = client.get("/generator")
         self.assertEqual(response.status_code, 200)
-        expected = b"".join(
-            f"Chunk {chunk_idx}\n".encode() for chunk_idx in range(5)
-        )
+        expected = b"".join(f"Chunk {chunk_idx}\n".encode() for chunk_idx in range(5))
         self.assertEqual(response.data, expected)
 
     def test_file_response_context_cleanup(self):
@@ -106,9 +95,7 @@ class TestFlaskCompatibility(WsgiTestBase):
         def file_endpoint():
             # Simulate file response using io.BytesIO
             file_data = io.BytesIO(b"File content here")
-            return flask.send_file(
-                file_data, as_attachment=True, download_name="test.txt"
-            )
+            return flask.send_file(file_data, as_attachment=True, download_name="test.txt")
 
         client = app.test_client()
 
@@ -185,9 +172,7 @@ class TestFlaskCompatibility(WsgiTestBase):
             try:
                 client = app.test_client()
                 response = client.get(f"/slow_stream/{request_id}")
-                results.append(
-                    (request_id, response.status_code, response.data)
-                )
+                results.append((request_id, response.status_code, response.data))
             except (RuntimeError, ValueError) as exc:
                 errors.append((request_id, exc))
 
@@ -208,10 +193,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         for request_id, status_code, data in results:
             self.assertEqual(status_code, 200)
-            expected = b"".join(
-                f"Request {request_id} - Chunk {chunk_idx}\n".encode()
-                for chunk_idx in range(3)
-            )
+            expected = b"".join(f"Request {request_id} - Chunk {chunk_idx}\n".encode() for chunk_idx in range(3))
             self.assertEqual(data, expected)
 
     def test_flask_version_compatibility(self):
@@ -265,9 +247,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         # Mock the cleanup functions to raise exceptions
         with (
-            mock.patch(
-                "opentelemetry.instrumentation.flask.context.detach"
-            ) as mock_detach,
+            mock.patch("opentelemetry.instrumentation.flask.context.detach") as mock_detach,
             mock.patch("opentelemetry.trace.use_span") as mock_use_span,
         ):
             # Make detach raise an exception
@@ -276,12 +256,8 @@ class TestFlaskCompatibility(WsgiTestBase):
             # Make the span activation __exit__ raise an exception
             mock_span_instance = mock.Mock()
             mock_span_instance.is_recording.return_value = True
-            mock_span_instance.__exit__ = mock.Mock(
-                side_effect=RuntimeError("Exit error")
-            )
-            mock_use_span.return_value.__enter__ = mock.Mock(
-                return_value=mock_span_instance
-            )
+            mock_span_instance.__exit__ = mock.Mock(side_effect=RuntimeError("Exit error"))
+            mock_use_span.return_value.__enter__ = mock.Mock(return_value=mock_span_instance)
 
             @app.route("/stream_cleanup_error")
             def stream_cleanup_error_endpoint():
@@ -298,14 +274,12 @@ class TestFlaskCompatibility(WsgiTestBase):
             self.assertEqual(response.data, b"Data")
 
     @skipIf(
-        sys.version_info < (3, 10),
-        "Flask 3.1+ streaming context cleanup only enabled on Python 3.10+",
-    )
-    @skipIf(
-        lambda: not __import__(
-            "opentelemetry.instrumentation.flask",
-            fromlist=["_IS_FLASK_31_PLUS"],
-        )._IS_FLASK_31_PLUS,
+        lambda: (
+            not __import__(
+                "opentelemetry.instrumentation.flask",
+                fromlist=["_IS_FLASK_31_PLUS"],
+            )._IS_FLASK_31_PLUS
+        ),
         "Flask 3.1+ streaming context cleanup requires Flask 3.1+",
     )
     def test_flask_31_streaming_context_cleanup(self):
@@ -347,9 +321,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         # Mix of streaming requests
         for request_idx in range(10):
-            endpoint = (
-                "/stream_flask31" if request_idx % 2 == 0 else "/stream_normal"
-            )
+            endpoint = "/stream_flask31" if request_idx % 2 == 0 else "/stream_normal"
             response = client.get(endpoint)
             self.assertEqual(response.status_code, 200)
 
@@ -357,3 +329,55 @@ class TestFlaskCompatibility(WsgiTestBase):
         # This ensures OpenTelemetry contexts are properly cleaned up for streaming responses
         # following Logfire's recommendations (see open-telemetry/opentelemetry-python#2606)
         # If we reach this point, the Flask 3.1+ streaming context cleanup is working
+
+    def test_duplicate_teardown_request_does_not_cause_errors(self):
+        """Test that _teardown_request can be called multiple times without errors.
+
+        Flask may call teardown_request multiple times in some scenarios.
+        After the first call, _ENVIRON_ACTIVATION_KEY and _ENVIRON_TOKEN
+        should be cleaned up so subsequent calls are no-ops.
+        """
+        app = flask.Flask(__name__)
+
+        # Register the check handler BEFORE instrumenting so it runs AFTER
+        # the instrumentation's teardown (Flask uses LIFO order).
+        cleaned_up = {}
+        call_count = {"teardown_calls": 0}
+
+        @app.teardown_request
+        def check_cleanup(exc):
+            cleaned_up["activation_present"] = _ENVIRON_ACTIVATION_KEY in flask.request.environ
+            cleaned_up["token_present"] = _ENVIRON_TOKEN in flask.request.environ
+
+        FlaskInstrumentor().instrument_app(app)
+
+        # Wrap the instrumentation's teardown to count calls and invoke it
+        # a second time to simulate duplicate teardown.
+        instrumentation_teardown = app.teardown_request_funcs[None][-1]
+
+        def counting_teardown(exc):
+            call_count["teardown_calls"] += 1
+            instrumentation_teardown(exc)
+            # Call it again to simulate duplicate teardown - should not raise
+            instrumentation_teardown(exc)
+
+        app.teardown_request_funcs[None][-1] = counting_teardown
+
+        @app.route("/test")
+        def test_endpoint():
+            return "OK"
+
+        client = app.test_client()
+        response = client.get("/test")
+        self.assertEqual(response.status_code, 200)
+        # Verify the teardown was actually called
+        self.assertGreater(call_count["teardown_calls"], 0)
+        # Verify env keys are cleaned up after teardown
+        self.assertFalse(
+            cleaned_up.get("activation_present", True),
+            "_ENVIRON_ACTIVATION_KEY should be cleaned up after teardown",
+        )
+        self.assertFalse(
+            cleaned_up.get("token_present", True),
+            "_ENVIRON_TOKEN should be cleaned up after teardown",
+        )

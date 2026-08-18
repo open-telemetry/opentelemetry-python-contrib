@@ -1,4 +1,8 @@
 Performance Tests - Benchmarks
 ==============================
 
-Click `here <https://open-telemetry.github.io/opentelemetry-python-contrib/benchmarks/index.html>`_ to view the latest performance benchmarks for packages in this repo.
+For instructions on running and writing benchmarks locally, see the
+`Benchmarks section of CONTRIBUTING.md <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#benchmarks>`_.
+
+Live benchmark results are published at
+`opentelemetry.io/docs/languages/python/benchmarks <https://opentelemetry.io/docs/languages/python/benchmarks/>`_.

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -37,6 +26,7 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
+from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -122,9 +112,7 @@ _recommended_attrs_new = {
 
 _recommended_attrs_both = _recommended_attrs_old.copy()
 _recommended_attrs_both.update(_recommended_attrs_new)
-_recommended_attrs_both["http.server.active_requests"].extend(
-    _server_active_requests_count_attrs_old
-)
+_recommended_attrs_both["http.server.active_requests"].extend(_server_active_requests_count_attrs_old)
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
@@ -187,18 +175,10 @@ async def long_response_asgi(scope, receive, send):
                 ],
             }
         )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": False}
-        )
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
 
 
 async def background_execution_asgi(scope, receive, send):
@@ -245,12 +225,8 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "trailers": True,
             }
         )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": False}
-        )
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
         await send(
             {
                 "type": "http.response.trailers",
@@ -306,6 +282,9 @@ def failing_hook(msg):
     return hook
 
 
+SCOPE = "opentelemetry.instrumentation.asgi"
+
+
 # pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
@@ -330,26 +309,18 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
+    def tearDown(self):
+        self.env_patch.stop()
+        super().tearDown()
+
     def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
-        # Reinitialize test state to avoid state pollution
-        self.setUp()
+        self.memory_exporter.clear()
         return sub
 
     # Helper to assert exemplars presence across specified histogram metric names.
-    def _assert_exemplars_present(
-        self, metric_names: set[str], context: str = ""
-    ):
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        print(metrics_list)
-        metrics = []
-        for resource_metric in (
-            getattr(metrics_list, "resource_metrics", []) or []
-        ):
-            for scope_metric in (
-                getattr(resource_metric, "scope_metrics", []) or []
-            ):
-                metrics.extend(getattr(scope_metric, "metrics", []) or [])
+    def _assert_exemplars_present(self, metric_names: set[str], context: str = ""):
+        metrics = self.get_sorted_metrics(SCOPE)
 
         found = {name: 0 for name in metric_names}
         for metric in metrics:
@@ -392,11 +363,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         modifiers = modifiers or []
         # Check for expected outputs
         response_start = outputs[0]
-        response_final_body = [
-            output
-            for output in outputs
-            if output["type"] == "http.response.body"
-        ][-1]
+        response_final_body = [output for output in outputs if output["type"] == "http.response.body"][-1]
 
         self.assertEqual(response_start["type"], "http.response.start")
         self.assertEqual(response_final_body["type"], "http.response.body")
@@ -421,7 +388,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.assertIsNone(exc_info)
 
         # Check spans
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         expected_old = [
             {
                 "name": "GET / http receive",
@@ -557,7 +524,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.asgi",
+                SCOPE,
             )
             if "events" in expected:
                 self.assertEqual(len(span.events), len(expected["events"]))
@@ -595,9 +562,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=mock_span
-        )
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -647,7 +612,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_default_request()
         outputs = await self.get_all_output()
         self.validate_outputs(outputs)
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
         span_duration_nanos = server_span.end_time - server_span.start_time
@@ -668,13 +633,11 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         ]
         for exclude_spans, excluded_spans in cases:
             self.memory_exporter.clear()
-            app = otel_asgi.OpenTelemetryMiddleware(
-                simple_asgi, exclude_spans=exclude_spans
-            )
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, exclude_spans=exclude_spans)
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
-            span_list = self.memory_exporter.get_finished_spans()
+            span_list = self.get_finished_spans()
             self.assertTrue(span_list)
             for span in span_list:
                 for excluded_span in excluded_spans:
@@ -683,9 +646,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
     async def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""
-        app = otel_asgi.OpenTelemetryMiddleware(
-            background_execution_trailers_asgi
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_trailers_asgi)
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
@@ -706,7 +667,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             return expected
 
         self.validate_outputs(outputs, modifiers=[add_body_and_trailer_span])
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
         span_duration_nanos = server_span.end_time - server_span.start_time
@@ -727,14 +688,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = span_name
                 else:
-                    entry["name"] = " ".join(
-                        [span_name] + entry["name"].split(" ")[2:]
-                    )
+                    entry["name"] = " ".join([span_name] + entry["name"].split(" ")[2:])
             return expected
 
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, default_span_details=get_predefined_span_details
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, default_span_details=get_predefined_span_details)
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
@@ -745,21 +702,15 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         result = TestBase.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
 
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=tracer_provider
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=tracer_provider)
         self.seed_app(app)
         await self.send_default_request()
         span_list = exporter.get_finished_spans()
         for span in span_list:
-            self.assertEqual(
-                span.resource.attributes["service-test-key"], "value"
-            )
+            self.assertEqual(span.resource.attributes["service-test-key"], "value")
 
     async def test_no_op_tracer_provider_otel_asgi(self):
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=trace_api.NoOpTracerProvider())
         self.seed_app(app)
         await self.send_default_request()
 
@@ -767,7 +718,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertEqual(response_body["body"], b"*")
         self.assertEqual(response_start["status"], 200)
 
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
     async def test_behavior_with_scope_server_as_none(self):
@@ -891,9 +842,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
-            expected[3]["attributes"].update(
-                {HTTP_USER_AGENT: user_agent.decode("utf8")}
-            )
+            expected[3]["attributes"].update({HTTP_USER_AGENT: user_agent.decode("utf8")})
             return expected
 
         self.scope["headers"].append([b"user-agent", user_agent])
@@ -908,9 +857,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
-            expected[3]["attributes"].update(
-                {USER_AGENT_ORIGINAL: user_agent.decode("utf8")}
-            )
+            expected[3]["attributes"].update({USER_AGENT_ORIGINAL: user_agent.decode("utf8")})
             return expected
 
         self.scope["headers"].append([b"user-agent", user_agent])
@@ -965,9 +912,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_bot(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_synthetic_bot(expected, ua: bytes = user_agent):
                     expected[3]["attributes"].update(
                         {
                             HTTP_USER_AGENT: ua.decode("utf8"),
@@ -981,9 +926,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_synthetic_bot]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_synthetic_bot])
 
     async def test_user_agent_synthetic_test_detection(self):
         """Test that test user agents are detected as synthetic with type 'test'"""
@@ -999,9 +942,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_test(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_synthetic_test(expected, ua: bytes = user_agent):
                     expected[3]["attributes"].update(
                         {
                             HTTP_USER_AGENT: ua.decode("utf8"),
@@ -1015,9 +956,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_synthetic_test]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_synthetic_test])
 
     async def test_user_agent_non_synthetic(self):
         """Test that normal user agents are not marked as synthetic"""
@@ -1034,9 +973,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_non_synthetic(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_non_synthetic(expected, ua: bytes = user_agent):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
@@ -1050,9 +987,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_non_synthetic]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_non_synthetic])
 
     async def test_user_agent_synthetic_new_semconv(self):
         """Test synthetic user agent detection with new semantic conventions"""
@@ -1091,7 +1026,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_default_request()
         response_start, response_body, *_ = await self.get_all_output()
 
-        span = self.memory_exporter.get_finished_spans()[-1]
+        span = self.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
 
         self.assertEqual(response_body["body"], b"*")
@@ -1099,7 +1034,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
-        traceresponse = f"00-{trace_id}-{span_id}-01"
+        trace_flags = span.get_span_context().trace_flags
+        traceresponse = f"00-{trace_id}-{span_id}-{trace_flags:02x}"
 
         self.assertListEqual(
             response_start["headers"],
@@ -1131,7 +1067,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
         await self.get_all_output()
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
             {
@@ -1205,7 +1141,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
         await self.get_all_output()
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
             {
@@ -1278,7 +1214,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
         await self.get_all_output()
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
             {
@@ -1368,12 +1304,13 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.disconnect"})
         _, socket_send, *_ = await self.get_all_output()
 
-        span = self.memory_exporter.get_finished_spans()[-1]
+        span = self.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
 
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
-        traceresponse = f"00-{trace_id}-{span_id}-01"
+        trace_flags = span.get_span_context().trace_flags
+        traceresponse = f"00-{trace_id}-{span_id}-{trace_flags:02x}"
 
         self.assertListEqual(
             socket_send["headers"],
@@ -1390,7 +1327,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
-        span_list = self.memory_exporter.get_finished_spans()
+        span_list = self.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
     async def test_hooks(self):
@@ -1422,9 +1359,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
-        self.validate_outputs(
-            outputs, modifiers=[update_expected_hook_results]
-        )
+        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
 
     async def test_hook_exceptions(self):
         def exception_event(msg):
@@ -1456,9 +1391,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
-        self.validate_outputs(
-            outputs, modifiers=[update_expected_hook_results]
-        )
+        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
 
     async def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1471,32 +1404,22 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_old[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_old[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_new_semconv(self):
@@ -1511,37 +1434,27 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_new[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    if metric.name == "http.server.request.duration":
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_new[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_both_semconv(self):
@@ -1556,37 +1469,27 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_both)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_both[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_both)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    if metric.name == "http.server.request.duration":
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
@@ -1596,9 +1499,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
-        self._assert_exemplars_present(
-            {"http.server.duration"}, context="old semconv"
-        )
+        self._assert_exemplars_present({"http.server.duration"}, context="old semconv")
 
     async def test_asgi_metrics_exemplars_expected_new_semconv(self):
         """Failing test placeholder asserting exemplars should be present for request duration histogram (new semconv)."""
@@ -1607,9 +1508,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
-        self._assert_exemplars_present(
-            {"http.server.request.duration"}, context="new semconv"
-        )
+        self._assert_exemplars_present({"http.server.request.duration"}, context="new semconv")
 
     async def test_asgi_metrics_exemplars_expected_both_semconv(self):
         """Failing test placeholder asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
@@ -1644,41 +1543,35 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.0",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metrics in resource_metric.scope_metrics:
-                for metric in scope_metrics.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.count, 1)
-                            if metric.name == "http.server.duration":
-                                self.assertAlmostEqual(
-                                    duration, point.sum, delta=30
-                                )
-                            elif metric.name == "http.server.response.size":
-                                self.assertEqual(1024, point.sum)
-                            elif metric.name == "http.server.request.size":
-                                self.assertEqual(128, point.sum)
-                        elif isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.value, 0)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(1024, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(128, point.sum)
+                elif isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
 
     async def test_basic_metric_success_nonrecording_span(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=mock_span
-        )
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -1702,34 +1595,28 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "http.scheme": "http",
                 "http.flavor": "1.0",
             }
-            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            metrics = self.get_sorted_metrics(SCOPE)
             # pylint: disable=too-many-nested-blocks
-            for resource_metric in metrics_list.resource_metrics:
-                for scope_metrics in resource_metric.scope_metrics:
-                    for metric in scope_metrics.metrics:
-                        for point in list(metric.data.data_points):
-                            if isinstance(point, HistogramDataPoint):
-                                self.assertDictEqual(
-                                    expected_duration_attributes,
-                                    dict(point.attributes),
-                                )
-                                self.assertEqual(point.count, 1)
-                                if metric.name == "http.server.duration":
-                                    self.assertAlmostEqual(
-                                        duration, point.sum, delta=15
-                                    )
-                                elif (
-                                    metric.name == "http.server.response.size"
-                                ):
-                                    self.assertEqual(1024, point.sum)
-                                elif metric.name == "http.server.request.size":
-                                    self.assertEqual(128, point.sum)
-                            elif isinstance(point, NumberDataPoint):
-                                self.assertDictEqual(
-                                    expected_requests_count_attributes,
-                                    dict(point.attributes),
-                                )
-                                self.assertEqual(point.value, 0)
+            for metric in metrics:
+                for point in list(metric.data.data_points):
+                    if isinstance(point, HistogramDataPoint):
+                        self.assertDictEqual(
+                            expected_duration_attributes,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(point.count, 1)
+                        if metric.name == "http.server.duration":
+                            self.assertAlmostEqual(duration, point.sum, delta=15)
+                        elif metric.name == "http.server.response.size":
+                            self.assertEqual(1024, point.sum)
+                        elif metric.name == "http.server.request.size":
+                            self.assertEqual(128, point.sum)
+                    elif isinstance(point, NumberDataPoint):
+                        self.assertDictEqual(
+                            expected_requests_count_attributes,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(point.value, 0)
 
     async def test_basic_metric_success_new_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1748,36 +1635,28 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "http.request.method": "GET",
             "url.scheme": "http",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metrics in resource_metric.scope_metrics:
-                for metric in scope_metrics.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.count, 1)
-                            if metric.name == "http.server.request.duration":
-                                self.assertAlmostEqual(
-                                    duration_s, point.sum, places=2
-                                )
-                            elif (
-                                metric.name == "http.server.response.body.size"
-                            ):
-                                self.assertEqual(1024, point.sum)
-                            elif (
-                                metric.name == "http.server.request.body.size"
-                            ):
-                                self.assertEqual(128, point.sum)
-                        elif isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.value, 0)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(1024, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(128, point.sum)
+                elif isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
 
     async def test_basic_metric_success_both_semconv(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1809,64 +1688,54 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "network.protocol.version": "1.0",
             "http.response.status_code": 200,
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metrics in resource_metric.scope_metrics:
-                for metric in scope_metrics.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
-                            if metric.name == "http.server.request.duration":
-                                self.assertAlmostEqual(
-                                    duration_s, point.sum, places=2
-                                )
-                                self.assertDictEqual(
-                                    expected_duration_attributes_new,
-                                    dict(point.attributes),
-                                )
-                            elif (
-                                metric.name == "http.server.response.body.size"
-                            ):
-                                self.assertEqual(1024, point.sum)
-                                self.assertDictEqual(
-                                    expected_duration_attributes_new,
-                                    dict(point.attributes),
-                                )
-                            elif (
-                                metric.name == "http.server.request.body.size"
-                            ):
-                                self.assertEqual(128, point.sum)
-                                self.assertDictEqual(
-                                    expected_duration_attributes_new,
-                                    dict(point.attributes),
-                                )
-                            elif metric.name == "http.server.duration":
-                                self.assertAlmostEqual(
-                                    duration, point.sum, delta=30
-                                )
-                                self.assertDictEqual(
-                                    expected_duration_attributes_old,
-                                    dict(point.attributes),
-                                )
-                            elif metric.name == "http.server.response.size":
-                                self.assertEqual(1024, point.sum)
-                                self.assertDictEqual(
-                                    expected_duration_attributes_old,
-                                    dict(point.attributes),
-                                )
-                            elif metric.name == "http.server.request.size":
-                                self.assertEqual(128, point.sum)
-                                self.assertDictEqual(
-                                    expected_duration_attributes_old,
-                                    dict(point.attributes),
-                                )
-                        elif isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.value, 0)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=2)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(1024, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(128, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(1024, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(128, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                elif isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
 
     async def test_metric_target_attribute(self):
         expected_target = "/api/user/{id}"
@@ -1886,20 +1755,18 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         assertions = 0
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metrics in resource_metric.scope_metrics:
-                for metric in scope_metrics.metrics:
-                    if metric.name == "http.server.active_requests":
-                        continue
-                    for point in metric.data.data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(
-                                point.attributes["http.target"],
-                                expected_target,
-                            )
-                            assertions += 1
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                continue
+            for point in metric.data.data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(
+                        point.attributes["http.target"],
+                        expected_target,
+                    )
+                    assertions += 1
         self.assertEqual(assertions, 3)
 
     async def test_no_metric_for_websockets(self):
@@ -1919,30 +1786,39 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
         await self.get_all_output()
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
     async def test_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, excluded_urls="test_excluded_urls"
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, excluded_urls="test_excluded_urls")
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
     async def test_no_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, excluded_urls="test_excluded_urls"
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, excluded_urls="test_excluded_urls")
         self.seed_app(app)
         self.scope["path"] = "/test_no_excluded_urls"
         await self.send_default_request()
         await self.get_all_output()
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.get_finished_spans()
         self.assertGreater(len(spans), 0)
+
+    async def test_suppress_http_instrumentation(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+
+        async def suppression_wrapper(scope, receive, send):
+            with suppress_http_instrumentation():
+                await app(scope, receive, send)
+
+        self.seed_app(suppression_wrapper)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
 
 class TestAsgiAttributes(unittest.TestCase):
@@ -2160,15 +2036,11 @@ class TestWrappedApplication(AsyncAsgiTestBase):
     ):
         tracer_provider, exporter = TestBase.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=tracer_provider
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=tracer_provider)
 
         # Wrapping the otel intercepted app with server span
         async def wrapped_app(scope, receive, send):
-            with tracer.start_as_current_span(
-                "test", kind=SpanKind.SERVER
-            ) as _:
+            with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as _:
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
@@ -2185,9 +2057,7 @@ class TestWrappedApplication(AsyncAsgiTestBase):
         self.assertEqual(SpanKind.SERVER, span_list[4].kind)
 
         # internal span should be child of the test span we have provided
-        self.assertEqual(
-            span_list[4].context.span_id, span_list[3].parent.span_id
-        )
+        self.assertEqual(span_list[4].context.span_id, span_list[3].parent.span_id)
 
 
 class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
@@ -2211,10 +2081,7 @@ class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
         except ValueError as exc_info:
             self.assertEqual(exc_info.args[0], "whatever")
         except Exception as exc_info:  # pylint: disable=W0703
-            self.fail(
-                "expecting ValueError('whatever'), received instead: "
-                + str(exc_info)
-            )
+            self.fail("expecting ValueError('whatever'), received instead: " + str(exc_info))
         else:
             self.fail("expecting ValueError('whatever')")
 

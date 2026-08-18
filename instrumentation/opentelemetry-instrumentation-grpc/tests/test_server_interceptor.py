@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint:disable=unused-argument
 # pylint:disable=no-self-use
@@ -29,6 +18,7 @@ from opentelemetry.instrumentation.grpc import (
     GrpcInstrumentorServer,
     server_interceptor,
 )
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
@@ -68,6 +58,15 @@ class UnaryUnaryRpcHandler(grpc.GenericRpcHandler):
 
     def service(self, handler_call_details):
         return UnaryUnaryMethodHandler(self._unary_unary_handler)
+
+
+class SuppressRpcInterceptor(grpc.ServerInterceptor):
+    """An interceptor which runs the rest of the server interceptor chain
+    with instrumentation suppressed."""
+
+    def intercept_service(self, continuation, handler_call_details):
+        with suppress_instrumentation():
+            return continuation(handler_call_details)
 
 
 class Servicer(GRPCTestServerServicer):
@@ -117,9 +116,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         try:
             with self.server(max_workers=1) as (server, channel):
-                server.add_generic_rpc_handlers(
-                    (UnaryUnaryRpcHandler(handler),)
-                )
+                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
                 rpc_call = "TestServicer/handler"
                 try:
                     server.start()
@@ -137,9 +134,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -201,9 +196,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -263,9 +256,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            parent_span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(parent_span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -281,9 +272,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(
-            parent_span.context.trace_id, child_span.context.trace_id
-        )
+        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
 
     def test_create_span_streaming(self):
         """Check that the interceptor wraps calls with spans server-side, on a
@@ -316,9 +305,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -378,9 +365,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            parent_span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(parent_span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -396,9 +381,55 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(
-            parent_span.context.trace_id, child_span.context.trace_id
-        )
+        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+
+    def test_suppress_instrumentation(self):
+        """Check that no span is created for a call when instrumentation
+        is suppressed."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[SuppressRpcInterceptor(), interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                channel.unary_unary(rpc_call)(msg)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation_streaming(self):
+        """Check that no span is created for a streaming call when
+        instrumentation is suppressed."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[SuppressRpcInterceptor(), interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                list(channel.unary_stream(rpc_call)(msg))
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     def test_span_lifetime(self):
         """Check that the span is active for the duration of the call."""
@@ -511,12 +542,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 # Interleave calls so spans are active on each thread at the same
                 # time
                 with futures.ThreadPoolExecutor(max_workers=2) as tpe:
-                    f1 = tpe.submit(
-                        channel.unary_unary("TestServicer/handler"), b""
-                    )
-                    f2 = tpe.submit(
-                        channel.unary_unary("TestServicer/handler"), b""
-                    )
+                    f1 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
+                    f2 = tpe.submit(channel.unary_unary("TestServicer/handler"), b"")
                 futures.wait((f1, f2))
             finally:
                 server.stop(None)
@@ -573,9 +600,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 max_workers=1,
                 interceptors=[interceptor],
             ) as (server, channel):
-                server.add_generic_rpc_handlers(
-                    (UnaryUnaryRpcHandler(handler),)
-                )
+                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
 
                 server.start()
 
@@ -595,9 +620,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -625,9 +648,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         self.assertEqual(span.status.description, None)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -640,9 +661,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 RPC_METHOD: "unset_status_handler",
                 RPC_SERVICE: "TestServicer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
-                    0
-                ],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[0],
             },
         )
 
@@ -677,9 +696,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(

@@ -1,6 +1,24 @@
 OpenTelemetry Google GenAI SDK Instrumentation
 ==============================================
 
+.. warning::
+
+   **This copy of the instrumentation is deprecated.** The package keeps its name,
+   `opentelemetry-instrumentation-google-genai <https://pypi.org/project/opentelemetry-instrumentation-google-genai/>`_,
+   but is now developed and released from
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-google-genai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai>`_.
+   Versions ``1.0b0`` and later come from that repository; the copy here only
+   receives security patches. Upgrade with:
+
+   .. code-block:: console
+
+       pip install --upgrade "opentelemetry-instrumentation-google-genai>=1.0b0"
+
+   Version ``1.0b0`` contains **breaking changes** to the emitted telemetry and
+   to the configuration API relative to the ``0.x`` releases. Review the
+   `CHANGELOG <https://github.com/open-telemetry/opentelemetry-python-genai/blob/main/instrumentation/opentelemetry-instrumentation-google-genai/CHANGELOG.md>`_
+   before upgrading.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-google-genai.svg
@@ -81,6 +99,31 @@ Message content such as the contents of the prompt and response
 are not captured by default. To capture message content as log events, set the environment variable
 ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` to ``true``.
 
+Configuration recording
+***********************
+
+The instrumentation can optionally record ``GenerateContentConfig`` parameters
+as span and event attributes under the ``gcp.gen_ai.operation.config.*`` namespace.
+
+By default, no config fields are recorded. You can control which fields are
+captured using the following environment variables:
+
+* ``OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES`` — A comma-separated
+  list of config field names to include in the span attributes. For example:
+
+  .. code-block:: bash
+
+      export OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES=temperature,max_output_tokens
+
+* ``OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES`` — A comma-separated
+  list of config field names to exclude from the span attributes:
+
+  .. code-block:: bash
+
+      export OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES=stop_sequences
+
+If both variables are set, the includes list is applied first, then the
+excludes list filters the result further.
 
 Uninstrument
 ************

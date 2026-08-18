@@ -1,19 +1,13 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
 
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import (
+    Future,
+    ThreadPoolExecutor,
+)
 from typing import List
 from unittest.mock import MagicMock, patch
 
@@ -41,9 +35,7 @@ class TestThreading(TestBase):
         self.run_threading_test(threading.Thread(target=self.fake_func))
 
     def test_trace_context_propagation_in_timer(self):
-        self.run_threading_test(
-            threading.Timer(interval=1, function=self.fake_func)
-        )
+        self.run_threading_test(threading.Timer(interval=1, function=self.fake_func))
 
     def run_threading_test(self, thread: threading.Thread):
         with self.get_root_span() as span:
@@ -53,9 +45,7 @@ class TestThreading(TestBase):
 
             # check result
             self.assertEqual(len(self._mock_span_contexts), 1)
-            self.assertEqual(
-                self._mock_span_contexts[0], expected_span_context
-            )
+            self.assertEqual(self._mock_span_contexts[0], expected_span_context)
 
     def test_trace_context_propagation_in_thread_pool_with_multiple_workers(
         self,
@@ -64,14 +54,12 @@ class TestThreading(TestBase):
         executor = ThreadPoolExecutor(max_workers=max_workers)
 
         expected_span_contexts: List[trace.SpanContext] = []
-        futures_list = []
+        futures_list: List[Future[trace.SpanContext]] = []
         for num in range(max_workers):
             with self._tracer.start_as_current_span(f"trace_{num}") as span:
                 expected_span_context = span.get_span_context()
                 expected_span_contexts.append(expected_span_context)
-                future = executor.submit(
-                    self.get_current_span_context_for_test
-                )
+                future = executor.submit(self.get_current_span_context_for_test)
                 futures_list.append(future)
 
         result_span_contexts = [future.result() for future in futures_list]
@@ -85,12 +73,8 @@ class TestThreading(TestBase):
             # test propagation of the same trace context across multiple tasks
             with self._tracer.start_as_current_span("task") as task_span:
                 expected_task_context = task_span.get_span_context()
-                future1 = executor.submit(
-                    self.get_current_span_context_for_test
-                )
-                future2 = executor.submit(
-                    self.get_current_span_context_for_test
-                )
+                future1 = executor.submit(self.get_current_span_context_for_test)
+                future2 = executor.submit(self.get_current_span_context_for_test)
 
                 # check result
                 self.assertEqual(future1.result(), expected_task_context)
@@ -99,18 +83,14 @@ class TestThreading(TestBase):
             # test propagation of different trace contexts across tasks in sequence
             with self._tracer.start_as_current_span("task1") as task1_span:
                 expected_task1_context = task1_span.get_span_context()
-                future1 = executor.submit(
-                    self.get_current_span_context_for_test
-                )
+                future1 = executor.submit(self.get_current_span_context_for_test)
 
                 # check result
                 self.assertEqual(future1.result(), expected_task1_context)
 
             with self._tracer.start_as_current_span("task2") as task2_span:
                 expected_task2_context = task2_span.get_span_context()
-                future2 = executor.submit(
-                    self.get_current_span_context_for_test
-                )
+                future2 = executor.submit(self.get_current_span_context_for_test)
 
                 # check result
                 self.assertEqual(future2.result(), expected_task2_context)
@@ -123,15 +103,15 @@ class TestThreading(TestBase):
     def get_current_span_context_for_test() -> trace.SpanContext:
         return trace.get_current_span().get_span_context()
 
-    def print_square(self, num):
+    def print_square(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             return num * num
 
-    def print_cube(self, num):
+    def print_cube(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("cube"):
             return num * num * num
 
-    def print_square_with_thread(self, num):
+    def print_square_with_thread(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             cube_thread = threading.Thread(target=self.print_cube, args=(10,))
 
@@ -139,11 +119,9 @@ class TestThreading(TestBase):
             cube_thread.join()
             return num * num
 
-    def calculate(self, num):
+    def calculate(self, num: int | float) -> None:
         with self._tracer.start_as_current_span("calculate"):
-            square_thread = threading.Thread(
-                target=self.print_square, args=(num,)
-            )
+            square_thread = threading.Thread(target=self.print_square, args=(num,))
             cube_thread = threading.Thread(target=self.print_cube, args=(num,))
             square_thread.start()
             square_thread.join()
@@ -173,9 +151,7 @@ class TestThreading(TestBase):
         #  threadA -> methodA -> threadB -> methodB
         #
 
-        square_thread = threading.Thread(
-            target=self.print_square_with_thread, args=(10,)
-        )
+        square_thread = threading.Thread(target=self.print_square_with_thread, args=(10,))
 
         with self._tracer.start_as_current_span("root"):
             square_thread.start()
@@ -292,3 +268,46 @@ class TestThreading(TestBase):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_called_once()
+
+    def test_threading_run_without_start(self):
+        square_thread = threading.Thread(target=self.print_square, args=(10,))
+        with self._tracer.start_as_current_span("root"):
+            square_thread.run()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        root_span = next(span for span in spans if span.name == "root")
+        self.assertIsNotNone(root_span)
+        self.assertIsNone(root_span.parent)
+        square_span = next(span for span in spans if span.name == "square")
+        self.assertIsNotNone(square_span)
+        self.assertIs(square_span.parent, root_span.get_span_context())
+
+    def test_threading_run_with_custom_run(self):
+        _tracer = self._tracer
+
+        class ThreadWithCustomRun(threading.Thread):
+            def run(self):
+                # don't call super().run() on purpose
+                # Thread.run() cannot be called twice
+                with _tracer.start_as_current_span("square"):
+                    pass
+
+        square_thread = ThreadWithCustomRun(target=self.print_square, args=(10,))
+        with self._tracer.start_as_current_span("run_1"):
+            square_thread.run()
+        with self._tracer.start_as_current_span("run_2"):
+            square_thread.run()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 4)
+        run_1_span = next(span for span in spans if span.name == "run_1")
+        run_2_span = next(span for span in spans if span.name == "run_2")
+        square_spans = [span for span in spans if span.name == "square"]
+        square_spans.sort(key=lambda x: x.start_time or 0)
+        run_1_child_span = square_spans[0]
+        run_2_child_span = square_spans[1]
+        self.assertIs(run_1_child_span.parent, run_1_span.get_span_context())
+        self.assertIs(run_2_child_span.parent, run_2_span.get_span_context())
+        self.assertIsNone(run_1_span.parent)
+        self.assertIsNone(run_2_span.parent)

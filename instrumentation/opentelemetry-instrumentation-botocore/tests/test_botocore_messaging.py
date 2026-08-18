@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from opentelemetry.instrumentation.botocore.extensions._messaging import (
     inject_propagation_context,
@@ -24,9 +13,7 @@ class TestMessageAttributes(TestBase):
         carrier = {}
 
         message_attributes_setter.set(carrier, "key", "value")
-        self.assertEqual(
-            {"key": {"DataType": "String", "StringValue": "value"}}, carrier
-        )
+        self.assertEqual({"key": {"DataType": "String", "StringValue": "value"}}, carrier)
 
     def test_inject_propagation_context(self):
         carrier = {
@@ -41,10 +28,7 @@ class TestMessageAttributes(TestBase):
         self.assertGreater(len(carrier), 2)
 
     def test_inject_propagation_context_too_many_attributes(self):
-        carrier = {
-            f"key{idx}": {"DataType": "String", "StringValue": f"value{idx}"}
-            for idx in range(10)
-        }
+        carrier = {f"key{idx}": {"DataType": "String", "StringValue": f"value{idx}"} for idx in range(10)}
         tracer = self.tracer_provider.get_tracer("test-tracer")
         with tracer.start_as_current_span("span"):
             inject_propagation_context(carrier)

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import os
 from typing import Set
 
@@ -44,19 +33,14 @@ def get_future_trace_enabled() -> bool:
     Function to get the future active enabled flag from the environment variable
     default value is False
     """
-    return (
-        os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower()
-        == "true"
-    )
+    return os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower() == "true"
 
 
 def get_to_thread_to_trace() -> set:
     """
     Function to get the functions to be traced from the environment variable
     """
-    func_names = os.getenv(
-        OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE
-    )
+    func_names = os.getenv(OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE)
     return separate_coro_names_by_comma(func_names)
 
 

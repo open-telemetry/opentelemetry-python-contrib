@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import remoulade
 from remoulade.brokers.local import LocalBroker
@@ -84,23 +73,15 @@ class TestRemouladeInstrumentation(TestBase):
         producer_spans = spans[1::2]
 
         self.assertEqual(consumer_spans[0].name, "remoulade/process(retry-3)")
-        self.assertSpanHasAttributes(
-            consumer_spans[0], {"remoulade.retry_count": 3}
-        )
+        self.assertSpanHasAttributes(consumer_spans[0], {"remoulade.retry_count": 3})
         self.assertEqual(consumer_spans[1].name, "remoulade/process(retry-2)")
-        self.assertSpanHasAttributes(
-            consumer_spans[1], {"remoulade.retry_count": 2}
-        )
+        self.assertSpanHasAttributes(consumer_spans[1], {"remoulade.retry_count": 2})
         self.assertEqual(consumer_spans[3].name, "remoulade/process")
 
         self.assertEqual(producer_spans[0].name, "remoulade/send(retry-3)")
-        self.assertSpanHasAttributes(
-            producer_spans[0], {"remoulade.retry_count": 3}
-        )
+        self.assertSpanHasAttributes(producer_spans[0], {"remoulade.retry_count": 3})
         self.assertEqual(producer_spans[1].name, "remoulade/send(retry-2)")
-        self.assertSpanHasAttributes(
-            producer_spans[1], {"remoulade.retry_count": 2}
-        )
+        self.assertSpanHasAttributes(producer_spans[1], {"remoulade.retry_count": 2})
         self.assertEqual(producer_spans[3].name, "remoulade/send")
 
     def test_uninstrument(self):

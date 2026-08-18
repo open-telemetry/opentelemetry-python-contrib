@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import threading
 import time
 from platform import python_implementation
@@ -10,13 +13,13 @@ from opentelemetry.test.test_base import TestBase
 
 from .celery_test_tasks import app, task_add
 
+SCOPE = "opentelemetry.instrumentation.celery"
+
 
 class TestMetrics(TestBase):
     def setUp(self):
         super().setUp()
-        self._worker = app.Worker(
-            app=app, pool="solo", concurrency=1, hostname="celery@akochavi"
-        )
+        self._worker = app.Worker(app=app, pool="solo", concurrency=1, hostname="celery@akochavi")
         self._thread = threading.Thread(target=self._worker.start)
         self._thread.daemon = True
         self._thread.start()
@@ -34,7 +37,7 @@ class TestMetrics(TestBase):
             if time.time() > timeout:
                 break
             time.sleep(0.05)
-        return self.get_sorted_metrics()
+        return self.get_sorted_metrics(SCOPE)
 
     def test_basic_metric(self):
         CeleryInstrumentor().instrument()
@@ -65,9 +68,7 @@ class TestMetrics(TestBase):
             est_value_delta=200,
         )
 
-    @mark.skipif(
-        python_implementation() == "PyPy", reason="Fails randomly in pypy"
-    )
+    @mark.skipif(python_implementation() == "PyPy", reason="Fails randomly in pypy")
     def test_metric_uninstrument(self):
         CeleryInstrumentor().instrument()
 

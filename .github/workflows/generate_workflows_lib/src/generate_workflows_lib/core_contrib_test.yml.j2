@@ -20,6 +20,10 @@ env:
   CORE_REPO_SHA: ${% raw %}{{ inputs.CORE_REPO_SHA }}{% endraw %}
   CONTRIB_REPO_SHA: ${% raw %}{{ inputs.CONTRIB_REPO_SHA }}{% endraw %}
   PIP_EXISTS_ACTION: w
+  CORE_REPO_API: ${% raw %}{{ github.workspace }}{% endraw %}/opentelemetry-python/opentelemetry-api
+  CORE_REPO_SDK: ${% raw %}{{ github.workspace }}{% endraw %}/opentelemetry-python/opentelemetry-sdk
+  CORE_REPO_SEMCONV: ${% raw %}{{ github.workspace }}{% endraw %}/opentelemetry-python/opentelemetry-semantic-conventions
+  CORE_REPO_TEST_UTILS: ${% raw %}{{ github.workspace }}{% endraw %}/opentelemetry-python/tests/opentelemetry-test-utils
 
 jobs:
   {%- for job_data in job_datas %}
@@ -42,10 +46,10 @@ jobs:
           ref: ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
           path: opentelemetry-python
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           architecture: "x64"
 
       - name: Install tox

@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: skip-file
 """Manual OpenAI Agents instrumentation example."""
 
@@ -40,8 +43,7 @@ def run_agent() -> None:
     assistant = Agent(
         name="Travel Concierge",
         instructions=(
-            "You are a concise travel concierge. Use the weather tool when the"
-            " traveler asks about local conditions."
+            "You are a concise travel concierge. Use the weather tool when the traveler asks about local conditions."
         ),
         tools=[get_weather],
     )

@@ -1,11 +1,24 @@
 # Changelog
 
+> [!WARNING]
+> This copy of the instrumentation is deprecated and only receives security patches.
+> `opentelemetry-instrumentation-google-genai` keeps its name, but is developed and released from the
+> [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai)
+> repository starting with version `1.0b0`, which contains breaking changes. See its
+> [CHANGELOG](https://github.com/open-telemetry/opentelemetry-python-genai/blob/main/instrumentation/opentelemetry-instrumentation-google-genai/CHANGELOG.md)
+> for later releases.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## Version 0.7b1 (2026-05-19)
+## Version 0.7b0 (2026-02-20)
+- Fix bug in how tokens are counted when using the streaming `generateContent` method.  ([#4152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4152)).
+- Add `gen_ai.tool.definitions` attribute to `gen_ai.client.inference.operation.details` log event ([#4142](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4142)).
+- Add `gen_ai.tool_definitions` to completion hook ([#4181](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4181))
+
 
 ## Version 0.6b0 (2026-01-27)
 

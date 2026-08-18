@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import unittest
 from collections import OrderedDict
@@ -67,24 +56,16 @@ class AwsEc2ResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.ec2._get_token",
         return_value="mock-token",
     )
-    def test_simple_create(
-        self, mock_get_token, mock_get_identity, mock_get_host
-    ):
+    def test_simple_create(self, mock_get_token, mock_get_identity, mock_get_host):
         actual = AwsEc2ResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes))
 
     @patch(
         "opentelemetry.sdk.extension.aws.resource.ec2._get_token",
         side_effect=URLError("Something went wrong"),
     )
-    def test_empty_resource_if_token_returns_an_url_error(
-        self, mock_get_token
-    ):
-        with self.assertLogs(
-            "opentelemetry.sdk.extension.aws.resource.ec2", level="DEBUG"
-        ) as logger:
+    def test_empty_resource_if_token_returns_an_url_error(self, mock_get_token):
+        with self.assertLogs("opentelemetry.sdk.extension.aws.resource.ec2", level="DEBUG") as logger:
             actual = AwsEc2ResourceDetector().detect()
             self.assertEqual(
                 logger.output,

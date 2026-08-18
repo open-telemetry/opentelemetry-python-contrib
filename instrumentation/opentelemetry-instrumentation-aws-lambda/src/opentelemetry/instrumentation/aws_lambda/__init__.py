@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The opentelemetry-instrumentation-aws-lambda package provides an Instrumentor
@@ -69,19 +58,27 @@ for example:
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
+from enum import Enum
 from importlib import import_module
-from typing import Any, Callable, Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
 from opentelemetry.context.context import Context
+from opentelemetry.instrumentation.aws_lambda._sqs import (
+    _is_sqs_event,
+    _run_sqs_handler,
+)
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
+from opentelemetry.instrumentation.cidict import CIDict
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
@@ -93,6 +90,7 @@ from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
 from opentelemetry.semconv._incubating.attributes.faas_attributes import (
     FAAS_INVOCATION_ID,
     FAAS_TRIGGER,
+    FaasTriggerValues,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_METHOD,
@@ -106,7 +104,6 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
 from opentelemetry.trace import (
-    Span,
     SpanKind,
     TracerProvider,
     get_tracer,
@@ -117,11 +114,48 @@ from opentelemetry.trace.status import Status, StatusCode
 logger = logging.getLogger(__name__)
 
 _HANDLER = "_HANDLER"
+
 _X_AMZN_TRACE_ID = "_X_AMZN_TRACE_ID"
 ORIG_HANDLER = "ORIG_HANDLER"
-OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
-    "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
-)
+OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
+
+if TYPE_CHECKING:
+    import typing
+    from collections.abc import MutableMapping
+
+    class LambdaContext(typing.Protocol):
+        """Type definition for AWS Lambda context object.
+
+        This Protocol defines the interface for the context object passed to Lambda
+        function handlers, providing information about the invocation, function, and
+        execution environment.
+
+         See Also:
+            AWS Lambda Context Object documentation:
+            https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
+        """
+
+        function_name: str
+        function_version: str
+        invoked_function_arn: str
+        memory_limit_in_mb: int
+        aws_request_id: str
+        log_group_name: str
+        log_stream_name: str
+
+
+class _LambdaEventType(Enum):
+    SQS = "sqs"
+    API_GATEWAY = "api_gateway"
+    UNKNOWN = "unknown"
+
+
+def _get_lambda_event_type(lambda_event: Any) -> _LambdaEventType:
+    if _is_sqs_event(lambda_event):
+        return _LambdaEventType.SQS
+    if isinstance(lambda_event, dict) and lambda_event.get("requestContext"):
+        return _LambdaEventType.API_GATEWAY
+    return _LambdaEventType.UNKNOWN
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -151,7 +185,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
         )
     if not isinstance(headers, dict):
         headers = {}
-    return get_global_textmap().extract(headers)
+    return get_global_textmap().extract(
+        CIDict(headers),
+    )
 
 
 def _determine_parent_context(
@@ -180,88 +216,103 @@ def _determine_parent_context(
     return event_context_extractor(lambda_event)
 
 
-def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _get_api_gateway_v1_proxy_attributes(
+    lambda_event: Any,
+) -> MutableMapping[str, Any]:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
     """
-    span.set_attribute(HTTP_METHOD, lambda_event.get("httpMethod"))
+    attributes = {}
+    attributes[HTTP_METHOD] = lambda_event.get("httpMethod")
 
     if lambda_event.get("headers"):
-        if "User-Agent" in lambda_event["headers"]:
-            span.set_attribute(
-                HTTP_USER_AGENT,
-                lambda_event["headers"]["User-Agent"],
-            )
-        if "X-Forwarded-Proto" in lambda_event["headers"]:
-            span.set_attribute(
-                HTTP_SCHEME,
-                lambda_event["headers"]["X-Forwarded-Proto"],
-            )
-        if "Host" in lambda_event["headers"]:
-            span.set_attribute(
-                NET_HOST_NAME,
-                lambda_event["headers"]["Host"],
-            )
+        headers = CIDict(lambda_event["headers"])
+        if "User-Agent" in headers:
+            attributes[HTTP_USER_AGENT] = headers["User-Agent"]
+        if "X-Forwarded-Proto" in headers:
+            attributes[HTTP_SCHEME] = headers["X-Forwarded-Proto"]
+        if "Host" in headers:
+            attributes[NET_HOST_NAME] = headers["Host"]
+
     if "resource" in lambda_event:
-        span.set_attribute(HTTP_ROUTE, lambda_event["resource"])
+        attributes[HTTP_ROUTE] = lambda_event["resource"]
 
         if lambda_event.get("queryStringParameters"):
-            span.set_attribute(
-                HTTP_TARGET,
-                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
-            )
+            attributes[HTTP_TARGET] = f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}"
         else:
-            span.set_attribute(HTTP_TARGET, lambda_event["resource"])
+            attributes[HTTP_TARGET] = lambda_event["resource"]
+    return attributes
 
-    return span
 
-
-def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _get_api_gateway_v2_proxy_attributes(
+    lambda_event: Any,
+) -> MutableMapping[str, Any]:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
+    attributes = {}
     if "domainName" in lambda_event["requestContext"]:
-        span.set_attribute(
-            NET_HOST_NAME,
-            lambda_event["requestContext"]["domainName"],
-        )
+        attributes[NET_HOST_NAME] = lambda_event["requestContext"]["domainName"]
 
     if lambda_event["requestContext"].get("http"):
-        if "method" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                HTTP_METHOD,
-                lambda_event["requestContext"]["http"]["method"],
-            )
-        if "userAgent" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                HTTP_USER_AGENT,
-                lambda_event["requestContext"]["http"]["userAgent"],
-            )
-        if "path" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                HTTP_ROUTE,
-                lambda_event["requestContext"]["http"]["path"],
-            )
+        http = lambda_event["requestContext"]["http"]
+        if "method" in http:
+            attributes[HTTP_METHOD] = http["method"]
+        if "userAgent" in http:
+            attributes[HTTP_USER_AGENT] = http["userAgent"]
+        if "path" in http:
+            attributes[HTTP_ROUTE] = http["path"]
             if lambda_event.get("rawQueryString"):
-                span.set_attribute(
-                    HTTP_TARGET,
-                    f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}",
-                )
+                attributes[HTTP_TARGET] = f"{http['path']}?{lambda_event['rawQueryString']}"
             else:
-                span.set_attribute(
-                    HTTP_TARGET,
-                    lambda_event["requestContext"]["http"]["path"],
-                )
+                attributes[HTTP_TARGET] = http["path"]
+    return attributes
 
-    return span
+
+def _get_lambda_context_attributes(
+    lambda_context: LambdaContext,
+) -> dict[str, str]:
+    """Extracts OpenTelemetry span attributes from AWS Lambda context.
+
+    Extract FaaS specific attributes from the AWS Lambda context
+    according to OpenTelemetry semantic conventions for FaaS & AWS Lambda.
+
+    Args:
+        lambda_context: The AWS Lambda context object.
+
+    Returns:
+        A dictionary mapping of OpenTelemetry attribute names to their values.
+    """
+    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(":")
+    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+    #
+    # See more:
+    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
+    aws_account_id: str = function_arn_parts[4]
+    # NOTE: The unmodified function ARN may contain an alias extension e.g.
+    # `arn:aws:lambda:region:account:function:name:alias`. We can ensure
+    # the alias extension is not included in the `cloud.resource_id` by keeping
+    # only the first 7 parts of the original ARN.
+    #
+    # See more:
+    # https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
+    formatted_function_arn: str = ":".join(function_arn_parts[:7])
+
+    # NOTE: The specs mention an exception here, allowing the
+    # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+    # attribute instead of a resource attribute.
+    #
+    # See more:
+    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
+    return {
+        CLOUD_ACCOUNT_ID: aws_account_id,
+        CLOUD_RESOURCE_ID: formatted_function_arn,
+        FAAS_INVOCATION_ID: lambda_context.aws_request_id,
+    }
 
 
 # pylint: disable=too-many-statements
@@ -278,37 +329,13 @@ def _instrument(
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
-        orig_handler_name = ".".join(
-            [wrapped_module_name, wrapped_function_name]
-        )
-
-        lambda_event = args[0]
+        lambda_event: Any = args[0]
+        lambda_context: LambdaContext = args[1]
 
         parent_context = _determine_parent_context(
             lambda_event,
             event_context_extractor,
         )
-
-        try:
-            event_source = lambda_event["Records"][0].get(
-                "eventSource"
-            ) or lambda_event["Records"][0].get("EventSource")
-            if event_source in {
-                "aws:sqs",
-                "aws:s3",
-                "aws:sns",
-                "aws:dynamodb",
-            }:
-                # See more:
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
-                # https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
-                span_kind = SpanKind.CONSUMER
-            else:
-                span_kind = SpanKind.SERVER
-        except (IndexError, KeyError, TypeError):
-            span_kind = SpanKind.SERVER
 
         tracer = get_tracer(
             __name__,
@@ -318,71 +345,45 @@ def _instrument(
         )
 
         token = context_api.attach(parent_context)
+        event_type = _get_lambda_event_type(lambda_event)
+        span_attributes: MutableMapping[str, Any] = _get_lambda_context_attributes(lambda_context)
+        if event_type is _LambdaEventType.SQS:
+            span_attributes[FAAS_TRIGGER] = FaasTriggerValues.PUBSUB.value
+        elif event_type is _LambdaEventType.API_GATEWAY:
+            # If the request came from an API Gateway, extract http attributes from the event
+            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
+            # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
+            span_attributes[FAAS_TRIGGER] = "http"
+            if lambda_event.get("version") == "2.0":
+                span_attributes |= _get_api_gateway_v2_proxy_attributes(lambda_event)
+            else:
+                span_attributes |= _get_api_gateway_v1_proxy_attributes(lambda_event)
+
         try:
             with tracer.start_as_current_span(
-                name=orig_handler_name,
-                kind=span_kind,
+                name=lambda_context.function_name,
+                kind=SpanKind.SERVER,
+                attributes=span_attributes,
             ) as span:
-                if span.is_recording():
-                    lambda_context = args[1]
-                    # NOTE: The specs mention an exception here, allowing the
-                    # `CLOUD_RESOURCE_ID` attribute to be set as a span
-                    # attribute instead of a resource attribute.
-                    #
-                    # See more:
-                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
-                    span.set_attribute(
-                        CLOUD_RESOURCE_ID,
-                        lambda_context.invoked_function_arn,
-                    )
-                    span.set_attribute(
-                        FAAS_INVOCATION_ID,
-                        lambda_context.aws_request_id,
-                    )
-
-                    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                    #
-                    # See more:
-                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                    account_id = lambda_context.invoked_function_arn.split(
-                        ":"
-                    )[4]
-                    span.set_attribute(
-                        CLOUD_ACCOUNT_ID,
-                        account_id,
-                    )
-
                 exception = None
                 result = None
+
                 try:
-                    result = call_wrapped(*args, **kwargs)
-                except Exception as exc:  # pylint: disable=W0703
+                    if event_type is _LambdaEventType.SQS:
+                        result = _run_sqs_handler(tracer, lambda_event, call_wrapped, args, kwargs)
+                    else:
+                        result = call_wrapped(*args, **kwargs)
+                # pylint: disable-next=broad-exception-caught
+                except Exception as exc:
                     exception = exc
                     span.set_status(Status(StatusCode.ERROR))
                     span.record_exception(exception)
 
-                # If the request came from an API Gateway, extract http attributes from the event
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
-                # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-                if isinstance(lambda_event, dict) and lambda_event.get(
-                    "requestContext"
-                ):
-                    span.set_attribute(FAAS_TRIGGER, "http")
-
-                    if lambda_event.get("version") == "2.0":
-                        _set_api_gateway_v2_proxy_attributes(
-                            lambda_event, span
-                        )
-                    else:
-                        _set_api_gateway_v1_proxy_attributes(
-                            lambda_event, span
-                        )
-
-                    if isinstance(result, dict) and result.get("statusCode"):
-                        span.set_attribute(
-                            HTTP_STATUS_CODE,
-                            result.get("statusCode"),
-                        )
+                if event_type is _LambdaEventType.API_GATEWAY and isinstance(result, dict) and result.get("statusCode"):
+                    span.set_attribute(
+                        HTTP_STATUS_CODE,
+                        result.get("statusCode"),
+                    )
         finally:
             if token:
                 context_api.detach(token)
@@ -459,17 +460,16 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 )
             )
             return
-        # pylint: disable=attribute-defined-outside-init
+
         # Convert slash-delimited paths to dot-delimited for valid Python imports
         lambda_handler = lambda_handler.replace("/", ".")
+
         (
             self._wrapped_module_name,
             self._wrapped_function_name,
         ) = lambda_handler.rsplit(".", 1)
 
-        flush_timeout_env = os.environ.get(
-            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
-        )
+        flush_timeout_env = os.environ.get(OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None)
         flush_timeout = 30000
         try:
             if flush_timeout_env is not None:
@@ -484,9 +484,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_module_name,
             self._wrapped_function_name,
             flush_timeout,
-            event_context_extractor=kwargs.get(
-                "event_context_extractor", _default_event_context_extractor
-            ),
+            event_context_extractor=kwargs.get("event_context_extractor", _default_event_context_extractor),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
         )

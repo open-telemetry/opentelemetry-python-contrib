@@ -1,25 +1,19 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import json
 import os
-from unittest.mock import ANY, Mock, patch
+from importlib.metadata import EntryPoint
+from unittest.mock import ANY, Mock, call, patch
+from urllib.parse import urlparse
 
 import botocore.session
-from botocore.exceptions import ParamValidationError
+from botocore.exceptions import ClientError, ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.auto_instrumentation import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
@@ -59,9 +53,7 @@ class TestBotocoreInstrumentor(TestBase):
         BotocoreInstrumentor().instrument()
 
         self.session = botocore.session.get_session()
-        self.session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        self.session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.region = "us-west-2"
 
     def tearDown(self):
@@ -125,9 +117,7 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_aws
     def test_no_op_tracer_provider_ec2(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         ec2 = self._make_client("ec2")
         ec2.describe_instances()
@@ -174,6 +164,38 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertIn(EXCEPTION_MESSAGE, event.attributes)
 
     @mock_aws
+    def test_client_error_with_http_error_status(self):
+        """ClientError with HTTP 4xx sets span status to ERROR."""
+        s3 = self._make_client("s3")
+
+        with self.assertRaises(ClientError):
+            s3.get_object(Bucket="non-existent-bucket", Key="non-existent-key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+
+    @mock_aws
+    def test_client_error_304_not_modified(self):
+        """S3 IfNoneMatch returning 304 leaves span status as UNSET."""
+        s3 = self._make_client("s3")
+        s3.create_bucket(
+            Bucket="test-bucket",
+            CreateBucketConfiguration={"LocationConstraint": self.region},
+        )
+        etag = s3.put_object(Bucket="test-bucket", Key="key", Body=b"data")["ETag"]
+
+        with self.assertRaises(ClientError):
+            s3.get_object(Bucket="test-bucket", Key="key", IfNoneMatch=etag)
+
+        spans = self.memory_exporter.get_finished_spans()
+        # Filter to the GetObject span
+        get_spans = [s for s in spans if s.name == "S3.GetObject"]
+        self.assertEqual(1, len(get_spans))
+        self.assertIs(get_spans[0].status.status_code, trace_api.StatusCode.UNSET)
+
+    @mock_aws
     def test_s3_client(self):
         s3 = self._make_client("s3")
 
@@ -183,9 +205,7 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_aws
     def test_no_op_tracer_provider_s3(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         s3 = self._make_client("s3")
         s3.list_buckets()
@@ -199,9 +219,7 @@ class TestBotocoreInstrumentor(TestBase):
 
         location = {"LocationConstraint": "us-west-2"}
         s3.create_bucket(Bucket="mybucket", CreateBucketConfiguration=location)
-        self.assert_span(
-            "S3", "CreateBucket", request_id=_REQUEST_ID_REGEX_MATCH
-        )
+        self.assert_span("S3", "CreateBucket", request_id=_REQUEST_ID_REGEX_MATCH)
         self.memory_exporter.clear()
 
         s3.put_object(Key="foo", Bucket="mybucket", Body=b"bar")
@@ -217,16 +235,12 @@ class TestBotocoreInstrumentor(TestBase):
 
         sqs.list_queues()
 
-        self.assert_span(
-            "SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH
-        )
+        self.assert_span("SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH)
 
     @mock_aws
     def test_no_op_tracer_provider_sqs(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         sqs = self._make_client("sqs")
         sqs.list_queues()
@@ -240,9 +254,7 @@ class TestBotocoreInstrumentor(TestBase):
         test_queue_name = "test_queue_name"
 
         response = sqs.create_queue(QueueName=test_queue_name)
-        self.assert_span(
-            "SQS", "CreateQueue", request_id=_REQUEST_ID_REGEX_MATCH
-        )
+        self.assert_span("SQS", "CreateQueue", request_id=_REQUEST_ID_REGEX_MATCH)
         self.memory_exporter.clear()
 
         queue_url = response["QueueUrl"]
@@ -265,9 +277,7 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_aws
     def test_no_op_tracer_provider_kinesis(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         kinesis = self._make_client("kinesis")
         kinesis.list_streams()
@@ -287,9 +297,7 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_aws
     def test_no_op_tracer_provider_kms(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         kms = self._make_client("kms")
         kms.list_keys(Limit=21)
@@ -308,9 +316,7 @@ class TestBotocoreInstrumentor(TestBase):
 
         BotocoreInstrumentor().uninstrument()
 
-        ec2.meta.events.register_first(
-            "before-send.ec2.DescribeInstances", intercept_headers
-        )
+        ec2.meta.events.register_first("before-send.ec2.DescribeInstances", intercept_headers)
         with self.tracer_provider.get_tracer("test").start_span("parent"):
             ec2.describe_instances()
 
@@ -324,9 +330,7 @@ class TestBotocoreInstrumentor(TestBase):
         BotocoreInstrumentor().instrument()
 
         sqs.list_queues()
-        self.assert_span(
-            "SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH
-        )
+        self.assert_span("SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH)
 
     @mock_aws
     def test_kms_client(self):
@@ -349,16 +353,14 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
-        expected[SERVER_ADDRESS] = "sts.amazonaws.com"
+        expected[SERVER_ADDRESS] = urlparse(sts.meta.endpoint_url).hostname
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
     @mock_aws
     def test_no_op_tracer_provider_sts(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         sts = self._make_client("sts")
         sts.get_caller_identity()
@@ -379,25 +381,17 @@ class TestBotocoreInstrumentor(TestBase):
             set_global_textmap(MockTextMapPropagator())
 
             ec2 = self._make_client("ec2")
-            ec2.meta.events.register_first(
-                "before-send.ec2.DescribeInstances", check_headers
-            )
+            ec2.meta.events.register_first("before-send.ec2.DescribeInstances", check_headers)
             ec2.describe_instances()
 
             request_id = "fdcdcab1-ae5c-489e-9c33-4637c5dda355"
-            span = self.assert_span(
-                "EC2", "DescribeInstances", request_id=request_id
-            )
+            span = self.assert_span("EC2", "DescribeInstances", request_id=request_id)
 
             # only x-ray propagation is used in HTTP requests
             self.assertIn(TRACE_HEADER_KEY, headers)
             xray_context = headers[TRACE_HEADER_KEY]
-            formated_trace_id = format_trace_id(
-                span.get_span_context().trace_id
-            )
-            formated_trace_id = (
-                formated_trace_id[:8] + "-" + formated_trace_id[8:]
-            )
+            formated_trace_id = format_trace_id(span.get_span_context().trace_id)
+            formated_trace_id = formated_trace_id[:8] + "-" + formated_trace_id[8:]
 
             self.assertEqual(
                 xray_context.lower(),
@@ -409,9 +403,7 @@ class TestBotocoreInstrumentor(TestBase):
     @mock_aws
     def test_no_op_tracer_provider_xray(self):
         BotocoreInstrumentor().uninstrument()
-        BotocoreInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        BotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         xray_client = self._make_client("xray")
         xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
@@ -430,9 +422,7 @@ class TestBotocoreInstrumentor(TestBase):
         BotocoreInstrumentor().instrument()
 
         ec2 = self._make_client("ec2")
-        ec2.meta.events.register_first(
-            "before-send.ec2.DescribeInstances", check_headers
-        )
+        ec2.meta.events.register_first("before-send.ec2.DescribeInstances", check_headers)
         ec2.describe_instances()
 
         self.assertNotIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
@@ -568,3 +558,29 @@ class TestBotocoreInstrumentor(TestBase):
                     SERVER_PORT: 2025,
                 },
             )
+
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_botocore_installed(self, mock_logger, mock_dep):
+        def _load_instrumentor(ep: EntryPoint, **kwargs):
+            # simulate aiobotocore not being present
+            if ep.name == "aiobotocore":
+                raise ModuleNotFoundError("aiobotocore")
+
+        mock_distro = Mock()
+        mock_dep.return_value = None
+        mock_distro.load_instrumentor.side_effect = _load_instrumentor
+        _load_instrumentors(mock_distro)
+        eps = [c[0][0].name for c in mock_distro.load_instrumentor.call_args_list]
+        self.assertIn("botocore", eps)
+        mock_logger.debug.assert_has_calls(
+            [
+                call("Instrumented %s", "botocore"),
+                call(
+                    "Skipping instrumentation %s: %s",
+                    "aiobotocore",
+                    "aiobotocore",
+                ),
+            ],
+            any_order=True,
+        )

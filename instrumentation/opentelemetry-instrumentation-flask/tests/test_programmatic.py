@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 from timeit import default_timer
@@ -134,17 +123,15 @@ _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
     "http.server.request.duration": _server_duration_attrs_new_copy,
 }
-_server_active_requests_count_attrs_both = (
-    _server_active_requests_count_attrs_old
-)
-_server_active_requests_count_attrs_both.extend(
-    _server_active_requests_count_attrs_new
-)
+_server_active_requests_count_attrs_both = _server_active_requests_count_attrs_old
+_server_active_requests_count_attrs_both.extend(_server_active_requests_count_attrs_new)
 _recommended_metrics_attrs_both = {
     "http.server.active_requests": _server_active_requests_count_attrs_both,
     "http.server.duration": _server_duration_attrs_old_copy,
     "http.server.request.duration": _server_duration_attrs_new_copy,
 }
+
+SCOPE = "opentelemetry.instrumentation.flask"
 
 
 # pylint: disable=too-many-public-methods
@@ -497,7 +484,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertTrue(len(metrics) != 0)
@@ -525,7 +512,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration_s = max(default_timer() - start, 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertTrue(len(metrics) != 0)
@@ -557,7 +544,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.post("/hello/756")
         self.client.post("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -573,7 +560,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_histogram_explicit_bounds=None,
     ):
         # pylint: disable=too-many-nested-blocks
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -739,9 +726,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 0)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
+                            self.assertAlmostEqual(duration, point.sum, delta=10)
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -774,9 +759,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 0)
-                            self.assertAlmostEqual(
-                                duration_s, point.sum, places=1
-                            )
+                            self.assertAlmostEqual(duration_s, point.sum, places=1)
                             self.assertEqual(
                                 point.explicit_bounds,
                                 HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -806,12 +789,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             finished_spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(finished_spans), 1)
             finished_span = finished_spans[0]
-            self.assertEqual(
-                span_arg.context.trace_id, finished_span.context.trace_id
-            )
-            self.assertEqual(
-                span_arg.context.span_id, finished_span.context.span_id
-            )
+            self.assertEqual(span_arg.context.trace_id, finished_span.context.trace_id)
+            self.assertEqual(span_arg.context.span_id, finished_span.context.span_id)
 
     def test_duration_histogram_new_record_with_context_new_semconv(self):
         with patch("opentelemetry.trace.set_span_in_context") as mock_set_span:
@@ -827,12 +806,39 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             finished_spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(finished_spans), 1)
             finished_span = finished_spans[0]
-            self.assertEqual(
-                span_arg.context.trace_id, finished_span.context.trace_id
-            )
-            self.assertEqual(
-                span_arg.context.span_id, finished_span.context.span_id
-            )
+            self.assertEqual(span_arg.context.trace_id, finished_span.context.trace_id)
+            self.assertEqual(span_arg.context.span_id, finished_span.context.span_id)
+
+    def test_active_requests_counter_decremented_on_error(self):
+        """Regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4431.
+        http.server.active_requests must be decremented even when the view
+        raises an exception, so it does not permanently leak.
+        """
+        self.client.get("/hello/123")
+
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        active_requests_value = None
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name != "http.server.active_requests":
+                        continue
+                    points = [p.value for p in metric.data.data_points if isinstance(p, NumberDataPoint)]
+                    if points:
+                        active_requests_value = points[-1]
+
+        self.assertIsNotNone(
+            active_requests_value,
+            "http.server.active_requests metric not found",
+        )
+        self.assertEqual(
+            0,
+            active_requests_value,
+            f"active_requests counter leaked: expected 0 but got {active_requests_value}",
+        )
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
@@ -899,9 +905,7 @@ class TestProgrammaticHooksWithoutApp(InstrumentationTest, WsgiTestBase):
             span.set_attribute("hook_attr", "hello world without app")
             response_headers.append(hook_headers)
 
-        FlaskInstrumentor().instrument(
-            request_hook=request_hook_test, response_hook=response_hook_test
-        )
+        FlaskInstrumentor().instrument(request_hook=request_hook_test, response_hook=response_hook_test)
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
         from flask import Flask  # noqa: PLC0415
 
@@ -941,9 +945,7 @@ class TestProgrammaticCustomTracerProvider(InstrumentationTest, WsgiTestBase):
 
         self.app = Flask(__name__)
 
-        FlaskInstrumentor().instrument_app(
-            self.app, tracer_provider=tracer_provider
-        )
+        FlaskInstrumentor().instrument_app(self.app, tracer_provider=tracer_provider)
         self._common_initialization()
 
     def tearDown(self):
@@ -956,14 +958,10 @@ class TestProgrammaticCustomTracerProvider(InstrumentationTest, WsgiTestBase):
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
-        self.assertEqual(
-            span_list[0].resource.attributes["service.name"], "flask-api"
-        )
+        self.assertEqual(span_list[0].resource.attributes["service.name"], "flask-api")
 
 
-class TestProgrammaticCustomTracerProviderWithoutApp(
-    InstrumentationTest, WsgiTestBase
-):
+class TestProgrammaticCustomTracerProviderWithoutApp(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
         resource = Resource.create({"service.name": "flask-api-no-app"})
@@ -995,9 +993,7 @@ class TestProgrammaticCustomTracerProviderWithoutApp(
         )
 
 
-class TestProgrammaticWrappedWithOtherFramework(
-    InstrumentationTest, WsgiTestBase
-):
+class TestProgrammaticWrappedWithOtherFramework(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
 
@@ -1018,9 +1014,7 @@ class TestProgrammaticWrappedWithOtherFramework(
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
         self.assertEqual(trace.SpanKind.SERVER, span_list[1].kind)
-        self.assertEqual(
-            span_list[0].parent.span_id, span_list[1].context.span_id
-        )
+        self.assertEqual(span_list[0].parent.span_id, span_list[1].context.span_id)
 
 
 @patch.dict(
@@ -1058,13 +1052,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
-                "TestValue2,TestValue3",
-            ),
+            "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
@@ -1079,9 +1069,7 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(200, resp.status_code)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "Test Value 1, Test Value 2",
-            ),
+            "http.request.header.custom_test_header_1": ("Test Value 1, Test Value 2",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -1101,15 +1089,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
-                    "TestValue2,TestValue3",
-                ),
-                "http.request.header.regex_test_header_1": (
-                    "Regex Test Value 1",
-                ),
-                "http.request.header.regex_test_header_2": (
-                    "RegexTestValue2,RegexTestValue3",
-                ),
+                "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
+                "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+                "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
                 "http.request.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
@@ -1121,19 +1103,11 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(resp.status_code, 200)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
             "http.response.header.content_length": ("13",),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
@@ -1144,12 +1118,8 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         self.assertEqual(resp.status_code, 200)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
         }
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
@@ -1161,19 +1131,11 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(resp.status_code, 200)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.content_type": (
-                    "text/plain; charset=utf-8",
-                ),
+                "http.response.header.content_type": ("text/plain; charset=utf-8",),
                 "http.response.header.content_length": ("13",),
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
-                "http.response.header.my_custom_regex_header_1": (
-                    "my-custom-regex-value-1,my-custom-regex-value-2",
-                ),
-                "http.response.header.my_custom_regex_header_2": (
-                    "my-custom-regex-value-3,my-custom-regex-value-4",
-                ),
+                "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+                "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+                "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
                 "http.response.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)

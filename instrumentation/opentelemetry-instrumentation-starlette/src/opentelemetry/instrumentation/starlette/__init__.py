@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Usage
@@ -23,12 +12,12 @@ Usage
     from starlette.responses import PlainTextResponse
     from starlette.routing import Route
 
+
     def home(request):
         return PlainTextResponse("hi")
 
-    app = applications.Starlette(
-        routes=[Route("/foobar", home)]
-    )
+
+    app = applications.Starlette(routes=[Route("/foobar", home)])
     StarletteInstrumentor.instrument_app(app)
 
 Configuration
@@ -66,19 +55,27 @@ For example,
     from opentelemetry.trace import Span
     from typing import Any
 
+
     def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+
 
     def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
+
     def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+
+    StarletteInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************
@@ -275,11 +272,7 @@ class StarletteInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
@@ -289,15 +282,9 @@ class StarletteInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedStarlette._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedStarlette._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
+        _InstrumentedStarlette._server_request_hook = kwargs.get("server_request_hook")
+        _InstrumentedStarlette._client_request_hook = kwargs.get("client_request_hook")
+        _InstrumentedStarlette._client_response_hook = kwargs.get("client_response_hook")
         _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
 
         applications.Starlette = _InstrumentedStarlette

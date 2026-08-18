@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 from time import time_ns
@@ -21,13 +10,20 @@ from redis.commands.search.field import (
     TextField,
     VectorField,
 )
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from redis.exceptions import ResponseError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_REDIS_DATABASE_INDEX,
+    DB_STATEMENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -45,13 +41,9 @@ class TestRedisInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes.get(DB_REDIS_DATABASE_INDEX), 0)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
 
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
@@ -63,14 +55,8 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET ? ? ? ?"
-            )
-        )
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).endswith("...")
-        )
+        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_long_command(self):
         self.redis_client.mget(*range(1000))
@@ -79,14 +65,8 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET ? ? ? ?"
-            )
-        )
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).endswith("...")
-        )
+        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_basics_sanitized(self):
         RedisInstrumentor().uninstrument()
@@ -97,9 +77,7 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_basics(self):
@@ -108,9 +86,7 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced_sanitized(self):
@@ -128,7 +104,7 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
@@ -145,7 +121,7 @@ class TestRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
@@ -165,9 +141,7 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[0]
         self._check_span(span, "SET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "SET ? ?")
 
     def test_pipeline_immediate(self):
         with self.redis_client.pipeline() as pipeline:
@@ -181,9 +155,7 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[0]
         self._check_span(span, "SET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "SET ? ?")
 
     def test_parent(self):
         """Ensure OpenTelemetry works with redis."""
@@ -209,9 +181,7 @@ class TestRedisInstrument(TestBase):
 class TestRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.cluster.RedisCluster(
-            host="localhost", port=7000
-        )
+        self.redis_client = redis.cluster.RedisCluster(host="localhost", port=7000)
         self.redis_client.flushall()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -229,9 +199,7 @@ class TestRedisClusterInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced(self):
@@ -246,7 +214,39 @@ class TestRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
+        )
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+
+    def test_cluster_pipeline_span_metadata_regression_4084(self):
+        """Regression test for issue #4084 against a real cluster.
+
+        redis-py 6+ refactored ClusterPipeline so queued commands live on
+        ``_execution_strategy.command_queue`` and no longer populate
+        ``command_stack``. This previously produced a ClusterPipeline span
+        with an empty ``db.statement`` and a ``db.redis.pipeline_length`` of 0.
+        """
+        with self.redis_client.pipeline(transaction=False) as pipeline:
+            pipeline.set("blah", 32)
+            pipeline.rpush("foo", "éé")
+            pipeline.hgetall("xxx")
+
+            # On redis-py 6+ the queued commands are tracked on the execution
+            # strategy rather than command_stack; assert the regression path is
+            # genuinely exercised before checking the emitted span metadata.
+            if hasattr(pipeline, "_execution_strategy") and hasattr(pipeline._execution_strategy, "command_queue"):
+                self.assertEqual(pipeline.command_stack, [])
+                self.assertEqual(len(pipeline._execution_strategy.command_queue), 3)
+
+            pipeline.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self._check_span(span, "SET RPUSH HGETALL")
+        self.assertEqual(
+            span.attributes.get(DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
@@ -291,13 +291,9 @@ class TestAsyncRedisInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes.get(DB_REDIS_DATABASE_INDEX), 0)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
 
     def test_long_command(self):
         async_call(self.redis_client.mget(*range(1000)))
@@ -306,14 +302,8 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).startswith(
-                "MGET ? ? ? ?"
-            )
-        )
-        self.assertTrue(
-            span.attributes.get(SpanAttributes.DB_STATEMENT).endswith("...")
-        )
+        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_basics(self):
         self.assertIsNone(async_call(self.redis_client.get("cheese")))
@@ -321,9 +311,7 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
@@ -351,9 +339,7 @@ class TestAsyncRedisInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
-                transaction=False
-            ) as pipeline:
+            async with self.redis_client.pipeline(transaction=False) as pipeline:
                 pipeline.set("blah", 32)
                 pipeline.rpush("foo", "éé")
                 pipeline.hgetall("xxx")
@@ -366,7 +352,7 @@ class TestAsyncRedisInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
@@ -377,9 +363,7 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
-                transaction=False
-            ) as pipeline:
+            async with self.redis_client.pipeline(transaction=False) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("blah", 32)
@@ -415,9 +399,7 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[0]
         self._check_span(span, "SET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "SET ? ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "SET ? ?")
 
     def test_pipeline_immediate_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -425,9 +407,7 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
-                transaction=False
-            ) as pipeline:
+            async with self.redis_client.pipeline(transaction=False) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("a", 1)
@@ -470,9 +450,7 @@ class TestAsyncRedisInstrument(TestBase):
 class TestAsyncRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.asyncio.cluster.RedisCluster(
-            host="localhost", port=7000
-        )
+        self.redis_client = redis.asyncio.cluster.RedisCluster(host="localhost", port=7000)
         async_call(self.redis_client.flushall())
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -490,9 +468,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
         self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
@@ -520,9 +496,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
-                transaction=False
-            ) as pipeline:
+            async with self.redis_client.pipeline(transaction=False) as pipeline:
                 pipeline.set("blah", 32)
                 pipeline.rpush("foo", "éé")
                 pipeline.hgetall("xxx")
@@ -535,7 +509,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         span = spans[0]
         self._check_span(span, "SET RPUSH HGETALL")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
         self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
@@ -546,9 +520,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
-                transaction=False
-            ) as pipeline:
+            async with self.redis_client.pipeline(transaction=False) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("blah", 32)
@@ -604,13 +576,9 @@ class TestRedisDBIndexInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 10
-        )
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 10)
 
     def test_get(self):
         self.assertIsNone(self.redis_client.get("foo"))
@@ -618,9 +586,7 @@ class TestRedisDBIndexInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "GET")
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
-        )
+        self.assertEqual(span.attributes.get(DB_STATEMENT), "GET ?")
 
 
 class TestRedisearchInstrument(TestBase):
@@ -667,19 +633,13 @@ class TestRedisearchInstrument(TestBase):
                 as_name="vector",
             ),
         )
-        definition = IndexDefinition(
-            prefix=["test:"], index_type=IndexType.JSON
-        )
-        res = self.redis_client.ft("idx:test_vss").create_index(
-            fields=schema, definition=definition
-        )
+        definition = IndexDefinition(prefix=["test:"], index_type=IndexType.JSON)
+        res = self.redis_client.ft("idx:test_vss").create_index(fields=schema, definition=definition)
         assert "OK" in str(res)
 
     def test_redis_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
-        span = next(
-            span for span in spans if span.name == "redis.create_index"
-        )
+        span = next(span for span in spans if span.name == "redis.create_index")
         assert "redis.create_index.fields" in span.attributes
 
     def test_redis_query(self):

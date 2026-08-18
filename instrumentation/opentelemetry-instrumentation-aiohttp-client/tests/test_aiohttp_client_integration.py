@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -70,9 +59,7 @@ from opentelemetry.trace import Span, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 
 
-def run_with_test_server(
-    runnable: typing.Callable, url: str, handler: typing.Callable
-) -> typing.Tuple[str, int]:
+def run_with_test_server(runnable: typing.Callable, url: str, handler: typing.Callable) -> typing.Tuple[str, int]:
     async def do_request():
         app = aiohttp.web.Application()
         parsed_url = urllib.parse.urlparse(url)
@@ -87,8 +74,10 @@ def run_with_test_server(
                 await runnable(server)
         return netloc
 
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(do_request())
+    return asyncio.run(do_request())
+
+
+SCOPE = "opentelemetry.instrumentation.aiohttp_client"
 
 
 # pylint: disable=too-many-public-methods
@@ -122,7 +111,7 @@ class TestAioHttpIntegration(TestBase):
         )
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 
@@ -148,12 +137,8 @@ class TestAioHttpIntegration(TestBase):
             return aiohttp.web.Response(status=int(status_code))
 
         async def client_request(server: aiohttp.test_utils.TestServer):
-            async with aiohttp.test_utils.TestClient(
-                server, trace_configs=[trace_config]
-            ) as client:
-                await client.request(
-                    method, url, trace_request_ctx={}, **kwargs
-                )
+            async with aiohttp.test_utils.TestClient(server, trace_configs=[trace_config]) as client:
+                await client.request(method, url, trace_request_ctx={}, **kwargs)
 
         handler = request_handler or default_handler
         return run_with_test_server(client_request, url, handler)
@@ -202,9 +187,7 @@ class TestAioHttpIntegration(TestBase):
             with self.subTest(status_code=status_code):
                 path = "test-path?query=param#foobar"
                 host, port = self._http_request(
-                    trace_config=aiohttp_client.create_trace_config(
-                        sem_conv_opt_in_mode=_StabilityMode.HTTP
-                    ),
+                    trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP),
                     url=f"/{path}",
                     status_code=status_code,
                 )
@@ -224,9 +207,7 @@ class TestAioHttpIntegration(TestBase):
                 metrics = self._assert_metrics(1)
                 duration_data_point = metrics[0].data.data_points[index]
                 self.assertEqual(
-                    duration_data_point.attributes.get(
-                        HTTP_RESPONSE_STATUS_CODE
-                    ),
+                    duration_data_point.attributes.get(HTTP_RESPONSE_STATUS_CODE),
                     status_code,
                 )
                 self.assertEqual(
@@ -250,9 +231,7 @@ class TestAioHttpIntegration(TestBase):
             with self.subTest(status_code=status_code):
                 path = "test-path?query=param#foobar"
                 host, port = self._http_request(
-                    trace_config=aiohttp_client.create_trace_config(
-                        sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
-                    ),
+                    trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP),
                     url=f"/{path}",
                     status_code=status_code,
                 )
@@ -292,9 +271,7 @@ class TestAioHttpIntegration(TestBase):
                 )
                 duration_data_point = metrics[1].data.data_points[index]
                 self.assertEqual(
-                    duration_data_point.attributes.get(
-                        HTTP_RESPONSE_STATUS_CODE
-                    ),
+                    duration_data_point.attributes.get(HTTP_RESPONSE_STATUS_CODE),
                     status_code,
                 )
                 self.assertEqual(
@@ -351,9 +328,7 @@ class TestAioHttpIntegration(TestBase):
     def test_schema_url_new_semconv(self):
         with self.subTest(status_code=200):
             self._http_request(
-                trace_config=aiohttp_client.create_trace_config(
-                    sem_conv_opt_in_mode=_StabilityMode.HTTP
-                ),
+                trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP),
                 url="/test-path?query=param#foobar",
                 status_code=200,
             )
@@ -368,9 +343,7 @@ class TestAioHttpIntegration(TestBase):
     def test_schema_url_both_semconv(self):
         with self.subTest(status_code=200):
             self._http_request(
-                trace_config=aiohttp_client.create_trace_config(
-                    sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
-                ),
+                trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP),
                 url="/test-path?query=param#foobar",
                 status_code=200,
             )
@@ -447,9 +420,7 @@ class TestAioHttpIntegration(TestBase):
             return str(url.with_query(None))
 
         host, port = self._http_request(
-            trace_config=aiohttp_client.create_trace_config(
-                url_filter=strip_query_params
-            ),
+            trace_config=aiohttp_client.create_trace_config(url_filter=strip_query_params),
             url="/some/path?query=param&other=param2",
             status_code=HTTPStatus.OK,
         )
@@ -484,9 +455,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
                 with self.assertRaises(aiohttp.ClientConnectorError):
-                    loop.run_until_complete(do_request(url))
+                    asyncio.run(do_request(url))
 
             self._assert_spans(
                 [
@@ -543,9 +513,7 @@ class TestAioHttpIntegration(TestBase):
             assert "traceparent" in request.headers
 
         host, port = self._http_request(
-            trace_config=aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_StabilityMode.HTTP
-            ),
+            trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP),
             url="/test",
             request_handler=request_handler,
         )
@@ -584,9 +552,7 @@ class TestAioHttpIntegration(TestBase):
             assert "traceparent" in request.headers
 
         host, port = self._http_request(
-            trace_config=aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
-            ),
+            trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP),
             url="/test",
             request_handler=request_handler,
         )
@@ -707,8 +673,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -726,11 +691,7 @@ class TestAioHttpIntegration(TestBase):
         self.memory_exporter.clear()
 
     def test_nonstandard_http_method_new_semconv(self):
-        trace_configs = [
-            aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_StabilityMode.HTTP
-            )
-        ]
+        trace_configs = [aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP)]
         app = HttpServerMock("nonstandard_method")
 
         @app.route("/status/200", methods=["NONSTANDARD"])
@@ -749,8 +710,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -760,9 +720,7 @@ class TestAioHttpIntegration(TestBase):
                     {
                         HTTP_REQUEST_METHOD: "_OTHER",
                         URL_FULL: url,
-                        HTTP_RESPONSE_STATUS_CODE: int(
-                            HTTPStatus.METHOD_NOT_ALLOWED
-                        ),
+                        HTTP_RESPONSE_STATUS_CODE: int(HTTPStatus.METHOD_NOT_ALLOWED),
                         HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
                         ERROR_TYPE: "405",
                         SERVER_ADDRESS: "localhost",
@@ -794,8 +752,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -804,9 +761,7 @@ class TestAioHttpIntegration(TestBase):
                     (StatusCode.UNSET, None),
                     {
                         HTTP_METHOD: "GET",
-                        HTTP_URL: (
-                            "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"
-                        ),
+                        HTTP_URL: ("http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"),
                         HTTP_STATUS_CODE: int(HTTPStatus.OK),
                     },
                 )
@@ -824,9 +779,7 @@ class TestAioHttpIntegration(TestBase):
             "OTEL_PYTHON_EXCLUDED_URLS",
         ):
             with self.subTest(env_var=env_var):
-                with mock.patch.dict(
-                    os.environ, {env_var: "/some/path"}, clear=True
-                ):
+                with mock.patch.dict(os.environ, {env_var: "/some/path"}, clear=True):
                     self._http_request(
                         trace_config=aiohttp_client.create_trace_config(),
                         request_handler=request_handler,
@@ -847,9 +800,7 @@ class TestAioHttpIntegration(TestBase):
             assert "traceparent" in request.headers
             return aiohttp.web.Response(status=HTTPStatus.OK)
 
-        trace_config: aiohttp.TraceConfig = (
-            aiohttp_client.create_trace_config()
-        )
+        trace_config: aiohttp.TraceConfig = aiohttp_client.create_trace_config()
 
         success_host, success_port = self._http_request(
             trace_config=trace_config,
@@ -865,9 +816,7 @@ class TestAioHttpIntegration(TestBase):
         )
 
         metrics = self._assert_metrics(1)
-        duration_dp_attributes = [
-            dict(dp.attributes) for dp in metrics[0].data.data_points
-        ]
+        duration_dp_attributes = [dict(dp.attributes) for dp in metrics[0].data.data_points]
         self.assertEqual(
             [
                 {
@@ -913,9 +862,7 @@ class TestAioHttpIntegration(TestBase):
             span.attributes["http.request.header.x_another_header"],
             ("another-value",),
         )
-        self.assertNotIn(
-            "http.request.header.x_excluded_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_excluded_header", span.attributes)
 
     def test_custom_response_headers_captured(self):
         """Test that specified response headers are captured as span attributes."""
@@ -947,9 +894,7 @@ class TestAioHttpIntegration(TestBase):
             span.attributes["http.response.header.x_another_header"],
             ("another-value",),
         )
-        self.assertNotIn(
-            "http.response.header.x_excluded_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_excluded_header", span.attributes)
 
     def test_custom_headers_not_captured_when_not_configured(self):
         """Test that headers are not captured when env vars are not set."""
@@ -971,12 +916,8 @@ class TestAioHttpIntegration(TestBase):
         )
 
         span = self._assert_single_span()
-        self.assertNotIn(
-            "http.request.header.x_request_header", span.attributes
-        )
-        self.assertNotIn(
-            "http.response.header.x_response_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_request_header", span.attributes)
+        self.assertNotIn("http.response.header.x_response_header", span.attributes)
 
     def test_sensitive_headers_sanitized(self):
         """Test that sensitive header values are redacted."""
@@ -996,9 +937,7 @@ class TestAioHttpIntegration(TestBase):
                 "Set-Cookie": "session=abc123",
                 "X-Secret": "secret",
             }
-            return aiohttp.web.Response(
-                status=200, text="OK", headers=response_headers
-            )
+            return aiohttp.web.Response(status=200, text="OK", headers=response_headers)
 
         self._http_request(
             trace_config=trace_config,
@@ -1042,9 +981,7 @@ class TestAioHttpIntegration(TestBase):
                 "X-Custom-Response-B": "value-B",
                 "X-Other-Response-Header": "other-value",
             }
-            return aiohttp.web.Response(
-                status=200, text="OK", headers=response_headers
-            )
+            return aiohttp.web.Response(status=200, text="OK", headers=response_headers)
 
         self._http_request(
             trace_config=trace_config,
@@ -1067,9 +1004,7 @@ class TestAioHttpIntegration(TestBase):
             span.attributes["http.request.header.x_custom_request_two"],
             ("value-two",),
         )
-        self.assertNotIn(
-            "http.request.header.x_other_request_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_other_request_header", span.attributes)
         self.assertEqual(
             span.attributes["http.response.header.x_custom_response_a"],
             ("value-A",),
@@ -1078,9 +1013,7 @@ class TestAioHttpIntegration(TestBase):
             span.attributes["http.response.header.x_custom_response_b"],
             ("value-B",),
         )
-        self.assertNotIn(
-            "http.response.header.x_other_response_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_other_response_header", span.attributes)
 
     def test_custom_headers_case_insensitive(self):
         """Test that header capture is case-insensitive."""
@@ -1091,9 +1024,7 @@ class TestAioHttpIntegration(TestBase):
 
         def custom_handler(_request):
             response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
-            return aiohttp.web.Response(
-                status=200, text="OK", headers=response_headers
-            )
+            return aiohttp.web.Response(status=200, text="OK", headers=response_headers)
 
         self._http_request(
             trace_config=trace_config,
@@ -1115,9 +1046,7 @@ class TestAioHttpIntegration(TestBase):
 
     def test_multi_value_request_headers(self):
         """Test that headers with multiple values are captured correctly."""
-        trace_config = aiohttp_client.create_trace_config(
-            captured_request_headers=["X-Multi-Value"]
-        )
+        trace_config = aiohttp_client.create_trace_config(captured_request_headers=["X-Multi-Value"])
 
         self._http_request(
             trace_config=trace_config,
@@ -1144,9 +1073,7 @@ class TestAioHttpIntegration(TestBase):
                 "Content-Type": "text/plain",
                 "Server": "TestServer/1.0",
             }
-            return aiohttp.web.Response(
-                status=200, body=b"OK", headers=response_headers
-            )
+            return aiohttp.web.Response(status=200, body=b"OK", headers=response_headers)
 
         self._http_request(
             trace_config=trace_config,
@@ -1179,9 +1106,7 @@ class TestAioHttpIntegration(TestBase):
 
     def test_capture_all_request_headers(self):
         """Test that all request headers can be captured with .* pattern."""
-        trace_config = aiohttp_client.create_trace_config(
-            captured_request_headers=[".*"]
-        )
+        trace_config = aiohttp_client.create_trace_config(captured_request_headers=[".*"])
 
         def custom_handler(_request):
             return aiohttp.web.Response(status=200, text="OK")
@@ -1214,9 +1139,7 @@ class TestAioHttpIntegration(TestBase):
 
     def test_capture_all_response_headers(self):
         """Test that all response headers can be captured with .* pattern."""
-        trace_config = aiohttp_client.create_trace_config(
-            captured_response_headers=[".*"]
-        )
+        trace_config = aiohttp_client.create_trace_config(captured_response_headers=[".*"])
 
         def custom_handler(_request):
             response_headers = {
@@ -1224,9 +1147,7 @@ class TestAioHttpIntegration(TestBase):
                 "X-Response-Two": "value2",
                 "X-Response-Three": "value3",
             }
-            return aiohttp.web.Response(
-                status=200, text="OK", headers=response_headers
-            )
+            return aiohttp.web.Response(status=200, text="OK", headers=response_headers)
 
         self._http_request(
             trace_config=trace_config,
@@ -1312,14 +1233,12 @@ class TestAioHttpClientInstrumentor(TestBase):
         return finished_spans
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 
     def test_instrument(self):
-        host, port = run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
-        )
+        host, port = run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
         span = self._assert_spans(1)
         self.assertEqual("GET", span.name)
         self.assertEqual("GET", span.attributes[HTTP_METHOD])
@@ -1344,13 +1263,9 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_instrument_new_semconv(self):
         AioHttpClientInstrumentor().uninstrument()
-        with mock.patch.dict(
-            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}
-        ):
+        with mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}):
             AioHttpClientInstrumentor().instrument()
-            host, port = run_with_test_server(
-                self.get_default_request(), self.URL, self.default_handler
-            )
+            host, port = run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
             span = self._assert_spans(1)
             self.assertEqual("GET", span.name)
             self.assertEqual("GET", span.attributes[HTTP_REQUEST_METHOD])
@@ -1374,13 +1289,9 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_instrument_both_semconv(self):
         AioHttpClientInstrumentor().uninstrument()
-        with mock.patch.dict(
-            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"}
-        ):
+        with mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"}):
             AioHttpClientInstrumentor().instrument()
-            host, port = run_with_test_server(
-                self.get_default_request(), self.URL, self.default_handler
-            )
+            host, port = run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
             url = f"http://{host}:{port}/test-path"
             span = self._assert_spans(1)
             self.assertEqual("GET", span.name)
@@ -1450,18 +1361,14 @@ class TestAioHttpClientInstrumentor(TestBase):
         for request_no in range(3):
             self.memory_exporter.clear()
             with self.subTest(request_no=request_no):
-                run_with_test_server(
-                    make_request, self.URL, self.default_handler
-                )
+                run_with_test_server(make_request, self.URL, self.default_handler)
                 self._assert_spans(1)
 
     def test_instrument_with_existing_trace_config(self):
         trace_config = aiohttp.TraceConfig()
 
         async def create_session(server: aiohttp.test_utils.TestServer):
-            async with aiohttp.test_utils.TestClient(
-                server, trace_configs=[trace_config]
-            ) as client:
+            async with aiohttp.test_utils.TestClient(server, trace_configs=[trace_config]) as client:
                 # pylint:disable=protected-access
                 trace_configs = client.session._trace_configs
                 self.assertEqual(2, len(trace_configs))
@@ -1474,28 +1381,20 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         AioHttpClientInstrumentor().uninstrument()
-        AioHttpClientInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        AioHttpClientInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
     def test_uninstrument(self):
         AioHttpClientInstrumentor().uninstrument()
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
 
         self._assert_spans(0)
 
         AioHttpClientInstrumentor().instrument()
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
         self._assert_spans(1)
 
     def test_uninstrument_session(self):
@@ -1505,14 +1404,10 @@ class TestAioHttpClientInstrumentor(TestBase):
             async with client as session:
                 await session.get(self.URL)
 
-        run_with_test_server(
-            uninstrument_request, self.URL, self.default_handler
-        )
+        run_with_test_server(uninstrument_request, self.URL, self.default_handler)
         self._assert_spans(0)
 
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
         self._assert_spans(1)
 
     def test_suppress_instrumentation(self):
@@ -1579,9 +1474,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().instrument(url_filter=strip_query_params)
 
         url = "/test-path?query=params"
-        host, port = run_with_test_server(
-            self.get_default_request(url), url, self.default_handler
-        )
+        host, port = run_with_test_server(self.get_default_request(url), url, self.default_handler)
         span = self._assert_spans(1)
         self.assertEqual(
             f"http://{host}:{port}/test-path",
@@ -1602,40 +1495,30 @@ class TestAioHttpClientInstrumentor(TestBase):
             span.set_attribute("response_hook_attr", "value")
 
         AioHttpClientInstrumentor().uninstrument()
-        AioHttpClientInstrumentor().instrument(
-            request_hook=request_hook, response_hook=response_hook
-        )
+        AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
         url = "/test-path"
-        run_with_test_server(
-            self.get_default_request(url), url, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(url), url, self.default_handler)
         span = self._assert_spans(1)
         self.assertEqual("GET - /test-path", span.name)
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
-    @mock.patch.dict(
-        os.environ, {"OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS": "/test-path"}
-    )
+    @mock.patch.dict(os.environ, {"OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS": "/test-path"})
     def test_ignores_excluded_urls(self):
         # need the env var set at instrument time
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
 
         url = "/test-path?query=params"
-        run_with_test_server(
-            self.get_default_request(url), url, self.default_handler
-        )
+        run_with_test_server(self.get_default_request(url), url, self.default_handler)
         self._assert_spans(0)
         self._assert_metrics(0)
 
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
     def test_loading_instrumentor(self):
-        (entry_point,) = entry_points(
-            group="opentelemetry_instrumentor", name="aiohttp-client"
-        )
+        (entry_point,) = entry_points(group="opentelemetry_instrumentor", name="aiohttp-client")
 
         instrumentor = entry_point.load()()
         self.assertIsInstance(instrumentor, AioHttpClientInstrumentor)

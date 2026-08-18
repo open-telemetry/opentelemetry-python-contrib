@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 import os
 
@@ -19,9 +22,7 @@ def main():
         }
     elif "anthropic.claude" in chat_model:
         body = {
-            "messages": [
-                {"role": "user", "content": [{"text": prompt, "type": "text"}]}
-            ],
+            "messages": [{"role": "user", "content": [{"text": prompt, "type": "text"}]}],
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 200,
         }

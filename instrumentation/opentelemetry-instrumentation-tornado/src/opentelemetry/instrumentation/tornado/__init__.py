@@ -1,16 +1,7 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=too-many-lines
 
 """
 This library uses OpenTelemetry to track web requests in Tornado applications.
@@ -26,9 +17,11 @@ Usage
     # apply tornado instrumentation
     TornadoInstrumentor().instrument()
 
+
     class Handler(tornado.web.RequestHandler):
         def get(self):
             self.set_status(200)
+
 
     app = tornado.web.Application([(r"/", Handler)])
     app.listen(8080)
@@ -74,11 +67,13 @@ created span and some other contextual information. Example:
 
     from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 
+
     # will be called for each incoming request to Tornado
     # web server. `handler` is an instance of
     # `tornado.web.RequestHandler`.
     def server_request_hook(span, handler):
         pass
+
 
     # will be called just before sending out a request with
     # `tornado.httpclient.AsyncHTTPClient.fetch`.
@@ -86,11 +81,13 @@ created span and some other contextual information. Example:
     def client_request_hook(span, request):
         pass
 
+
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
     def client_response_hook(span, future):
         pass
+
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(
@@ -154,7 +151,6 @@ API
 ---
 """
 
-import urllib
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -190,6 +186,10 @@ from opentelemetry.instrumentation.propagators import (
     FuncSetter,
     get_global_response_propagator,
 )
+from opentelemetry.instrumentation.tornado._utils import (
+    find_matched_rule,
+    route_from_rule,
+)
 from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -205,6 +205,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
+    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
@@ -224,8 +225,6 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv.attributes.url_attributes import (
-    URL_PATH,
-    URL_QUERY,
     URL_SCHEME,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
@@ -326,12 +325,8 @@ class TornadoInstrumentor(BaseInstrumentor):
                 schema_url=_get_schema_url(_StabilityMode.HTTP),
             )
 
-        client_histograms = _create_client_histograms(
-            meter_old, meter_new, sem_conv_opt_in_mode
-        )
-        server_histograms = _create_server_histograms(
-            meter_old, meter_new, sem_conv_opt_in_mode
-        )
+        client_histograms = _create_client_histograms(meter_old, meter_new, sem_conv_opt_in_mode)
+        server_histograms = _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode)
 
         client_request_hook = kwargs.get("client_request_hook", None)
         client_response_hook = kwargs.get("client_response_hook", None)
@@ -349,9 +344,7 @@ class TornadoInstrumentor(BaseInstrumentor):
                 self.patched_handlers.append(cls)
             return init(*args, **kwargs)
 
-        wrap_function_wrapper(
-            "tornado.web", "RequestHandler.__init__", handler_init
-        )
+        wrap_function_wrapper("tornado.web", "RequestHandler.__init__", handler_init)
 
         duration_old = client_histograms.get("old_duration")
         duration_new = client_histograms.get("new_duration")
@@ -388,9 +381,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def _create_server_histograms(
-    meter_old, meter_new, sem_conv_opt_in_mode
-) -> Dict[str, Histogram]:
+def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> Dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics
@@ -444,9 +435,7 @@ def _create_server_histograms(
     return histograms
 
 
-def _create_client_histograms(
-    meter_old, meter_new, sem_conv_opt_in_mode
-) -> Dict[str, Histogram]:
+def _create_client_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> Dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics
@@ -514,9 +503,7 @@ def patch_handler_class(
     _wrap(
         cls,
         "log_exception",
-        partial(
-            _log_exception, tracer, server_histograms, sem_conv_opt_in_mode
-        ),
+        partial(_log_exception, tracer, server_histograms, sem_conv_opt_in_mode),
     )
 
     if issubclass(cls, tornado.websocket.WebSocketHandler):
@@ -534,9 +521,7 @@ def patch_handler_class(
         _wrap(
             cls,
             "on_finish",
-            partial(
-                _on_finish, tracer, server_histograms, sem_conv_opt_in_mode
-            ),
+            partial(_on_finish, tracer, server_histograms, sem_conv_opt_in_mode),
         )
     return True
 
@@ -600,9 +585,7 @@ def _on_finish(
     try:
         return func(*args, **kwargs)
     finally:
-        _record_on_finish_metrics(
-            server_histograms, handler, None, sem_conv_opt_in_mode
-        )
+        _record_on_finish_metrics(server_histograms, handler, None, sem_conv_opt_in_mode)
         _finish_span(tracer, handler, None, sem_conv_opt_in_mode)
 
 
@@ -618,9 +601,7 @@ def _websockethandler_on_close(
     try:
         func()
     finally:
-        _record_on_finish_metrics(
-            server_histograms, handler, None, sem_conv_opt_in_mode
-        )
+        _record_on_finish_metrics(server_histograms, handler, None, sem_conv_opt_in_mode)
         _finish_span(tracer, handler, None, sem_conv_opt_in_mode)
 
 
@@ -637,18 +618,14 @@ def _log_exception(
     if len(args) == 3:
         error = args[1]
 
-    _record_on_finish_metrics(
-        server_histograms, handler, error, sem_conv_opt_in_mode
-    )
+    _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in_mode)
 
     _finish_span(tracer, handler, error, sem_conv_opt_in_mode)
     return func(*args, **kwargs)
 
 
 def _collect_custom_request_headers_attributes(request_headers):
-    custom_request_headers_name = get_custom_headers(
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-    )
+    custom_request_headers_name = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
     attributes = {}
     for header_name in custom_request_headers_name:
         header_values = request_headers.get(header_name)
@@ -659,9 +636,7 @@ def _collect_custom_request_headers_attributes(request_headers):
 
 
 def _collect_custom_response_headers_attributes(response_headers):
-    custom_response_headers_name = get_custom_headers(
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-    )
+    custom_response_headers_name = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
     attributes = {}
     for header_name in custom_response_headers_name:
         header_values = response_headers.get(header_name)
@@ -714,37 +689,35 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
             attrs[CLIENT_ADDRESS] = request.remote_ip
 
         # Network peer IP if different from remote_ip
-        if hasattr(request.connection, "context") and getattr(
-            request.connection.context, "_orig_remote_ip", None
-        ):
+        if hasattr(request.connection, "context") and getattr(request.connection.context, "_orig_remote_ip", None):
             if _report_old(sem_conv_opt_in_mode):
                 attrs[NET_PEER_IP] = request.connection.context._orig_remote_ip
             if _report_new(sem_conv_opt_in_mode):
-                attrs[NETWORK_PEER_ADDRESS] = (
-                    request.connection.context._orig_remote_ip
-                )
+                attrs[NETWORK_PEER_ADDRESS] = request.connection.context._orig_remote_ip
 
-    return extract_attributes_from_object(
-        request, _traced_request_attrs, attrs
-    )
+    return extract_attributes_from_object(request, _traced_request_attrs, attrs)
 
 
-def _get_default_span_name(request):
+def _get_default_span_name(handler):
     """
-    Default span name is the HTTP method and URL path, or just the method.
+    Default span name is the HTTP method and route, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
 
     Args:
-        request: Tornado request object.
+        handler: Tornado handler object.
     Returns:
         Default span name.
     """
 
-    path = request.path
-    method = request.method
-    if method and path:
-        return f"{method} {path}"
+    method = sanitize_method(handler.request.method)
+    if method == "_OTHER":
+        method = "HTTP"
+    rule = find_matched_rule(handler)
+    # if there's no rule, like for 404 just return the method
+    route = route_from_rule(rule, handler) if rule else None
+    if method and route:
+        return f"{method} {route}"
     return f"{method}"
 
 
@@ -754,12 +727,10 @@ def _get_full_handler_name(handler):
 
 
 def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
-    attributes = _get_attributes_from_request(
-        handler.request, sem_conv_opt_in_mode
-    )
+    attributes = _get_attributes_from_request(handler.request, sem_conv_opt_in_mode)
     span, token = _start_internal_or_server_span(
         tracer=tracer,
-        span_name=_get_default_span_name(handler.request),
+        span_name=_get_default_span_name(handler),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
@@ -769,14 +740,12 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     if span.is_recording():
         span.set_attribute("tornado.handler", _get_full_handler_name(handler))
         if span.kind == trace.SpanKind.SERVER:
-            custom_attributes = _collect_custom_request_headers_attributes(
-                handler.request.headers
-            )
+            custom_attributes = _collect_custom_request_headers_attributes(handler.request.headers)
             if len(custom_attributes) > 0:
                 span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
-    activation.__enter__()  # pylint: disable=E1101
+    activation.__enter__()  # pylint: disable=unnecessary-dunder-call
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
 
@@ -798,7 +767,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
     if error:
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
-            if not ctx and status_code == 404:
+            if not ctx and status_code in (404, 405):
                 ctx = _start_span(tracer, handler, sem_conv_opt_in_mode)
         else:
             status_code = 500
@@ -823,13 +792,11 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
         if ctx.span.is_recording() and ctx.span.kind == trace.SpanKind.SERVER:
-            custom_attributes = _collect_custom_response_headers_attributes(
-                handler._headers
-            )
+            custom_attributes = _collect_custom_response_headers_attributes(handler._headers)
             if len(custom_attributes) > 0:
                 ctx.span.set_attributes(custom_attributes)
 
-    ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
+    ctx.activation.__exit__(*finish_args)  # pylint: disable=unnecessary-dunder-call
     if ctx.token:
         context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)
@@ -841,35 +808,27 @@ def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
     # Record old semconv metrics
     if _report_old(sem_conv_opt_in_mode):
         metric_attributes_old = _create_metric_attributes_old(handler)
-        server_histograms["old_request_size"].record(
-            request_size, attributes=metric_attributes_old
-        )
-        active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
-        )
-        server_histograms["active_requests"].add(
-            1, attributes=active_requests_attributes_old
-        )
+        server_histograms["old_request_size"].record(request_size, attributes=metric_attributes_old)
+        active_requests_attributes_old = _create_active_requests_attributes_old(handler)
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = _create_active_requests_attributes_new(handler.request)
+            active_requests_attributes_old_or_dup = active_requests_attributes_old | active_requests_attributes_new
+        else:
+            active_requests_attributes_old_or_dup = active_requests_attributes_old
+        server_histograms["active_requests"].add(1, attributes=active_requests_attributes_old_or_dup)
 
     # Record new semconv metrics
     if _report_new(sem_conv_opt_in_mode):
         metric_attributes_new = _create_metric_attributes_new(handler)
-        server_histograms["new_request_size"].record(
-            request_size, attributes=metric_attributes_new
-        )
+        server_histograms["new_request_size"].record(request_size, attributes=metric_attributes_new)
         # Don't add to active_requests again if already added in old mode
         if not _report_old(sem_conv_opt_in_mode):
-            active_requests_attributes_new = (
-                _create_active_requests_attributes_new(handler.request)
-            )
-            server_histograms["active_requests"].add(
-                1, attributes=active_requests_attributes_new
-            )
+            active_requests_attributes_new = _create_active_requests_attributes_new(handler.request)
+            server_histograms["active_requests"].add(1, attributes=active_requests_attributes_new)
 
 
-def _record_on_finish_metrics(
-    server_histograms, handler, error, sem_conv_opt_in_mode
-):
+def _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in_mode):
     otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
     if otel_handler_state.get("exclude_request"):
         return
@@ -889,19 +848,18 @@ def _record_on_finish_metrics(
         if isinstance(error, tornado.web.HTTPError):
             metric_attributes_old[HTTP_STATUS_CODE] = status_code
 
-        server_histograms["old_response_size"].record(
-            response_size, attributes=metric_attributes_old
-        )
-        server_histograms["old_duration"].record(
-            elapsed_time_ms, attributes=metric_attributes_old
-        )
+        server_histograms["old_response_size"].record(response_size, attributes=metric_attributes_old)
+        server_histograms["old_duration"].record(elapsed_time_ms, attributes=metric_attributes_old)
 
-        active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
-        )
-        server_histograms["active_requests"].add(
-            -1, attributes=active_requests_attributes_old
-        )
+        active_requests_attributes_old = _create_active_requests_attributes_old(handler)
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = _create_active_requests_attributes_new(handler.request)
+            active_requests_attributes_old_or_dup = active_requests_attributes_old | active_requests_attributes_new
+        else:
+            active_requests_attributes_old_or_dup = active_requests_attributes_old
+
+        server_histograms["active_requests"].add(-1, attributes=active_requests_attributes_old_or_dup)
 
     # Record new semconv metrics
     if _report_new(sem_conv_opt_in_mode):
@@ -909,39 +867,37 @@ def _record_on_finish_metrics(
         if isinstance(error, tornado.web.HTTPError):
             metric_attributes_new[HTTP_RESPONSE_STATUS_CODE] = status_code
 
-        server_histograms["new_response_size"].record(
-            response_size, attributes=metric_attributes_new
-        )
-        server_histograms["new_duration"].record(
-            elapsed_time_s, attributes=metric_attributes_new
-        )
+        server_histograms["new_response_size"].record(response_size, attributes=metric_attributes_new)
+        server_histograms["new_duration"].record(elapsed_time_s, attributes=metric_attributes_new)
 
         # Don't subtract from active_requests again if already done in old mode
         if not _report_old(sem_conv_opt_in_mode):
-            active_requests_attributes_new = (
-                _create_active_requests_attributes_new(handler.request)
-            )
-            server_histograms["active_requests"].add(
-                -1, attributes=active_requests_attributes_new
-            )
+            active_requests_attributes_new = _create_active_requests_attributes_new(handler.request)
+            server_histograms["active_requests"].add(-1, attributes=active_requests_attributes_new)
 
 
-def _create_active_requests_attributes_old(request):
+def _create_active_requests_attributes_old(handler):
     """Create metric attributes for active requests using old semconv."""
+    request = handler.request
     metric_attributes = {
-        HTTP_METHOD: request.method,
+        HTTP_METHOD: sanitize_method(request.method),
         HTTP_SCHEME: request.protocol,
         HTTP_FLAVOR: request.version,
         HTTP_HOST: request.host,
     }
-    metric_attributes[HTTP_TARGET] = request.path
+
+    if rule := find_matched_rule(handler):
+        route = route_from_rule(rule, handler)
+
+        if route is not None:
+            metric_attributes[HTTP_TARGET] = route
     return metric_attributes
 
 
 def _create_active_requests_attributes_new(request):
     """Create metric attributes for active requests using new semconv."""
     metric_attributes = {
-        HTTP_REQUEST_METHOD: request.method,
+        HTTP_REQUEST_METHOD: sanitize_method(request.method),
         URL_SCHEME: request.protocol,
     }
     if request.version:
@@ -951,7 +907,7 @@ def _create_active_requests_attributes_new(request):
 
 def _create_metric_attributes_old(handler):
     """Create metric attributes using old semconv."""
-    metric_attributes = _create_active_requests_attributes_old(handler.request)
+    metric_attributes = _create_active_requests_attributes_old(handler)
     metric_attributes[HTTP_STATUS_CODE] = handler.get_status()
     return metric_attributes
 
@@ -961,13 +917,13 @@ def _create_metric_attributes_new(handler):
     metric_attributes = _create_active_requests_attributes_new(handler.request)
     metric_attributes[HTTP_RESPONSE_STATUS_CODE] = handler.get_status()
 
-    # Add URL path if available
     if handler.request.path:
-        # Parse query from path if present
-        parsed = urllib.parse.urlparse(handler.request.path)
-        if parsed.path:
-            metric_attributes[URL_PATH] = parsed.path
-        if parsed.query:
-            metric_attributes[URL_QUERY] = parsed.query
+        rule = find_matched_rule(handler)
+
+        if rule:
+            route = route_from_rule(rule, handler)
+
+            if route is not None:
+                metric_attributes[HTTP_ROUTE] = route
 
     return metric_attributes

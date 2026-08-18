@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: skip-file
 
 from __future__ import annotations
@@ -35,12 +38,9 @@ __all__ = [
 @dataclass
 class AgentSpanData:
     name: str | None = None
+    handoffs: list[str] | None = None
     tools: list[str] | None = None
     output_type: str | None = None
-    description: str | None = None
-    agent_id: str | None = None
-    model: str | None = None
-    operation: str | None = None
 
     @property
     def type(self) -> str:
@@ -154,9 +154,7 @@ class TraceProvider:
         else:
             trace_id = f"trace_{next(self._ids)}"
             parent_id = None
-        return Span(
-            trace_id, span_id, span_data, parent_id, self._multi_processor
-        )
+        return Span(trace_id, span_id, span_data, parent_id, self._multi_processor)
 
     def shutdown(self) -> None:
         self._multi_processor.shutdown()
@@ -200,8 +198,14 @@ def generation_span(**kwargs: Any):
 
 
 @contextmanager
-def agent_span(**kwargs: Any):
-    data = AgentSpanData(**kwargs)
+def agent_span(
+    name: str,
+    handoffs: list[str] | None = None,
+    tools: list[str] | None = None,
+    output_type: str | None = None,
+    **kwargs: Any,
+):
+    data = AgentSpanData(name=name, handoffs=handoffs, tools=tools, output_type=output_type)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

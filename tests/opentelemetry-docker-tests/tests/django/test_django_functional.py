@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from sys import modules
 
@@ -116,11 +105,7 @@ class TestFunctionalDjango(TestBase):
             "No metrics were generated",
         )
         self.assertTrue(
-            any(
-                name
-                in ["http.server.request.duration", "http.server.duration"]
-                for name in metric_names
-            ),
+            any(name in ["http.server.request.duration", "http.server.duration"] for name in metric_names),
             f"Expected duration metric not found. Available metrics: {metric_names}",
         )
         self.assertIn(
@@ -148,12 +133,8 @@ class TestFunctionalDjango(TestBase):
 
                     # Trace and span ID of exemplar are part of finished spans
                     finished_spans = self.memory_exporter.get_finished_spans()
-                    finished_span_ids = [
-                        span.context.span_id for span in finished_spans
-                    ]
-                    finished_trace_ids = [
-                        span.context.trace_id for span in finished_spans
-                    ]
+                    finished_span_ids = [span.context.span_id for span in finished_spans]
+                    finished_trace_ids = [span.context.trace_id for span in finished_spans]
                     self.assertIn(exemplar.span_id, finished_span_ids)
                     self.assertIn(exemplar.trace_id, finished_trace_ids)
 
