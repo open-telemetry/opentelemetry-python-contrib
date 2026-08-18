@@ -49,7 +49,7 @@ class ToolInvocation(GenAIInvocation):
         tool_description: str | None = None,
     ) -> None:
         """Use handler.start_tool(name) or handler.tool(name) instead of calling this directly."""
-        _operation_name = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+        _operation_name = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value  # pyright: ignore[reportDeprecated]
         super().__init__(
             tracer,
             metrics_recorder,

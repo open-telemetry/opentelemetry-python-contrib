@@ -36,6 +36,16 @@ Usage
 
     add.delay(42, 50)
 
+Configuration
+-------------
+
+The ``CeleryInstrumentor().instrument()`` method accepts the following arguments:
+
+* ``use_span_links`` (bool): When ``True``, Celery task execution spans will be linked to the
+  task creation spans instead of being created as child spans. This provides a looser
+  coupling between spans in distributed systems. Defaults to ``False`` to maintain
+  backward compatibility.
+
 Setting up tracing
 ------------------
 
@@ -125,7 +135,9 @@ class CeleryInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # TODO: deprecate this when support for stable semconv is available
         tracer_provider = kwargs.get("tracer_provider")
+        use_span_links = kwargs.get("use_span_links", False)
 
         self._tracer = trace.get_tracer(
             __name__,
@@ -133,6 +145,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
+        self._use_span_links = use_span_links
 
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(
@@ -147,12 +160,8 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
-        signals.before_task_publish.connect(
-            self._trace_before_publish, weak=False
-        )
-        signals.after_task_publish.connect(
-            self._trace_after_publish, weak=False
-        )
+        signals.before_task_publish.connect(self._trace_before_publish, weak=False)
+        signals.after_task_publish.connect(self._trace_after_publish, weak=False)
         signals.task_failure.connect(self._trace_failure, weak=False)
         signals.task_retry.connect(self._trace_retry, weak=False)
 
@@ -175,14 +184,20 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
-        token = context_api.attach(tracectx) if tracectx is not None else None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
         operation_name = f"{_TASK_RUN}/{task.name}"
-        span = self._tracer.start_span(
-            operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER
-        )
+
+        if self._use_span_links and tracectx is not None:
+            parent_span_context = trace.get_current_span(tracectx).get_span_context()
+            links = [trace.Link(parent_span_context)] if parent_span_context.is_valid else None
+            span = self._tracer.start_span(operation_name, links=links, kind=trace.SpanKind.CONSUMER)
+            # Don't attach the context when using links to avoid parent-child relationship
+            token = None
+        else:
+            token = context_api.attach(tracectx) if tracectx is not None else None
+            span = self._tracer.start_span(operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
@@ -239,9 +254,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         else:
             task_name = task.name
         operation_name = f"{_TASK_APPLY_ASYNC}/{task_name}"
-        span = self._tracer.start_span(
-            operation_name, kind=trace.SpanKind.PRODUCER
-        )
+        span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER)
 
         # apply some attributes here because most of the data is not available
         if span.is_recording():
@@ -253,9 +266,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
-        utils.attach_context(
-            task, task_id, span, activation, None, is_publish=True
-        )
+        utils.attach_context(task, task_id, span, activation, None, is_publish=True)
 
         headers = kwargs.get("headers")
         if headers:
@@ -303,11 +314,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         ex = kwargs.get("einfo")
 
-        if (
-            hasattr(task, "throws")
-            and ex is not None
-            and isinstance(ex.exception, task.throws)
-        ):
+        if hasattr(task, "throws") and ex is not None and isinstance(ex.exception, task.throws):
             return
 
         if ex is not None:
@@ -316,11 +323,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             if isinstance(ex, ExceptionInfo) and ex.exception is not None:
                 ex = ex.exception
 
-            if (
-                ExceptionWithTraceback is not None
-                and isinstance(ex, ExceptionWithTraceback)
-                and ex.exc is not None
-            ):
+            if ExceptionWithTraceback is not None and isinstance(ex, ExceptionWithTraceback) and ex.exc is not None:
                 ex = ex.exc
 
             status_kwargs["description"] = str(ex)
@@ -354,9 +357,7 @@ class CeleryInstrumentor(BaseInstrumentor):
     def update_task_duration_time(self, task_id):
         cur_time = default_timer()
         task_duration_time_until_now = (
-            cur_time - self.task_id_to_start_time[task_id]
-            if task_id in self.task_id_to_start_time
-            else cur_time
+            cur_time - self.task_id_to_start_time[task_id] if task_id in self.task_id_to_start_time else cur_time
         )
         self.task_id_to_start_time[task_id] = task_duration_time_until_now
 

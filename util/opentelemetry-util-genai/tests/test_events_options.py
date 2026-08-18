@@ -149,14 +149,10 @@ class TestShouldEmitEvent(unittest.TestCase):
         # EVENT_ONLY should default to True
         with self.assertLogs(level="WARNING") as cm:
             result = should_emit_event()
-            assert result is True, (
-                f"Expected True but got {result} (EVENT_ONLY should default to True)"
-            )
+            assert result is True, f"Expected True but got {result} (EVENT_ONLY should default to True)"
         self.assertEqual(len(cm.output), 1)
         self.assertIn("INVALID_VALUE is not a valid option for", cm.output[0])
-        self.assertIn(
-            "Must be one of true or false (case-insensitive)", cm.output[0]
-        )
+        self.assertIn("Must be one of true or false (case-insensitive)", cm.output[0])
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
@@ -169,9 +165,7 @@ class TestShouldEmitEvent(unittest.TestCase):
         # When invalid value is set with SPAN_ONLY, should default to False
         with self.assertLogs(level="WARNING") as cm:
             result = should_emit_event()
-            assert result is False, (
-                f"Expected False but got {result} (SPAN_ONLY should default to False)"
-            )
+            assert result is False, f"Expected False but got {result} (SPAN_ONLY should default to False)"
         self.assertEqual(len(cm.output), 1)
         self.assertIn("INVALID_VALUE is not a valid option for", cm.output[0])
 
