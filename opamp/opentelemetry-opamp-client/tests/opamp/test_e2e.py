@@ -19,17 +19,12 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
 
     class E2ECallbacks(OpAMPCallbacks):
         def on_message(self, agent, client, message):
-            logger = logging.getLogger(
-                "opentelemetry._opamp.agent.opamp_handler"
-            )
+            logger = logging.getLogger("opentelemetry._opamp.agent.opamp_handler")
 
             logger.debug("In opamp_handler")
 
             # we need to update the config only if we have a config
-            if (
-                message.remote_config is None
-                or not message.remote_config.config_hash
-            ):
+            if message.remote_config is None or not message.remote_config.config_hash:
                 return
 
             updated_remote_config = client.update_remote_config_status(
@@ -39,9 +34,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
             )
             if updated_remote_config is not None:
                 logger.debug("Updated Remote Config")
-                msg = client.build_remote_config_status_response_message(
-                    updated_remote_config
-                )
+                msg = client.build_remote_config_status_response_message(updated_remote_config)
                 agent.send(payload=msg)
 
     opamp_client = OpAMPClient(
@@ -65,9 +58,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
     opamp_agent.stop()
 
     handler_records = [
-        record[2]
-        for record in caplog.record_tuples
-        if record[0] == "opentelemetry._opamp.agent.opamp_handler"
+        record[2] for record in caplog.record_tuples if record[0] == "opentelemetry._opamp.agent.opamp_handler"
     ]
     # connection response has ReportFullState flag, triggering a full state send.
     # on_message is called for: connection, full state response, config status response, heartbeat.

@@ -40,9 +40,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
     def setUp(self) -> None:
         self.span_exporter = InMemorySpanExporter()
         self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        self.tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         _OpenTelemetrySemanticConventionStability._initialized = False
         _OpenTelemetrySemanticConventionStability._initialize()
 
@@ -60,9 +58,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        input_messages = [
-            InputMessage(role="user", parts=[Text(content="hello")])
-        ]
+        input_messages = [InputMessage(role="user", parts=[Text(content="hello")])]
         output_messages = [
             OutputMessage(
                 role="assistant",
@@ -98,9 +94,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        input_messages = [
-            InputMessage(role="user", parts=[Text(content="hello")])
-        ]
+        input_messages = [InputMessage(role="user", parts=[Text(content="hello")])]
 
         invocation = handler.start_inference("openai", request_model="gpt-4o")
         invocation.input_messages = input_messages
@@ -171,9 +165,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             "s3://bucket/inputs.json",
         )
 
-    @patch.dict(
-        os.environ, {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ""}
-    )
+    @patch.dict(os.environ, {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ""})
     def test_should_capture_content_false_by_default(self):
         handler = self._make_handler()
         self.assertFalse(handler.should_capture_content())
@@ -184,9 +176,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         handler = self._make_handler(hook)
         self.assertTrue(handler.should_capture_content())
 
-    @patch.dict(
-        os.environ, {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ""}
-    )
+    @patch.dict(os.environ, {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ""})
     def test_should_capture_content_false_when_noop_hook(self):
         handler = self._make_handler(_NoOpCompletionHook())
         self.assertFalse(handler.should_capture_content())
@@ -270,9 +260,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        input_messages = [
-            InputMessage(role="user", parts=[Text(content="what is 2+2?")])
-        ]
+        input_messages = [InputMessage(role="user", parts=[Text(content="what is 2+2?")])]
         output_messages = [
             OutputMessage(
                 role="assistant",
@@ -301,9 +289,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         handler = self._make_handler(hook)
 
         invocation = handler.start_workflow(name="my-workflow")
-        invocation.input_messages = [
-            InputMessage(role="user", parts=[Text(content="hello")])
-        ]
+        invocation.input_messages = [InputMessage(role="user", parts=[Text(content="hello")])]
         invocation.fail(RuntimeError("workflow failed"))
 
         hook.on_completion.assert_called_once()
@@ -325,9 +311,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        input_messages = [
-            InputMessage(role="user", parts=[Text(content="what is 2+2?")])
-        ]
+        input_messages = [InputMessage(role="user", parts=[Text(content="what is 2+2?")])]
         output_messages = [
             OutputMessage(
                 role="assistant",
@@ -344,9 +328,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
-        invocation = handler.start_invoke_local_agent(
-            "openai", request_model="gpt-4"
-        )
+        invocation = handler.start_invoke_local_agent("openai", request_model="gpt-4")
         invocation.agent_name = "Math Tutor"
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
@@ -367,12 +349,8 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        invocation = handler.start_invoke_local_agent(
-            "openai", request_model="gpt-4"
-        )
-        invocation.input_messages = [
-            InputMessage(role="user", parts=[Text(content="hello")])
-        ]
+        invocation = handler.start_invoke_local_agent("openai", request_model="gpt-4")
+        invocation.input_messages = [InputMessage(role="user", parts=[Text(content="hello")])]
         invocation.fail(RuntimeError("agent failed"))
 
         hook.on_completion.assert_called_once()
@@ -383,9 +361,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        input_messages = [
-            InputMessage(role="user", parts=[Text(content="hi")])
-        ]
+        input_messages = [InputMessage(role="user", parts=[Text(content="hi")])]
         output_messages = [
             OutputMessage(
                 role="assistant",

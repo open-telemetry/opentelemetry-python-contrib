@@ -136,6 +136,7 @@ from opentelemetry.instrumentation.botocore.utils import (
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
+    http_status_to_status_code,
     is_instrumentation_enabled,
     suppress_http_instrumentation,
     unwrap,
@@ -157,6 +158,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SYSTEM,
 )
 from opentelemetry.trace.span import Span
+from opentelemetry.trace.status import StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -223,9 +225,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         unwrap(Endpoint, "prepare_request")
 
     # pylint: disable=unused-argument
-    def _patched_endpoint_prepare_request(
-        self, wrapped, instance, args, kwargs
-    ):
+    def _patched_endpoint_prepare_request(self, wrapped, instance, args, kwargs):
         request = args[0]
         headers = request.headers
 
@@ -279,6 +279,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             # tracing streaming services require to close the span manually
             # at a later time after the stream has been consumed
             end_on_exit=end_span_on_exit,
+            set_status_on_exception=False,
         ) as span:
             _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
             self._call_request_hook(span, call_context)
@@ -291,14 +292,18 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        http_status = (result or {}).get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+                        if http_status_to_status_code(http_status) is StatusCode.ERROR:
+                            span.set_status(StatusCode.ERROR, str(error))
+                            _safe_invoke(extension.on_error, span, error, instrumentor_ctx)
+                        else:
+                            _safe_invoke(extension.on_success, span, result, instrumentor_ctx)
+                        raise
+                    except Exception as error:
+                        span.set_status(StatusCode.ERROR, str(error))
                         raise
                     _apply_response_attributes(span, result)
-                    _safe_invoke(
-                        extension.on_success, span, result, instrumentor_ctx
-                    )
+                    _safe_invoke(extension.on_success, span, result, instrumentor_ctx)
             finally:
                 _safe_invoke(extension.after_service_call, instrumentor_ctx)
                 self._call_response_hook(span, call_context, result)
@@ -315,14 +320,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
             call_context.params,
         )
 
-    def _call_response_hook(
-        self, span: Span, call_context: _AwsSdkCallContext, result
-    ):
+    def _call_response_hook(self, span: Span, call_context: _AwsSdkCallContext, result):
         if not callable(self.response_hook):
             return
-        self.response_hook(
-            span, call_context.service, call_context.operation, result
-        )
+        self.response_hook(span, call_context.service, call_context.operation, result)
 
 
 class AiobotocoreInstrumentor(BaseInstrumentor):
@@ -383,9 +384,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         unwrap(Endpoint, "prepare_request")
 
     # pylint: disable=unused-argument
-    def _patched_endpoint_prepare_request(
-        self, wrapped, instance, args, kwargs
-    ):
+    def _patched_endpoint_prepare_request(self, wrapped, instance, args, kwargs):
         request = args[0]
         headers = request.headers
 
@@ -439,6 +438,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
             # tracing streaming services require to close the span manually
             # at a later time after the stream has been consumed
             end_on_exit=end_span_on_exit,
+            set_status_on_exception=False,
         ) as span:
             _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
             self._call_request_hook(span, call_context)
@@ -451,14 +451,18 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        http_status = (result or {}).get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+                        if http_status_to_status_code(http_status) is StatusCode.ERROR:
+                            span.set_status(StatusCode.ERROR, str(error))
+                            _safe_invoke(extension.on_error, span, error, instrumentor_ctx)
+                        else:
+                            _safe_invoke(extension.on_success, span, result, instrumentor_ctx)
+                        raise
+                    except Exception as error:
+                        span.set_status(StatusCode.ERROR, str(error))
                         raise
                     _apply_response_attributes(span, result)
-                    _safe_invoke(
-                        extension.on_success, span, result, instrumentor_ctx
-                    )
+                    _safe_invoke(extension.on_success, span, result, instrumentor_ctx)
             finally:
                 _safe_invoke(extension.after_service_call, instrumentor_ctx)
                 self._call_response_hook(span, call_context, result)
@@ -475,14 +479,10 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
             call_context.params,
         )
 
-    def _call_response_hook(
-        self, span: Span, call_context: _AwsSdkCallContext, result
-    ):
+    def _call_response_hook(self, span: Span, call_context: _AwsSdkCallContext, result):
         if not callable(self.response_hook):
             return
-        self.response_hook(
-            span, call_context.service, call_context.operation, result
-        )
+        self.response_hook(span, call_context.service, call_context.operation, result)
 
 
 def _apply_response_attributes(span: Span, result):
@@ -497,11 +497,7 @@ def _apply_response_attributes(span: Span, result):
     if request_id is None:
         headers = metadata.get("HTTPHeaders")
         if headers is not None:
-            request_id = (
-                headers.get("x-amzn-RequestId")
-                or headers.get("x-amz-request-id")
-                or headers.get("x-amz-id-2")
-            )
+            request_id = headers.get("x-amzn-RequestId") or headers.get("x-amz-request-id") or headers.get("x-amz-id-2")
     if request_id:
         # TODO: update when semantic conventions exist
         span.set_attribute("aws.request_id", request_id)
@@ -516,9 +512,7 @@ def _apply_response_attributes(span: Span, result):
         span.set_attribute(HTTP_STATUS_CODE, status_code)
 
 
-def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
-) -> Optional[_AwsSdkCallContext]:
+def _determine_call_context(client: BaseClient, args: Tuple[str, Dict[str, Any]]) -> Optional[_AwsSdkCallContext]:
     try:
         call_context = _AwsSdkCallContext(client, args)
 
