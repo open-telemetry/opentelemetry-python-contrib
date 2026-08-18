@@ -282,7 +282,7 @@ MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
                 "ApproximateFirstReceiveTimestamp": "1545082649185",
             },
             "messageAttributes": {
-                "traceparent": {"DataType": "String"},
+                "traceparent": {"dataType": "String"},
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
             "eventSource": "aws:sqs",
