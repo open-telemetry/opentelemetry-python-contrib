@@ -1,1 +1,1 @@
-Release new version of the package built with the latest hatchling version. Fixes issue - https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4945
+Release new version of the package built with the latest hatchling version. Baseline supported Python version is now 3.10.
