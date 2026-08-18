@@ -18,6 +18,8 @@ Please delete options that are not relevant.
 See [contributing.md](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md) for styleguide, changelog guidelines, and more.
 
 - [ ] I am a human and not a bot
-- [ ] I have run tests, pre-commit, typechecking and linters locally before submitting
+- [ ] I have run `tox -e precommit`
+- [ ] I have run `tox -e typecheck`
+- [ ] I have run the relevant tests and linting tox environments 
 - [ ] This requires the following PR in core:
 
