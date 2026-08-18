@@ -267,8 +267,8 @@ MOCK_LAMBDA_SQS_EVENT_ATTR_NOT_DICT = {
     ]
 }
 
-# SQS event where the attribute dict has DataType but no StringValue key.
-# The getter returns None for missing StringValue, no link is extracted.
+# SQS event where the attribute dict has dataType but no stringValue key.
+# The getter returns None for missing stringValue, no link is extracted.
 MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
     "Records": [
         {
@@ -282,7 +282,7 @@ MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
                 "ApproximateFirstReceiveTimestamp": "1545082649185",
             },
             "messageAttributes": {
-                "traceparent": {"DataType": "String"},
+                "traceparent": {"dataType": "String"},
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
             "eventSource": "aws:sqs",
