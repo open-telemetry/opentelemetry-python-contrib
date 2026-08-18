@@ -36,6 +36,7 @@ components:
 
   resource/opentelemetry-resource-detector-azure:
     - JacksonWeber
+    - rads-1996
 
   sdk-extension/opentelemetry-sdk-extension-aws:
     - srprash
