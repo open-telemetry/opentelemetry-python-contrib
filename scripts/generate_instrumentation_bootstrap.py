@@ -68,20 +68,23 @@ independent_packages = {
 external_instrumentations = [
     (
         "anthropic >= 0.51.0",
-        "opentelemetry-instrumentation-genai-anthropic",
+        "opentelemetry-instrumentation-genai-anthropic>=1.0b0",
     ),
     (
         "google-genai >= 1.32.0, <3",
-        "opentelemetry-instrumentation-google-genai",
+        "opentelemetry-instrumentation-google-genai>=1.0b1",
     ),
     (
         "langchain >= 0.3.21",
-        "opentelemetry-instrumentation-genai-langchain",
+        "opentelemetry-instrumentation-genai-langchain>=1.0b0",
     ),
-    ("openai >= 1.26.0", "opentelemetry-instrumentation-genai-openai"),
+    (
+        "openai >= 1.26.0",
+        "opentelemetry-instrumentation-genai-openai>=1.0b0",
+    ),
     (
         "openai-agents >= 0.3.3",
-        "opentelemetry-instrumentation-genai-openai-agents",
+        "opentelemetry-instrumentation-genai-openai-agents>=1.0b0",
     ),
 ]
 
@@ -97,9 +100,7 @@ def main():
                 values=[ast.Str(target_pkg), ast.Str(instrumentation)],
             )
         )
-    for pkg in get_instrumentation_packages(
-        independent_packages=independent_packages
-    ):
+    for pkg in get_instrumentation_packages(independent_packages=independent_packages):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
@@ -126,9 +127,7 @@ def main():
     tree.body[1].value = default_instrumentations
     source = astor.to_source(tree)
 
-    with open(
-        os.path.join(scripts_path, "license_header.txt"), encoding="utf-8"
-    ) as header_file:
+    with open(os.path.join(scripts_path, "license_header.txt"), encoding="utf-8") as header_file:
         header = header_file.read()
         source = _template.format(header=header, source=source)
 

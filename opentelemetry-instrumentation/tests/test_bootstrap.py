@@ -16,23 +16,23 @@ from opentelemetry.instrumentation.bootstrap_gen import (
 EXPECTED_GENAI_LIBRARIES = [
     {
         "library": "anthropic >= 0.51.0",
-        "instrumentation": "opentelemetry-instrumentation-genai-anthropic",
+        "instrumentation": "opentelemetry-instrumentation-genai-anthropic>=1.0b0",
     },
     {
         "library": "google-genai >= 1.32.0, <3",
-        "instrumentation": "opentelemetry-instrumentation-google-genai",
+        "instrumentation": "opentelemetry-instrumentation-google-genai>=1.0b1",
     },
     {
         "library": "langchain >= 0.3.21",
-        "instrumentation": "opentelemetry-instrumentation-genai-langchain",
+        "instrumentation": "opentelemetry-instrumentation-genai-langchain>=1.0b0",
     },
     {
         "library": "openai >= 1.26.0",
-        "instrumentation": "opentelemetry-instrumentation-genai-openai",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai>=1.0b0",
     },
     {
         "library": "openai-agents >= 0.3.3",
-        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents>=1.0b0",
     },
 ]
 
@@ -50,14 +50,10 @@ class TestBootstrap(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.installed_libraries = sample_packages(
-            [lib["instrumentation"] for lib in libraries], 0.6
-        )
+        cls.installed_libraries = sample_packages([lib["instrumentation"] for lib in libraries], 0.6)
 
         # treat 50% of sampled packages as pre-installed
-        cls.installed_instrumentations = sample_packages(
-            cls.installed_libraries, 0.5
-        )
+        cls.installed_instrumentations = sample_packages(cls.installed_libraries, 0.5)
 
         cls.pkg_patcher = patch(
             "opentelemetry.instrumentation.bootstrap._find_installed_libraries",
@@ -87,12 +83,8 @@ class TestBootstrap(TestCase):
                 self.assertIn(library, libraries)
 
     def test_deprecated_genai_instrumentations_are_not_available(self):
-        instrumentations = {
-            library["instrumentation"] for library in libraries
-        }
-        self.assertNotIn(
-            "opentelemetry-instrumentation-openai-v2", instrumentations
-        )
+        instrumentations = {library["instrumentation"] for library in libraries}
+        self.assertNotIn("opentelemetry-instrumentation-openai-v2", instrumentations)
         self.assertNotIn(
             "opentelemetry-instrumentation-openai-agents-v2",
             instrumentations,

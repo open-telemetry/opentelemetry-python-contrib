@@ -15,9 +15,7 @@ class TestSqsExtension(TestBase):
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.region = "us-west-2"
         self.client = session.create_client("sqs", region_name=self.region)
 
@@ -27,24 +25,16 @@ class TestSqsExtension(TestBase):
 
     @mock_aws
     def test_sqs_messaging_send_message(self):
-        create_queue_result = self.client.create_queue(
-            QueueName="test_queue_name"
-        )
+        create_queue_result = self.client.create_queue(QueueName="test_queue_name")
         queue_url = create_queue_result["QueueUrl"]
-        response = self.client.send_message(
-            QueueUrl=queue_url, MessageBody="content"
-        )
+        response = self.client.send_message(QueueUrl=queue_url, MessageBody="content")
 
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 2)
         span = spans[1]
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
-        )
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
@@ -56,9 +46,7 @@ class TestSqsExtension(TestBase):
 
     @mock_aws
     def test_sqs_messaging_send_message_batch(self):
-        create_queue_result = self.client.create_queue(
-            QueueName="test_queue_name"
-        )
+        create_queue_result = self.client.create_queue(QueueName="test_queue_name")
         queue_url = create_queue_result["QueueUrl"]
         response = self.client.send_message_batch(
             QueueUrl=queue_url,
@@ -73,12 +61,8 @@ class TestSqsExtension(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         self.assertEqual(span.attributes["rpc.method"], "SendMessageBatch")
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
-        )
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
@@ -90,26 +74,18 @@ class TestSqsExtension(TestBase):
 
     @mock_aws
     def test_sqs_messaging_receive_message(self):
-        create_queue_result = self.client.create_queue(
-            QueueName="test_queue_name"
-        )
+        create_queue_result = self.client.create_queue(QueueName="test_queue_name")
         queue_url = create_queue_result["QueueUrl"]
         self.client.send_message(QueueUrl=queue_url, MessageBody="content")
-        message_result = self.client.receive_message(
-            QueueUrl=create_queue_result["QueueUrl"]
-        )
+        message_result = self.client.receive_message(QueueUrl=create_queue_result["QueueUrl"])
 
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 3)
         span = spans[-1]
         self.assertEqual(span.attributes["rpc.method"], "ReceiveMessage")
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], queue_url
-        )
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
@@ -122,18 +98,12 @@ class TestSqsExtension(TestBase):
     @mock_aws
     def test_sqs_messaging_failed_operation(self):
         with self.assertRaises(Exception):
-            self.client.send_message(
-                QueueUrl="non-existing", MessageBody="content"
-            )
+            self.client.send_message(QueueUrl="non-existing", MessageBody="content")
 
         spans = self.memory_exporter.get_finished_spans()
         assert spans
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.attributes["rpc.method"], "SendMessage")
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL], "non-existing"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], "non-existing")
