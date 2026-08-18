@@ -137,6 +137,8 @@ class _DjangoMiddleware:
         self.process_request(request)
         activation = request.META.get(self._environ_activation_key)
         if activation is None:
+            # This is to make sure that context and span cleanup always happen
+            # if Django's ASGI handler cancels tasks that have seen a disconnect
             return self.get_response(request)
 
         try:
