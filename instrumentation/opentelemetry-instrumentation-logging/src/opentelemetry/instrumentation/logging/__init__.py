@@ -135,7 +135,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _our_factory = None
-    _injects_context = False
     _log_hook = None
     _logging_handler = None
 
@@ -166,6 +165,13 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
+
+            # We may be stranded in the middle of a factory chain that
+            # `_uninstrument` could not unlink. `old_factory` is a closure
+            # variable, so the chain still works, but we must stop mutating
+            # records once we are no longer the installed factory.
+            if LoggingInstrumentor._our_factory is not record_factory:
+                return record
 
             if not inject_context and not callable(LoggingInstrumentor._log_hook):
                 return record
@@ -205,7 +211,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             return record
 
         LoggingInstrumentor._our_factory = record_factory
-        LoggingInstrumentor._injects_context = inject_context
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -246,26 +251,17 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         # chain by closing over whatever factory preceded them. Restoring
         # `_old_factory` unconditionally would therefore unlink every factory
         # installed after ours, so only restore while we are still the head of
-        # the chain. Otherwise we leave the chain alone: a node cannot be
-        # removed from the middle without the cooperation of the factory that
-        # wrapped it.
-        if LoggingInstrumentor._our_factory is not None:
-            if logging.getLogRecordFactory() is LoggingInstrumentor._our_factory:
-                logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            elif LoggingInstrumentor._injects_context or callable(LoggingInstrumentor._log_hook):
-                # Only worth reporting when the orphaned factory still mutates
-                # records. Without context injection or a log hook it returns
-                # the record untouched, so leaving it in the chain has no
-                # observable effect.
-                _logger.warning(
-                    "Another log record factory was installed after "
-                    "LoggingInstrumentor. Leaving the log record factory chain "
-                    "untouched to avoid unlinking it; log records will continue "
-                    "to carry OpenTelemetry attributes."
-                )
+        # the chain. A node cannot be removed from the middle without the
+        # cooperation of the factory that wrapped it, so otherwise we leave the
+        # chain intact and let ours turn itself into a pass-through -- clearing
+        # `_our_factory` below is what disables it.
+        if (
+            LoggingInstrumentor._our_factory is not None
+            and logging.getLogRecordFactory() is LoggingInstrumentor._our_factory
+        ):
+            logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
         LoggingInstrumentor._old_factory = None
         LoggingInstrumentor._our_factory = None
-        LoggingInstrumentor._injects_context = False
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)

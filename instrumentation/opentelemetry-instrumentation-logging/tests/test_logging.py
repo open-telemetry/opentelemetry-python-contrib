@@ -246,9 +246,10 @@ class TestLoggingInstrumentor(TestBase):
         logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
-    def test_uninstrument_warns_when_the_orphan_still_injects(self):
-        # The leftover factory keeps adding OTel attributes after uninstrument,
-        # which is a silent partial failure worth reporting.
+    def test_uninstrument_stops_the_orphaned_factory_injecting(self):
+        # The factory cannot be unlinked from the middle of the chain, so
+        # uninstrument has to neutralise it in place: records built afterwards
+        # must carry no OTel attributes.
         LoggingInstrumentor().uninstrument()
         baseline = logging.getLogRecordFactory()
         LoggingInstrumentor().instrument(inject_trace_context=True)
@@ -259,28 +260,28 @@ class TestLoggingInstrumentor(TestBase):
 
         logging.setLogRecordFactory(app_factory)
         try:
-            with self.caplog.at_level(level=logging.WARNING):
-                LoggingInstrumentor().uninstrument()
-
-            warnings = [
-                record.getMessage()
-                for record in self.caplog.records
-                if record.levelno == logging.WARNING and "log record factory" in record.getMessage()
-            ]
-            self.assertEqual(len(warnings), 1)
-
             record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
             self.assertTrue(hasattr(record, "otelTraceID"))
+
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertFalse(hasattr(record, "otelServiceName"))
+            self.assertFalse(hasattr(record, "otelSpanID"))
+            self.assertFalse(hasattr(record, "otelTraceID"))
+            self.assertFalse(hasattr(record, "otelTraceSampled"))
         finally:
             logging.setLogRecordFactory(baseline)
 
-    def test_uninstrument_stays_quiet_when_the_orphan_is_a_no_op(self):
-        # setUp() instruments without context injection or a log hook, so the
-        # orphaned factory returns records untouched and there is nothing to
-        # report.
+    def test_uninstrument_stops_the_orphaned_factory_calling_the_log_hook(self):
+        # The log hook is the other way the orphan can keep mutating records,
+        # and it runs on a different branch of record_factory than the context
+        # injection above.
         LoggingInstrumentor().uninstrument()
         baseline = logging.getLogRecordFactory()
-        LoggingInstrumentor().instrument()
+        calls = []
+        LoggingInstrumentor().instrument(log_hook=lambda span, record: calls.append(record))
         chained_onto = logging.getLogRecordFactory()
 
         def app_factory(*args, **kwargs):
@@ -288,19 +289,42 @@ class TestLoggingInstrumentor(TestBase):
 
         logging.setLogRecordFactory(app_factory)
         try:
-            with self.caplog.at_level(level=logging.WARNING):
+            with self.tracer.start_as_current_span("s1"):
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+
                 LoggingInstrumentor().uninstrument()
 
-            warnings = [
-                record.getMessage()
-                for record in self.caplog.records
-                if record.levelno == logging.WARNING and "log record factory" in record.getMessage()
-            ]
-            self.assertEqual(warnings, [])
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_reinstrument_disables_an_orphan_left_by_an_earlier_instrument(self):
+        # _our_factory is class state, so re-instrumenting rebinds it to the new
+        # wrapper and the orphan stranded by the previous cycle must stay
+        # disabled. Reaching past the new head is the only way to observe that:
+        # injection is idempotent, so a doubled pass looks identical from above.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        orphan = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return orphan(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+            LoggingInstrumentor().instrument(inject_trace_context=True)
 
             record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertTrue(hasattr(record, "otelTraceID"))
+
+            record = app_factory("n", logging.INFO, "p", 1, "m", None, None)
             self.assertFalse(hasattr(record, "otelTraceID"))
         finally:
+            LoggingInstrumentor().uninstrument()
             logging.setLogRecordFactory(baseline)
 
     def test_uninstrument_keeps_factories_chained_after_ours(self):
