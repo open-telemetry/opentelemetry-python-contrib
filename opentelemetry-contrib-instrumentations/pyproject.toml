@@ -46,6 +46,7 @@ dependencies = [
     "opentelemetry-instrumentation-click==0.66b0.dev",
     "opentelemetry-instrumentation-confluent-kafka==0.66b0.dev",
     "opentelemetry-instrumentation-dbapi==0.66b0.dev",
+    "opentelemetry-instrumentation-discord-py==0.1.dev0",
     "opentelemetry-instrumentation-django==0.66b0.dev",
     "opentelemetry-instrumentation-exceptions==0.66b0.dev",
     "opentelemetry-instrumentation-falcon==0.66b0.dev",

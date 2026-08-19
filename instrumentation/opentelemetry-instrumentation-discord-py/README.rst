@@ -19,5 +19,4 @@ Installation
 References
 ----------
 
-* `OpenTelemetry discord.py Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/discord_py/discord_py.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
