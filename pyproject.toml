@@ -166,7 +166,7 @@ extension = { added = "markdown", changed = "markdown", deprecated = "markdown",
 # Ignore rules from the default ruleset that don't have auto-fixes available and need to be
 # manually resolved, plus E501 and RUF023 which are intentionally ignored.
 ignore = [
-  "ASYNC251", "B008", "B017", "B018", "B020", "B023", "B039", "BLE001",
+  "ASYNC251", "B008", "B010", "B017", "B018", "B020", "B023", "B039", "BLE001",
   "C401", "C405", "C408", "C417", "DTZ003", "DTZ005", "DTZ006", "DTZ007",
   "DTZ901", "E501", "FLY002", "G201", "ISC004", "LOG014", "LOG015", "PERF102",
   "PERF402", "PIE794", "PIE796", "PLW0602", "PLW1508", "PT014", "PYI034",

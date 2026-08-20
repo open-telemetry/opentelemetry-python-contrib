@@ -467,5 +467,5 @@ def get_telemetry_handler(
             logger_provider=logger_provider,
             completion_hook=completion_hook,
         )
-        setattr(get_telemetry_handler, "_default_handler", handler)  # noqa: B010
+        setattr(get_telemetry_handler, "_default_handler", handler)
     return handler

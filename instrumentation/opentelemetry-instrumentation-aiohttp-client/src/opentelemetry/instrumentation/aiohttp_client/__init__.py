@@ -646,7 +646,7 @@ def _instrument(
             captured_response_headers=captured_response_headers,
             sensitive_headers=sensitive_headers,
         )
-        setattr(trace_config, "_is_instrumented_by_opentelemetry", True)  # noqa: B010
+        setattr(trace_config, "_is_instrumented_by_opentelemetry", True)
         client_trace_configs.append(trace_config)
 
         kwargs["trace_configs"] = client_trace_configs
