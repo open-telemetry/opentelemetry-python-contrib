@@ -62,9 +62,7 @@ def _is_homogenous_primitive_list(v):
     return True
 
 
-def _get_flatten_func(
-    flatten_functions: dict[str, FlattenFunc], key_names: set[str]
-) -> FlattenFunc | None:
+def _get_flatten_func(flatten_functions: dict[str, FlattenFunc], key_names: set[str]) -> FlattenFunc | None:
     for key in key_names:
         flatten_func = flatten_functions.get(key)
         if flatten_func is not None:
@@ -92,9 +90,7 @@ def _flatten_with_flatten_func(
     )
     if func_output is None:
         return True, {}
-    if _is_primitive(func_output) or _is_homogenous_primitive_list(
-        func_output
-    ):
+    if _is_primitive(func_output) or _is_homogenous_primitive_list(func_output):
         return True, {key: func_output}
     return False, func_output
 
@@ -108,9 +104,7 @@ def _flatten_compound_value_using_json(
     _from_json=False,
 ) -> FlattenedDict:
     if _from_json:
-        _logger.debug(
-            "Cannot flatten value with key %s; value: %s", key, value
-        )
+        _logger.debug("Cannot flatten value with key %s; value: %s", key, value)
         return {}
     try:
         json_string = json.dumps(value)

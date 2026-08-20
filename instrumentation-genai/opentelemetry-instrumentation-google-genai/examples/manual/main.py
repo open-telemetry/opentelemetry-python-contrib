@@ -38,16 +38,12 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 def setup_otel_tracing():
     otel_trace.set_tracer_provider(TracerProvider())
-    otel_trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter())
-    )
+    otel_trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
 
 def setup_otel_logs():
     otel_logs.set_logger_provider(LoggerProvider())
-    otel_logs.get_logger_provider().add_log_record_processor(
-        BatchLogRecordProcessor(OTLPLogExporter())
-    )
+    otel_logs.get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
 
 
 def setup_otel_metrics():

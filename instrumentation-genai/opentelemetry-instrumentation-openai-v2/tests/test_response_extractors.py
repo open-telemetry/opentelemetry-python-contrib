@@ -83,12 +83,8 @@ def test_extract_input_messages_supports_string_and_mixed_message_content(
         ]
     )
 
-    assert [
-        (msg.role, [part.content for part in msg.parts]) for msg in from_string
-    ] == [("user", ["Hello"])]
-    assert [
-        (msg.role, [part.content for part in msg.parts]) for msg in from_list
-    ] == [
+    assert [(msg.role, [part.content for part in msg.parts]) for msg in from_string] == [("user", ["Hello"])]
+    assert [(msg.role, [part.content for part in msg.parts]) for msg in from_list] == [
         ("user", ["First"]),
         ("assistant", ["Second", "Third"]),
     ]
@@ -208,34 +204,14 @@ def test_extract_finish_reasons_maps_terminal_message_and_tool_items(
 
 
 def test_extract_output_type_handles_text_format_mapping(loaded_module):
+    assert loaded_module.extract_params(text={"format": {"type": "json_schema"}}).output_type == "json"
+    assert loaded_module.extract_params(text={"format": {"type": "text"}}).output_type == "text"
     assert (
-        loaded_module.extract_params(
-            text={"format": {"type": "json_schema"}}
-        ).output_type
+        loaded_module.extract_params(text=SimpleNamespace(format=SimpleNamespace(type="json_schema"))).output_type
         == "json"
     )
-    assert (
-        loaded_module.extract_params(
-            text={"format": {"type": "text"}}
-        ).output_type
-        == "text"
-    )
-    assert (
-        loaded_module.extract_params(
-            text=SimpleNamespace(format=SimpleNamespace(type="json_schema"))
-        ).output_type
-        == "json"
-    )
-    assert (
-        loaded_module.extract_params(
-            text=SimpleNamespace(format=SimpleNamespace(type="text"))
-        ).output_type
-        == "text"
-    )
-    assert (
-        loaded_module.extract_params(text={"format": "plain"}).output_type
-        is None
-    )
+    assert loaded_module.extract_params(text=SimpleNamespace(format=SimpleNamespace(type="text"))).output_type == "text"
+    assert loaded_module.extract_params(text={"format": "plain"}).output_type is None
     assert loaded_module.extract_params(text="plain").output_type is None
 
 
@@ -283,9 +259,7 @@ def test_set_invocation_response_attributes_populates_usage_and_metadata(
         },
     )
 
-    loaded_module.set_invocation_response_attributes(
-        invocation, result, capture_content=False
-    )
+    loaded_module.set_invocation_response_attributes(invocation, result, capture_content=False)
 
     assert invocation.response_model_name == "gpt-4.1"
     assert invocation.response_id == "resp_123"
@@ -309,34 +283,22 @@ def test_set_invocation_response_attributes_populates_output_messages(
                 "type": "message",
                 "role": "assistant",
                 "status": "completed",
-                "content": [
-                    {"type": "output_text", "text": "Done", "annotations": []}
-                ],
+                "content": [{"type": "output_text", "text": "Done", "annotations": []}],
             }
         ]
     )
 
-    loaded_module.set_invocation_response_attributes(
-        invocation, result, capture_content=True
-    )
+    loaded_module.set_invocation_response_attributes(invocation, result, capture_content=True)
 
     assert invocation.finish_reasons == ["stop"]
-    assert [
-        (message.role, message.finish_reason)
-        for message in invocation.output_messages
-    ] == [("assistant", "stop")]
-    assert [
-        [part.content for part in message.parts]
-        for message in invocation.output_messages
-    ] == [["Done"]]
+    assert [(message.role, message.finish_reason) for message in invocation.output_messages] == [("assistant", "stop")]
+    assert [[part.content for part in message.parts] for message in invocation.output_messages] == [["Done"]]
 
 
 def test_extractors_ignore_invalid_request_shapes_without_validation(
     loaded_module,
 ):
-    params = loaded_module.extract_params(
-        instructions=["not-a-string"], input=42, text={"format": {"type": 42}}
-    )
+    params = loaded_module.extract_params(instructions=["not-a-string"], input=42, text={"format": {"type": 42}})
     assert loaded_module.get_system_instruction(params.instructions) == []
     assert loaded_module.get_input_messages(params.input) == []
     assert params.output_type is None
@@ -348,14 +310,10 @@ def test_response_extractors_ignore_invalid_shapes_without_validation(
     invocation = LLMInvocation(request_model="gpt-4o-mini")
     invalid_result = SimpleNamespace(output=42, usage=42)
 
-    assert (
-        loaded_module.get_output_messages_from_response(invalid_result) == []
-    )
+    assert loaded_module.get_output_messages_from_response(invalid_result) == []
     assert loaded_module.extract_finish_reasons(invalid_result) == []
 
-    loaded_module.set_invocation_response_attributes(
-        invocation, invalid_result, capture_content=True
-    )
+    loaded_module.set_invocation_response_attributes(invocation, invalid_result, capture_content=True)
 
     assert invocation.response_model_name is None
     assert invocation.response_id is None

@@ -89,9 +89,7 @@ class TestMySQLClientIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.mysqlclient
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.mysqlclient)
 
         # check that no spans are generated after uninstrument
         MySQLClientInstrumentor().uninstrument()
@@ -573,9 +571,7 @@ class TestMySQLClientIntegration(TestBase):
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
             self.assertEqual(span.attributes[SERVER_PORT], 3306)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -602,12 +598,8 @@ class TestMySQLClientIntegration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAME], "test")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_STATEMENT], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[DB_USER], "testuser")
             self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
             self.assertEqual(span.attributes[NET_PEER_PORT], 3306)

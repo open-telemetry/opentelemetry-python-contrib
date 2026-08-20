@@ -121,18 +121,14 @@ _recommended_attrs_new = {
 
 _recommended_attrs_both = _recommended_attrs_old.copy()
 _recommended_attrs_both.update(_recommended_attrs_new)
-_recommended_attrs_both["http.server.active_requests"].extend(
-    _server_active_requests_count_attrs_old
-)
+_recommended_attrs_both["http.server.active_requests"].extend(_server_active_requests_count_attrs_old)
 
 
 class CustomMiddleware:
     def __init__(self, app: fastapi.FastAPI) -> None:
         self.app = app
 
-    async def __call__(
-        self, scope: Scope, receive: Receive, send: Send
-    ) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope["nonstandard_field"] = "here"
         await self.app(scope, receive, send)
 
@@ -172,9 +168,7 @@ class TestBaseFastAPI(TestBase):
     @classmethod
     def setUpClass(cls):
         if cls is TestBaseFastAPI:
-            raise unittest.SkipTest(
-                f"{cls.__name__} is an abstract base class"
-            )
+            raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
         super().setUpClass()
 
@@ -272,9 +266,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
     @classmethod
     def setUpClass(cls):
         if cls is TestBaseManualFastAPI:
-            raise unittest.SkipTest(
-                f"{cls.__name__} is an abstract base class"
-            )
+            raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
         super().setUpClass()
 
@@ -320,9 +312,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
@@ -344,15 +334,11 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         resp: Final = self._client.get("/custom-router/success")
         spans: Final = self.memory_exporter.get_finished_spans()
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
         self.assertEqual(200, resp.status_code)
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/custom-router/success", span.attributes[HTTP_TARGET]
-            )
+            self.assertEqual("/custom-router/success", span.attributes[HTTP_TARGET])
             self.assertEqual(
                 "https://testserver/custom-router/success",
                 span.attributes[HTTP_URL],
@@ -384,9 +370,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             spans = self.memory_exporter.get_finished_spans()
             self.assertTrue(spans)
             server_span = spans[-1]
-            self.assertEqual(
-                "/api/items/{item_id}", server_span.attributes[HTTP_ROUTE]
-            )
+            self.assertEqual("/api/items/{item_id}", server_span.attributes[HTTP_ROUTE])
             self.assertIn("GET /api/items/{item_id}", server_span.name)
         finally:
             self._instrumentor.uninstrument_app(app)
@@ -401,9 +385,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             def url_path_for(self, name: str, /, **path_params: Any) -> Any:
                 raise NotImplementedError()
 
-            async def handle(
-                self, scope: Scope, receive: Receive, send: Send
-            ) -> None:
+            async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
                 raise NotImplementedError()
 
         app = fastapi.FastAPI()
@@ -414,9 +396,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         )
 
         with patch.object(otel_fastapi, "iter_route_contexts", None):
-            self.assertEqual(
-                "/widgets/{widget_id}", otel_fastapi._get_route_details(scope)
-            )
+            self.assertEqual("/widgets/{widget_id}", otel_fastapi._get_route_details(scope))
 
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
@@ -424,9 +404,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         spans = self.memory_exporter.get_finished_spans()
 
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         self.assertEqual(1, len(spans_with_http_attributes))
@@ -443,9 +421,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
     @classmethod
     def setUpClass(cls):
         if cls is TestBaseAutoFastAPI:
-            raise unittest.SkipTest(
-                f"{cls.__name__} is an abstract base class"
-            )
+            raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
         super().setUpClass()
 
@@ -481,9 +457,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -518,11 +492,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self.assertEqual(len(spans), 3)
 
         self._instrumentor.uninstrument_app(self._app)
-        self.assertFalse(
-            isinstance(
-                self._app.user_middleware[0].cls, OpenTelemetryMiddleware
-            )
-        )
+        self.assertFalse(isinstance(self._app.user_middleware[0].cls, OpenTelemetryMiddleware))
         self._client = TestClient(self._app)
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)
@@ -566,17 +536,9 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             response = client.post("/checkout")
         self.assertEqual(200, response.status_code)
         spans = self.memory_exporter.get_finished_spans()
-        request_span = next(
-            span for span in spans if span.name == "POST /checkout"
-        )
-        background_span = next(
-            span
-            for span in spans
-            if span.name == "BackgroundTask background_notify"
-        )
-        inner_span = next(
-            span for span in spans if span.name == "inside-background-task"
-        )
+        request_span = next(span for span in spans if span.name == "POST /checkout")
+        background_span = next(span for span in spans if span.name == "BackgroundTask background_notify")
+        inner_span = next(span for span in spans if span.name == "inside-background-task")
         self.assertIsNotNone(background_span.parent)
         self.assertEqual(
             background_span.parent.span_id,
@@ -750,9 +712,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                     elif metric.name in (
                         "http.server.response.body.size",
                         "http.server.request.body.size",
@@ -803,9 +763,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     self.assertEqual(point.count, 1)
                     self.assertAlmostEqual(duration, point.sum, delta=350)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -904,9 +862,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     )
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(31, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -955,9 +911,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
                             dict(point.attributes),
@@ -1037,9 +991,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -1063,9 +1015,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
-                        self.assertAlmostEqual(
-                            duration_s * 0.1, point.sum, places=1
-                        )
+                        self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
                     elif metric.name == "http.server.response.body.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.body.size":
@@ -1110,14 +1060,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             response = client.post("/checkout")
         self.assertEqual(200, response.status_code)
         spans = self.memory_exporter.get_finished_spans()
-        background_spans = [
-            span
-            for span in spans
-            if span.name == "BackgroundTask background_notify"
-        ]
-        inner_spans = [
-            span for span in spans if span.name == "inside-background-task"
-        ]
+        background_spans = [span for span in spans if span.name == "BackgroundTask background_notify"]
+        inner_spans = [span for span in spans if span.name == "inside-background-task"]
         self.assertEqual(len(background_spans), 1)
         self.assertEqual(len(inner_spans), 1)
         otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
@@ -1236,9 +1180,7 @@ class TestFastAPIManualInstrumentationHooks(TestBaseFastAPI):
         response_spans = spans[:2]
         for span in response_spans:
             self.assertEqual(span.name, "name from response hook")
-            self.assertSpanHasAttributes(
-                span, {"attr-from-response-hook": "value"}
-            )
+            self.assertSpanHasAttributes(span, {"attr-from-response-hook": "value"})
 
 
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
@@ -1258,9 +1200,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     @staticmethod
     def _instrumentation_failed_to_load_call(dependency_conflict):
-        return call(
-            "Skipping instrumentation %s: %s", "fastapi", dependency_conflict
-        )
+        return call("Skipping instrumentation %s: %s", "fastapi", dependency_conflict)
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_fastapi_installed(self, mock_logger):
@@ -1270,41 +1210,27 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         (ep,) = mock_distro.load_instrumentor.call_args.args
         self.assertEqual(ep.name, "fastapi")
-        mock_logger.debug.assert_has_calls(
-            [self._instrumentation_loaded_successfully_call()]
-        )
+        mock_logger.debug.assert_has_calls([self._instrumentation_loaded_successfully_call()])
 
-    @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
-    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_with_old_fastapi_installed(
-        self, mock_logger, mock_dep
-    ):  # pylint: disable=no-self-use
+    def test_instruments_with_old_fastapi_installed(self, mock_logger, mock_dep):  # pylint: disable=no-self-use
         dependency_conflict = DependencyConflict("0.58", "0.57")
         mock_distro = Mock()
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.debug.assert_has_calls(
-            [self._instrumentation_failed_to_load_call(dependency_conflict)]
-        )
+        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
-    @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
-    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_without_fastapi_installed(
-        self, mock_logger, mock_dep
-    ):  # pylint: disable=no-self-use
+    def test_instruments_without_fastapi_installed(self, mock_logger, mock_dep):  # pylint: disable=no-self-use
         dependency_conflict = DependencyConflict("0.58", None)
         mock_distro = Mock()
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.debug.assert_has_calls(
-            [self._instrumentation_failed_to_load_call(dependency_conflict)]
-        )
+        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
@@ -1318,9 +1244,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     def _create_app_explicit_excluded_urls(self):
         resource = Resource.create({"key1": "value1", "key2": "value2"})
-        tracer_provider, exporter = self.create_tracer_provider(
-            resource=resource
-        )
+        tracer_provider, exporter = self.create_tracer_provider(resource=resource)
         self.memory_exporter = exporter
 
         to_exclude = "/user/123,/foobar"
@@ -1360,9 +1284,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     def test_no_op_tracer_provider(self):
         self._instrumentor.uninstrument()
-        self._instrumentor.instrument(
-            tracer_provider=trace.NoOpTracerProvider()
-        )
+        self._instrumentor.instrument(tracer_provider=trace.NoOpTracerProvider())
 
         app = self._create_fastapi_app()
         client = TestClient(app)
@@ -1406,9 +1328,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -1442,9 +1362,7 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
 
     def _create_app_explicit_excluded_urls(self):
         resource = Resource.create({"key1": "value1", "key2": "value2"})
-        tracer_provider, exporter = self.create_tracer_provider(
-            resource=resource
-        )
+        tracer_provider, exporter = self.create_tracer_provider(resource=resource)
         self.memory_exporter = exporter
 
         to_exclude = "/user/123,/foobar"
@@ -1494,9 +1412,7 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
         # - HTTP_URL
         # attributes to be populated with the expected values
         spans_with_http_attributes = [
-            span
-            for span in spans
-            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+            span for span in spans if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -1548,9 +1464,7 @@ class TestWrappedApplication(TestBase):
             otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
 
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace.SpanKind.SERVER
-        ) as parent_span:
+        with self.tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER) as parent_span:
             resp = self.client.get("/foobar")
             self.assertEqual(200, resp.status_code)
 
@@ -1563,14 +1477,10 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[1].kind)
         # main INTERNAL span - child of test
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[2].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[2].parent.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[2].parent.span_id)
         # SERVER "test"
         self.assertEqual(trace.SpanKind.SERVER, span_list[3].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[3].context.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[3].context.span_id)
 
 
 class TestFastAPIGarbageCollection(unittest.TestCase):
@@ -1623,16 +1533,10 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self.client.get(
@@ -1649,17 +1553,13 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self.client.get(
             "/foobar",
@@ -1675,27 +1575,17 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self.client.get("/foobar")
@@ -1703,25 +1593,19 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self.client.get("/foobar")
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
@@ -1780,9 +1664,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         expected = {
             # apple should be included because it starts with a
@@ -1810,9 +1692,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         expected = {
             # apple should be included because it starts with a
@@ -1832,9 +1712,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         expected = {
             "http.response.header.carrot": ("bar",),
@@ -1852,9 +1730,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         expected = {
             "http.response.header.carrot": ("bar",),
@@ -1916,12 +1792,8 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
     def test_web_socket_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
 
         with self.client.websocket_connect(
@@ -1937,9 +1809,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
@@ -1952,9 +1822,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
     )
     def test_web_socket_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
 
         with self.client.websocket_connect(
@@ -1970,21 +1838,15 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
 
     def test_web_socket_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
         }
 
         with self.client.websocket_connect("/foobar_web") as websocket:
@@ -1994,17 +1856,13 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_web_socket_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
 
         with self.client.websocket_connect("/foobar_web") as websocket:
@@ -2014,9 +1872,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
@@ -2070,9 +1926,7 @@ class TestTraceableExceptionHandling(TestBase):
 
         self.app = fastapi.FastAPI()
 
-        otel_fastapi.FastAPIInstrumentor().instrument_app(
-            self.app, exclude_spans=["receive", "send"]
-        )
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app, exclude_spans=["receive", "send"])
         self.client = TestClient(self.app)
         self.tracer = self.tracer_provider.get_tracer(__name__)
         self.executed = 0
@@ -2092,17 +1946,13 @@ class TestTraceableExceptionHandling(TestBase):
 
         @self.app.exception_handler(Exception)
         async def _(*_):
-            self.error_trace_id = (
-                trace.get_current_span().get_span_context().trace_id
-            )
+            self.error_trace_id = trace.get_current_span().get_span_context().trace_id
             self.executed += 1
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
         async def _foobar():
-            self.request_trace_id = (
-                trace.get_current_span().get_span_context().trace_id
-            )
+            self.request_trace_id = trace.get_current_span().get_span_context().trace_id
             raise UnhandledException("Test Exception")
 
         try:
@@ -2229,11 +2079,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
-        errors = [
-            record
-            for record in self.caplog.get_records("call")
-            if record.levelno >= logging.ERROR
-        ]
+        errors = [record for record in self.caplog.get_records("call") if record.levelno >= logging.ERROR]
         self.assertEqual(len(errors), 1)
         self.assertEqual(
             errors[0].getMessage(),
@@ -2247,9 +2093,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
     def test_host_header_url_construction(self):
         """Test that URLs use Host header value instead of server IP when available."""
         # Test with a custom Host header - should use the domain name
-        resp = self._client.get(
-            "/foobar?param=value", headers={"host": "api.mycompany.com"}
-        )
+        resp = self._client.get("/foobar?param=value", headers={"host": "api.mycompany.com"})
         self.assertEqual(200, resp.status_code)
 
         spans = self.memory_exporter.get_finished_spans()
@@ -2258,16 +2102,11 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
         # Find the server span (the main span, not internal middleware spans)
         server_span = None
         for span in spans:
-            if (
-                span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ):
+            if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes:
                 server_span = span
                 break
 
-        self.assertIsNotNone(
-            server_span, "Server span with HTTP_URL not found"
-        )
+        self.assertIsNotNone(server_span, "Server span with HTTP_URL not found")
 
         # Verify the URL uses the Host header domain instead of testserver
         expected_url = "https://api.mycompany.com/foobar?param=value"
@@ -2275,25 +2114,16 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
         self.assertEqual(expected_url, actual_url)
 
         # Also verify that the server name attribute is set correctly
-        self.assertEqual(
-            "api.mycompany.com", server_span.attributes.get("http.server_name")
-        )
+        self.assertEqual("api.mycompany.com", server_span.attributes.get("http.server_name"))
 
     def test_host_header_with_port_url_construction(self):
         """Test Host header URL construction when host includes port."""
-        resp = self._client.get(
-            "/user/123", headers={"host": "staging.myapp.com:8443"}
-        )
+        resp = self._client.get("/user/123", headers={"host": "staging.myapp.com:8443"})
         self.assertEqual(200, resp.status_code)
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2311,12 +2141,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2336,18 +2161,11 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
                 "user-agent": "ProductionClient/1.0",
             },
         )
-        self.assertEqual(
-            200, resp.status_code
-        )  # Valid route should return 200
+        self.assertEqual(200, resp.status_code)  # Valid route should return 200
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2388,19 +2206,12 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
                 # Clear previous spans
                 self.memory_exporter.clear()
 
-                resp = self._client.get(
-                    "/foobar", headers={"host": host_value}
-                )
+                resp = self._client.get("/foobar", headers={"host": host_value})
                 self.assertEqual(200, resp.status_code)
 
                 spans = self.memory_exporter.get_finished_spans()
                 server_span = next(
-                    (
-                        span
-                        for span in spans
-                        if span.kind == trace.SpanKind.SERVER
-                        and HTTP_URL in span.attributes
-                    ),
+                    (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
                     None,
                 )
                 self.assertIsNotNone(server_span)
@@ -2420,12 +2231,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2440,16 +2246,12 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
         self.assertEqual("GET", server_span.attributes[HTTP_METHOD])
         self.assertEqual("/user/testuser", server_span.attributes[HTTP_TARGET])
         self.assertEqual("https", server_span.attributes[HTTP_SCHEME])
-        self.assertEqual(
-            "api.testapp.com", server_span.attributes.get("http.server_name")
-        )
+        self.assertEqual("api.testapp.com", server_span.attributes.get("http.server_name"))
         self.assertEqual(200, server_span.attributes[HTTP_STATUS_CODE])
 
         # Check that route attribute is still set correctly
         if HTTP_ROUTE in server_span.attributes:
-            self.assertEqual(
-                "/user/{username}", server_span.attributes[HTTP_ROUTE]
-            )
+            self.assertEqual("/user/{username}", server_span.attributes[HTTP_ROUTE])
 
 
 class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
@@ -2462,20 +2264,13 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
         (url.scheme, server.address, url.path, etc.) rather than a single http.url.
         Host header support may work differently with new semantic conventions.
         """
-        resp = self._client.get(
-            "/foobar?test=new_semconv", headers={"host": "newapi.example.com"}
-        )
+        resp = self._client.get("/foobar?test=new_semconv", headers={"host": "newapi.example.com"})
         self.assertEqual(200, resp.status_code)
 
         spans = self.memory_exporter.get_finished_spans()
         # With new semantic conventions, look for the main HTTP span with route information
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and "http.route" in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and "http.route" in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2490,9 +2285,7 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
         # Current behavior: Host header may not affect server.address in new semantic conventions
         # This test documents the current behavior rather than enforcing Host header usage
         server_address = server_span.attributes.get("server.address", "")
-        self.assertIsNotNone(
-            server_address, "testserver"
-        )  # Should have some value
+        self.assertIsNotNone(server_address, "testserver")  # Should have some value
 
 
 class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
@@ -2500,19 +2293,12 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
 
     def test_host_header_url_both_semconv(self):
         """Test Host header URL construction with both semantic conventions enabled."""
-        resp = self._client.get(
-            "/foobar?test=both_semconv", headers={"host": "dual.example.com"}
-        )
+        resp = self._client.get("/foobar?test=both_semconv", headers={"host": "dual.example.com"})
         self.assertEqual(200, resp.status_code)
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (
-                span
-                for span in spans
-                if span.kind == trace.SpanKind.SERVER
-                and HTTP_URL in span.attributes
-            ),
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
             None,
         )
         self.assertIsNotNone(server_span)
@@ -2524,9 +2310,7 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
 
     def test_fastapi_unhandled_exception(self):
         """Override inherited test - use the both_semconv version instead."""
-        self.skipTest(
-            "Use test_fastapi_unhandled_exception_both_semconv instead"
-        )
+        self.skipTest("Use test_fastapi_unhandled_exception_both_semconv instead")
 
     def test_fastapi_unhandled_exception_both_semconv(self):
         """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""

@@ -38,9 +38,7 @@ def filter_message_keys(message, keys):
     return {k: v for k, v in message.items() if k in keys}
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_with_content(
     span_exporter,
@@ -94,14 +92,10 @@ def test_converse_with_content(
     input_tokens = response["usage"]["inputTokens"]
     output_tokens = response["usage"]["outputTokens"]
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(
-        metrics, "chat", llm_model_value, input_tokens, output_tokens
-    )
+    assert_metrics(metrics, "chat", llm_model_value, input_tokens, output_tokens)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_with_content_different_events(
     span_exporter,
@@ -130,20 +124,14 @@ def test_converse_with_content_different_events(
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    assert_message_in_logs(
-        logs[0], "gen_ai.system.message", {"content": system_content}, span
-    )
+    assert_message_in_logs(logs[0], "gen_ai.system.message", {"content": system_content}, span)
     user_message, assistant_message, last_user_message = messages
     user_content = filter_message_keys(user_message, ["content"])
     assert_message_in_logs(logs[1], "gen_ai.user.message", user_content, span)
     assistant_content = filter_message_keys(assistant_message, ["content"])
-    assert_message_in_logs(
-        logs[2], "gen_ai.assistant.message", assistant_content, span
-    )
+    assert_message_in_logs(logs[2], "gen_ai.assistant.message", assistant_content, span)
     last_user_content = filter_message_keys(last_user_message, ["content"])
-    assert_message_in_logs(
-        logs[3], "gen_ai.user.message", last_user_content, span
-    )
+    assert_message_in_logs(logs[3], "gen_ai.user.message", last_user_content, span)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
@@ -157,23 +145,15 @@ def test_converse_with_content_different_events(
     input_tokens = response["usage"]["inputTokens"]
     output_tokens = response["usage"]["outputTokens"]
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(
-        metrics, "chat", llm_model_value, input_tokens, output_tokens
-    )
+    assert_metrics(metrics, "chat", llm_model_value, input_tokens, output_tokens)
 
 
-def converse_tool_call(
-    span_exporter, log_exporter, bedrock_runtime_client, expect_content
-):
+def converse_tool_call(span_exporter, log_exporter, bedrock_runtime_client, expect_content):
     # pylint:disable=too-many-locals
     messages = [
         {
             "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today?"
-                }
-            ],
+            "content": [{"text": "What is the weather in Seattle and San Francisco today?"}],
         }
     ]
 
@@ -197,9 +177,7 @@ def converse_tool_call(
         "content": [
             {
                 "toolResult": {
-                    "content": [
-                        {"json": {"weather": "50 degrees and raining"}}
-                    ],
+                    "content": [{"json": {"weather": "50 degrees and raining"}}],
                     "toolUseId": tool_requests_ids[0],
                 },
             },
@@ -243,9 +221,7 @@ def converse_tool_call(
         user_content = filter_message_keys(messages[0], ["content"])
     else:
         user_content = {}
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", user_content, span_0
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span_0)
 
     function_call_0 = {"name": "get_current_weather"}
     function_call_1 = {"name": "get_current_weather"}
@@ -274,9 +250,7 @@ def converse_tool_call(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
     # second span
-    assert_message_in_logs(
-        logs[2], "gen_ai.user.message", user_content, span_1
-    )
+    assert_message_in_logs(logs[2], "gen_ai.user.message", user_content, span_1)
     assistant_body = response_0["output"]["message"]
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
@@ -290,30 +264,20 @@ def converse_tool_call(
     )
     tool_message_0 = {
         "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["toolResult"]["content"]
-        if expect_content
-        else None,
+        "content": tool_call_result["content"][0]["toolResult"]["content"] if expect_content else None,
     }
-    assert_message_in_logs(
-        logs[4], "gen_ai.tool.message", tool_message_0, span_1
-    )
+    assert_message_in_logs(logs[4], "gen_ai.tool.message", tool_message_0, span_1)
     tool_message_1 = {
         "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["toolResult"]["content"]
-        if expect_content
-        else None,
+        "content": tool_call_result["content"][1]["toolResult"]["content"] if expect_content else None,
     }
-    assert_message_in_logs(
-        logs[5], "gen_ai.tool.message", tool_message_1, span_1
-    )
+    assert_message_in_logs(logs[5], "gen_ai.tool.message", tool_message_1, span_1)
 
     user_message_body = tool_call_result
     user_message_body.pop("role")
     if not expect_content:
         user_message_body.pop("content")
-    assert_message_in_logs(
-        logs[6], "gen_ai.user.message", user_message_body, span_1
-    )
+    assert_message_in_logs(logs[6], "gen_ai.user.message", user_message_body, span_1)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
@@ -331,9 +295,7 @@ def converse_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_tool_call_with_content(
     span_exporter,
@@ -349,9 +311,7 @@ def test_converse_tool_call_with_content(
     )
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_no_content_different_events(
     span_exporter,
@@ -390,9 +350,7 @@ def test_converse_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_no_content(
     span_exporter,
@@ -438,9 +396,7 @@ def test_converse_no_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_tool_call_no_content(
     span_exporter,
@@ -456,9 +412,7 @@ def test_converse_tool_call_no_content(
     )
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_with_invalid_model(
     span_exporter,
@@ -492,14 +446,10 @@ def test_converse_with_invalid_model(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(
-        metrics, "chat", llm_model_value, error_type="ValidationException"
-    )
+    assert_metrics(metrics, "chat", llm_model_value, error_type="ValidationException")
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_with_content(
     span_exporter,
@@ -572,14 +522,10 @@ def test_converse_stream_with_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(
-        metrics, "chat", llm_model_value, input_tokens, output_tokens
-    )
+    assert_metrics(metrics, "chat", llm_model_value, input_tokens, output_tokens)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_with_content_different_events(
     span_exporter,
@@ -614,20 +560,14 @@ def test_converse_stream_with_content_different_events(
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    assert_message_in_logs(
-        logs[0], "gen_ai.system.message", {"content": system_content}, span
-    )
+    assert_message_in_logs(logs[0], "gen_ai.system.message", {"content": system_content}, span)
     user_message, assistant_message, last_user_message = messages
     user_content = filter_message_keys(user_message, ["content"])
     assert_message_in_logs(logs[1], "gen_ai.user.message", user_content, span)
     assistant_content = filter_message_keys(assistant_message, ["content"])
-    assert_message_in_logs(
-        logs[2], "gen_ai.assistant.message", assistant_content, span
-    )
+    assert_message_in_logs(logs[2], "gen_ai.assistant.message", assistant_content, span)
     last_user_content = filter_message_keys(last_user_message, ["content"])
-    assert_message_in_logs(
-        logs[3], "gen_ai.user.message", last_user_content, span
-    )
+    assert_message_in_logs(logs[3], "gen_ai.user.message", last_user_content, span)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
@@ -673,18 +613,12 @@ def _rebuild_stream_message(response):
     return message
 
 
-def converse_stream_tool_call(
-    span_exporter, log_exporter, bedrock_runtime_client, expect_content
-):
+def converse_stream_tool_call(span_exporter, log_exporter, bedrock_runtime_client, expect_content):
     # pylint:disable=too-many-locals,too-many-statements
     messages = [
         {
             "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today?"
-                }
-            ],
+            "content": [{"text": "What is the weather in Seattle and San Francisco today?"}],
         }
     ]
 
@@ -700,9 +634,7 @@ def converse_stream_tool_call(
     response_0_message = _rebuild_stream_message(response_0)
 
     tool_requests_ids = [
-        request["toolUse"]["toolUseId"]
-        for request in response_0_message["content"]
-        if "toolUse" in request
+        request["toolUse"]["toolUseId"] for request in response_0_message["content"] if "toolUse" in request
     ]
     assert len(tool_requests_ids) == 2
 
@@ -711,9 +643,7 @@ def converse_stream_tool_call(
         "content": [
             {
                 "toolResult": {
-                    "content": [
-                        {"json": {"weather": "50 degrees and raining"}}
-                    ],
+                    "content": [{"json": {"weather": "50 degrees and raining"}}],
                     "toolUseId": tool_requests_ids[0],
                 },
             },
@@ -765,9 +695,7 @@ def converse_stream_tool_call(
         user_content = filter_message_keys(messages[0], ["content"])
     else:
         user_content = {}
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", user_content, span_0
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span_0)
 
     function_call_0 = {"name": "get_current_weather"}
     function_call_1 = {"name": "get_current_weather"}
@@ -796,9 +724,7 @@ def converse_stream_tool_call(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
     # second span
-    assert_message_in_logs(
-        logs[2], "gen_ai.user.message", user_content, span_1
-    )
+    assert_message_in_logs(logs[2], "gen_ai.user.message", user_content, span_1)
     assistant_body = response_0_message
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
@@ -812,30 +738,20 @@ def converse_stream_tool_call(
     )
     tool_message_0 = {
         "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["toolResult"]["content"]
-        if expect_content
-        else None,
+        "content": tool_call_result["content"][0]["toolResult"]["content"] if expect_content else None,
     }
-    assert_message_in_logs(
-        logs[4], "gen_ai.tool.message", tool_message_0, span_1
-    )
+    assert_message_in_logs(logs[4], "gen_ai.tool.message", tool_message_0, span_1)
     tool_message_1 = {
         "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["toolResult"]["content"]
-        if expect_content
-        else None,
+        "content": tool_call_result["content"][1]["toolResult"]["content"] if expect_content else None,
     }
-    assert_message_in_logs(
-        logs[5], "gen_ai.tool.message", tool_message_1, span_1
-    )
+    assert_message_in_logs(logs[5], "gen_ai.tool.message", tool_message_1, span_1)
 
     user_message_body = tool_call_result
     user_message_body.pop("role")
     if not expect_content:
         user_message_body.pop("content")
-    assert_message_in_logs(
-        logs[6], "gen_ai.user.message", user_message_body, span_1
-    )
+    assert_message_in_logs(logs[6], "gen_ai.user.message", user_message_body, span_1)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
@@ -853,9 +769,7 @@ def converse_stream_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_with_content_tool_call(
     span_exporter,
@@ -871,9 +785,7 @@ def test_converse_stream_with_content_tool_call(
     )
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_tool_call_parsing_errors(
     span_exporter,
@@ -962,9 +874,7 @@ def test_converse_stream_tool_call_parsing_errors(
     assert len(logs) == 2
 
     user_content = filter_message_keys(messages[0], ["content"])
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", user_content, span_0
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span_0)
 
     function_call_0 = {
         "name": "get_cities_list",
@@ -987,9 +897,7 @@ def test_converse_stream_tool_call_parsing_errors(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_no_content(
     span_exporter,
@@ -1057,9 +965,7 @@ def test_converse_stream_no_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_no_content_different_events(
     span_exporter,
@@ -1104,9 +1010,7 @@ def test_converse_stream_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_no_content_tool_call(
     span_exporter,
@@ -1122,9 +1026,7 @@ def test_converse_stream_no_content_tool_call(
     )
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_handles_event_stream_error(
     span_exporter,
@@ -1152,9 +1054,7 @@ def test_converse_stream_handles_event_stream_error(
     with mock.patch.object(
         EventStream,
         "_parse_event",
-        side_effect=EventStreamError(
-            {"modelStreamErrorException": {}}, "ConverseStream"
-        ),
+        side_effect=EventStreamError({"modelStreamErrorException": {}}, "ConverseStream"),
     ):
         with pytest.raises(EventStreamError):
             for _event in response["stream"]:
@@ -1184,14 +1084,10 @@ def test_converse_stream_handles_event_stream_error(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(
-        metrics, "chat", llm_model_value, error_type="EventStreamError"
-    )
+    assert_metrics(metrics, "chat", llm_model_value, error_type="EventStreamError")
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_with_invalid_model(
     span_exporter,
@@ -1224,9 +1120,7 @@ def test_converse_stream_with_invalid_model(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
-@pytest.mark.skipif(
-    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
-)
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available")
 @pytest.mark.vcr()
 def test_converse_stream_close_before_consumption(
     span_exporter,
@@ -1296,9 +1190,7 @@ def get_invoke_model_body(
         set_if_not_none(config, "topP", top_p)
         set_if_not_none(config, "stopSequences", stop_sequences)
         body = {
-            "messages": messages
-            if messages
-            else [{"role": "user", "content": [{"text": prompt}]}],
+            "messages": messages if messages else [{"role": "user", "content": [{"text": prompt}]}],
             "inferenceConfig": config,
             "schemaVersion": "messages-v1",
         }
@@ -1315,11 +1207,7 @@ def get_invoke_model_body(
         body = {"inputText": prompt, "textGenerationConfig": config}
     elif "anthropic.claude" in llm_model:
         body = {
-            "messages": messages
-            if messages
-            else [
-                {"role": "user", "content": [{"text": prompt, "type": "text"}]}
-            ],
+            "messages": messages if messages else [{"role": "user", "content": [{"text": prompt, "type": "text"}]}],
             "anthropic_version": "bedrock-2023-05-31",
         }
         if system:
@@ -1409,9 +1297,7 @@ def test_invoke_model_with_content(
         0.99 if model_family == "cohere.command-r" else 1,
         ["|"],
     )
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model(
         body=body,
         modelId=llm_model_value,
@@ -1432,9 +1318,7 @@ def test_invoke_model_with_content(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     if model_family == "anthropic.claude":
-        user_content = {
-            "content": [{"text": "Say this is a test", "type": "text"}]
-        }
+        user_content = {"content": [{"text": "Say this is a test", "type": "text"}]}
     else:
         user_content = {"content": [{"text": "Say this is a test"}]}
     if model_family == "amazon.titan":
@@ -1449,9 +1333,7 @@ def test_invoke_model_with_content(
     elif model_family == "anthropic.claude":
         message = {
             "role": "assistant",
-            "content": [
-                {"type": "text", "text": 'Okay, I said "This is a test"'}
-            ],
+            "content": [{"type": "text", "text": 'Okay, I said "This is a test"'}],
         }
         finish_reason = "max_tokens"
     elif model_family == "cohere.command-r":
@@ -1573,9 +1455,7 @@ def test_invoke_model_with_content_assistant_content_as_string(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     assistant_content = {"content": "{"}
-    assert_message_in_logs(
-        logs[1], "gen_ai.assistant.message", assistant_content, span
-    )
+    assert_message_in_logs(logs[1], "gen_ai.assistant.message", assistant_content, span)
 
     assistant_response_message = {
         "role": "assistant",
@@ -1649,13 +1529,9 @@ def test_invoke_model_with_content_different_events(
     user_content = filter_message_keys(user_message, ["content"])
     assert_message_in_logs(logs[1], "gen_ai.user.message", user_content, span)
     assistant_content = filter_message_keys(assistant_message, ["content"])
-    assert_message_in_logs(
-        logs[2], "gen_ai.assistant.message", assistant_content, span
-    )
+    assert_message_in_logs(logs[2], "gen_ai.assistant.message", assistant_content, span)
     last_user_content = filter_message_keys(last_user_message, ["content"])
-    assert_message_in_logs(
-        logs[3], "gen_ai.user.message", last_user_content, span
-    )
+    assert_message_in_logs(logs[3], "gen_ai.user.message", last_user_content, span)
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
@@ -1682,17 +1558,11 @@ class AnthropicClaudeModel:
 
     @staticmethod
     def tool_requests_ids(response):
-        return [
-            content["id"]
-            for content in response["content"]
-            if content["type"] == "tool_use"
-        ]
+        return [content["id"] for content in response["content"] if content["type"] == "tool_use"]
 
     @staticmethod
     def tool_requests_ids_from_stream(stream_content):
-        return [
-            item["id"] for item in stream_content if item["type"] == "tool_use"
-        ]
+        return [item["id"] for item in stream_content if item["type"] == "tool_use"]
 
     @staticmethod
     def tool_calls_results(tool_requests_ids):
@@ -1718,15 +1588,11 @@ class AnthropicClaudeModel:
     def tool_messages(tool_requests_ids, tool_call_result, expect_content):
         tool_message_0 = {
             "id": tool_requests_ids[0],
-            "content": tool_call_result["content"][0]["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result["content"][0]["content"] if expect_content else None,
         }
         tool_message_1 = {
             "id": tool_requests_ids[1],
-            "content": tool_call_result["content"][1]["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result["content"][1]["content"] if expect_content else None,
         }
         return tool_message_0, tool_message_1
 
@@ -1787,11 +1653,7 @@ class AmazonNovaModel:
 
     @staticmethod
     def tool_requests_ids_from_stream(stream_content):
-        return [
-            item["toolUse"]["toolUseId"]
-            for item in stream_content
-            if "toolUse" in item
-        ]
+        return [item["toolUse"]["toolUseId"] for item in stream_content if "toolUse" in item]
 
     @staticmethod
     def tool_calls_results(tool_requests_ids):
@@ -1803,17 +1665,13 @@ class AmazonNovaModel:
                 {
                     "toolResult": {
                         "toolUseId": tool_requests_ids[0],
-                        "content": [
-                            {"json": {"weather": "50 degrees and raining"}}
-                        ],
+                        "content": [{"json": {"weather": "50 degrees and raining"}}],
                     }
                 },
                 {
                     "toolResult": {
                         "toolUseId": tool_requests_ids[1],
-                        "content": [
-                            {"json": {"weather": "70 degrees and sunny"}}
-                        ],
+                        "content": [{"json": {"weather": "70 degrees and sunny"}}],
                     }
                 },
             ],
@@ -1823,15 +1681,11 @@ class AmazonNovaModel:
     def tool_messages(tool_requests_ids, tool_call_result, expect_content):
         tool_message_0 = {
             "id": tool_requests_ids[0],
-            "content": tool_call_result["content"][0]["toolResult"]["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result["content"][0]["toolResult"]["content"] if expect_content else None,
         }
         tool_message_1 = {
             "id": tool_requests_ids[1],
-            "content": tool_call_result["content"][1]["toolResult"]["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result["content"][1]["toolResult"]["content"] if expect_content else None,
         }
         return tool_message_0, tool_message_1
 
@@ -1855,9 +1709,7 @@ class AmazonNovaModel:
                     content_block.setdefault("text", "")
                     content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
-                    tool_use["toolUse"]["input"] = json.loads(
-                        delta["toolUse"]["input"]
-                    )
+                    tool_use["toolUse"]["input"] = json.loads(delta["toolUse"]["input"])
             elif "contentBlockStart" in chunk:
                 if content_block:
                     content.append(content_block)
@@ -1959,9 +1811,7 @@ def invoke_model_tool_call(
         user_content = filter_message_keys(messages[0], ["content"])
     else:
         user_content = {}
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", user_content, span_0
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span_0)
 
     function_call_0 = {"name": "get_current_weather"}
     function_call_1 = {"name": "get_current_weather"}
@@ -1990,9 +1840,7 @@ def invoke_model_tool_call(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
     # second span
-    assert_message_in_logs(
-        logs[2], "gen_ai.user.message", user_content, span_1
-    )
+    assert_message_in_logs(logs[2], "gen_ai.user.message", user_content, span_1)
     assistant_body = assistant_message
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
@@ -2005,24 +1853,16 @@ def invoke_model_tool_call(
         span_1,
     )
 
-    tool_message_0, tool_message_1 = llm_model_config.tool_messages(
-        tool_requests_ids, tool_call_result, expect_content
-    )
+    tool_message_0, tool_message_1 = llm_model_config.tool_messages(tool_requests_ids, tool_call_result, expect_content)
 
-    assert_message_in_logs(
-        logs[4], "gen_ai.tool.message", tool_message_0, span_1
-    )
-    assert_message_in_logs(
-        logs[5], "gen_ai.tool.message", tool_message_1, span_1
-    )
+    assert_message_in_logs(logs[4], "gen_ai.tool.message", tool_message_0, span_1)
+    assert_message_in_logs(logs[5], "gen_ai.tool.message", tool_message_1, span_1)
 
     user_message_body = tool_call_result
     user_message_body.pop("role")
     if not expect_content:
         user_message_body.pop("content")
-    assert_message_in_logs(
-        logs[6], "gen_ai.user.message", user_message_body, span_1
-    )
+    assert_message_in_logs(logs[6], "gen_ai.user.message", user_message_body, span_1)
     choice_content = llm_model_config.choice_content(response_1_body)
     choice_body = {
         "index": 0,
@@ -2096,9 +1936,7 @@ def test_invoke_model_no_content(
         0.99 if model_family == "cohere.command-r" else 1,
         ["|"],
     )
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model(
         body=body,
         modelId=llm_model_value,
@@ -2279,9 +2117,7 @@ def test_invoke_model_with_response_stream_with_content(
     # pylint:disable=too-many-locals,too-many-branches,too-many-statements
     llm_model_value = get_model_name_from_family(model_family)
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
@@ -2349,33 +2185,23 @@ def test_invoke_model_with_response_stream_with_content(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     if model_family == "anthropic.claude":
-        user_content = {
-            "content": [{"text": "Say this is a test", "type": "text"}]
-        }
+        user_content = {"content": [{"text": "Say this is a test", "type": "text"}]}
     else:
         user_content = {"content": [{"text": "Say this is a test"}]}
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     if model_family == "anthropic.claude":
         choice_message = {
-            "content": [
-                {"text": "Okay, I will repeat: This is a test", "type": "text"}
-            ],
+            "content": [{"text": "Okay, I will repeat: This is a test", "type": "text"}],
             "role": "assistant",
         }
     elif model_family == "amazon.nova":
         choice_message = {
-            "content": [
-                {"text": "It sounds like you're initiating a message or"}
-            ],
+            "content": [{"text": "It sounds like you're initiating a message or"}],
             "role": "assistant",
         }
     elif model_family == "amazon.titan":
-        choice_message = {
-            "content": [
-                {"text": "\nHello! I am a computer program designed to"}
-            ]
-        }
+        choice_message = {"content": [{"text": "\nHello! I am a computer program designed to"}]}
     else:
         pytest.xfail("model family not handled: {model_family}")
 
@@ -2453,13 +2279,9 @@ def test_invoke_model_with_response_stream_with_content_different_events(
     user_content = filter_message_keys(user_message, ["content"])
     assert_message_in_logs(logs[1], "gen_ai.user.message", user_content, span)
     assistant_content = filter_message_keys(assistant_message, ["content"])
-    assert_message_in_logs(
-        logs[2], "gen_ai.assistant.message", assistant_content, span
-    )
+    assert_message_in_logs(logs[2], "gen_ai.assistant.message", assistant_content, span)
     last_user_content = filter_message_keys(last_user_message, ["content"])
-    assert_message_in_logs(
-        logs[3], "gen_ai.user.message", last_user_content, span
-    )
+    assert_message_in_logs(logs[3], "gen_ai.user.message", last_user_content, span)
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
@@ -2517,9 +2339,7 @@ def invoke_model_with_response_stream_tool_call(
         modelId=llm_model_value,
     )
 
-    response_1_content = llm_model_config.get_stream_body_content(
-        response_1["body"]
-    )
+    response_1_content = llm_model_config.get_stream_body_content(response_1["body"])
     assert response_1_content
 
     (span_0, span_1) = span_exporter.get_finished_spans()
@@ -2550,9 +2370,7 @@ def invoke_model_with_response_stream_tool_call(
         user_content = filter_message_keys(messages[0], ["content"])
     else:
         user_content = {}
-    assert_message_in_logs(
-        logs[0], "gen_ai.user.message", user_content, span_0
-    )
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span_0)
 
     function_call_0 = {"name": "get_current_weather"}
     function_call_1 = {"name": "get_current_weather"}
@@ -2581,9 +2399,7 @@ def invoke_model_with_response_stream_tool_call(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
     # second span
-    assert_message_in_logs(
-        logs[2], "gen_ai.user.message", user_content, span_1
-    )
+    assert_message_in_logs(logs[2], "gen_ai.user.message", user_content, span_1)
     assistant_body = {"role": "assistant", "content": content}
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
@@ -2596,24 +2412,16 @@ def invoke_model_with_response_stream_tool_call(
         span_1,
     )
 
-    tool_message_0, tool_message_1 = llm_model_config.tool_messages(
-        tool_requests_ids, tool_call_result, expect_content
-    )
-    assert_message_in_logs(
-        logs[4], "gen_ai.tool.message", tool_message_0, span_1
-    )
+    tool_message_0, tool_message_1 = llm_model_config.tool_messages(tool_requests_ids, tool_call_result, expect_content)
+    assert_message_in_logs(logs[4], "gen_ai.tool.message", tool_message_0, span_1)
 
-    assert_message_in_logs(
-        logs[5], "gen_ai.tool.message", tool_message_1, span_1
-    )
+    assert_message_in_logs(logs[5], "gen_ai.tool.message", tool_message_1, span_1)
 
     user_message_body = tool_call_result
     user_message_body.pop("role")
     if not expect_content:
         user_message_body.pop("content")
-    assert_message_in_logs(
-        logs[6], "gen_ai.user.message", user_message_body, span_1
-    )
+    assert_message_in_logs(logs[6], "gen_ai.user.message", user_message_body, span_1)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
@@ -2673,9 +2481,7 @@ def test_invoke_model_with_response_stream_no_content(
     # pylint:disable=too-many-locals,too-many-branches
     llm_model_value = get_model_name_from_family(model_family)
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
@@ -2862,9 +2668,7 @@ def test_invoke_model_with_response_stream_close_before_consumption(
 ):
     llm_model_value = get_model_name_from_family(model_family)
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
@@ -2881,15 +2685,11 @@ def test_invoke_model_with_response_stream_close_before_consumption(
         input_tokens=None,
         output_tokens=None,
         finish_reason=None,
-        operation_name="text_completion"
-        if model_family == "amazon.titan"
-        else "chat",
+        operation_name="text_completion" if model_family == "amazon.titan" else "chat",
         request_top_p=top_p,
         request_temperature=temperature,
         request_max_tokens=max_tokens,
-        request_stop_sequences=None
-        if model_family == "meta.llama"
-        else stop_sequences,
+        request_stop_sequences=None if model_family == "meta.llama" else stop_sequences,
     )
     assert span.status.status_code == StatusCode.UNSET
 
@@ -2898,9 +2698,7 @@ def test_invoke_model_with_response_stream_close_before_consumption(
 
     # Set appropriate user_content based on model family
     if model_family == "anthropic.claude":
-        user_content = {
-            "content": [{"text": "Say this is a test", "type": "text"}]
-        }
+        user_content = {"content": [{"text": "Say this is a test", "type": "text"}]}
     else:
         user_content = {"content": [{"text": "Say this is a test"}]}
 
@@ -2917,9 +2715,7 @@ def test_invoke_model_with_response_stream_handles_stream_error(
     # pylint:disable=too-many-locals
     llm_model_value = "amazon.titan-text-lite-v1"
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
-    body = get_invoke_model_body(
-        llm_model_value, max_tokens, temperature, top_p, stop_sequences
-    )
+    body = get_invoke_model_body(llm_model_value, max_tokens, temperature, top_p, stop_sequences)
     response = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
@@ -2931,9 +2727,7 @@ def test_invoke_model_with_response_stream_handles_stream_error(
     with mock.patch.object(
         EventStream,
         "_parse_event",
-        side_effect=EventStreamError(
-            {"modelStreamErrorException": {}}, "InvokeModelWithResponseStream"
-        ),
+        side_effect=EventStreamError({"modelStreamErrorException": {}}, "InvokeModelWithResponseStream"),
     ):
         with pytest.raises(EventStreamError):
             for _event in response["body"]:
@@ -2996,9 +2790,7 @@ def test_invoke_model_with_response_stream_invalid_model(
         (None, None),
     ],
 )
-def test_anthropic_claude_chunk_tool_use_input_handling(
-    input_value, expected_output
-):
+def test_anthropic_claude_chunk_tool_use_input_handling(input_value, expected_output):
     """Test that _process_anthropic_claude_chunk handles various tool_use input formats."""
 
     def stream_done_callback(response, ended):
@@ -3043,9 +2835,7 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
     )
 
     # Simulate content_block_stop
-    wrapper._process_anthropic_claude_chunk(
-        {"type": "content_block_stop", "index": 0}
-    )
+    wrapper._process_anthropic_claude_chunk({"type": "content_block_stop", "index": 0})
 
     # Verify the message content
     assert len(wrapper._message["content"]) == 1

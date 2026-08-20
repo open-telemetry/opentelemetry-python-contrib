@@ -56,7 +56,7 @@ Set this env var to ``false`` to skip installing the logging handler provided by
 
 The default value is ``true``.
 
-.. envvar:: OTEL_PYTHON_CODE_ATTRIBUTES
+.. envvar:: OTEL_PYTHON_LOG_CODE_ATTRIBUTES
 
 Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``, ``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
 

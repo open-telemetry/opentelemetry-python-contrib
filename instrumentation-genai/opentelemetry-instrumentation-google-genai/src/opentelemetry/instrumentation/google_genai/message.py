@@ -55,9 +55,7 @@ def to_output_messages(
             parts=message.parts,
         )
 
-    messages = (
-        content_to_output_message(candidate) for candidate in candidates
-    )
+    messages = (content_to_output_message(candidate) for candidate in candidates)
     return [message for message in messages if message is not None]
 
 
@@ -65,18 +63,14 @@ def to_system_instructions(
     *,
     content: genai_types.Content,
 ) -> list[MessagePart]:
-    parts = (
-        _to_part(part, idx) for idx, part in enumerate(content.parts or [])
-    )
+    parts = (_to_part(part, idx) for idx, part in enumerate(content.parts or []))
     return [part for part in parts if part is not None]
 
 
 def _to_input_message(
     content: genai_types.Content,
 ) -> InputMessage:
-    parts = (
-        _to_part(part, idx) for idx, part in enumerate(content.parts or [])
-    )
+    parts = (_to_part(part, idx) for idx, part in enumerate(content.parts or []))
     return InputMessage(
         role=_to_role(content.role),
         # filter Nones
