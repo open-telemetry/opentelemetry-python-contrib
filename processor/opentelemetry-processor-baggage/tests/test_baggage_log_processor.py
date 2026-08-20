@@ -21,12 +21,8 @@ class BaggageLogProcessorTest(unittest.TestCase):
     def setUp(self):
         self.exporter = InMemoryLogRecordExporter()
         self.logger_provider = LoggerProvider()
-        self.logger_provider.add_log_record_processor(
-            BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS)
-        )
-        self.logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(self.exporter)
-        )
+        self.logger_provider.add_log_record_processor(BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+        self.logger_provider.add_log_record_processor(BatchLogRecordProcessor(self.exporter))
         self.logger = self.logger_provider.get_logger("test-logger")
 
     def _get_attributes(self):
@@ -36,9 +32,7 @@ class BaggageLogProcessorTest(unittest.TestCase):
         return logs[-1].log_record.attributes
 
     def test_check_the_baggage(self):
-        self.assertIsInstance(
-            BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS), LogRecordProcessor
-        )
+        self.assertIsInstance(BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS), LogRecordProcessor)
 
     def test_baggage_added_to_log_record(self):
         token = attach(set_baggage("queen", "bee"))
@@ -50,13 +44,9 @@ class BaggageLogProcessorTest(unittest.TestCase):
     def test_baggage_with_prefix(self):
         token = attach(set_baggage("queen", "bee"))
         logger_provider = LoggerProvider()
-        logger_provider.add_log_record_processor(
-            BaggageLogProcessor(lambda key: key.startswith("que"))
-        )
+        logger_provider.add_log_record_processor(BaggageLogProcessor(lambda key: key.startswith("que")))
         exporter = InMemoryLogRecordExporter()
-        logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(exporter)
-        )
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
         logger = logger_provider.get_logger("test-logger")
         logger.emit(None)
         logger_provider.force_flush()
@@ -68,15 +58,9 @@ class BaggageLogProcessorTest(unittest.TestCase):
     def test_baggage_with_regex(self):
         token = attach(set_baggage("queen", "bee"))
         logger_provider = LoggerProvider()
-        logger_provider.add_log_record_processor(
-            BaggageLogProcessor(
-                lambda key: re.match(r"que.*", key) is not None
-            )
-        )
+        logger_provider.add_log_record_processor(BaggageLogProcessor(lambda key: re.match(r"que.*", key) is not None))
         exporter = InMemoryLogRecordExporter()
-        logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(exporter)
-        )
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
         logger = logger_provider.get_logger("test-logger")
         logger.emit(None)
         logger_provider.force_flush()
@@ -106,9 +90,7 @@ class BaggageLogProcessorTest(unittest.TestCase):
             )
         )
         exporter = InMemoryLogRecordExporter()
-        logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(exporter)
-        )
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
         logger = logger_provider.get_logger("test-logger")
         logger.emit(None)
         logger_provider.force_flush()
@@ -124,15 +106,9 @@ class BaggageLogProcessorTest(unittest.TestCase):
         token2 = attach(set_baggage("key2", "val2"))
         token3 = attach(set_baggage("key3", "val3"))
         logger_provider = LoggerProvider()
-        logger_provider.add_log_record_processor(
-            BaggageLogProcessor(
-                ALLOW_ALL_BAGGAGE_KEYS, max_baggage_attributes=2
-            )
-        )
+        logger_provider.add_log_record_processor(BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS, max_baggage_attributes=2))
         exporter = InMemoryLogRecordExporter()
-        logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(exporter)
-        )
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
         logger = logger_provider.get_logger("test-logger")
         logger.emit(None)
         logger_provider.force_flush()
