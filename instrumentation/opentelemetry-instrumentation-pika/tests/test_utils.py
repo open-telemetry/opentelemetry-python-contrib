@@ -27,6 +27,7 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 
 
+# pylint: disable=too-many-public-methods
 class TestUtils(TestCase):
     @staticmethod
     @mock.patch("opentelemetry.context.get_value")

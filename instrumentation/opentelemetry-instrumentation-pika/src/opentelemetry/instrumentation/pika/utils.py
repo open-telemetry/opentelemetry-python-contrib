@@ -29,7 +29,7 @@ from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
 
-# Experimental — not yet in the official semantic-conventions spec 
+# Experimental — not yet in the official semantic-conventions spec
 MESSAGING_RABBITMQ_CLUSTER_NAME = "messaging.rabbitmq.cluster.name"
 MESSAGING_RABBITMQ_VHOST_NAME = "messaging.rabbitmq.vhost.name"
 
