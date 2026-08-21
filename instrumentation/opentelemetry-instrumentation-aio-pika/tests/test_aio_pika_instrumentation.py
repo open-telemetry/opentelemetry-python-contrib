@@ -75,4 +75,3 @@ class TestInstrumentationScopeName(TestBase):
             spans[0].instrumentation_scope.name,
             INSTRUMENTATION_NAME,
         )
-        
