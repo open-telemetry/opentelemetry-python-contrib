@@ -317,13 +317,15 @@ class StructlogInstrumentor(BaseInstrumentor):
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
 
-        # Insert before the last processor, assumed to be the renderer.
-        if current_processors:
-            insert_position = len(current_processors) - 1
-        else:
-            insert_position = 0
+        # Insert before the last processor, assumed to be the renderer, unless
+        # the app has already configured an OTel processor.
+        if not any(isinstance(p, StructlogProcessor) for p in current_processors):
+            if current_processors:
+                insert_position = len(current_processors) - 1
+            else:
+                insert_position = 0
 
-        current_processors.insert(insert_position, processor)
+            current_processors.insert(insert_position, processor)
 
         # Reconfigure structlog with the new processor chain
         StructlogInstrumentor._original_configure(processors=current_processors)
@@ -384,8 +386,8 @@ class StructlogInstrumentor(BaseInstrumentor):
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
 
-        # Remove all StructlogProcessor instances
-        new_processors = [p for p in current_processors if not isinstance(p, StructlogProcessor)]
+        # Remove only the processor added by this instrumentor.
+        new_processors = [p for p in current_processors if p is not StructlogInstrumentor._processor]
         configured_by_app = StructlogInstrumentor._is_configured_by_app
 
         # Restore the original structlog.configure before reconfiguring so
