@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aio-pika`: Hardcode instrumentation scope name in `.../aio_pika/package.py` to ensure consistent tracer/meter naming
