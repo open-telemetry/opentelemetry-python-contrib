@@ -6,8 +6,8 @@
 from unittest.mock import patch
 
 import pytest
-from packaging.requirements import Requirement
 
+from opentelemetry.instrumentation._packaging.requirements import Requirement
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,

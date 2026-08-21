@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pika`: remove the runtime `packaging` dependency in favor of the internal PEP 440 implementation in `opentelemetry-instrumentation`
