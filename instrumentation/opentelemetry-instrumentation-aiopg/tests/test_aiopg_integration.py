@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 import asyncio
 import contextlib
 import logging
@@ -25,6 +26,7 @@ from opentelemetry.instrumentation.aiopg.aiopg_integration import (
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -378,11 +380,12 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 1)
 
 
-class TestAiopgIntegration(TestBase):
+class TestAiopgIntegration(TestBase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.tracer = self.tracer_provider.get_tracer(__name__)
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def tearDown(self):
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -427,6 +430,145 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
         self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_query_parameters_not_captured_by_default(self):
+        db_integration = AiopgIntegration("test", "testcomponent", {"database": "database"})
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"}))
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute("Test query", ("param1Value", False)))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertNotIn("db.statement.parameters", span.attributes)
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
+
+    def test_capture_query_parameters_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = AiopgIntegration(
+                "test",
+                "testcomponent",
+                {"database": "database"},
+                capture_parameters=True,
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(cursor.execute("Test query", ("param1Value", False)))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            # db.query.parameter.<key> under the new semconv only.
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
+            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
+            self.assertIsInstance(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], str)
+            # The legacy attribute must not be present under the new semconv.
+            self.assertNotIn("db.statement.parameters", span.attributes)
+
+    def test_capture_query_parameters_old_semconv(self):
+        db_integration = AiopgIntegration(
+            "test",
+            "testcomponent",
+            {"database": "database"},
+            capture_parameters=True,
+        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"}))
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute("Test query", ("param1Value", False)))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        # db.statement.parameters under the old semconv only.
+        self.assertEqual(
+            span.attributes["db.statement.parameters"],
+            "('param1Value', False)",
+        )
+        self.assertIsInstance(span.attributes["db.statement.parameters"], str)
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
+
+    def test_capture_query_parameters_dup_semconv(self):
+        with use_semconv_opt_in("database/dup"):
+            db_integration = AiopgIntegration(
+                "test",
+                "testcomponent",
+                {"database": "database"},
+                capture_parameters=True,
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(cursor.execute("Test query", ("param1Value", False)))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            # Both old and new parameter attributes are emitted under dup.
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "('param1Value', False)",
+            )
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
+            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
+
+    def test_capture_query_parameters_string_values_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = AiopgIntegration(
+                "test",
+                "testcomponent",
+                {"database": "database"},
+                capture_parameters=True,
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(
+                cursor.execute(
+                    "SELECT * FROM users WHERE name = %s AND city = %s",
+                    ("jdoe", "berlin"),
+                )
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "jdoe")
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "berlin")
+            self.assertIsInstance(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], str)
+
+    def test_query_parameters_not_captured_for_batch_operations(self):
+        with use_semconv_opt_in("database/dup"):
+            db_integration = AiopgIntegration(
+                "test",
+                "testcomponent",
+                {"database": "database"},
+                capture_parameters=True,
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(
+                cursor.executemany(
+                    "INSERT INTO users VALUES (%s)",
+                    [("param1Value",), ("param2Value",)],
+                )
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            # db.query.parameter.<key> SHOULD NOT be captured on batch
+            # operations, but the legacy attribute is still captured.
+            self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "[('param1Value',), ('param2Value',)]",
+            )
 
     def test_span_not_recording(self):
         connection_props = {
