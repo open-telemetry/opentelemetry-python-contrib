@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asyncio`: fix `to_thread` instrumentation so spans and duration metrics measure the actual function execution instead of ending immediately, repeated calls of the same function are all recorded instead of only the first one, and failures are recorded with the same `state` values (`exception`, `timeout`, `cancelled`) as the coroutine and future paths
