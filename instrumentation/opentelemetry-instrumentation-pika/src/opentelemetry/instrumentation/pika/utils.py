@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from logging import getLogger
+from os import environ
 from typing import Any, Callable, List, Optional
 
 from pika.adapters.blocking_connection import (
@@ -27,6 +28,25 @@ from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
+
+# Experimental — not yet in the official semantic-conventions spec
+MESSAGING_RABBITMQ_CLUSTER_NAME = "messaging.rabbitmq.cluster.name"
+MESSAGING_RABBITMQ_VHOST_NAME = "messaging.rabbitmq.vhost.name"
+
+OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME = "OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME"
+OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME = "OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME"
+
+
+def _is_opt_in_attribute_enabled(env_var_name: str) -> bool:
+    return environ.get(env_var_name, "false").strip().lower() == "true"
+
+
+def _capture_cluster_name() -> bool:
+    return _is_opt_in_attribute_enabled(OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME)
+
+
+def _capture_vhost_name() -> bool:
+    return _is_opt_in_attribute_enabled(OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME)
 
 
 class _PikaGetter(Getter[CarrierT]):  # type: ignore
@@ -179,11 +199,17 @@ def _enrich_span(
     if not channel:
         return
     if not hasattr(channel.connection, "params"):
-        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
+        connection = channel.connection._impl
     else:
-        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
+        connection = channel.connection
+    span.set_attribute(NET_PEER_NAME, connection.params.host)
+    span.set_attribute(NET_PEER_PORT, connection.params.port)
+    if _capture_vhost_name():
+        span.set_attribute(MESSAGING_RABBITMQ_VHOST_NAME, connection.params.virtual_host)
+    if _capture_cluster_name():
+        cluster_name = connection.server_properties.get("cluster_name")
+        if cluster_name:
+            span.set_attribute(MESSAGING_RABBITMQ_CLUSTER_NAME, cluster_name)
 
 
 # pylint:disable=abstract-method
