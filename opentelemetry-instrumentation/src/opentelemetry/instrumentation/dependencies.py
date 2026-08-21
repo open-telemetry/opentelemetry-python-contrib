@@ -6,8 +6,10 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Collection
 
-from packaging.requirements import InvalidRequirement, Requirement
-
+from opentelemetry.instrumentation._packaging.requirements import (
+    InvalidRequirement,
+    Requirement,
+)
 from opentelemetry.util._importlib_metadata import (
     Distribution,
     PackageNotFoundError,
