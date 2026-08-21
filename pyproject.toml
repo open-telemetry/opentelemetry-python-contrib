@@ -33,10 +33,9 @@ dependencies = [
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
   "opentelemetry-instrumentation-grpc[instruments]",
-  "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-httpx[instruments-any]",
   "opentelemetry-instrumentation-jinja2[instruments]",
   "opentelemetry-instrumentation-kafka-python[instruments]",
-  "opentelemetry-instrumentation-kafka-python[instruments-any]",
   "opentelemetry-instrumentation-logging",
   "opentelemetry-instrumentation-mysql[instruments]",
   "opentelemetry-instrumentation-mysqlclient[instruments]",
@@ -53,6 +52,7 @@ dependencies = [
   "opentelemetry-instrumentation-requests[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-structlog[instruments]",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
@@ -124,6 +124,7 @@ opentelemetry-instrumentation-remoulade = { workspace = true }
 opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
+opentelemetry-instrumentation-structlog = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-threading = { workspace = true }
 opentelemetry-instrumentation-tornado = { workspace = true }
@@ -153,9 +154,10 @@ members = [
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
-line-length = 79
+line-length = 120
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
+extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
@@ -190,6 +192,9 @@ known-third-party = [
   "opencensus",
 ]
 
+[tool.ruff.format]
+docstring-code-format = true
+
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
 [tool.pyright]
@@ -203,12 +208,10 @@ include = [
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
+  "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
+  "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
@@ -222,18 +225,11 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-threading/tests/**",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]

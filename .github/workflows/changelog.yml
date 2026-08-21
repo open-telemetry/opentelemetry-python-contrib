@@ -42,7 +42,7 @@ jobs:
             false
           fi
 
-      - name: Check for changelog fragment
+      - name: Check changelog fragments
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -63,6 +63,10 @@ jobs:
           fi
           invalid=()
           while IFS= read -r f; do
+            encoding=$(file --brief --mime-encoding "$f")
+            if [[ "$encoding" != "us-ascii" && "$encoding" != "utf-8" ]]; then
+              invalid+=("$f (must be UTF-8 encoded; detected $encoding)")
+            fi
             base=$(basename "$f")
             if [[ ! "$base" =~ ^([0-9]+)\.(added|changed|deprecated|removed|fixed)$ ]]; then
               invalid+=("$f (expected <PR_NUMBER>.<type>; type one of added, changed, deprecated, removed, fixed)")

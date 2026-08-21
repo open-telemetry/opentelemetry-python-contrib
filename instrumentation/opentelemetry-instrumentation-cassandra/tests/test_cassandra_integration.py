@@ -10,12 +10,31 @@ from wrapt import BoundFunctionWrapper
 
 import opentelemetry.instrumentation.cassandra
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.cassandra import CassandraInstrumentor
 from opentelemetry.instrumentation.cassandra.package import (
     _instruments_cassandra_driver,
     _instruments_scylla_driver,
 )
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
@@ -45,25 +64,15 @@ class TestCassandraIntegration(TestBase):
     def test_instrument_uninstrument(self):
         instrumentation = CassandraInstrumentor()
         instrumentation.instrument()
-        self.assertTrue(
-            isinstance(
-                cassandra.cluster.Session.execute_async, BoundFunctionWrapper
-            )
-        )
+        self.assertTrue(isinstance(cassandra.cluster.Session.execute_async, BoundFunctionWrapper))
 
         instrumentation.uninstrument()
-        self.assertFalse(
-            isinstance(
-                cassandra.cluster.Session.execute_async, BoundFunctionWrapper
-            )
-        )
+        self.assertFalse(isinstance(cassandra.cluster.Session.execute_async, BoundFunctionWrapper))
 
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
     @mock.patch("cassandra.cluster.Session._create_response_future")
-    def test_instrumentor(
-        self, mock_create_response_future, mock_session_init, mock_connect
-    ):
+    def test_instrumentor(self, mock_create_response_future, mock_session_init, mock_connect):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
         mock_connect.return_value = self._mocked_session
@@ -77,9 +86,7 @@ class TestCassandraIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.cassandra
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.cassandra)
         self.assertEqual(span.name, "Cassandra")
         self.assertEqual(span.kind, SpanKind.CLIENT)
 
@@ -94,9 +101,7 @@ class TestCassandraIntegration(TestBase):
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
     @mock.patch("cassandra.cluster.Session._create_response_future")
-    def test_custom_tracer_provider(
-        self, mock_create_response_future, mock_session_init, mock_connect
-    ):
+    def test_custom_tracer_provider(self, mock_create_response_future, mock_session_init, mock_connect):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
         mock_connect.return_value = self._mocked_session
@@ -143,9 +148,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
     """
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_cassandra_driver_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_cassandra_driver_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -163,14 +166,10 @@ class TestCassandraInstrumentationDependencies(TestCase):
                 call("cassandra-driver"),
             ],
         )
-        self.assertEqual(
-            package_to_instrument, (_instruments_cassandra_driver,)
-        )
+        self.assertEqual(package_to_instrument, (_instruments_cassandra_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_scylla_driver_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_scylla_driver_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -192,9 +191,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
         self.assertEqual(package_to_instrument, (_instruments_scylla_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_both_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_both_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -206,17 +203,11 @@ class TestCassandraInstrumentationDependencies(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 1)
-        self.assertEqual(
-            mock_distribution.mock_calls, [call("cassandra-driver")]
-        )
-        self.assertEqual(
-            package_to_instrument, (_instruments_cassandra_driver,)
-        )
+        self.assertEqual(mock_distribution.mock_calls, [call("cassandra-driver")])
+        self.assertEqual(package_to_instrument, (_instruments_cassandra_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_none_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_none_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -241,3 +232,111 @@ class TestCassandraInstrumentationDependencies(TestCase):
             package_to_instrument,
             (_instruments_cassandra_driver, _instruments_scylla_driver),
         )
+
+
+class TestCassandraSemconvStability(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            CassandraInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    @property
+    def _mocked_session(self):
+        return cassandra.cluster.Session(cluster=mock.Mock(), hosts=[])
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_default_semconv(self, mock_create_response_future, mock_session_init, mock_connect):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        CassandraInstrumentor().instrument(include_db_statement=True)
+        connect_and_execute_query()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.attributes[DB_NAME], "test")
+        self.assertEqual(span.attributes[DB_SYSTEM], "cassandra")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+        self.assertIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_new_semconv(self, mock_create_response_future, mock_session_init, mock_connect):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument(include_db_statement=True)
+            connect_and_execute_query()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_dup_semconv(self, mock_create_response_future, mock_session_init, mock_connect):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database/dup"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument(include_db_statement=True)
+            connect_and_execute_query()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM], "cassandra")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertIn(NET_PEER_NAME, span.attributes)
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertIn(SERVER_ADDRESS, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+        _OpenTelemetrySemanticConventionStability._initialized = False
