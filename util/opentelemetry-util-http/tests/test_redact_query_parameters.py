@@ -75,3 +75,10 @@ class TestRedactSensitiveInfo(unittest.TestCase):
             redact_query_parameters(url),
             "https://service.com?Signature=REDACTED",
         )
+
+    def test_redaction_preserves_blank_values_and_query_order(self):
+        url = "https://service.com?first=1&sig=opaque&empty=&first=2"
+        self.assertEqual(
+            redact_query_parameters(url),
+            "https://service.com?first=1&sig=REDACTED&empty=&first=2",
+        )

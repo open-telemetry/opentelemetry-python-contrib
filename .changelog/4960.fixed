@@ -1,0 +1,1 @@
+`opentelemetry-util-http`: preserve blank query args during redaction
