@@ -136,6 +136,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     _old_factory = None
     _log_hook = None
     _logging_handler = None
+    _old_handlers_state = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -158,6 +159,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
+            root = logging.getLogger()
+            old_level = root.level
+            old_handlers = list(root.handlers)
+            old_formatters = {h: h.formatter for h in old_handlers}
+            LoggingInstrumentor._old_handlers_state = {
+                "old_level": old_level,
+                "old_handlers": old_handlers,
+                "old_formatters": old_formatters,
+            }
             logging.basicConfig(format=log_format, level=log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
@@ -247,3 +257,16 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
             LoggingInstrumentor._logging_handler = None
+
+        if LoggingInstrumentor._old_handlers_state is not None:
+            state = LoggingInstrumentor._old_handlers_state
+            LoggingInstrumentor._old_handlers_state = None
+
+            root = logging.getLogger()
+            root.setLevel(state["old_level"])
+
+            for h in list(root.handlers):
+                if h not in state["old_handlers"]:
+                    root.removeHandler(h)
+                elif h in state["old_formatters"]:
+                    h.setFormatter(state["old_formatters"][h])
