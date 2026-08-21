@@ -122,8 +122,7 @@ API
 ---
 """
 
-from collections.abc import Sequence
-from typing import Collection
+from collections.abc import Collection, Sequence
 
 import sqlalchemy
 from packaging.version import parse as parse_version

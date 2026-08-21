@@ -34,7 +34,7 @@ from .utils import MockConsumer, MockedMessage, MockedProducer
 
 class TestConfluentKafka(TestBase):
     def test_instrument_api(self) -> None:
-        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
+        from confluent_kafka import Consumer, Producer
 
         instrumentation = ConfluentKafkaInstrumentor()
 
@@ -77,7 +77,7 @@ class TestConfluentKafka(TestBase):
     def test_instrument_api_with_instrument(self) -> None:
         ConfluentKafkaInstrumentor().instrument()
 
-        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
+        from confluent_kafka import Consumer, Producer
 
         producer = Producer({"bootstrap.servers": "localhost:29092"})
         self.assertEqual(producer.__class__, AutoInstrumentedProducer)
@@ -103,7 +103,7 @@ class TestConfluentKafka(TestBase):
         ConfluentKafkaInstrumentor().uninstrument()
 
     def test_consumer_commit_method_exists(self) -> None:
-        from confluent_kafka import Consumer  # noqa: PLC0415
+        from confluent_kafka import Consumer
 
         instrumentation = ConfluentKafkaInstrumentor()
 
@@ -124,11 +124,11 @@ class TestConfluentKafka(TestBase):
 
         carrier_dict = {"key1": "val1"}
         context_setter.set(carrier_dict, "key2", "val2")
-        self.assertGreaterEqual(carrier_dict.items(), {"key2": "val2".encode()}.items())
+        self.assertGreaterEqual(carrier_dict.items(), {"key2": b"val2"}.items())
 
         carrier_list = [("key1", "val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = KafkaContextSetter()

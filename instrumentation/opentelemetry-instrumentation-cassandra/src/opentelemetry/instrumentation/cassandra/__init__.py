@@ -26,8 +26,8 @@ API
 ---
 """
 
+from collections.abc import Collection
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Collection
 
 import cassandra.cluster
 from wrapt import wrap_function_wrapper

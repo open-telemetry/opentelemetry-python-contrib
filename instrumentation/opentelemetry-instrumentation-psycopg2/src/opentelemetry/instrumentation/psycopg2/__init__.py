@@ -155,8 +155,9 @@ import logging
 import threading
 import typing
 import weakref
+from collections.abc import Collection
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Any, Collection
+from typing import Any
 
 import psycopg2
 from psycopg2.extensions import (
@@ -244,7 +245,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_connection(
         connection: PgConnection,
-        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        tracer_provider: trace_api.TracerProvider | None = None,
         enable_commenter: bool = False,
         commenter_options: dict[Any, Any] | None = None,
         enable_attribute_commenter: bool = False,
@@ -307,8 +308,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -348,8 +349,8 @@ class CursorTracer(dbapi.CursorTracer):
 
 def _new_cursor_factory(
     db_api: dbapi.DatabaseApiIntegration = None,
-    base_factory: typing.Optional[typing.Type[pg_cursor]] = None,
-    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    base_factory: type[pg_cursor] | None = None,
+    tracer_provider: trace_api.TracerProvider | None = None,
     enable_commenter: bool = False,
     commenter_options: dict[Any, Any] | None = None,
     enable_attribute_commenter: bool = False,

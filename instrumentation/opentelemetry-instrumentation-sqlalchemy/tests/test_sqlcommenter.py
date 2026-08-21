@@ -301,7 +301,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=True,
         )
-        from sqlalchemy import (  # noqa: PLC0415
+        from sqlalchemy import (
             create_engine,  # pylint: disable-all
         )
 
@@ -331,7 +331,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             enable_commenter=True,
             enable_attribute_commenter=True,
         )
-        from sqlalchemy import (  # noqa: PLC0415
+        from sqlalchemy import (
             create_engine,  # pylint: disable-all
         )
 
@@ -446,7 +446,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=False,
         )
-        from sqlalchemy import (  # noqa: PLC0415
+        from sqlalchemy import (
             create_engine,  # pylint: disable-all
         )
 

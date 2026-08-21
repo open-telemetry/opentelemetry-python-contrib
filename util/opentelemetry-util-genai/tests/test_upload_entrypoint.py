@@ -64,7 +64,7 @@ def test_upload_entry_point(load_completion_hook):
 def test_upload_entry_point_no_fsspec(load_completion_hook):
     """Tests that the a no-op uploader is used when fsspec is not installed"""
 
-    from opentelemetry.util.genai import _upload  # noqa: PLC0415
+    from opentelemetry.util.genai import _upload
 
     # Simulate fsspec imports failing
     with patch.dict(

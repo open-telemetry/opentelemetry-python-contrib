@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, overload
+from typing import overload
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (

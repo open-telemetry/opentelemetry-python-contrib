@@ -262,7 +262,7 @@ services ``GRPCTestServer`` and ``GRPCHealthServer``.
 """
 
 import os
-from typing import Callable, Collection, List, Union
+from collections.abc import Callable, Collection
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
@@ -321,7 +321,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs and kwargs["interceptors"]:
+            if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
@@ -369,7 +369,7 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs and kwargs["interceptors"]:
+            if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
@@ -493,7 +493,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         return _instruments
 
     def _add_interceptors(self, tracer_provider, kwargs):
-        if "interceptors" in kwargs and kwargs["interceptors"]:
+        if kwargs.get("interceptors"):
             kwargs["interceptors"] = list(kwargs["interceptors"])
             kwargs["interceptors"] = (
                 aio_client_interceptors(
@@ -552,7 +552,7 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, re
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _client  # noqa: PLC0415
+    from . import _client
 
     tracer = trace.get_tracer(
         __name__,
@@ -582,7 +582,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _server  # noqa: PLC0415
+    from . import _server
 
     tracer = trace.get_tracer(
         __name__,
@@ -603,7 +603,7 @@ def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=Non
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _aio_client  # noqa: PLC0415
+    from . import _aio_client
 
     tracer = trace.get_tracer(
         __name__,
@@ -649,7 +649,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _aio_server  # noqa: PLC0415
+    from . import _aio_server
 
     tracer = trace.get_tracer(
         __name__,
@@ -661,7 +661,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
 
 
-def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
+def _excluded_service_filter() -> Callable[[object], bool] | None:
     services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
     if len(services) == 0:
         return None
@@ -669,7 +669,7 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
     return negate(any_of(*filters))
 
 
-def _parse_services(excluded_services: str) -> List[str]:
+def _parse_services(excluded_services: str) -> list[str]:
     if excluded_services != "":
         excluded_service_list = [s.strip() for s in excluded_services.split(",")]
     else:

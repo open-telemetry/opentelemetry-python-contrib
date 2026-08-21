@@ -72,7 +72,7 @@ dependencies = [
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
 package = false # https://docs.astral.sh/uv/reference/settings/#package
-required-version = ">=0.6.0"
+required-version = ">=0.12.1"
 
 # https://docs.astral.sh/uv/reference/settings/#sources
 [tool.uv.sources]
@@ -155,6 +155,7 @@ members = [
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
 line-length = 120
+force-exclude = true
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
 extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
@@ -162,19 +163,16 @@ extension = { added = "markdown", changed = "markdown", deprecated = "markdown",
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
 # pylint: https://github.com/astral-sh/ruff/issues/970
-select = [
-  "I",   # isort
-  "F",   # pyflakes
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "PLC", # pylint convention
-  "PLE", # pylint error
-  "Q",   # flake8-quotes
-  "A",   # flake8-builtins
-  "TID", # flake8-tidy-imports
-]
+# Ignore rules from the default ruleset that don't have auto-fixes available and need to be
+# manually resolved, plus E501 and RUF023 which are intentionally ignored.
 ignore = [
-  "E501", # line-too-long
+  "ASYNC251", "B008", "B010", "B017", "B018", "B020", "B023", "B039", "BLE001",
+  "C401", "C405", "C408", "C417", "DTZ003", "DTZ005", "DTZ006", "DTZ007",
+  "DTZ901", "E501", "FLY002", "G201", "ISC004", "LOG014", "LOG015", "PERF102",
+  "PERF402", "PIE794", "PIE796", "PLW0602", "PLW1508", "PT014", "PYI034",
+  "PYI036", "PYI063", "RUF009", "RUF012", "RUF013", "RUF015", "RUF023",
+  "RUF032", "S102", "S110", "SIM102", "SIM103", "SIM113", "SIM115", "SIM117",
+  "SIM118", "TRY002", "TRY004", "TRY201", "TRY401", "UP028", "UP031",
 ]
 
 [tool.ruff.lint.per-file-ignores]

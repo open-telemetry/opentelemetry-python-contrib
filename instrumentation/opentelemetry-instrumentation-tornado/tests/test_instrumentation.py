@@ -62,7 +62,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
         super().setUp()
         # Reset semconv initialization to ensure clean state
         # pylint: disable=import-outside-toplevel
-        from opentelemetry.instrumentation._semconv import (  # noqa: PLC0415
+        from opentelemetry.instrumentation._semconv import (
             _OpenTelemetrySemanticConventionStability,
         )
 

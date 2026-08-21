@@ -108,7 +108,8 @@ for example:
 """
 
 import logging
-from typing import Any, Collection, Dict, Optional, Tuple
+from collections.abc import Collection
+from typing import Any
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -191,7 +192,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         # meters are lazy initialized per-extension in _get_meter
         self._meters = {}
         # metrics are lazy initialized per-extension in _get_metrics
-        self._metrics: Dict[str, Dict[str, Instrument]] = {}
+        self._metrics: dict[str, dict[str, Instrument]] = {}
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
@@ -349,7 +350,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         # Verify that aiobotocore is present
         # pylint: disable-next=import-outside-toplevel, unused-import
-        import aiobotocore.client  # noqa: PLC0415, F401
+        import aiobotocore.client  # noqa: F401
 
         # pylint: disable=attribute-defined-outside-init
         self.request_hook = kwargs.get("request_hook")
@@ -512,7 +513,7 @@ def _apply_response_attributes(span: Span, result):
         span.set_attribute(HTTP_STATUS_CODE, status_code)
 
 
-def _determine_call_context(client: BaseClient, args: Tuple[str, Dict[str, Any]]) -> Optional[_AwsSdkCallContext]:
+def _determine_call_context(client: BaseClient, args: tuple[str, dict[str, Any]]) -> _AwsSdkCallContext | None:
     try:
         call_context = _AwsSdkCallContext(client, args)
 
