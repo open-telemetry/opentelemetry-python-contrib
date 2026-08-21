@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from packaging import version as package_version
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
@@ -74,6 +75,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
@@ -181,6 +183,7 @@ _LEGACY_SCHEMA_VERSION = "1.11.0"
 class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
     DATABASE = "database"
+    MESSAGING = "messaging"
     GEN_AI = "gen_ai"
 
 
@@ -190,6 +193,8 @@ class _StabilityMode(Enum):
     HTTP_DUP = "http/dup"
     DATABASE = "database"
     DATABASE_DUP = "database/dup"
+    MESSAGING = "messaging"
+    MESSAGING_DUP = "messaging/dup"
     GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
 
 
@@ -198,7 +203,11 @@ def _report_new(mode: _StabilityMode):
 
 
 def _report_old(mode: _StabilityMode):
-    return mode not in (_StabilityMode.HTTP, _StabilityMode.DATABASE)
+    return mode not in (
+        _StabilityMode.HTTP,
+        _StabilityMode.DATABASE,
+        _StabilityMode.MESSAGING,
+    )
 
 
 class _OpenTelemetrySemanticConventionStability:
@@ -213,7 +222,7 @@ class _OpenTelemetrySemanticConventionStability:
                 return
 
             # Users can pass in comma delimited string for opt-in options
-            # Only values for http, gen ai, and database stability are supported for now
+            # Only values for http, gen ai, database, and messaging stability are supported for now
             opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN)
 
             if not opt_in:
@@ -221,6 +230,7 @@ class _OpenTelemetrySemanticConventionStability:
                 cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {
                     _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.MESSAGING: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
                 }
                 cls._initialized = True
@@ -243,12 +253,18 @@ class _OpenTelemetrySemanticConventionStability:
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[_OpenTelemetryStabilitySignalType.MESSAGING] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.MESSAGING,
+                _StabilityMode.MESSAGING_DUP,
+            )
             cls._initialized = True
 
     @staticmethod
     def _filter_mode(opt_in_list, stable_mode, dup_mode):
         # Process semconv stability opt-in
-        # http/dup,database/dup has higher precedence over http,database
+        # http/dup,database/dup,messaging/dup have higher precedence over http,database,messaging
         if dup_mode.value in opt_in_list:
             return dup_mode
 
@@ -264,7 +280,7 @@ def _get_semconv_opt_in_modes(
     signal_types: tuple[_OpenTelemetryStabilitySignalType, ...],
 ) -> dict[_OpenTelemetryStabilitySignalType, _StabilityMode]:
     """Returns a mapping of signal type to mode for the provided
-    signal_types (one/more of DATABASE, HTTP, GEN_AI).
+    signal_types (one/more of DATABASE, HTTP, MESSAGING, GEN_AI).
     """
     _OpenTelemetrySemanticConventionStability._initialize()
     return {
@@ -613,6 +629,78 @@ def _set_db_redis_database_index(
     # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
 
 
+# Messaging
+
+
+def _set_messaging_system(
+    result: MutableMapping[str, AttributeValue],
+    system: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_SYSTEM, system)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_SYSTEM, system)
+
+
+def _set_messaging_operation(
+    result: MutableMapping[str, AttributeValue],
+    operation: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_OPERATION, operation)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_OPERATION_TYPE, operation)
+
+
+def _set_messaging_temp_destination(
+    result: MutableMapping[str, AttributeValue],
+    temporary: bool,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if temporary is None:
+        return
+
+    if _report_old(sem_conv_opt_in_mode):
+        result[SpanAttributes.MESSAGING_TEMP_DESTINATION] = temporary
+    if _report_new(sem_conv_opt_in_mode):
+        result[messaging_attributes.MESSAGING_DESTINATION_TEMPORARY] = temporary
+
+
+def _set_messaging_destination(
+    result: MutableMapping[str, AttributeValue],
+    destination: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_DESTINATION, destination)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
+
+
+def _set_messaging_message_id(
+    result: MutableMapping[str, AttributeValue],
+    message_id: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
+
+
+def _set_messaging_conversation_id(
+    result: MutableMapping[str, AttributeValue],
+    conversation_id: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID, conversation_id)
+
+
 def _set_net_transport(
     result: MutableMapping[str, AttributeValue],
     old_transport: AttributeValue,
@@ -689,6 +777,7 @@ def _get_schema_version_for_opt_in_mode(
     signal_versions = {
         _OpenTelemetryStabilitySignalType.HTTP: Schemas.V1_21_0.value,
         _OpenTelemetryStabilitySignalType.DATABASE: Schemas.V1_25_0.value,
+        _OpenTelemetryStabilitySignalType.MESSAGING: Schemas.V1_44_0.value,
         _OpenTelemetryStabilitySignalType.GEN_AI: Schemas.V1_26_0.value,
     }
     schema_url = signal_versions.get(signal_type)
