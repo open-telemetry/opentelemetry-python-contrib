@@ -246,6 +246,126 @@ class TestLoggingInstrumentor(TestBase):
         logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_uninstrument_stops_the_orphaned_factory_injecting(self):
+        # The factory cannot be unlinked from the middle of the chain, so
+        # uninstrument has to neutralise it in place: records built afterwards
+        # must carry no OTel attributes.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertTrue(hasattr(record, "otelTraceID"))
+
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertFalse(hasattr(record, "otelServiceName"))
+            self.assertFalse(hasattr(record, "otelSpanID"))
+            self.assertFalse(hasattr(record, "otelTraceID"))
+            self.assertFalse(hasattr(record, "otelTraceSampled"))
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_stops_the_orphaned_factory_calling_the_log_hook(self):
+        # The log hook is the other way the orphan can keep mutating records,
+        # and it runs on a different branch of record_factory than the context
+        # injection above.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        calls = []
+        LoggingInstrumentor().instrument(log_hook=lambda span, record: calls.append(record))
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            with self.tracer.start_as_current_span("s1"):
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+
+                LoggingInstrumentor().uninstrument()
+
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_reinstrument_disables_an_orphan_left_by_an_earlier_instrument(self):
+        # _our_factory is class state, so re-instrumenting rebinds it to the new
+        # wrapper and the orphan stranded by the previous cycle must stay
+        # disabled. Reaching past the new head is the only way to observe that:
+        # injection is idempotent, so a doubled pass looks identical from above.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        orphan = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return orphan(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+            LoggingInstrumentor().instrument(inject_trace_context=True)
+
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertTrue(hasattr(record, "otelTraceID"))
+
+            record = app_factory("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertFalse(hasattr(record, "otelTraceID"))
+        finally:
+            LoggingInstrumentor().uninstrument()
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_keeps_factories_chained_after_ours(self):
+        # A factory installed after ours must survive uninstrument: the
+        # logging module offers no way to unlink a factory from the middle of
+        # the chain, so restoring the old factory here would silently drop it.
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            record = chained_onto(*args, **kwargs)
+            record.custom_app_attribute = "some-value"
+            return record
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            with self.caplog.at_level(level=logging.INFO):
+                logging.getLogger("test logger").info("hello")
+                records = [record for record in self.caplog.records if record.name == "test logger"]
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0].custom_app_attribute, "some-value")
+        finally:
+            logging.setLogRecordFactory(chained_onto)
+
+    def test_uninstrument_restores_factory_when_nothing_chained(self):
+        # Observe the pre-instrumentation factory rather than reading it back
+        # out of LoggingInstrumentor._old_factory: sourcing the expected value
+        # from the code under test would let this pass vacuously if that
+        # attribute were ever None. setUp() has already instrumented, so unwind
+        # once before taking the reading.
+        LoggingInstrumentor().uninstrument()
+        original_factory = logging.getLogRecordFactory()
+
+        LoggingInstrumentor().instrument()
+        self.assertIsNot(logging.getLogRecordFactory(), original_factory)
+
+        LoggingInstrumentor().uninstrument()
+        self.assertIs(logging.getLogRecordFactory(), original_factory)
+
     @mock.patch("logging.basicConfig")
     def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
