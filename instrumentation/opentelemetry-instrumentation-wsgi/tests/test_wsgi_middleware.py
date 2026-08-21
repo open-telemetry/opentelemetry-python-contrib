@@ -612,6 +612,10 @@ class TestWsgiAttributes(unittest.TestCase):
     _REDACTED_QUERY = "file=a.txt&Signature=REDACTED&AWSAccessKeyId=REDACTED"
 
     def _setup_sensitive_request(self, target_key="RAW_URI"):
+        # Only `target_key` may carry the raw target, so each test reliably
+        # exercises the branch it names.
+        self.environ.pop("RAW_URI", None)
+        self.environ.pop("REQUEST_URI", None)
         self.environ["PATH_INFO"] = "/download"
         self.environ["QUERY_STRING"] = self._SENSITIVE_QUERY
         self.environ[target_key] = f"/download?{self._SENSITIVE_QUERY}"
