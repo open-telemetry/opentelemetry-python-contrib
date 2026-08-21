@@ -10,7 +10,10 @@ MarkupSafe==2.1.2
 packaging==24.0
 pluggy==1.6.0
 py-cpuinfo==9.0.0
-pytest==7.4.4
+# The semantic-convention conformance tooling below requires pytest >= 8; this
+# env runs the conformance test case as a normal pytest test, so pytest is
+# bumped here (the older flask envs keep 7.4.4 and simply do not collect it).
+pytest>=8
 tomli==2.0.1
 typing_extensions==4.12.2
 Werkzeug>=3.1.0
@@ -20,3 +23,15 @@ zipp==3.19.2
 -e instrumentation/opentelemetry-instrumentation-wsgi
 -e util/opentelemetry-util-http
 -e instrumentation/opentelemetry-instrumentation-flask
+
+# Semantic-convention conformance tooling, installed from a PINNED commit of the
+# semantic-conventions-conformance repository (it is not published to PyPI). The
+# conformance pytest plugin (from opentelemetry-conformance[pytest]) collects the
+# conformance.yaml in tests/semconv_conformance/ as a normal pytest test, so a
+# semantic-convention violation is an ordinary test failure. The Weaver binary
+# and the pinned registry are provisioned on demand by the test's conftest.
+# Keep the 40-hex commit identical across all four URLs when bumping the pin.
+opentelemetry-conformance[pytest,python] @ git+https://github.com/open-telemetry/semantic-conventions-conformance.git@f4b190bce26af05a6e9cf697a1fb3f87708fa916#subdirectory=tools/runner
+http-conformance @ git+https://github.com/open-telemetry/semantic-conventions-conformance.git@f4b190bce26af05a6e9cf697a1fb3f87708fa916#subdirectory=tools/http/runner
+otel-http-mock-server @ git+https://github.com/open-telemetry/semantic-conventions-conformance.git@f4b190bce26af05a6e9cf697a1fb3f87708fa916#subdirectory=tools/http/mock-server
+otel-http-test-client @ git+https://github.com/open-telemetry/semantic-conventions-conformance.git@f4b190bce26af05a6e9cf697a1fb3f87708fa916#subdirectory=tools/http/test-client/python
