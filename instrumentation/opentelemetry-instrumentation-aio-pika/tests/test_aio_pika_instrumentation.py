@@ -53,21 +53,15 @@ class TestInstrumentationScopeName(TestBase):
             return None
 
         with mock.patch.object(Exchange, "publish", new=_noop_publish):
-            AioPikaInstrumentor().instrument(
-                tracer_provider=self.tracer_provider
-            )
+            AioPikaInstrumentor().instrument(tracer_provider=self.tracer_provider)
             major = AIOPIKA_VERSION_INFO[0]
             if major == 7:
                 exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
             elif major in (8, 9):
                 exchange = Exchange(CHANNEL_8, EXCHANGE_NAME)
             else:
-                self.fail(
-                    f"Unsupported aio-pika major version {major} (supported: 7-9, <10)"
-                )
-            self.loop.run_until_complete(
-                exchange.publish(MESSAGE, ROUTING_KEY)
-            )
+                self.fail(f"Unsupported aio-pika major version {major} (supported: 7-9, <10)")
+            self.loop.run_until_complete(exchange.publish(MESSAGE, ROUTING_KEY))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -75,4 +69,3 @@ class TestInstrumentationScopeName(TestBase):
             spans[0].instrumentation_scope.name,
             INSTRUMENTATION_NAME,
         )
-        
