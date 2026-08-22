@@ -67,6 +67,52 @@ class TelemetryHandlerMetricsTest(TestBase):
             places=3,
         )
 
+    def test_stop_llm_token_metric_counts_reasoning_tokens_as_output(
+        self,
+    ) -> None:
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = handler.start_inference("prov", request_model="model")
+        invocation.input_tokens = 5
+        invocation.output_tokens = 7
+        invocation.thinking_tokens = 3
+        invocation.stop()
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS], 10)
+
+        metrics = self._harvest_metrics()
+        token_points = metrics["gen_ai.client.token.usage"]
+        token_by_type = {point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point for point in token_points}
+        self.assertAlmostEqual(
+            token_by_type[GenAI.GenAiTokenTypeValues.OUTPUT.value].sum,
+            10.0,
+            places=3,
+        )
+
+    def test_stop_llm_token_metric_records_reasoning_tokens_alone(self) -> None:
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = handler.start_inference("prov", request_model="model")
+        invocation.thinking_tokens = 4
+        invocation.stop()
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS], 4)
+
+        metrics = self._harvest_metrics()
+        token_points = metrics["gen_ai.client.token.usage"]
+        token_by_type = {point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point for point in token_points}
+        self.assertAlmostEqual(
+            token_by_type[GenAI.GenAiTokenTypeValues.OUTPUT.value].sum,
+            4.0,
+            places=3,
+        )
+
     def test_stop_llm_records_duration_and_tokens_with_additional_attributes(
         self,
     ) -> None:
