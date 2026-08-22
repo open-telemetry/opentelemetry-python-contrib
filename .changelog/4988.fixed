@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: emit `db.namespace` for Redis database index
