@@ -123,12 +123,20 @@ class InferenceInvocation(GenAIInvocation):
             **{k: v for k, v in optional_attrs if v is not None},
         }
 
+    def _get_total_output_tokens(self) -> int | None:
+        """Output tokens including reasoning tokens, or None if neither is set.
+
+        `gen_ai.usage.reasoning.output_tokens` is a subset of
+        `gen_ai.usage.output_tokens`, so both the span attribute and the token
+        histogram report the sum.
+        """
+        if self.output_tokens is None and self.thinking_tokens is None:
+            return None
+        return (self.output_tokens or 0) + (self.thinking_tokens or 0)
+
     def _get_attributes(self) -> dict[str, Any]:
         attrs = self._get_base_attributes()
-        if self.output_tokens is None and self.thinking_tokens is None:
-            output_tokens = None
-        else:
-            output_tokens = (self.output_tokens or 0) + (self.thinking_tokens or 0)
+        output_tokens = self._get_total_output_tokens()
         optional_attrs = (
             (GenAI.GEN_AI_REQUEST_TEMPERATURE, self.temperature),
             (GenAI.GEN_AI_REQUEST_TOP_P, self.top_p),
@@ -169,9 +177,10 @@ class InferenceInvocation(GenAIInvocation):
         counts: dict[str, int] = {}
         if self.input_tokens is not None:
             counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens  # pyright: ignore[reportDeprecated]
-        if self.output_tokens is not None:
+        output_tokens = self._get_total_output_tokens()
+        if output_tokens is not None:
             counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (  # pyright: ignore[reportDeprecated]
-                self.output_tokens
+                output_tokens
             )
         return counts
 
