@@ -1,0 +1,1 @@
+`opentelemetry-util-genai`: count reasoning tokens as output tokens in the `gen_ai.client.token.usage` metric
