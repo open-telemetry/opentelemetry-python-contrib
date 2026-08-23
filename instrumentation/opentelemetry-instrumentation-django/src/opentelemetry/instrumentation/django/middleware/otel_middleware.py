@@ -328,7 +328,7 @@ class _DjangoMiddleware:
         if not _is_asgi_supported and is_asgi_request:
             return response
 
-        activation = request.META.get(self._environ_activation_key)
+        activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
         duration_attrs = request.META.pop(self._environ_duration_attr_key, None)
         request_start_time = request.META.pop(self._environ_timer_key, None)
