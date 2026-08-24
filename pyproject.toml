@@ -39,6 +39,7 @@ dependencies = [
   "opentelemetry-instrumentation-logging",
   "opentelemetry-instrumentation-mysql[instruments]",
   "opentelemetry-instrumentation-mysqlclient[instruments]",
+  "opentelemetry-instrumentation-oracledb[instruments]",
   "opentelemetry-instrumentation-pika[instruments]",
   "opentelemetry-instrumentation-psycopg[instruments]",
   "opentelemetry-instrumentation-psycopg2[instruments]",
@@ -112,6 +113,7 @@ opentelemetry-instrumentation-kafka-python = { workspace = true }
 opentelemetry-instrumentation-logging = { workspace = true }
 opentelemetry-instrumentation-mysql = { workspace = true }
 opentelemetry-instrumentation-mysqlclient = { workspace = true }
+opentelemetry-instrumentation-oracledb = { workspace = true }
 opentelemetry-instrumentation-pika = { workspace = true }
 opentelemetry-instrumentation-psycopg = { workspace = true }
 opentelemetry-instrumentation-psycopg2 = { workspace = true }
@@ -210,6 +212,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-oracledb",
   "instrumentation/opentelemetry-instrumentation-threading",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "util/opentelemetry-util-genai",
@@ -230,6 +233,7 @@ exclude = [
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-oracledb/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
