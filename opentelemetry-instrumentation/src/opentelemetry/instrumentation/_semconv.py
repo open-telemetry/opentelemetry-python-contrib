@@ -179,6 +179,10 @@ OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 # Legacy/default schema version when schema_url was first introduced
 _LEGACY_SCHEMA_VERSION = "1.11.0"
 
+# Legacy query parameter blob. This attribute predates the database semantic
+# conventions and has no semconv module to import a name from.
+_DB_STATEMENT_PARAMETERS = "db.statement.parameters"
+
 
 class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
@@ -587,10 +591,13 @@ def _set_db_query_parameters(
     result: MutableMapping[str, AttributeValue],
     parameters: Sequence[Any] | Mapping[str, Any] | None,
     sem_conv_opt_in_mode: _StabilityMode,
+    is_batch: bool = False,
 ) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        result[_DB_STATEMENT_PARAMETERS] = str(parameters)
     # db.query.parameter.<key> is only defined in the new (stable) database
-    # semantic conventions.
-    if not _report_new(sem_conv_opt_in_mode) or not parameters:
+    # semantic conventions, and it SHOULD NOT be captured on batch operations.
+    if not _report_new(sem_conv_opt_in_mode) or is_batch or not parameters:
         return
     # Named parameters are keyed by their name; positional parameters use their
     # 0-based index, both matching the placeholders in db.query.text. A string

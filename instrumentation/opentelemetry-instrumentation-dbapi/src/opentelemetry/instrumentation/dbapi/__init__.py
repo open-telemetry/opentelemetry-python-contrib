@@ -184,7 +184,6 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
-    _report_old,
     _set_db_name,
     _set_db_query_parameters,
     _set_db_statement,
@@ -776,15 +775,14 @@ class CursorTracer(Generic[CursorT]):
             span.set_attribute(attribute_key, attribute_value)
 
         if self._db_api_integration.capture_parameters and len(args) > 1:
-            parameters = args[1]
-            if _report_old(sem_conv_mode):
-                span.set_attribute("db.statement.parameters", str(parameters))
-            # db.query.parameter.<key> SHOULD NOT be captured on batch
-            # operations (e.g. executemany).
-            if not is_batch:
-                query_parameter_attributes = {}
-                _set_db_query_parameters(query_parameter_attributes, parameters, sem_conv_mode)
-                span.set_attributes(query_parameter_attributes)
+            query_parameter_attributes = {}
+            _set_db_query_parameters(
+                query_parameter_attributes,
+                args[1],
+                sem_conv_mode,
+                is_batch=is_batch,
+            )
+            span.set_attributes(query_parameter_attributes)
 
     def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:

@@ -6,6 +6,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from opentelemetry.instrumentation._semconv import (
+    _DB_STATEMENT_PARAMETERS,
     _LEGACY_SCHEMA_VERSION,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _get_schema_url_for_signal_types,
@@ -710,14 +711,15 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         self.assertNotIn(DB_OPERATION, result)
         self.assertNotIn(DB_OPERATION_NAME, result)
 
-    def test_db_query_parameters_default_is_noop(self):
+    def test_db_query_parameters_default_sets_only_legacy_blob(self):
         result = {}
         _set_db_query_parameters(
             result,
             ("jdoe", 42),
             sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
         )
-        self.assertEqual(result, {})
+        # Under the old semconv the parameters are a single stringified blob.
+        self.assertEqual(result, {_DB_STATEMENT_PARAMETERS: "('jdoe', 42)"})
 
     def test_db_query_parameters_positional(self):
         result = {}
@@ -741,9 +743,11 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
             {"userName": "jdoe", "age": 42},
             sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
         )
+        # DATABASE_DUP reports both the legacy blob and the new attributes.
         self.assertEqual(
             result,
             {
+                _DB_STATEMENT_PARAMETERS: "{'userName': 'jdoe', 'age': 42}",
                 f"{DB_QUERY_PARAMETER_TEMPLATE}.userName": "jdoe",
                 f"{DB_QUERY_PARAMETER_TEMPLATE}.age": "42",
             },
@@ -771,4 +775,29 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
     def test_db_query_parameters_none(self):
         result = {}
         _set_db_query_parameters(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE)
+        self.assertEqual(result, {})
+
+    def test_db_query_parameters_batch_keeps_only_legacy_blob(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (("jdoe", 42), ("asmith", 43)),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+            is_batch=True,
+        )
+        # The legacy blob still covers batch operations, the new attributes
+        # must not.
+        self.assertEqual(
+            result,
+            {_DB_STATEMENT_PARAMETERS: "(('jdoe', 42), ('asmith', 43))"},
+        )
+
+    def test_db_query_parameters_batch_new_only_is_noop(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (("jdoe", 42), ("asmith", 43)),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+            is_batch=True,
+        )
         self.assertEqual(result, {})
