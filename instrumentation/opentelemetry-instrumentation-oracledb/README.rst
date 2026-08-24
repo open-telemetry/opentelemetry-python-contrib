@@ -51,7 +51,7 @@ The ``opentelemetry_instrumentor`` entry point also enables discovery by the
 References
 ----------
 
-* `OpenTelemetry OracleDB Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/oracledb/oracledb.html>`_
+* `OpenTelemetry OracleDB Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `python-oracledb`_
 

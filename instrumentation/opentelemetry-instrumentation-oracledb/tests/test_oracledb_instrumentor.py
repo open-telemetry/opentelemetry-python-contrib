@@ -15,8 +15,8 @@ from opentelemetry.instrumentation.dbapi import TracedConnectionProxy
 from opentelemetry.instrumentation.oracledb import (
     _CONNECTION_ATTRIBUTES,
     _DATABASE_SYSTEM,
-    _OracleDatabaseApiIntegration,
     OracleDBInstrumentor,
+    _OracleDatabaseApiIntegration,
 )
 from opentelemetry.instrumentation.oracledb.package import _instruments
 from opentelemetry.instrumentation.oracledb.version import __version__
@@ -102,9 +102,7 @@ class _OracleDBTestBase:  # pylint: disable=invalid-name
     def setUp(self) -> None:
         self.tracer_provider = TracerProvider()
         self.memory_exporter = InMemorySpanExporter()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.memory_exporter)
-        )
+        self.tracer_provider.add_span_processor(SimpleSpanProcessor(self.memory_exporter))
 
     def tearDown(self) -> None:
         instrumentor = OracleDBInstrumentor()
@@ -264,9 +262,7 @@ class TestOracleDBInstrumentor(_OracleDBTestBase, TestCase):
                 self.memory_exporter.clear()
                 connection = _make_mock_connection()
                 error = oracledb.DatabaseError("database error")
-                getattr(connection.cursor.return_value, method).side_effect = (
-                    error
-                )
+                getattr(connection.cursor.return_value, method).side_effect = error
                 extra_args = ([(1,)],) if method == "executemany" else ()
                 with (
                     patch.object(
@@ -290,16 +286,12 @@ class TestOracleDBInstrumentor(_OracleDBTestBase, TestCase):
                     span.status.status_code,
                     trace_api.StatusCode.ERROR,
                 )
-                self.assertTrue(
-                    any(event.name == "exception" for event in span.events)
-                )
+                self.assertTrue(any(event.name == "exception" for event in span.events))
 
     def test_custom_tracer_provider_is_respected(self):
         other_exporter = InMemorySpanExporter()
         other_provider = TracerProvider()
-        other_provider.add_span_processor(
-            SimpleSpanProcessor(other_exporter)
-        )
+        other_provider.add_span_processor(SimpleSpanProcessor(other_exporter))
         with (
             patch.object(
                 oracledb,
@@ -466,9 +458,7 @@ class TestOracleDBInstrumentorAsync(
                 self.memory_exporter.clear()
                 connection = _make_mock_async_connection()
                 error = oracledb.DatabaseError("database error")
-                getattr(connection.cursor.return_value, method).side_effect = (
-                    error
-                )
+                getattr(connection.cursor.return_value, method).side_effect = error
                 extra_args = ([(1,)],) if method == "executemany" else ()
                 with (
                     patch.object(
@@ -483,9 +473,7 @@ class TestOracleDBInstrumentorAsync(
                         password="tiger",
                         dsn="localhost/freepdb1",
                     )
-                    with self.assertRaises(
-                        oracledb.DatabaseError
-                    ) as raised:
+                    with self.assertRaises(oracledb.DatabaseError) as raised:
                         await getattr(instrumented.cursor(), method)(
                             "SELECT 1 FROM dual",
                             *extra_args,
@@ -497,9 +485,7 @@ class TestOracleDBInstrumentorAsync(
                     span.status.status_code,
                     trace_api.StatusCode.ERROR,
                 )
-                self.assertTrue(
-                    any(event.name == "exception" for event in span.events)
-                )
+                self.assertTrue(any(event.name == "exception" for event in span.events))
 
     async def test_async_context_manager_exit_result_is_preserved(self):
         connection = _make_mock_async_connection()
@@ -519,9 +505,7 @@ class TestOracleDBInstrumentorAsync(
                 dsn="localhost/freepdb1",
             )
             self.assertTrue(await instrumented.__aexit__(None, None, None))
-            self.assertTrue(
-                await instrumented.cursor().__aexit__(None, None, None)
-            )
+            self.assertTrue(await instrumented.cursor().__aexit__(None, None, None))
 
     async def test_connect_async_supports_direct_async_context_manager(self):
         connection = _make_mock_async_connection()

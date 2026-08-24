@@ -113,18 +113,14 @@ _CONNECT_TARGETS = (
 class _OracleDatabaseApiIntegration(DatabaseApiIntegration):
     def get_connection_attributes(self, connection: object) -> None:
         super().get_connection_attributes(connection)
-        for attribute_name, connection_attribute in (
-            _ORACLE_CONNECTION_ATTRIBUTES.items()
-        ):
+        for attribute_name, connection_attribute in _ORACLE_CONNECTION_ATTRIBUTES.items():
             value = getattr(connection, connection_attribute, None)
             if isinstance(value, str) and value:
                 self.span_attributes[attribute_name] = value
 
 
 class _AsyncTracedCursorProxy:
-    def __init__(
-        self, cursor: Any, db_api_integration: DatabaseApiIntegration
-    ) -> None:
+    def __init__(self, cursor: Any, db_api_integration: DatabaseApiIntegration) -> None:
         self.__wrapped__ = cursor
         self._self_cursor_tracer = CursorTracer[Any](db_api_integration)
 
@@ -173,9 +169,7 @@ class _AsyncTracedConnectionProxy:
         connection = await self.__wrapped__.__aenter__()
         if connection is not None:
             self.__wrapped__ = connection
-        self._self_db_api_integration.get_connection_attributes(
-            self.__wrapped__
-        )
+        self._self_db_api_integration.get_connection_attributes(self.__wrapped__)
         return self
 
     async def __aexit__(self, *args: Any, **kwargs: Any) -> Any:
@@ -187,9 +181,7 @@ class _AsyncTracedConnectionProxy:
                 connection = await self.__wrapped__
                 if connection is not None:
                     self.__wrapped__ = connection
-            self._self_db_api_integration.get_connection_attributes(
-                self.__wrapped__
-            )
+            self._self_db_api_integration.get_connection_attributes(self.__wrapped__)
             return self
 
         return connect().__await__()
@@ -323,8 +315,7 @@ class OracleDBInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_connection(
-        connection: oracledb.Connection
-        | TracedConnectionProxy[oracledb.Connection],
+        connection: oracledb.Connection | TracedConnectionProxy[oracledb.Connection],
     ) -> oracledb.Connection:
         """Return the raw connection underlying an instrumented connection."""
         return dbapi.uninstrument_connection(connection)
