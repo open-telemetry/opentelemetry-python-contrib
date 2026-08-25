@@ -14,12 +14,20 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock import (
+    _BedrockRuntimeExtension,
+)
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
+)
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_OPERATION_NAME,
+    GEN_AI_REQUEST_MODEL,
+    GenAiOperationNameValues,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -36,6 +44,97 @@ BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
 
 def filter_message_keys(message, keys):
     return {k: v for k, v in message.items() if k in keys}
+
+
+def _invoke_model_extension(model_id, body=None):
+    params = {"modelId": model_id}
+    if body is not None:
+        params["body"] = body
+    call_context = mock.MagicMock(
+        operation="InvokeModel",
+        params=params,
+        endpoint_url="https://bedrock-runtime.us-east-1.amazonaws.com",
+    )
+    return _BedrockRuntimeExtension(call_context)
+
+
+EMBEDDING_MODEL_IDS = (
+    "cohere.embed-v4:0",
+    "amazon.titan-embed-text-v1",
+    "amazon.titan-embed-text-v2:0",
+    "amazon.titan-embed-image-v1",
+)
+
+
+@pytest.mark.parametrize("model_id", EMBEDDING_MODEL_IDS)
+@pytest.mark.parametrize("with_body", [False, True])
+def test_extract_attributes_embedding_operation_name(model_id, with_body):
+    body = json.dumps({"inputText": "hello"}) if with_body else None
+    attributes = {}
+    _invoke_model_extension(model_id, body=body).extract_attributes(attributes)
+    assert attributes[GEN_AI_REQUEST_MODEL] == model_id
+    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.EMBEDDINGS.value
+
+
+@pytest.mark.parametrize("model_id", EMBEDDING_MODEL_IDS)
+@pytest.mark.parametrize("with_body", [False, True])
+def test_extract_metrics_attributes_embedding_operation_name(model_id, with_body):
+    body = json.dumps({"inputText": "hello"}) if with_body else None
+    attributes = _invoke_model_extension(
+        model_id, body=body
+    )._extract_metrics_attributes()
+    assert attributes[GEN_AI_REQUEST_MODEL] == model_id
+    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.EMBEDDINGS.value
+
+
+def test_extract_attributes_titan_text_completion_unchanged():
+    body = json.dumps({"inputText": "hello", "textGenerationConfig": {}})
+    attributes = {}
+    _invoke_model_extension("amazon.titan-text-lite-v1", body=body).extract_attributes(
+        attributes
+    )
+    assert attributes[GEN_AI_OPERATION_NAME] == (
+        GenAiOperationNameValues.TEXT_COMPLETION.value
+    )
+
+
+def test_extract_metrics_attributes_titan_text_completion_unchanged():
+    body = json.dumps({"inputText": "hello"})
+    attributes = _invoke_model_extension(
+        "amazon.titan-text-lite-v1", body=body
+    )._extract_metrics_attributes()
+    assert attributes[GEN_AI_OPERATION_NAME] == (
+        GenAiOperationNameValues.TEXT_COMPLETION.value
+    )
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    (
+        "anthropic.claude-v2",
+        "amazon.nova-micro-v1:0",
+        "cohere.command-r-v1:0",
+        "amazon.titan-text-lite-v1",
+    ),
+)
+def test_extract_attributes_chat_models_unchanged(model_id):
+    attributes = {}
+    _invoke_model_extension(model_id).extract_attributes(attributes)
+    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.CHAT.value
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    (
+        "anthropic.claude-v2",
+        "amazon.nova-micro-v1:0",
+        "cohere.command-r-v1:0",
+        "amazon.titan-text-lite-v1",
+    ),
+)
+def test_extract_metrics_attributes_chat_models_unchanged(model_id):
+    attributes = _invoke_model_extension(model_id)._extract_metrics_attributes()
+    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.CHAT.value
 
 
 @pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
