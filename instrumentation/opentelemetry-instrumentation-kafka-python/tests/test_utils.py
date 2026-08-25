@@ -17,7 +17,8 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_send,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind, StatusCode
 
 
 class TestUtils(TestCase):
@@ -250,3 +251,61 @@ class TestUtils(TestCase):
 
         recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
         self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+
+
+@mock.patch(
+    "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition",
+    return_value=0,
+)
+class TestWrapSendSpanLifetime(TestBase):
+    """The producer span must stay open while the wrapped ``send`` runs, so
+    that errors raised by ``send()`` are recorded on the span."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.topic_name = "test_topic"
+        self.args = [self.topic_name]
+        self.kwargs = {"partition": 0, "headers": []}
+        self.producer = mock.MagicMock()
+        self.producer.config = {"bootstrap_servers": ["localhost:9092"]}
+
+    def test_wrap_send_records_exception_raised_by_send(self, _extract_send_partition: mock.MagicMock) -> None:
+        error = ConnectionError("broker unavailable")
+
+        def failing_send(*args, **kwargs):
+            raise error
+
+        wrapped_send = _wrap_send(self.tracer, None)
+
+        with self.assertRaises(ConnectionError) as raised:
+            wrapped_send(failing_send, self.producer, self.args, self.kwargs)
+
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, _get_span_name("send", self.topic_name))
+        self.assertEqual(span.kind, SpanKind.PRODUCER)
+        self.assertIs(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertEqual(span.events[0].attributes["exception.type"], "ConnectionError")
+
+    def test_wrap_send_leaves_successful_send_unchanged(self, _extract_send_partition: mock.MagicMock) -> None:
+        original_send = mock.MagicMock()
+
+        wrapped_send = _wrap_send(self.tracer, None)
+        retval = wrapped_send(original_send, self.producer, self.args, self.kwargs)
+
+        original_send.assert_called_once_with(*self.args, **self.kwargs)
+        self.assertEqual(retval, original_send.return_value)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, _get_span_name("send", self.topic_name))
+        self.assertEqual(span.kind, SpanKind.PRODUCER)
+        self.assertIs(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
