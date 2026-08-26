@@ -74,9 +74,7 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertEqual(0, len(consumer.events))
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.celery_test_tasks.task_add"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_add")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
@@ -126,9 +124,7 @@ class TestCeleryInstrumentation(TestBase):
 
         consumer, producer = spans
 
-        self.assertEqual(
-            consumer.name, "run/tests.celery_test_tasks.task_raises"
-        )
+        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_raises")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
         self.assertSpanHasAttributes(
             consumer,
@@ -157,9 +153,7 @@ class TestCeleryInstrumentation(TestBase):
             "The task failed!",
         )
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.celery_test_tasks.task_raises"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_raises")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
@@ -207,9 +201,7 @@ class TestCeleryInstrumentation(TestBase):
         self.assertEqual(task.result, {"key": "value"})
 
     def test_task_not_instrumented_does_not_raise(self):
-        def _retrieve_context_wrapper_none_token(
-            wrapped, instance, args, kwargs
-        ):
+        def _retrieve_context_wrapper_none_token(wrapped, instance, args, kwargs):
             ctx = wrapped(*args, **kwargs)
             if ctx is None:
                 return ctx
@@ -239,6 +231,59 @@ class TestCeleryInstrumentation(TestBase):
         self.assertTrue(result)
 
         unwrap(utils, "retrieve_context")
+
+    def test_task_use_span_links(self):
+        CeleryInstrumentor().instrument(use_span_links=True)
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minute from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+
+        consumer, producer = spans
+
+        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_add")
+        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+        self.assertSpanHasAttributes(
+            consumer,
+            {
+                "celery.action": "run",
+                "celery.state": "SUCCESS",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
+                "celery.task_name": "tests.celery_test_tasks.task_add",
+            },
+        )
+
+        self.assertEqual(consumer.status.status_code, StatusCode.UNSET)
+        self.assertEqual(0, len(consumer.events))
+
+        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_add")
+        self.assertEqual(producer.kind, SpanKind.PRODUCER)
+        self.assertSpanHasAttributes(
+            producer,
+            {
+                "celery.action": "apply_async",
+                "celery.task_name": "tests.celery_test_tasks.task_add",
+                SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
+            },
+        )
+
+        # Verify that consumer span is not a child of producer span when using links
+        self.assertIsNone(consumer.parent)
+        self.assertNotEqual(consumer.context.trace_id, producer.context.trace_id)
+
+        # Verify that consumer span has a link to the producer span
+        self.assertEqual(len(consumer.links), 1)
+        link = consumer.links[0]
+        self.assertEqual(link.context.span_id, producer.context.span_id)
+        self.assertEqual(link.context.trace_id, producer.context.trace_id)
 
 
 class TestCelerySignatureTask(TestBase):
@@ -280,9 +325,7 @@ class TestCelerySignatureTask(TestBase):
         self.assertEqual(consumer.name, "run/tests.test_tasks.hidden_task")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.test_tasks.hidden_task"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.test_tasks.hidden_task")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
 
         self.assertNotEqual(consumer.parent, producer.context)

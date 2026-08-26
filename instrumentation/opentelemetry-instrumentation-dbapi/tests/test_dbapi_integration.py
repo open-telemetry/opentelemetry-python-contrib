@@ -7,7 +7,10 @@ import asyncio
 import contextlib
 import logging
 import re
+import sys
 from unittest import mock
+
+import pytest
 
 from opentelemetry import context
 from opentelemetry import trace as trace_api
@@ -97,9 +100,7 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             connection_attributes,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, connection_props
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
         cursor = mock_connection.cursor()
         cursor.execute("Test query", ("param1Value", False))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -121,6 +122,22 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
+    def test_suppress_instrumentation_async(self):
+        execute = mock.AsyncMock(return_value="result")
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+        )
+
+        with suppress_instrumentation():
+            result = asyncio.run(
+                dbapi.CursorTracer(db_integration).traced_execution_async(MockCursor(), execute, "SELECT 1")
+            )
+
+        self.assertEqual(result, "result")
+        execute.assert_awaited_once_with("SELECT 1")
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
     def test_span_succeeded_new_semconv(self):
         with use_semconv_opt_in("database,http"):
             connection_props = _get_default_connection_props()
@@ -130,9 +147,7 @@ class TestDBApiIntegration(TestBase):
                 "testcomponent",
                 connection_attributes,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -173,9 +188,7 @@ class TestDBApiIntegration(TestBase):
                 "testcomponent",
                 connection_attributes,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -216,9 +229,7 @@ class TestDBApiIntegration(TestBase):
                 "testcomponent",
                 connection_attributes,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -252,9 +263,7 @@ class TestDBApiIntegration(TestBase):
                 "testcomponent",
                 connection_attributes,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -280,12 +289,8 @@ class TestDBApiIntegration(TestBase):
             self.assertFalse(NET_PEER_PORT in span.attributes)
 
     def test_span_name(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent", {}
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent", {})
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.execute("Test query", ("param1Value", False))
         cursor.execute(
@@ -315,9 +320,7 @@ class TestDBApiIntegration(TestBase):
             connection_attributes,
             capture_parameters=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, connection_props
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
         cursor = mock_connection.cursor()
         cursor.execute("Test query", ("param1Value", False))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -334,9 +337,7 @@ class TestDBApiIntegration(TestBase):
             "('param1Value', False)",
         )
         self.assertEqual(span.attributes[DB_USER], "testuser")
-        self.assertEqual(
-            span.attributes[net_attributes.NET_PEER_NAME], "testhost"
-        )
+        self.assertEqual(span.attributes[net_attributes.NET_PEER_NAME], "testhost")
         self.assertEqual(span.attributes[net_attributes.NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
@@ -352,9 +353,7 @@ class TestDBApiIntegration(TestBase):
                 connection_attributes,
                 capture_parameters=True,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -397,9 +396,7 @@ class TestDBApiIntegration(TestBase):
                 connection_attributes,
                 capture_parameters=True,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
             spans_list = self.memory_exporter.get_finished_spans()
@@ -418,12 +415,8 @@ class TestDBApiIntegration(TestBase):
                 "('param1Value', False)",
             )
             self.assertEqual(span.attributes[DB_USER], "testuser")
-            self.assertEqual(
-                span.attributes[net_attributes.NET_PEER_NAME], "testhost"
-            )
-            self.assertEqual(
-                span.attributes[net_attributes.NET_PEER_PORT], 123
-            )
+            self.assertEqual(span.attributes[net_attributes.NET_PEER_NAME], "testhost")
+            self.assertEqual(span.attributes[net_attributes.NET_PEER_PORT], 123)
 
             # New stable attributes
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
@@ -444,9 +437,7 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             connection_attributes,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, connection_props
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
         cursor = mock_connection.cursor()
         cursor.execute("Test query", ("param1Value", False))
         self.assertFalse(mock_span.is_recording())
@@ -455,12 +446,8 @@ class TestDBApiIntegration(TestBase):
         self.assertFalse(mock_span.set_status.called)
 
     def test_span_failed(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         with self.assertRaises(Exception):
             cursor.execute("Test query", throw_exception=True)
@@ -482,9 +469,7 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             tracer_provider=tracer_provider,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         with self.assertRaises(Exception):
             cursor.execute("Test query", throw_exception=True)
@@ -502,9 +487,7 @@ class TestDBApiIntegration(TestBase):
             tracer_provider=trace_api.NoOpTracerProvider(),
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Test query")
         spans_list = self.memory_exporter.get_finished_spans()
@@ -515,9 +498,7 @@ class TestDBApiIntegration(TestBase):
             "instrumenting_module_test_name",
             "testcomponent",
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         with suppress_instrumentation():
             cursor = mock_connection.cursor()
             cursor.execute("Test query", ("param1Value", False))
@@ -527,22 +508,14 @@ class TestDBApiIntegration(TestBase):
 
     def _get_metric(self, name):
         return next(
-            (
-                metric
-                for metric in self.get_sorted_metrics()
-                if metric.name == name
-            ),
+            (metric for metric in self.get_sorted_metrics() if metric.name == name),
             None,
         )
 
     def test_metrics_not_emitted_in_default_mode(self):
         # Without OTEL_SEMCONV_STABILITY_OPT_IN=database, no metrics are exported
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
         cursor = mock_connection.cursor()
         cursor.execute("SELECT 1", rowcount=3)
 
@@ -568,9 +541,7 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             connection_attributes,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), connection_props
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), connection_props)
         cursor = mock_connection.cursor()
         cursor.execute("SELECT * FROM users")
 
@@ -591,12 +562,8 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_operation_duration_error_type(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
         cursor = mock_connection.cursor()
         with self.assertRaises(Exception):
             cursor.execute("SELECT 1", throw_exception=True)
@@ -615,12 +582,8 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_recorded(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
         cursor = mock_connection.cursor()
         cursor.execute("SELECT 1", rowcount=3)
 
@@ -634,12 +597,8 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_skipped_when_rowcount_unknown(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
         cursor = mock_connection.cursor()
         # default rowcount is -1 on MockCursor
         cursor.execute("CREATE TABLE t (x INT)")
@@ -657,27 +616,18 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             meter_provider=meter_provider,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, (), {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
         cursor = mock_connection.cursor()
         cursor.execute("SELECT 1", rowcount=1)
 
         metrics_data = metrics_reader.get_metrics_data()
-        names = {
-            m.name
-            for rm in metrics_data.resource_metrics
-            for sm in rm.scope_metrics
-            for m in sm.metrics
-        }
+        names = {m.name for rm in metrics_data.resource_metrics for sm in rm.scope_metrics for m in sm.metrics}
         self.assertIn(DB_CLIENT_OPERATION_DURATION, names)
         self.assertIn(DB_CLIENT_RESPONSE_RETURNED_ROWS, names)
 
     @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_async_operation_duration_recorded(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         cursor_tracer = dbapi.CursorTracer(db_integration)
         mock_cursor = MockCursor()
 
@@ -685,19 +635,13 @@ class TestDBApiIntegration(TestBase):
             mock_cursor.rowcount = rowcount
             return None
 
-        asyncio.run(
-            cursor_tracer.traced_execution_async(
-                mock_cursor, async_execute, "SELECT 1", rowcount=5
-            )
-        )
+        asyncio.run(cursor_tracer.traced_execution_async(mock_cursor, async_execute, "SELECT 1", rowcount=5))
 
         duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
         self.assertIsNotNone(duration_metric)
         points = list(duration_metric.data.data_points)
         self.assertEqual(len(points), 1)
-        self.assertEqual(
-            dict(points[0].attributes)[DB_OPERATION_NAME], "SELECT"
-        )
+        self.assertEqual(dict(points[0].attributes)[DB_OPERATION_NAME], "SELECT")
 
         rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
         self.assertIsNotNone(rows_metric)
@@ -710,9 +654,7 @@ class TestDBApiIntegration(TestBase):
             "testcomponent",
             commenter_options={"opentelemetry_values": False},
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         with self.assertRaises(Exception):
             cursor.execute("SELECT 1", throw_exception=True)
@@ -721,14 +663,10 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes.get("db.system"), "testcomponent")
         self.assertIn("opentelemetry_values", db_integration.commenter_options)
-        self.assertFalse(
-            db_integration.commenter_options["opentelemetry_values"]
-        )
+        self.assertFalse(db_integration.commenter_options["opentelemetry_values"])
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
-    def test_trace_integration_passes_commenter_options(
-        self, mock_wrap_connect
-    ):
+    def test_trace_integration_passes_commenter_options(self, mock_wrap_connect):
         fake_connect_module = mock.Mock()
         fake_options = {"opentelemetry_values": False, "foo": "bar"}
         dbapi.trace_integration(
@@ -744,12 +682,8 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(kwargs["commenter_options"], fake_options)
 
     def test_executemany(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Test query")
         spans_list = self.memory_exporter.get_finished_spans()
@@ -759,12 +693,8 @@ class TestDBApiIntegration(TestBase):
 
     # pylint: disable=no-self-use
     def test_executemany_iterable_cursor(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Test query")
 
@@ -787,9 +717,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -821,9 +749,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -857,9 +783,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             commenter_options={"db_driver": False},
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -894,9 +818,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": False},
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -929,9 +851,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -947,9 +867,7 @@ class TestDBApiIntegration(TestBase):
         )
 
         cursor_span_id = re.search(r"[a-zA-Z0-9_]{16}", cursor.query).group()
-        db_statement_span_id = re.search(
-            r"[a-zA-Z0-9_]{16}", span.attributes[DB_STATEMENT]
-        ).group()
+        db_statement_span_id = re.search(r"[a-zA-Z0-9_]{16}", span.attributes[DB_STATEMENT]).group()
         self.assertEqual(cursor_span_id, db_statement_span_id)
 
     def test_compatible_build_version_psycopg2_libpq(self):
@@ -969,9 +887,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1002,9 +918,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1039,9 +953,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1073,9 +985,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": True, "dbapi_level": False},
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1108,9 +1018,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1141,9 +1049,7 @@ class TestDBApiIntegration(TestBase):
             commenter_options={"db_driver": True, "dbapi_level": False},
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1175,9 +1081,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
             enable_attribute_commenter=True,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1208,9 +1112,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1242,9 +1144,7 @@ class TestDBApiIntegration(TestBase):
             enable_attribute_commenter=True,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1272,9 +1172,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
         connect_module._mysql = mock.MagicMock()
-        connect_module._mysql.get_client_info = mock.MagicMock(
-            return_value="123"
-        )
+        connect_module._mysql.get_client_info = mock.MagicMock(return_value="123")
 
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
@@ -1284,9 +1182,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1314,9 +1210,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
         connect_module._mysql = mock.MagicMock()
-        connect_module._mysql.get_client_info = mock.MagicMock(
-            return_value="123"
-        )
+        connect_module._mysql.get_client_info = mock.MagicMock(return_value="123")
 
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
@@ -1327,9 +1221,7 @@ class TestDBApiIntegration(TestBase):
             enable_attribute_commenter=True,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1361,9 +1253,7 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1396,9 +1286,7 @@ class TestDBApiIntegration(TestBase):
             enable_attribute_commenter=True,
         )
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1429,14 +1317,10 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
         current_context = context.get_current()
-        sqlcommenter_context = context.set_value(
-            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
-        )
+        sqlcommenter_context = context.set_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context)
         token = context.attach(sqlcommenter_context)
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1471,14 +1355,10 @@ class TestDBApiIntegration(TestBase):
             enable_attribute_commenter=True,
         )
         current_context = context.get_current()
-        sqlcommenter_context = context.set_value(
-            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
-        )
+        sqlcommenter_context = context.set_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context)
         token = context.attach(sqlcommenter_context)
 
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
@@ -1496,12 +1376,8 @@ class TestDBApiIntegration(TestBase):
         context.detach(token)
 
     def test_callproc(self):
-        db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor.callproc("Test stored procedure")
         spans_list = self.memory_exporter.get_finished_spans()
@@ -1533,17 +1409,13 @@ class TestDBApiIntegration(TestBase):
     def test_instrument_connection(self):
         mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
         # Avoid get_attributes failing because can't concatenate mock
-        connection2 = dbapi.instrument_connection(
-            "instrumenting_module_test_name", mocked_conn, "dbname"
-        )
+        connection2 = dbapi.instrument_connection("instrumenting_module_test_name", mocked_conn, "dbname")
         self.assertIs(connection2.__wrapped__, mocked_conn)  # pylint: disable=no-member
 
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
     def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
         mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
-        dbapi.instrument_connection(
-            "instrumenting_module_test_name", mocked_conn, "foo"
-        )
+        dbapi.instrument_connection("instrumenting_module_test_name", mocked_conn, "foo")
         kwargs = mock_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], None)
         self.assertEqual(kwargs["version"], "")
@@ -1594,15 +1466,11 @@ class TestDBApiIntegration(TestBase):
             "dbsystem",
             db_api_integration_factory=DBApiIntegrationTestClass,
         )
-        self.assertIsInstance(
-            conn._self_db_api_integration, DBApiIntegrationTestClass
-        )
+        self.assertIsInstance(conn._self_db_api_integration, DBApiIntegrationTestClass)
 
     def test_uninstrument_connection(self):
         mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
-        connection2 = dbapi.instrument_connection(
-            "instrumenting_module_test_name", mocked_conn, "-"
-        )
+        connection2 = dbapi.instrument_connection("instrumenting_module_test_name", mocked_conn, "-")
         self.assertIs(connection2.__wrapped__, mocked_conn)  # pylint: disable=no-member
 
         connection3 = dbapi.uninstrument_connection(connection2)
@@ -1629,9 +1497,7 @@ class TestDBApiIntegration(TestBase):
             enable_commenter=True,
             connect_module=connect_module,
         )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
 
         input_sql = mock.MagicMock(as_string=lambda conn: "SELECT 2")
@@ -1657,16 +1523,12 @@ class TestDBApiIntegration(TestBase):
         )
         mock_cursor = mock.MagicMock()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "8.0.32"
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor._cnx = mock_cursor._cnx
         cursor.execute("SELECT 1;")
         mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
-        self.assertEqual(
-            db_integration.commenter_data["mysql_client_version"], "8.0.32"
-        )
+        self.assertEqual(db_integration.commenter_data["mysql_client_version"], "8.0.32")
 
     def test_capture_mysql_version_fallback_success(self):
         connect_module = mock.MagicMock()
@@ -1679,22 +1541,16 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
         mock_cursor = mock.MagicMock()
-        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
-            "Primary method failed"
-        )
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError("Primary method failed")
         mock_cursor._connection._cmysql.get_client_info.return_value = "8.0.33"
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor._cnx = mock_cursor._cnx
         cursor._connection = mock_cursor._connection
         cursor.execute("SELECT 1;")
         mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
         mock_cursor._connection._cmysql.get_client_info.assert_called_once()
-        self.assertEqual(
-            db_integration.commenter_data["mysql_client_version"], "8.0.33"
-        )
+        self.assertEqual(db_integration.commenter_data["mysql_client_version"], "8.0.33")
 
     @mock.patch("opentelemetry.instrumentation.dbapi._logger")
     def test_capture_mysql_version_fallback(self, mock_logger):
@@ -1708,15 +1564,9 @@ class TestDBApiIntegration(TestBase):
             connect_module=connect_module,
         )
         mock_cursor = mock.MagicMock()
-        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
-            "Primary method failed"
-        )
-        mock_cursor._connection._cmysql.get_client_info.side_effect = (
-            AttributeError("Fallback method failed")
-        )
-        mock_connection = db_integration.wrapped_connection(
-            mock_connect, {}, {}
-        )
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError("Primary method failed")
+        mock_cursor._connection._cmysql.get_client_info.side_effect = AttributeError("Fallback method failed")
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
         cursor = mock_connection.cursor()
         cursor._cnx = mock_cursor._cnx
         cursor._connection = mock_cursor._connection
@@ -1724,9 +1574,75 @@ class TestDBApiIntegration(TestBase):
         mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
         mock_cursor._connection._cmysql.get_client_info.assert_called_once()
         mock_logger.debug.assert_called_once()
-        self.assertEqual(
-            db_integration.commenter_data["mysql_client_version"], "unknown"
+        self.assertEqual(db_integration.commenter_data["mysql_client_version"], "unknown")
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_span_attributes(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module
+        from string.templatelib import (  # noqa: PLC0415
+            Interpolation,
+            Template,
         )
+
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
+        cursor = mock_connection.cursor()
+        value = 42
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
+        cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT {value} FROM foo")
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_commenter(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(mock_connect, {}, {})
+        cursor = mock_connection.cursor()
+        value = 42
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
+        cursor.executemany(template)
+        self.assertIsInstance(cursor.query, Template)
+        self.assertRegex(
+            cursor.query.strings[-1],
+            r" FROM foo /\*dbapi_threadsafety=123,driver_paramstyle='test',"
+            r"libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT {value} FROM foo")
 
 
 # pylint: disable=unused-argument
@@ -1759,9 +1675,7 @@ class MockCursor:
         # Mock mysql.connector modules and method
         self._cnx = mock.MagicMock()
         self._cnx._cmysql = mock.MagicMock()
-        self._cnx._cmysql.get_client_info = mock.MagicMock(
-            return_value="1.2.3"
-        )
+        self._cnx._cmysql.get_client_info = mock.MagicMock(return_value="1.2.3")
         self._items = []
 
     # pylint: disable=unused-argument, no-self-use
@@ -1775,9 +1689,7 @@ class MockCursor:
         yield from self._items
 
     # pylint: disable=unused-argument, no-self-use
-    def executemany(
-        self, query, params=None, throw_exception=False, rowcount=-1
-    ):
+    def executemany(self, query, params=None, throw_exception=False, rowcount=-1):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")

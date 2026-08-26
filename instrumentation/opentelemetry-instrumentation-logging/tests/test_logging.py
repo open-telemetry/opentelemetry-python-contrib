@@ -39,9 +39,7 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
 
     def setUp(self):
         super().setUp()
-        LoggingInstrumentor().instrument(
-            tracer_provider=FakeTracerProvider(), set_logging_format=True
-        )
+        LoggingInstrumentor().instrument(tracer_provider=FakeTracerProvider(), set_logging_format=True)
 
     def tearDown(self):
         super().tearDown()
@@ -77,7 +75,7 @@ class TestLoggingInstrumentor(TestBase):
         super().tearDown()
         LoggingInstrumentor().uninstrument()
 
-    def assert_trace_context_injected(self, span_id, trace_id, trace_sampled):
+    def assert_trace_context_injected(self, span_id, trace_id, trace_sampled, resource_attributes):
         with self.caplog.at_level(level=logging.INFO):
             logger = logging.getLogger("test logger")
             logger.info("hello")
@@ -86,32 +84,32 @@ class TestLoggingInstrumentor(TestBase):
             self.assertEqual(record.otelSpanID, span_id)
             self.assertEqual(record.otelTraceID, trace_id)
             self.assertEqual(record.otelTraceSampled, trace_sampled)
-            self.assertEqual(record.otelServiceName, "unknown_service")
+            self.assertEqual(record.otelServiceName, resource_attributes["service.name"])
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"})
-    def test_trace_context_injection_with_log_correlation_from_env_var(self):
+    @mock.patch("logging.basicConfig")
+    def test_trace_context_injection_with_log_correlation_from_env_var(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument()
+        basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
         with self.tracer.start_as_current_span("s1") as span:
             span_ctx = span.get_span_context()
             span_id = format(span_ctx.span_id, "016x")
             trace_id = format(span_ctx.trace_id, "032x")
             trace_sampled = span_ctx.trace_flags.sampled
-            self.assert_trace_context_injected(
-                span_id, trace_id, trace_sampled
-            )
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
 
-    def test_trace_context_injection_with_log_correlation_instrument_arg(self):
+    @mock.patch("logging.basicConfig")
+    def test_trace_context_injection_with_log_correlation_instrument_arg(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(set_logging_format=True)
+        basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
         with self.tracer.start_as_current_span("s1") as span:
             span_ctx = span.get_span_context()
             span_id = format(span_ctx.span_id, "016x")
             trace_id = format(span_ctx.trace_id, "032x")
             trace_sampled = span_ctx.trace_flags.sampled
-            self.assert_trace_context_injected(
-                span_id, trace_id, trace_sampled
-            )
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
 
     def test_no_trace_context_injection_by_default(self):
         with self.tracer.start_as_current_span("s1"):
@@ -125,10 +123,31 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
-    def test_trace_context_injection_without_span(self):
+    @mock.patch("logging.basicConfig")
+    def test_inject_trace_context_arg(self, basic_config_mock):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        basic_config_mock.assert_not_called()
+        with self.tracer.start_as_current_span("s1") as span:
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
+
+    @mock.patch("logging.basicConfig")
+    def test_inject_trace_context_arg_without_span(self, basic_config_mock):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        basic_config_mock.assert_not_called()
+        self.assert_trace_context_injected("0", "0", False, self.tracer.resource.attributes)
+
+    @mock.patch("logging.basicConfig")
+    def test_trace_context_injection_without_span(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(set_logging_format=True)
-        self.assert_trace_context_injected("0", "0", False)
+        basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
+        self.assert_trace_context_injected("0", "0", False, self.tracer.resource.attributes)
 
     @mock.patch("logging.basicConfig")
     def test_basic_config_called(self, basic_config_mock):
@@ -137,13 +156,9 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        with mock.patch.dict(
-            "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
-        ):
+        with mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}):
             LoggingInstrumentor().instrument()
-            basic_config_mock.assert_called_with(
-                format=DEFAULT_LOGGING_FORMAT, level=logging.INFO
-            )
+            basic_config_mock.assert_called_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
 
     @mock.patch("logging.basicConfig")
     def test_custom_format_and_level_env(self, basic_config_mock):
@@ -161,9 +176,7 @@ class TestLoggingInstrumentor(TestBase):
             },
         ):
             LoggingInstrumentor().instrument()
-            basic_config_mock.assert_called_with(
-                format="%(message)s %(otelSpanID)s", level=logging.ERROR
-            )
+            basic_config_mock.assert_called_with(format="%(message)s %(otelSpanID)s", level=logging.ERROR)
 
     @mock.patch("logging.basicConfig")
     def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
@@ -173,9 +186,7 @@ class TestLoggingInstrumentor(TestBase):
             logging_format="%(message)s span_id=%(otelSpanID)s",
             log_level=logging.WARNING,
         )
-        basic_config_mock.assert_called_with(
-            format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING
-        )
+        basic_config_mock.assert_called_with(format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING)
 
     def test_log_hook(self):
         LoggingInstrumentor().uninstrument()
@@ -192,16 +203,16 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelSpanID"))
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
-                self.assertEqual(
-                    record.custom_user_attribute_from_log_hook, "some-value"
-                )
+                self.assertEqual(record.custom_user_attribute_from_log_hook, "some-value")
 
-    def test_log_hook_with_set_logging_format(self):
+    @mock.patch("logging.basicConfig")
+    def test_log_hook_with_set_logging_format(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
             set_logging_format=True,
             log_hook=log_hook,
         )
+        basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
         with self.tracer.start_as_current_span("s1") as span:
             span_ctx = span.get_span_context()
             span_id = format(span_ctx.span_id, "016x")
@@ -214,11 +225,9 @@ class TestLoggingInstrumentor(TestBase):
                 record = self.caplog.records[0]
                 self.assertEqual(record.otelSpanID, span_id)
                 self.assertEqual(record.otelTraceID, trace_id)
-                self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertEqual(record.otelServiceName, span.resource.attributes["service.name"])
                 self.assertEqual(record.otelTraceSampled, trace_sampled)
-                self.assertEqual(
-                    record.custom_user_attribute_from_log_hook, "some-value"
-                )
+                self.assertEqual(record.custom_user_attribute_from_log_hook, "some-value")
 
     def test_uninstrumented(self):
         LoggingInstrumentor().uninstrument()
@@ -234,18 +243,14 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
-    def test_no_op_tracer_provider(self):
+    @mock.patch("logging.basicConfig")
+    def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
-        LoggingInstrumentor().instrument(
-            tracer_provider=NoOpTracerProvider(), set_logging_format=True
-        )
+        LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider(), set_logging_format=True)
+        basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
 
         with self.caplog.at_level(level=logging.INFO):
             logger = logging.getLogger("test logger")
@@ -280,11 +285,7 @@ class TestLoggingInstrumentor(TestBase):
         )
 
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
     @mock.patch.dict(
@@ -300,11 +301,7 @@ class TestLoggingInstrumentor(TestBase):
 
         self.assertEqual(len(self.caplog.records), 0)
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(len(logging_handler_instances), 1)
 
     @mock.patch.dict(
@@ -320,11 +317,7 @@ class TestLoggingInstrumentor(TestBase):
 
         self.assertEqual(len(self.caplog.records), 0)
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
     def test_handler_setup_is_called_if_autoinstrumentation_env_vars_are_not_set(
@@ -336,18 +329,12 @@ class TestLoggingInstrumentor(TestBase):
 
         self.assertEqual(len(self.caplog.records), 0)
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(len(logging_handler_instances), 1)
 
     def test_handler_setup_is_called_without_code_attributes_by_default(self):
         LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
+        with mock.patch("opentelemetry.instrumentation.logging._setup_logging_handler") as setup_mock:
             LoggingInstrumentor().instrument()
 
         logger_provider = get_logger_provider()
@@ -360,9 +347,7 @@ class TestLoggingInstrumentor(TestBase):
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CODE_ATTRIBUTES": "true"})
     def test_handler_setup_is_called_with_code_attributes_from_env_var(self):
         LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
+        with mock.patch("opentelemetry.instrumentation.logging._setup_logging_handler") as setup_mock:
             LoggingInstrumentor().instrument()
 
         logger_provider = get_logger_provider()
@@ -377,26 +362,18 @@ class TestLoggingInstrumentor(TestBase):
     ):
         LoggingInstrumentor().uninstrument()
         with self.caplog.at_level(level=logging.WARNING):
-            LoggingInstrumentor().instrument(
-                enable_log_auto_instrumentation=False
-            )
+            LoggingInstrumentor().instrument(enable_log_auto_instrumentation=False)
 
         self.assertEqual(len(self.caplog.records), 0)
         root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
+        logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
     def test_handler_code_attributes_is_controlled_by_instrumentor_parameter(
         self,
     ):
         LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
+        with mock.patch("opentelemetry.instrumentation.logging._setup_logging_handler") as setup_mock:
             LoggingInstrumentor().instrument(log_code_attributes=True)
 
         logger_provider = get_logger_provider()
@@ -413,9 +390,7 @@ class TestLoggingInstrumentor(TestBase):
             LoggingInstrumentor().instrument()
 
         root_logger = logging.getLogger()
-        logging_handlers = [
-            h for h in root_logger.handlers if isinstance(h, LoggingHandler)
-        ]
+        logging_handlers = [h for h in root_logger.handlers if isinstance(h, LoggingHandler)]
         self.assertEqual(len(logging_handlers), 1)
         self.assertEqual(logging_handlers[0].level, logging.ERROR)
 
@@ -425,9 +400,7 @@ class TestLoggingInstrumentor(TestBase):
     )
     def test_handler_setup_called_with_level_from_env_var(self):
         LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
+        with mock.patch("opentelemetry.instrumentation.logging._setup_logging_handler") as setup_mock:
             LoggingInstrumentor().instrument()
 
         logger_provider = get_logger_provider()
@@ -439,9 +412,7 @@ class TestLoggingInstrumentor(TestBase):
 
     def test_handler_level_is_controlled_by_instrumentor_parameter(self):
         LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
+        with mock.patch("opentelemetry.instrumentation.logging._setup_logging_handler") as setup_mock:
             LoggingInstrumentor().instrument(log_handler_level=logging.DEBUG)
 
         logger_provider = get_logger_provider()

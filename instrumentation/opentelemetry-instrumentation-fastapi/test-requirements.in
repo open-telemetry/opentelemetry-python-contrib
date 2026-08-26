@@ -1,0 +1,11 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+requests~=2.33.1
+urllib3~=2.7.0
+httpx~=0.28
+fastapi~=0.119.1
+wrapt>=1.16.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-asgi
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-fastapi[instruments]

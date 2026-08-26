@@ -3,3 +3,5 @@
 
 
 _instruments = ("asyncpg >= 0.12.0",)
+
+_semconv_status = "migration"
