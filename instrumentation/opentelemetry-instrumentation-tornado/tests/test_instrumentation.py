@@ -17,6 +17,7 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.instrumentation.tornado import (
+    _OTEL_PATCHED_KEY,
     TornadoInstrumentor,
     patch_handler_class,
     unpatch_handler_class,
@@ -120,6 +121,25 @@ class TestTornadoInstrumentor(TornadoTest):
         self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
         self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
         self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+        unpatch_handler_class(AsyncHandler)
+
+    def test_unpatch_subclass_of_patched_class_is_a_noop(self):
+        tracer = trace.get_tracer(__name__)
+        self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
+
+        class SubclassOfAsyncHandler(AsyncHandler):
+            pass
+
+        # The subclass only inherits the patched marker, it does not own it,
+        # so unpatching the subclass must do nothing instead of raising
+        # AttributeError.
+        unpatch_handler_class(SubclassOfAsyncHandler)
+
+        self.assertNotIn(_OTEL_PATCHED_KEY, SubclassOfAsyncHandler.__dict__)
+        # The base class must still be patched and still own the marker.
+        self.assertIn(_OTEL_PATCHED_KEY, AsyncHandler.__dict__)
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+
         unpatch_handler_class(AsyncHandler)
 
 
