@@ -44,15 +44,6 @@ WebSocket message payloads is not parsed automatically. For more information,
 see `Python context propagation <https://opentelemetry.io/docs/languages/python/propagation/>`_
 and `Python distro configuration <https://opentelemetry.io/docs/languages/python/distro/>`_.
 
-Logs
-****
-
-FastAPI instrumentation does not convert Python ``logging`` records to span
-events. For zero-code log export, see
-`Python logs auto-instrumentation <https://opentelemetry.io/docs/zero-code/python/logs-example/>`_.
-Use ``span.add_event(...)`` for application data that should be recorded as span
-events.
-
 Configuration
 -------------
 
