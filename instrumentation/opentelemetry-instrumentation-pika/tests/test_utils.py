@@ -12,6 +12,10 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
+from opentelemetry.instrumentation.pika.utils import (
+    OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME,
+    OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME,
+)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
@@ -23,6 +27,7 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 
 
+# pylint: disable=too-many-public-methods
 class TestUtils(TestCase):
     @staticmethod
     @mock.patch("opentelemetry.context.get_value")
@@ -85,8 +90,7 @@ class TestUtils(TestCase):
         span_name = utils._generate_span_name(task_name, operation)
         self.assertEqual(span_name, f"{task_name} {operation.value}")
 
-    @staticmethod
-    def test_enrich_span_basic_values() -> None:
+    def test_enrich_span_basic_values(self) -> None:
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_destination = "test.test"
@@ -110,6 +114,75 @@ class TestUtils(TestCase):
                 mock.call(
                     NET_PEER_PORT,
                     channel.connection.params.port,
+                ),
+            ],
+        )
+        called_attribute_names = [call.args[0] for call in span.set_attribute.call_args_list]
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_VHOST_NAME, called_attribute_names)
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_CLUSTER_NAME, called_attribute_names)
+
+    @mock.patch.dict("os.environ", {OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME: "true"})
+    def test_enrich_span_capture_vhost_name_enabled(self) -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        span = mock.MagicMock(spec=Span)
+        utils._enrich_span(span, channel, properties, task_destination)
+        span.set_attribute.assert_has_calls(
+            any_order=True,
+            calls=[
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_VHOST_NAME,
+                    channel.connection.params.virtual_host,
+                ),
+            ],
+        )
+        called_attribute_names = [call.args[0] for call in span.set_attribute.call_args_list]
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_CLUSTER_NAME, called_attribute_names)
+
+    @mock.patch.dict("os.environ", {OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME: "true"})
+    def test_enrich_span_capture_cluster_name_enabled(self) -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        span = mock.MagicMock(spec=Span)
+        utils._enrich_span(span, channel, properties, task_destination)
+        span.set_attribute.assert_has_calls(
+            any_order=True,
+            calls=[
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_CLUSTER_NAME,
+                    channel.connection.server_properties.get("cluster_name"),
+                ),
+            ],
+        )
+        called_attribute_names = [call.args[0] for call in span.set_attribute.call_args_list]
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_VHOST_NAME, called_attribute_names)
+
+    @staticmethod
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME: "true",
+            OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME: "true",
+        },
+    )
+    def test_enrich_span_capture_both_enabled() -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        span = mock.MagicMock(spec=Span)
+        utils._enrich_span(span, channel, properties, task_destination)
+        span.set_attribute.assert_has_calls(
+            any_order=True,
+            calls=[
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_VHOST_NAME,
+                    channel.connection.params.virtual_host,
+                ),
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_CLUSTER_NAME,
+                    channel.connection.server_properties.get("cluster_name"),
                 ),
             ],
         )
@@ -139,8 +212,7 @@ class TestUtils(TestCase):
             calls=[mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)],
         )
 
-    @staticmethod
-    def test_enrich_span_unique_connection() -> None:
+    def test_enrich_span_unique_connection(self) -> None:
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_destination = "test.test"
@@ -158,6 +230,39 @@ class TestUtils(TestCase):
                 mock.call(
                     NET_PEER_PORT,
                     channel.connection._impl.params.port,
+                ),
+            ],
+        )
+        called_attribute_names = [call.args[0] for call in span.set_attribute.call_args_list]
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_VHOST_NAME, called_attribute_names)
+        self.assertNotIn(utils.MESSAGING_RABBITMQ_CLUSTER_NAME, called_attribute_names)
+
+    @staticmethod
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME: "true",
+            OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME: "true",
+        },
+    )
+    def test_enrich_span_unique_connection_capture_both_enabled() -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        span = mock.MagicMock(spec=Span)
+        # We do this to create the behaviour of hasattr(channel.connection, "params") == False
+        del channel.connection.params
+        utils._enrich_span(span, channel, properties, task_destination)
+        span.set_attribute.assert_has_calls(
+            any_order=True,
+            calls=[
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_VHOST_NAME,
+                    channel.connection._impl.params.virtual_host,
+                ),
+                mock.call(
+                    utils.MESSAGING_RABBITMQ_CLUSTER_NAME,
+                    channel.connection._impl.server_properties.get("cluster_name"),
                 ),
             ],
         )

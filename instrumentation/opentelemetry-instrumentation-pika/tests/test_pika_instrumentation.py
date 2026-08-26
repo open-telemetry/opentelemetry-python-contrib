@@ -209,7 +209,10 @@ class TestPika(TestCase):
         class FakeBlockingChannel:
             def __init__(self) -> None:
                 self._consumer_infos = {}
-                self.connection = SimpleNamespace(params=SimpleNamespace(host="localhost", port=5672))
+                self.connection = SimpleNamespace(
+                    params=SimpleNamespace(host="localhost", port=5672, virtual_host="/"),
+                    server_properties={},
+                )
                 self.basic_ack = mock.MagicMock()
 
             @property
