@@ -66,6 +66,22 @@ Usage
 
     asyncio.run(go())
 
+Configuration
+-------------
+
+Capture parameters
+******************
+By default, only statements are captured, without the associated query parameters.
+To capture query parameters in the span attribute ``db.statement.parameters``, enable ``capture_parameters``.
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
+
+    AiopgInstrumentor().instrument(
+        capture_parameters=True,
+    )
+
 API
 ---
 """
@@ -98,6 +114,7 @@ class AiopgInstrumentor(BaseInstrumentor):
 
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         wrappers.wrap_connect(
             __name__,
@@ -106,6 +123,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            capture_parameters=capture_parameters,
         )
 
         wrappers.wrap_create_pool(
@@ -115,6 +133,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            capture_parameters=capture_parameters,
         )
 
     # pylint:disable=no-self-use
@@ -124,7 +143,7 @@ class AiopgInstrumentor(BaseInstrumentor):
         wrappers.unwrap_create_pool()
 
     # pylint:disable=no-self-use
-    def instrument_connection(self, connection, tracer_provider=None, meter_provider=None):
+    def instrument_connection(self, connection, tracer_provider=None, meter_provider=None, capture_parameters=False):
         """Enable instrumentation in a aiopg connection.
 
         Args:
@@ -133,6 +152,8 @@ class AiopgInstrumentor(BaseInstrumentor):
                 the current globally configured one is used.
             meter_provider: The optional meter provider to use. If omitted the
                 current globally configured one is used.
+            capture_parameters: Configure if db.statement.parameters should
+                be captured.
 
         Returns:
             An instrumented connection.
@@ -145,6 +166,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            capture_parameters=capture_parameters,
         )
 
     def uninstrument_connection(self, connection):
