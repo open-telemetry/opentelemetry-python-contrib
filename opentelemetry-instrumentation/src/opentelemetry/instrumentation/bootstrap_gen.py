@@ -49,6 +49,7 @@ libraries = [
     {"library": "pymssql >= 2.1.5, < 3", "instrumentation": "opentelemetry-instrumentation-pymssql==0.66b0.dev"},
     {"library": "PyMySQL < 2", "instrumentation": "opentelemetry-instrumentation-pymysql==0.66b0.dev"},
     {"library": "pyramid >= 1.7", "instrumentation": "opentelemetry-instrumentation-pyramid==0.66b0.dev"},
+    {"library": "quart >= 0.19.9", "instrumentation": "opentelemetry-instrumentation-quart==0.66b0.dev"},
     {"library": "redis >= 2.6", "instrumentation": "opentelemetry-instrumentation-redis==0.66b0.dev"},
     {"library": "remoulade >= 0.50", "instrumentation": "opentelemetry-instrumentation-remoulade==0.66b0.dev"},
     {"library": "requests ~= 2.0", "instrumentation": "opentelemetry-instrumentation-requests==0.66b0.dev"},
