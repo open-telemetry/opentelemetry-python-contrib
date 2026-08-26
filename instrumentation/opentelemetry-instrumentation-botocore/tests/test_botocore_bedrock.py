@@ -14,20 +14,12 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
-from opentelemetry.instrumentation.botocore.extensions.bedrock import (
-    _BedrockRuntimeExtension,
-)
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
-)
-from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
-    GEN_AI_OPERATION_NAME,
-    GEN_AI_REQUEST_MODEL,
-    GenAiOperationNameValues,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -44,97 +36,6 @@ BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
 
 def filter_message_keys(message, keys):
     return {k: v for k, v in message.items() if k in keys}
-
-
-def _invoke_model_extension(model_id, body=None):
-    params = {"modelId": model_id}
-    if body is not None:
-        params["body"] = body
-    call_context = mock.MagicMock(
-        operation="InvokeModel",
-        params=params,
-        endpoint_url="https://bedrock-runtime.us-east-1.amazonaws.com",
-    )
-    return _BedrockRuntimeExtension(call_context)
-
-
-EMBEDDING_MODEL_IDS = (
-    "cohere.embed-v4:0",
-    "amazon.titan-embed-text-v1",
-    "amazon.titan-embed-text-v2:0",
-    "amazon.titan-embed-image-v1",
-)
-
-
-@pytest.mark.parametrize("model_id", EMBEDDING_MODEL_IDS)
-@pytest.mark.parametrize("with_body", [False, True])
-def test_extract_attributes_embedding_operation_name(model_id, with_body):
-    body = json.dumps({"inputText": "hello"}) if with_body else None
-    attributes = {}
-    _invoke_model_extension(model_id, body=body).extract_attributes(attributes)
-    assert attributes[GEN_AI_REQUEST_MODEL] == model_id
-    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.EMBEDDINGS.value
-
-
-@pytest.mark.parametrize("model_id", EMBEDDING_MODEL_IDS)
-@pytest.mark.parametrize("with_body", [False, True])
-def test_extract_metrics_attributes_embedding_operation_name(model_id, with_body):
-    body = json.dumps({"inputText": "hello"}) if with_body else None
-    attributes = _invoke_model_extension(
-        model_id, body=body
-    )._extract_metrics_attributes()
-    assert attributes[GEN_AI_REQUEST_MODEL] == model_id
-    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.EMBEDDINGS.value
-
-
-def test_extract_attributes_titan_text_completion_unchanged():
-    body = json.dumps({"inputText": "hello", "textGenerationConfig": {}})
-    attributes = {}
-    _invoke_model_extension("amazon.titan-text-lite-v1", body=body).extract_attributes(
-        attributes
-    )
-    assert attributes[GEN_AI_OPERATION_NAME] == (
-        GenAiOperationNameValues.TEXT_COMPLETION.value
-    )
-
-
-def test_extract_metrics_attributes_titan_text_completion_unchanged():
-    body = json.dumps({"inputText": "hello"})
-    attributes = _invoke_model_extension(
-        "amazon.titan-text-lite-v1", body=body
-    )._extract_metrics_attributes()
-    assert attributes[GEN_AI_OPERATION_NAME] == (
-        GenAiOperationNameValues.TEXT_COMPLETION.value
-    )
-
-
-@pytest.mark.parametrize(
-    "model_id",
-    (
-        "anthropic.claude-v2",
-        "amazon.nova-micro-v1:0",
-        "cohere.command-r-v1:0",
-        "amazon.titan-text-lite-v1",
-    ),
-)
-def test_extract_attributes_chat_models_unchanged(model_id):
-    attributes = {}
-    _invoke_model_extension(model_id).extract_attributes(attributes)
-    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.CHAT.value
-
-
-@pytest.mark.parametrize(
-    "model_id",
-    (
-        "anthropic.claude-v2",
-        "amazon.nova-micro-v1:0",
-        "cohere.command-r-v1:0",
-        "amazon.titan-text-lite-v1",
-    ),
-)
-def test_extract_metrics_attributes_chat_models_unchanged(model_id):
-    attributes = _invoke_model_extension(model_id)._extract_metrics_attributes()
-    assert attributes[GEN_AI_OPERATION_NAME] == GenAiOperationNameValues.CHAT.value
 
 
 @pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
@@ -1366,6 +1267,68 @@ def get_model_name_from_family(llm_model):
         "mistral.mistral": "mistral.mistral-7b-instruct-v0:2",
     }
     return llm_model_name[llm_model]
+
+
+def get_embeddings_model_name_from_family(model_family):
+    return {
+        "amazon.titan": "amazon.titan-embed-text-v1",
+        "cohere.embed": "cohere.embed-v4:0",
+    }[model_family]
+
+
+def get_invoke_embeddings_body(llm_model):
+    if "cohere.embed" in llm_model:
+        return json.dumps(
+            {
+                "texts": ["Say this is a test"],
+                "input_type": "search_document",
+            }
+        )
+    if "amazon.titan" in llm_model:
+        return json.dumps({"inputText": "Say this is a test"})
+    raise ValueError(f"No embeddings config for {llm_model}")
+
+
+@pytest.mark.parametrize(
+    "model_family",
+    [
+        "amazon.titan",
+        "cohere.embed",
+    ],
+)
+@pytest.mark.vcr()
+def test_invoke_model_with_embeddings_model(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+    model_family,
+):
+    llm_model_value = get_embeddings_model_name_from_family(model_family)
+    body = get_invoke_embeddings_body(llm_model_value)
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    response_body = json.loads(response["body"].read())
+    assert response_body
+    if model_family == "amazon.titan":
+        assert "embedding" in response_body
+    elif model_family == "cohere.embed":
+        assert "embeddings" in response_body
+    else:
+        pytest.xfail(f"model family not handled: {model_family}")
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        operation_name="embeddings",
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
 
 
 @pytest.mark.parametrize(

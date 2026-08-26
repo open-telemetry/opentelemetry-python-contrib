@@ -101,7 +101,9 @@ _MODEL_ID_KEY: str = "modelId"
 
 
 def _is_embedding_model(model_id: str) -> bool:
-    return "embed" in model_id.lower()
+    if not model_id:
+        return False
+    return "embed" in model_id.rsplit(".", 1)[-1].lower()
 
 
 class _BedrockRuntimeExtension(_AwsSdkExtension):
@@ -368,7 +370,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 # if no messages interface, convert to messages format from generic API
                 if not messages:
                     model_id = self._call_context.params.get(_MODEL_ID_KEY)
-                    if "amazon.titan" in model_id:
+                    if "amazon.titan" in model_id and not _is_embedding_model(model_id):
                         messages = self._get_messages_from_input_text(decoded_body, "inputText")
                     elif "cohere.command-r" in model_id:
                         # chat_history can be converted to messages; for now, just use message
@@ -485,6 +487,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             result["body"] = StreamingBody(new_stream, len(body_content))
 
             response_body = json.loads(body_content.decode("utf-8"))
+            if _is_embedding_model(model_id):
+                return
             if "amazon.titan" in model_id:
                 self._handle_amazon_titan_response(span, response_body, instrumentor_context, capture_content)
             elif "amazon.nova" in model_id:
