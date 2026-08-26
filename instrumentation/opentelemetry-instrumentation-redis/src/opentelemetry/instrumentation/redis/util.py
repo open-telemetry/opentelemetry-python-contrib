@@ -41,7 +41,10 @@ def _extract_conn_attributes(conn_kwargs, db_sem_conv_opt_in_mode, http_sem_conv
     attributes = {}
     _set_db_system(attributes, DbSystemValues.REDIS.value, db_sem_conv_opt_in_mode)
 
-    db = conn_kwargs.get("db", 0)
+    # redis-py may pass db=None explicitly (e.g. from_url); treat that as 0.
+    db = conn_kwargs.get("db")
+    if db is None:
+        db = 0
     _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
         _set_http_net_peer_name_client(attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode)
@@ -132,8 +135,10 @@ def _build_span_name(instance: RedisInstance | AsyncRedisInstance, cmd_args: tup
         else:
             name = cmd_args[0]
     else:
-        name = instance.connection_pool.connection_kwargs.get("db", 0)
-    return name
+        name = instance.connection_pool.connection_kwargs.get("db")
+        if name is None:
+            name = 0
+    return str(name)
 
 
 def _add_create_attributes(span: Span, args: tuple[Any, ...]):
