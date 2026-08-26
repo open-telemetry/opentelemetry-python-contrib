@@ -9,7 +9,7 @@ from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
 from typing import Callable, Iterable, overload
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
@@ -280,12 +280,12 @@ def redact_query_parameters(url: str) -> str:
         parsed = urlparse(url)
         if not parsed.query:  # No query parameters to redact
             return url
-        query_params = parse_qs(parsed.query)
-        if not any(param in query_params for param in PARAMS_TO_REDACT):
+        query_params = parse_qsl(parsed.query, keep_blank_values=True)
+        if not any(param in PARAMS_TO_REDACT for param, _ in query_params):
             return url
-        for param in PARAMS_TO_REDACT:
-            if param in query_params:
-                query_params[param] = ["REDACTED"]
+        query_params = [
+            (param, "REDACTED") if param in PARAMS_TO_REDACT else (param, value) for param, value in query_params
+        ]
         return urlunparse(
             (
                 parsed.scheme,
