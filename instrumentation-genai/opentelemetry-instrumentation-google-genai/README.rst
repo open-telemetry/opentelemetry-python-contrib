@@ -1,11 +1,23 @@
 OpenTelemetry Google GenAI SDK Instrumentation
 ==============================================
 
-.. note::
+.. warning::
 
-   This package is being migrated as ``opentelemetry-instrumentation-google-genai`` to
+   **This copy of the instrumentation is deprecated.** The package keeps its name,
+   `opentelemetry-instrumentation-google-genai <https://pypi.org/project/opentelemetry-instrumentation-google-genai/>`_,
+   but is now developed and released from
    `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-google-genai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai>`_.
-   Future development will happen there.
+   Versions ``1.0b0`` and later come from that repository; the copy here only
+   receives security patches. Upgrade with:
+
+   .. code-block:: console
+
+       pip install --upgrade "opentelemetry-instrumentation-google-genai>=1.0b0"
+
+   Version ``1.0b0`` contains **breaking changes** to the emitted telemetry and
+   to the configuration API relative to the ``0.x`` releases. Review the
+   `CHANGELOG <https://github.com/open-telemetry/opentelemetry-python-genai/blob/main/instrumentation/opentelemetry-instrumentation-google-genai/CHANGELOG.md>`_
+   before upgrading.
 
 |pypi|
 

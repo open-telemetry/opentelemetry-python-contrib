@@ -4,6 +4,7 @@ import logging
 import os
 import time
 
+import kafka
 import mysql.connector
 import psycopg2
 import pymongo
@@ -31,6 +32,8 @@ MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
 MSSQL_USER = os.getenv("MSSQL_USER", "sa")
 MSSQL_PASSWORD = os.getenv("MSSQL_PASSWORD", "yourStrong(!)Password")
+KAFKA_HOST = os.getenv("KAFKA_HOST", "localhost")
+KAFKA_PORT = int(os.getenv("KAFKA_PORT", "9092"))
 RETRY_COUNT = 5
 RETRY_INITIAL_INTERVAL = 2  # Seconds
 
@@ -99,6 +102,12 @@ def check_redis_connection():
     connection.hgetall("*")
 
 
+@retryable
+def check_kafka_connection():
+    client = kafka.KafkaAdminClient(bootstrap_servers=[f"{KAFKA_HOST}:{KAFKA_PORT}"])
+    client.close()
+
+
 def new_mssql_connection() -> pyodbc.Connection:
     connection = pyodbc.connect(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={MSSQL_HOST},"
@@ -128,6 +137,7 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
+    check_kafka_connection()
 
     # make accepting EULA for ms sql odbc driver optional
     if "ODBC Driver 18 for SQL Server" in pyodbc.drivers():

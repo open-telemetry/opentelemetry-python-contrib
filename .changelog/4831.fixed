@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aws-lambda`: use the correct camel case when accessing the SQS message attributes

@@ -3344,7 +3344,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mysql-connector-python", marker = "extra == 'instruments'", specifier = ">=8.0,<10.0" },
+    { name = "mysql-connector-python", marker = "extra == 'instruments'", specifier = ">=8.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },

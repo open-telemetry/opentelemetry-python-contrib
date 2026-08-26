@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: fix documented name of the code attributes env var to `OTEL_PYTHON_LOG_CODE_ATTRIBUTES`
