@@ -1,0 +1,1 @@
+`opentelemetry-util-http`: stop `_parse_url_query` raising on unparsable urls
