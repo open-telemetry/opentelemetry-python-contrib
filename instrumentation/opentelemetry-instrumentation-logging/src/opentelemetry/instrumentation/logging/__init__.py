@@ -162,13 +162,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             root = logging.getLogger()
             old_level = root.level
             old_handlers = list(root.handlers)
-            old_formatters = {h: h.formatter for h in old_handlers}
+            logging.basicConfig(format=log_format, level=log_level)
+            # Record only the handlers basicConfig actually added so that
+            # uninstrument removes exactly those and does not drop handlers the
+            # application added while instrumented.
+            added_handlers = [h for h in root.handlers if h not in old_handlers]
             LoggingInstrumentor._old_handlers_state = {
                 "old_level": old_level,
-                "old_handlers": old_handlers,
-                "old_formatters": old_formatters,
+                "added_handlers": added_handlers,
             }
-            logging.basicConfig(format=log_format, level=log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
@@ -266,7 +268,5 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             root.setLevel(state["old_level"])
 
             for h in list(root.handlers):
-                if h not in state["old_handlers"]:
+                if h in state["added_handlers"]:
                     root.removeHandler(h)
-                elif h in state["old_formatters"]:
-                    h.setFormatter(state["old_formatters"][h])
