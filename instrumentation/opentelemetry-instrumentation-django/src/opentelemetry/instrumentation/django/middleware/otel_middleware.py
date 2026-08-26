@@ -170,9 +170,9 @@ class _DjangoMiddleware:
                 activation.__exit__(None, None, None)
 
             # Detach context token
-            token = request.META.pop(self._environ_token, None)
-            if token is not None:
-                detach(token)
+            if request.META.get(self._environ_token, None) is not None:
+                detach(request.META.get(self._environ_token))
+                request.META.pop(self._environ_token)
 
     @staticmethod
     def _get_span_name(request):
