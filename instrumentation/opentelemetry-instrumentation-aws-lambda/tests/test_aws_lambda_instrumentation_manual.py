@@ -669,7 +669,8 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         assert spans is not None
         self.assertEqual(len(spans), 1)
 
-    def execute_lambda_on_fake_clock(self, elapsed_seconds=0.0, **instrument_kwargs):
+    @staticmethod
+    def _execute_lambda_on_fake_clock(elapsed_seconds=0.0, **instrument_kwargs):
         """Run the handler with the tracer flush consuming `elapsed_seconds`."""
         clock = _FakeClock()
         tracer_provider = mock.MagicMock()
@@ -682,7 +683,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
     def test_logger_provider_force_flush_called(self):
         logger_provider = mock.Mock()
 
-        self.execute_lambda_on_fake_clock(logger_provider=logger_provider)
+        self._execute_lambda_on_fake_clock(logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_called_once_with(30000)
 
@@ -692,7 +693,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "os.environ",
             {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
         ):
-            self.execute_lambda_on_fake_clock(logger_provider=logger_provider)
+            self._execute_lambda_on_fake_clock(logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_called_once_with(1000)
 
@@ -702,7 +703,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "os.environ",
             {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
         ):
-            self.execute_lambda_on_fake_clock(0.4, logger_provider=logger_provider)
+            self._execute_lambda_on_fake_clock(0.4, logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_called_once_with(600.0)
 
@@ -712,7 +713,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "os.environ",
             {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
         ):
-            self.execute_lambda_on_fake_clock(2.0, logger_provider=logger_provider)
+            self._execute_lambda_on_fake_clock(2.0, logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_not_called()
 
@@ -722,7 +723,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "opentelemetry.instrumentation.aws_lambda.get_logger_provider",
             return_value=logger_provider,
         ):
-            self.execute_lambda_on_fake_clock()
+            self._execute_lambda_on_fake_clock()
 
         logger_provider.force_flush.assert_called_once_with(30000)
 
