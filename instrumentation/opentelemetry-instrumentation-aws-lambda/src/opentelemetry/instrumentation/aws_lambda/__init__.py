@@ -72,7 +72,7 @@ from urllib.parse import urlencode
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
-from opentelemetry._logs import get_logger_provider
+from opentelemetry._logs import LoggerProvider, get_logger_provider
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda._sqs import (
     _is_sqs_event,
@@ -85,7 +85,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
-from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_ACCOUNT_ID,
     CLOUD_RESOURCE_ID,
@@ -420,11 +419,13 @@ def _instrument(
 
         _logger_provider = logger_provider or get_logger_provider()
         if hasattr(_logger_provider, "force_flush"):
-            try:
-                # NOTE: `force_flush` before function quit in case of Lambda freeze.
-                _logger_provider.force_flush(flush_timeout)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("LoggerProvider failed to flush logs")
+            rem = flush_timeout - (time.time() - now) * 1000
+            if rem > 0:
+                try:
+                    # NOTE: `force_flush` before function quit in case of Lambda freeze.
+                    _logger_provider.force_flush(rem)
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("LoggerProvider failed to flush logs")
         else:
             logger.warning(
                 "LoggerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
