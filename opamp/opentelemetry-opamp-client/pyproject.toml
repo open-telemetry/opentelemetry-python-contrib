@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "protobuf-py>=0.3.0, <0.4",
+  "protobuf-py>=0.3.0, <1",
   "requests ~= 2.0",
   "uuid-utils>=0.11.0, <1"
 ]
