@@ -133,6 +133,19 @@ MOCK_W3C_BAGGAGE_KEY = "baggage_key"
 MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
 
 
+class _FakeClock:
+    """Stands in for the `time` module so tests control the flush deadline."""
+
+    def __init__(self):
+        self._now = 0.0
+
+    def time(self):
+        return self._now
+
+    def advance(self, seconds):
+        self._now += seconds
+
+
 def mock_execute_lambda(event=None, context=None):
     """Mocks the AWS Lambda execution.
 
@@ -656,11 +669,20 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         assert spans is not None
         self.assertEqual(len(spans), 1)
 
+    def execute_lambda_on_fake_clock(self, elapsed_seconds=0.0, **instrument_kwargs):
+        """Run the handler with the tracer flush consuming `elapsed_seconds`."""
+        clock = _FakeClock()
+        tracer_provider = mock.MagicMock()
+        tracer_provider.force_flush.side_effect = lambda timeout: clock.advance(elapsed_seconds)
+        AwsLambdaInstrumentor().instrument(tracer_provider=tracer_provider, **instrument_kwargs)
+
+        with mock.patch("opentelemetry.instrumentation.aws_lambda.time", clock):
+            mock_execute_lambda()
+
     def test_logger_provider_force_flush_called(self):
         logger_provider = mock.Mock()
-        AwsLambdaInstrumentor().instrument(logger_provider=logger_provider)
 
-        mock_execute_lambda()
+        self.execute_lambda_on_fake_clock(logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_called_once_with(30000)
 
@@ -670,11 +692,29 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "os.environ",
             {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
         ):
-            AwsLambdaInstrumentor().instrument(logger_provider=logger_provider)
-
-            mock_execute_lambda()
+            self.execute_lambda_on_fake_clock(logger_provider=logger_provider)
 
         logger_provider.force_flush.assert_called_once_with(1000)
+
+    def test_logger_provider_force_flush_uses_remaining_flush_timeout(self):
+        logger_provider = mock.Mock()
+        with mock.patch.dict(
+            "os.environ",
+            {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
+        ):
+            self.execute_lambda_on_fake_clock(0.4, logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_called_once_with(600.0)
+
+    def test_logger_provider_not_flushed_when_flush_timeout_exhausted(self):
+        logger_provider = mock.Mock()
+        with mock.patch.dict(
+            "os.environ",
+            {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
+        ):
+            self.execute_lambda_on_fake_clock(2.0, logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_not_called()
 
     def test_global_logger_provider_force_flush_called(self):
         logger_provider = mock.Mock()
@@ -682,9 +722,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             "opentelemetry.instrumentation.aws_lambda.get_logger_provider",
             return_value=logger_provider,
         ):
-            AwsLambdaInstrumentor().instrument()
-
-            mock_execute_lambda()
+            self.execute_lambda_on_fake_clock()
 
         logger_provider.force_flush.assert_called_once_with(30000)
 
