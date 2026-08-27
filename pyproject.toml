@@ -216,6 +216,7 @@ include = [
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "opamp/opentelemetry-opamp-client",
+  "telemetry-policy/opentelemetry-telemetry-policy",
   "sdk-extension/opentelemetry-sdk-extension-aws/src/opentelemetry/sdk/extension/aws/trace",
   "opentelemetry-instrumentation/src/opentelemetry/instrumentation/_labeler",
 ]
@@ -232,6 +233,7 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
+  "telemetry-policy/opentelemetry-telemetry-policy/tests/**/*.py",
 ]
 
 [tool.towncrier]
