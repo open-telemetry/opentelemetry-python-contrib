@@ -72,6 +72,7 @@ from urllib.parse import urlencode
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda._sqs import (
     _is_sqs_event,
@@ -84,6 +85,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
+from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_ACCOUNT_ID,
     CLOUD_RESOURCE_ID,
@@ -111,8 +113,6 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry._logs import get_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider
 
 logger = logging.getLogger(__name__)
 
