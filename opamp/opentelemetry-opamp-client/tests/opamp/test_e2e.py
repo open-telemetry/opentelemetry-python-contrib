@@ -10,7 +10,7 @@ import pytest
 from opentelemetry._opamp.agent import OpAMPAgent
 from opentelemetry._opamp.callbacks import OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb as opamp_pb2
 
 
 @pytest.mark.vcr()
@@ -29,7 +29,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
 
             updated_remote_config = client.update_remote_config_status(
                 remote_config_hash=message.remote_config.config_hash,
-                status=opamp_pb2.RemoteConfigStatuses_APPLIED,
+                status=opamp_pb2.RemoteConfigStatuses.RemoteConfigStatuses_APPLIED,
                 error_message="",
             )
             if updated_remote_config is not None:

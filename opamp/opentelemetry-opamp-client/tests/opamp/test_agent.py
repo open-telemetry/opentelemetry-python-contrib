@@ -8,7 +8,7 @@ from unittest import mock
 from opentelemetry._opamp.agent import OpAMPAgent, _safe_invoke
 from opentelemetry._opamp.agent import _Job as Job
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb as opamp_pb2
 
 
 class _NoOpCallbacks(OpAMPCallbacks):
@@ -29,7 +29,8 @@ def test_can_start_agent():
 def test_agent_start_will_send_connection_and_disconnetion_messages():
     client_mock = mock.Mock()
     mock_message = mock.Mock()
-    mock_message.HasField.return_value = False
+    mock_message.error_response = None
+    mock_message.remote_config = None
     mock_message.flags = 0
     client_mock.send.return_value = mock_message
 
@@ -80,10 +81,12 @@ def test_agent_retries_before_max_attempts(caplog):
     cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     connection_message = mock.Mock()
-    connection_message.HasField.return_value = False
+    connection_message.error_response = None
+    connection_message.remote_config = None
     connection_message.flags = 0
     server_message = mock.Mock()
-    server_message.HasField.return_value = False
+    server_message.error_response = None
+    server_message.remote_config = None
     server_message.flags = 0
     disconnection_message = mock.Mock()
     client_mock.send.side_effect = [
@@ -116,7 +119,8 @@ def test_agent_stops_after_max_attempts(caplog):
     cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     connection_message = mock.Mock()
-    connection_message.HasField.return_value = False
+    connection_message.error_response = None
+    connection_message.remote_config = None
     connection_message.flags = 0
     disconnection_message = mock.Mock()
     exc1 = Exception("fail1")
@@ -151,7 +155,8 @@ def test_agent_send_enqueues_job():
     cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     msg = mock.Mock()
-    msg.HasField.return_value = False
+    msg.error_response = None
+    msg.remote_config = None
     msg.flags = 0
     client_mock.send.return_value = msg
 
@@ -289,7 +294,7 @@ def test_report_full_state_flag_triggers_full_state_send():
 
     conn_msg = opamp_pb2.ServerToAgent()
     flag_msg = opamp_pb2.ServerToAgent(
-        flags=opamp_pb2.ServerToAgentFlags_ReportFullState,
+        flags=opamp_pb2.ServerToAgentFlags.ServerToAgentFlags_ReportFullState,
     )
 
     no_flag_msg = opamp_pb2.ServerToAgent()
