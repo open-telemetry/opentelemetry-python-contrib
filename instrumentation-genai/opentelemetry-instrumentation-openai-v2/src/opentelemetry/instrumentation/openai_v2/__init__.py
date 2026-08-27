@@ -199,7 +199,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel
+        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")

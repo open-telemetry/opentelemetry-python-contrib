@@ -13,7 +13,7 @@ BaggageKeyPredicateT = Callable[[str], bool]
 BaggageKeyPredicates = BaggageKeyPredicateT | Sequence[BaggageKeyPredicateT]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # pylint:disable=invalid-name
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # pylint:disable=invalid-name  # noqa: E731
 
 
 class BaggageSpanProcessor(SpanProcessor):

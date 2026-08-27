@@ -230,11 +230,11 @@ class Error:
 
 def __getattr__(name: str) -> object:
     if name == "GenAIInvocation":
-        import opentelemetry.util.genai.invocation as _inv  # pylint: disable=import-outside-toplevel
+        import opentelemetry.util.genai.invocation as _inv  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         return _inv.GenAIInvocation
     if name == "LLMInvocation":
-        from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=import-outside-toplevel
+        from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             LLMInvocation,
         )
 

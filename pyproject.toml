@@ -163,6 +163,17 @@ extension = { added = "markdown", changed = "markdown", deprecated = "markdown",
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
 # pylint: https://github.com/astral-sh/ruff/issues/970
+extend-select = [
+  "I",   # isort
+  "F",   # pyflakes
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "PLC", # pylint convention
+  "PLE", # pylint error
+  "Q",   # flake8-quotes
+  "A",   # flake8-builtins
+  "TID", # flake8-tidy-imports
+]
 # Ignore rules from the default ruleset that don't have auto-fixes available and need to be
 # manually resolved, plus E501 and RUF023 which are intentionally ignored.
 ignore = [

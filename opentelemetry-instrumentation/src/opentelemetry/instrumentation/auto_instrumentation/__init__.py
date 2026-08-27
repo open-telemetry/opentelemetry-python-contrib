@@ -121,7 +121,7 @@ def _initialize(*, swallow_exceptions: bool = True) -> None:
         else:
             try:
                 # pylint: disable=import-outside-toplevel
-                from gevent import monkey
+                from gevent import monkey  # noqa: PLC0415
 
                 getattr(monkey, gevent_patch)()
             except ImportError:

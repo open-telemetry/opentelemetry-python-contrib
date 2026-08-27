@@ -13,18 +13,18 @@ stub_path = TESTS_ROOT / "stubs"
 if str(stub_path) not in sys.path:
     sys.path.insert(0, str(stub_path))
 
-from agents.tracing import (
+from agents.tracing import (  # noqa: E402
     get_trace_provider,
     set_trace_processors,
 )
 
-from opentelemetry.instrumentation.openai_agents import (
+from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
 )
-from opentelemetry.instrumentation.openai_agents.package import (
+from opentelemetry.instrumentation.openai_agents.package import (  # noqa: E402
     _instruments,
 )
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
 
 
 def test_double_instrument_is_noop():

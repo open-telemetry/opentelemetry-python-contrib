@@ -34,7 +34,7 @@ from .utils import MockConsumer, MockedMessage, MockedProducer
 
 class TestConfluentKafka(TestBase):
     def test_instrument_api(self) -> None:
-        from confluent_kafka import Consumer, Producer
+        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 
         instrumentation = ConfluentKafkaInstrumentor()
 
@@ -77,7 +77,7 @@ class TestConfluentKafka(TestBase):
     def test_instrument_api_with_instrument(self) -> None:
         ConfluentKafkaInstrumentor().instrument()
 
-        from confluent_kafka import Consumer, Producer
+        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 
         producer = Producer({"bootstrap.servers": "localhost:29092"})
         self.assertEqual(producer.__class__, AutoInstrumentedProducer)
@@ -103,7 +103,7 @@ class TestConfluentKafka(TestBase):
         ConfluentKafkaInstrumentor().uninstrument()
 
     def test_consumer_commit_method_exists(self) -> None:
-        from confluent_kafka import Consumer
+        from confluent_kafka import Consumer  # noqa: PLC0415
 
         instrumentation = ConfluentKafkaInstrumentor()
 

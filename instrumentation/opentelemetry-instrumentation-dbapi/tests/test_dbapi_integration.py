@@ -1581,7 +1581,7 @@ class TestDBApiIntegration(TestBase):
     )
     def test_t_string_span_attributes(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module
-        from string.templatelib import (
+        from string.templatelib import (  # noqa: PLC0415
             Interpolation,
             Template,
         )
@@ -1610,7 +1610,7 @@ class TestDBApiIntegration(TestBase):
     )
     def test_t_string_commenter(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module
-        from string.templatelib import Interpolation, Template
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
 
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"

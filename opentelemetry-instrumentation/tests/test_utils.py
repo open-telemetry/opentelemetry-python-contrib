@@ -269,7 +269,7 @@ class TestUtils(unittest.TestCase):
     )
     def test_add_sql_comment_real_t_string_without_semicolon(self):
         # pylint: disable-next=import-outside-toplevel
-        from string.templatelib import Interpolation, Template
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
 
         val = 42
         template = Template("SELECT ", Interpolation(val, "val"), " FROM foo")
@@ -284,7 +284,7 @@ class TestUtils(unittest.TestCase):
     )
     def test_add_sql_comment_real_t_string_with_semicolon(self):
         # pylint: disable-next=import-outside-toplevel
-        from string.templatelib import Interpolation, Template
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
 
         val = 42
         template = Template("SELECT ", Interpolation(val, "val"), " FROM foo;")

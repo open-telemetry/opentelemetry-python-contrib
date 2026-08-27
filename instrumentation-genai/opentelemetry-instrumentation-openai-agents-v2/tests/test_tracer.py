@@ -19,8 +19,8 @@ if str(stub_path) not in sys.path:
 sys.modules.pop("agents", None)
 sys.modules.pop("agents.tracing", None)
 
-import agents.tracing as agents_tracing
-from agents.tracing import (
+import agents.tracing as agents_tracing  # noqa: E402
+from agents.tracing import (  # noqa: E402
     agent_span,
     function_span,
     generation_span,
@@ -28,16 +28,16 @@ from agents.tracing import (
     set_trace_processors,
     trace,
 )
-from openai.types.responses import FunctionTool
+from openai.types.responses import FunctionTool  # noqa: E402
 
-from opentelemetry.instrumentation.openai_agents import (
+from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
 )
-from opentelemetry.instrumentation.openai_agents.span_processor import (
+from opentelemetry.instrumentation.openai_agents.span_processor import (  # noqa: E402
     ContentPayload,
     GenAISemanticProcessor,
 )
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
 
 try:
     from opentelemetry.sdk.trace.export import (  # type: ignore[attr-defined]
@@ -51,13 +51,13 @@ except ImportError:  # pragma: no cover - support older/newer SDK layouts
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
         InMemorySpanExporter,
     )
-from opentelemetry.semconv._incubating.attributes import (
+from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.semconv._incubating.attributes import (
+from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
     server_attributes as ServerAttributes,
 )
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind  # noqa: E402
 
 GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
 GEN_AI_INPUT_MESSAGES = getattr(GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages")
