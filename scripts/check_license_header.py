@@ -8,6 +8,7 @@ from pathlib import Path
 SPDX_LINE = "# SPDX-License-Identifier: Apache-2.0\n"
 
 SKIP_SUFFIXES = (
+    "_pb.py",
     "_pb2.py",
     "_pb2_grpc.py",
 )
