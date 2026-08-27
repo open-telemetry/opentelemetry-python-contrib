@@ -117,20 +117,7 @@ nitpicky = True
 # Sphinx does not recognize generic type TypeVars
 # Container supposedly were fixed, but does not work
 # https://github.com/sphinx-doc/sphinx/pull/3744
-nitpick_ignore = [
-    (
-        "py:class",
-        "opamp_pb2.RemoteConfigStatus",
-    ),
-    (
-        "py:class",
-        "opamp_pb2.EffectiveConfig",
-    ),
-    (
-        "py:class",
-        "opamp_pb2.AgentRemoteConfig",
-    ),
-]
+nitpick_ignore = []
 
 cfg = ConfigParser()
 cfg.read("./nitpick-exceptions.ini")

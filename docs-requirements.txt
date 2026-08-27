@@ -55,7 +55,7 @@ wrapt~=2.1
 
 # required by opamp
 uuid_utils
-protobuf>=5.0,< 7.0
+protobuf-py
 
 # indirect dependency pins
 markupsafe==2.0.1
