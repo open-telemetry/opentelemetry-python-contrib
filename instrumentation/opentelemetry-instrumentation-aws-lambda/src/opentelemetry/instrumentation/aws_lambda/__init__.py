@@ -111,7 +111,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry._logs import get_logger_provider, set_logger_provider
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider
 
 logger = logging.getLogger(__name__)
