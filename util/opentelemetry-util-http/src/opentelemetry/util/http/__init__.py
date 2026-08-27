@@ -254,8 +254,21 @@ def _parse_duration_attrs(req_attrs):
     return duration_attrs
 
 
-def _parse_url_query(url: str):
-    parsed_url = urlparse(url)
+def _parse_url_query(url: str) -> tuple[str, str]:
+    """Split a url into its path and query components.
+
+    Callers may pass request targets that come straight off the request line,
+    so the url need not be parsable. An unparsable one yields empty components
+    rather than raising, since instrumentation must never break the request it
+    is measuring.
+
+    Returns:
+        The path and the query string, either of which may be empty.
+    """
+    try:
+        parsed_url = urlparse(url)
+    except ValueError:  # an unparsable url was passed
+        return "", ""
     path = parsed_url.path
     query_params = parsed_url.query
     return path, query_params
