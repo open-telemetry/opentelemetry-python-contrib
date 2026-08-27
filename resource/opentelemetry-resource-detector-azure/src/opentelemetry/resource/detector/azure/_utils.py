@@ -27,14 +27,17 @@ def _can_ignore_vm_detect() -> bool:
     return _is_on_aks() or _is_on_app_service() or _is_on_functions()
 
 
+def _get_azure_subscription_id() -> str | None:
+    website_owner_name = environ.get(_WEBSITE_OWNER_NAME)
+    if website_owner_name and "+" in website_owner_name:
+        return website_owner_name[0 : website_owner_name.index("+")]
+    return website_owner_name
+
+
 def _get_azure_resource_uri() -> str | None:
     website_site_name = environ.get(_WEBSITE_SITE_NAME)
     website_resource_group = environ.get(_WEBSITE_RESOURCE_GROUP)
-    website_owner_name = environ.get(_WEBSITE_OWNER_NAME)
-
-    subscription_id = website_owner_name
-    if website_owner_name and "+" in website_owner_name:
-        subscription_id = website_owner_name[0 : website_owner_name.index("+")]
+    subscription_id = _get_azure_subscription_id()
 
     if not (website_site_name and website_resource_group and subscription_id):
         return None
