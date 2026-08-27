@@ -48,6 +48,9 @@ from opentelemetry.semconv._incubating.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_CLIENT_RESPONSE_BODY_SIZE,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -58,9 +61,6 @@ from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
-from opentelemetry.util.http import (
-    OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE,
-)
 
 
 def run_with_test_server(runnable: typing.Callable, url: str, handler: typing.Callable) -> typing.Tuple[str, int]:
@@ -202,13 +202,14 @@ class TestAioHttpIntegration(TestBase):
                     HTTP_RESPONSE_STATUS_CODE: status_code,
                     SERVER_ADDRESS: host,
                     SERVER_PORT: port,
+                    HTTP_RESPONSE_BODY_SIZE: 0,
                 }
                 if status_code >= 400:
                     attributes[ERROR_TYPE] = str(status_code.value)
                 spans = [("GET", (span_status, None), attributes)]
                 self._assert_spans(spans)
                 self.memory_exporter.clear()
-                metrics = self._assert_metrics(1)
+                metrics = self._assert_metrics(2)
                 duration_data_point = metrics[0].data.data_points[index]
                 self.assertEqual(
                     duration_data_point.attributes.get(HTTP_RESPONSE_STATUS_CODE),
@@ -251,6 +252,7 @@ class TestAioHttpIntegration(TestBase):
                     SERVER_ADDRESS: host,
                     SERVER_PORT: port,
                     NET_PEER_PORT: port,
+                    HTTP_RESPONSE_BODY_SIZE: 0,
                 }
 
                 if status_code >= 400:
@@ -259,7 +261,7 @@ class TestAioHttpIntegration(TestBase):
                 spans = [("GET", (span_status, None), attributes)]
                 self._assert_spans(spans, 1)
                 self.memory_exporter.clear()
-                metrics = self._assert_metrics(2)
+                metrics = self._assert_metrics(3)
                 duration_data_point = metrics[0].data.data_points[index]
                 self.assertEqual(
                     duration_data_point.attributes.get(HTTP_STATUS_CODE),
@@ -729,6 +731,7 @@ class TestAioHttpIntegration(TestBase):
                         ERROR_TYPE: "405",
                         SERVER_ADDRESS: "localhost",
                         SERVER_PORT: 5000,
+                        HTTP_RESPONSE_BODY_SIZE: 0,
                     },
                 )
             ]
@@ -1204,6 +1207,7 @@ class TestAioHttpIntegration(TestBase):
 
 class TestAioHttpClientInstrumentor(TestBase):
     URL = "/test-path"
+    RESPONSE_BODY = b"hello"
 
     def setUp(self):
         super().setUp()
@@ -1221,7 +1225,16 @@ class TestAioHttpClientInstrumentor(TestBase):
 
     @staticmethod
     async def handler_with_body(request):
-        return aiohttp.web.Response(status=200, body=b"hello")
+        return aiohttp.web.Response(status=200, body=TestAioHttpClientInstrumentor.RESPONSE_BODY)
+
+    @staticmethod
+    async def chunked_handler(request):
+        response = aiohttp.web.StreamResponse(status=200)
+        response.enable_chunked_encoding()
+        await response.prepare(request)
+        await response.write(TestAioHttpClientInstrumentor.RESPONSE_BODY)
+        await response.write_eof()
+        return response
 
     @staticmethod
     def get_default_request(url: str = URL):
@@ -1282,7 +1295,8 @@ class TestAioHttpClientInstrumentor(TestBase):
                 span.attributes[URL_FULL],
             )
             self.assertEqual(200, span.attributes[HTTP_RESPONSE_STATUS_CODE])
-            metrics = self._assert_metrics(1)
+            self.assertEqual(0, span.attributes[HTTP_RESPONSE_BODY_SIZE])
+            metrics = self._assert_metrics(2)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
             self.assertEqual(
@@ -1316,9 +1330,10 @@ class TestAioHttpClientInstrumentor(TestBase):
                     SERVER_ADDRESS: host,
                     SERVER_PORT: port,
                     NET_PEER_PORT: port,
+                    HTTP_RESPONSE_BODY_SIZE: 0,
                 },
             )
-            metrics = self._assert_metrics(2)
+            metrics = self._assert_metrics(3)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
             self.assertEqual(
@@ -1524,71 +1539,55 @@ class TestAioHttpClientInstrumentor(TestBase):
         self._assert_metrics(0)
 
     @mock.patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
-    def test_response_body_size_not_set_by_default(self):
-        AioHttpClientInstrumentor().uninstrument()
-        AioHttpClientInstrumentor().instrument()
-
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.handler_with_body
-        )
-        span = self._assert_spans(1)
-        self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
-
-    @mock.patch.dict(
-        os.environ,
-        {
-            OTEL_SEMCONV_STABILITY_OPT_IN: "http",
-            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
-        },
-    )
     def test_response_body_size_set_on_span(self):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.handler_with_body
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.handler_with_body)
         span = self._assert_spans(1)
-        self.assertIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
+        self.assertEqual(len(self.RESPONSE_BODY), span.attributes[HTTP_RESPONSE_BODY_SIZE])
         self.assertIsInstance(span.attributes[HTTP_RESPONSE_BODY_SIZE], int)
 
-    @mock.patch.dict(
-        "os.environ",
-        {
-            OTEL_SEMCONV_STABILITY_OPT_IN: "http",
-            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
-        },
-    )
+    @mock.patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
     def test_response_body_size_metric_recorded(self):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
 
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.handler_with_body
-        )
+        host, port = run_with_test_server(self.get_default_request(), self.URL, self.handler_with_body)
         metrics = self._assert_metrics(2)
-        metric_names = {m.name for m in metrics}
-        self.assertIn("http.client.response.body.size", metric_names)
-        body_size_metric = next(
-            m for m in metrics if m.name == "http.client.response.body.size"
-        )
+        body_size_metric = next(m for m in metrics if m.name == HTTP_CLIENT_RESPONSE_BODY_SIZE)
+        self.assertEqual("By", body_size_metric.unit)
         data_point = body_size_metric.data.data_points[0]
-        self.assertEqual(data_point.count, 1)
-        self.assertTrue(data_point.sum > 0)
+        self.assertEqual(1, data_point.count)
+        self.assertEqual(len(self.RESPONSE_BODY), data_point.sum)
+        self.assertEqual(
+            dict(data_point.attributes),
+            {
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                HTTP_REQUEST_METHOD: "GET",
+                SERVER_ADDRESS: host,
+                SERVER_PORT: port,
+            },
+        )
 
-    @mock.patch.dict(
-        "os.environ",
-        {
-            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
-        },
-    )
     def test_response_body_size_not_set_without_new_semconv(self):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
-        run_with_test_server(
-            self.get_default_request(), self.URL, self.handler_with_body
-        )
+        run_with_test_server(self.get_default_request(), self.URL, self.handler_with_body)
         span = self._assert_spans(1)
         self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
+        metrics = self._assert_metrics(1)
+        self.assertNotIn(HTTP_CLIENT_RESPONSE_BODY_SIZE, {m.name for m in metrics})
+
+    @mock.patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
+    def test_response_body_size_not_set_for_chunked_response(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+        run_with_test_server(self.get_default_request(), self.URL, self.chunked_handler)
+        span = self._assert_spans(1)
+        # chunked responses carry no Content-Length, so the size is unknown
+        self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
+        metrics = self._assert_metrics(1)
+        self.assertNotIn(HTTP_CLIENT_RESPONSE_BODY_SIZE, {m.name for m in metrics})
 
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):

@@ -183,19 +183,15 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
-Capturing response body size
-****************************
-To capture the ``http.response.body.size`` span attribute and record the
-``http.client.response.body.size`` metric histogram, set the environment variable
-``OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE`` to ``"true"``.
-
-This is an opt-in attribute per the semantic conventions specification. It is
-only emitted when the new HTTP semantic conventions are active
-(``OTEL_SEMCONV_STABILITY_OPT_IN`` includes ``http`` or ``http/dup``).
+Response body size
+******************
+The ``http.response.body.size`` span attribute and the
+``http.client.response.body.size`` metric histogram are emitted when the new
+HTTP semantic conventions are active, i.e. when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` includes ``http`` or ``http/dup``.
 
 ::
 
-    export OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE="true"
     export OTEL_SEMCONV_STABILITY_OPT_IN="http"
 
 The body size is derived from the ``Content-Length`` response header. For
@@ -278,7 +274,6 @@ from opentelemetry.util.http import (
     get_custom_header_attributes,
     get_custom_headers,
     get_excluded_urls,
-    is_capture_response_body_size_enabled,
     normalise_request_header_name,
     normalise_response_header_name,
     redact_url,
@@ -442,13 +437,9 @@ def create_trace_config(
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
-    capture_response_body_size = is_capture_response_body_size_enabled()
-
     response_body_size_histogram = None
-    if capture_response_body_size and _report_new(sem_conv_opt_in_mode):
-        response_body_size_histogram = create_http_client_response_body_size(
-            meter
-        )
+    if _report_new(sem_conv_opt_in_mode):
+        response_body_size_histogram = create_http_client_response_body_size(meter)
 
     excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
@@ -611,13 +602,11 @@ def create_trace_config(
             )
         )
 
-        if capture_response_body_size and _report_new(sem_conv_opt_in_mode):
+        if _report_new(sem_conv_opt_in_mode):
             content_length = params.response.content_length
             if content_length is not None:
                 if trace_config_ctx.span.is_recording():
-                    trace_config_ctx.span.set_attribute(
-                        HTTP_RESPONSE_BODY_SIZE, content_length
-                    )
+                    trace_config_ctx.span.set_attribute(HTTP_RESPONSE_BODY_SIZE, content_length)
                 trace_config_ctx.response_body_size = content_length
 
         _end_trace(trace_config_ctx)

@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-aiohttp-client`: add optional `http.client.response.body.size` span attribute & metric to the aiohttp client instrumentation
+`opentelemetry-instrumentation-aiohttp-client`: add the `http.response.body.size` span attribute and the `http.client.response.body.size` metric, derived from the `Content-Length` response header, when the new HTTP semantic conventions are enabled
