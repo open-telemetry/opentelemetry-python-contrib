@@ -53,9 +53,11 @@ The Azure App Service Resource Detector sets the following Resource Attributes:
  * ``service.name`` set to the value of the ``WEBSITE_SITE_NAME`` environment variable.
  * ``cloud.platform`` set to ``azure_app_service``.
  * ``cloud.provider`` set to ``azure``.
+ * ``cloud.account.id`` set to the subscription ID parsed from the ``WEBSITE_OWNER_NAME`` environment variable.
  * ``cloud.resource_id`` set using the ``WEBSITE_RESOURCE_GROUP``, ``WEBSITE_OWNER_NAME``, and ``WEBSITE_SITE_NAME`` environment variables.
  * ``cloud.region`` set to the value of the ``REGION_NAME`` environment variable.
- * ``deployment.environment`` set to the value of the ``WEBSITE_SLOT_NAME`` environment variable.
+ * ``azure.resource_group.name`` set to the value of the ``WEBSITE_RESOURCE_GROUP`` environment variable.
+ * ``deployment.environment.name`` set to the value of the ``WEBSITE_SLOT_NAME`` environment variable.
  * ``host.id`` set to the value of the ``WEBSITE_HOSTNAME`` environment variable.
  * ``service.instance.id`` set to the value of the ``WEBSITE_INSTANCE_ID`` environment variable.
  * ``azure.app.service.stamp`` set to the value of the ``WEBSITE_HOME_STAMPNAME`` environment variable.
