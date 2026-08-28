@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, cast
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 import aiokafka
