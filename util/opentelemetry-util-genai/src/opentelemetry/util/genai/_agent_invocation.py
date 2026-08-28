@@ -27,9 +27,7 @@ from opentelemetry.util.genai.types import (
 
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
 _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
@@ -60,16 +58,14 @@ class AgentInvocation(GenAIInvocation):
         agent_name: str | None = None,
     ) -> None:
         """Use handler.start_invoke_local_agent() or handler.start_invoke_remote_agent() instead of calling this directly."""
-        _operation_name = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        _operation_name = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value  # pyright: ignore[reportDeprecated]
         super().__init__(
             tracer,
             metrics_recorder,
             logger,
             completion_hook,
             operation_name=_operation_name,
-            span_name=f"{_operation_name} {agent_name}"
-            if agent_name
-            else _operation_name,
+            span_name=f"{_operation_name} {agent_name}" if agent_name else _operation_name,
             span_kind=span_kind,
         )
         self.provider = provider
@@ -201,9 +197,9 @@ class AgentInvocation(GenAIInvocation):
     def _get_metric_token_counts(self) -> dict[str, int]:
         counts: dict[str, int] = {}
         if self.input_tokens is not None:
-            counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens
+            counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens  # pyright: ignore[reportDeprecated]
         if self.output_tokens is not None:
-            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (
+            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (  # pyright: ignore[reportDeprecated]
                 self.output_tokens
             )
         return counts

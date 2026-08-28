@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import Set
 
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio.environment_variables import (
@@ -11,7 +10,7 @@ from opentelemetry.instrumentation.asyncio.environment_variables import (
 )
 
 
-def separate_coro_names_by_comma(coro_names: str) -> Set[str]:
+def separate_coro_names_by_comma(coro_names: str) -> set[str]:
     """
     Function to separate the coroutines to be traced by comma
     """
@@ -33,19 +32,14 @@ def get_future_trace_enabled() -> bool:
     Function to get the future active enabled flag from the environment variable
     default value is False
     """
-    return (
-        os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower()
-        == "true"
-    )
+    return os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower() == "true"
 
 
 def get_to_thread_to_trace() -> set:
     """
     Function to get the functions to be traced from the environment variable
     """
-    func_names = os.getenv(
-        OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE
-    )
+    func_names = os.getenv(OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE)
     return separate_coro_names_by_comma(func_names)
 
 

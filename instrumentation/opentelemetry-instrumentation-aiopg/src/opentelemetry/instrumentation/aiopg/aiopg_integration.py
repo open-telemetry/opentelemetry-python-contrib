@@ -2,15 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import time
 import typing
 from collections.abc import Coroutine
 
 import wrapt
 
+from opentelemetry.instrumentation._semconv import _report_new
 from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
     DatabaseApiIntegration,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import SpanKind
 
 
@@ -37,8 +40,8 @@ class AiopgIntegration(DatabaseApiIntegration):
     async def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         connection = await connect_method(*args, **kwargs)
@@ -54,9 +57,7 @@ class AiopgIntegration(DatabaseApiIntegration):
         return get_traced_pool_proxy(pool, self)
 
 
-def get_traced_connection_proxy(
-    connection, db_api_integration, *args, **kwargs
-):
+def get_traced_connection_proxy(connection, db_api_integration, *args, **kwargs):
     # pylint: disable=abstract-method,no-member
     class TracedConnectionProxy(AsyncProxyObject):
         # pylint: disable=unused-argument
@@ -91,9 +92,7 @@ def get_traced_pool_proxy(pool, db_api_integration, *args, **kwargs):
             # pylint: disable=protected-access
             connection = await self.__wrapped__._acquire()
             if not isinstance(connection, AsyncProxyObject):
-                connection = get_traced_connection_proxy(
-                    connection, db_api_integration, *args, **kwargs
-                )
+                connection = get_traced_connection_proxy(connection, db_api_integration, *args, **kwargs)
             return connection
 
     return TracedPoolProxy(pool, *args, **kwargs)
@@ -104,25 +103,33 @@ class AsyncCursorTracer(CursorTracer):
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
-        *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any],
+        *args: tuple[typing.Any, typing.Any],
+        **kwargs: dict[typing.Any, typing.Any],
     ):
-        name = ""
-        if args:
-            name = self.get_operation_name(cursor, args)
+        operation_name = self.get_operation_name(cursor, args)
 
-        if not name:
-            name = (
+        span_name = operation_name
+        if not span_name:
+            span_name = (
                 self._db_api_integration.database
                 if self._db_api_integration.database
                 else self._db_api_integration.name
             )
 
-        with self._db_api_integration._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
-            self._populate_span(span, cursor, *args)
-            return await query_method(*args, **kwargs)
+        with self._db_api_integration._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+            if span.is_recording():
+                self._populate_span(span, cursor, *args)
+            start_time = time.perf_counter()
+            error = None
+            try:
+                return await query_method(*args, **kwargs)
+            except Exception as exc:
+                error = exc
+                if span.is_recording() and _report_new(self._db_api_integration._sem_conv_opt_in_mode_db):
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
+            finally:
+                self._record_metrics(cursor, operation_name, start_time, error)
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
@@ -135,21 +142,15 @@ def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
             super().__init__(cursor)
 
         async def execute(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.execute, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.execute, *args, **kwargs)
             return result
 
         async def executemany(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.executemany, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.executemany, *args, **kwargs)
             return result
 
         async def callproc(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.callproc, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.callproc, *args, **kwargs)
             return result
 
     return AsyncCursorTracerProxy(cursor, *args, **kwargs)

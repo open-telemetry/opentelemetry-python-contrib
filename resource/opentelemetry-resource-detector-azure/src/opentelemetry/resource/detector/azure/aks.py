@@ -4,7 +4,6 @@
 from logging import getLogger
 from os import environ
 from pathlib import Path
-from typing import Optional
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
@@ -22,7 +21,7 @@ from ._constants import (
 _logger = getLogger(__name__)
 
 
-def _extract_cluster_name(resource_id: str) -> Optional[str]:
+def _extract_cluster_name(resource_id: str) -> str | None:
     segments = resource_id.split("/")
     for index, segment in enumerate(segments):
         if segment.lower() == "managedclusters" and index < len(segments) - 1:
@@ -30,8 +29,8 @@ def _extract_cluster_name(resource_id: str) -> Optional[str]:
     return segments[-1] or None
 
 
-def _parse_aks_metadata(content: str) -> Optional[str]:
-    keyed_resource_id: Optional[str] = None
+def _parse_aks_metadata(content: str) -> str | None:
+    keyed_resource_id: str | None = None
     bare_values: list[str] = []
 
     for line in content.splitlines():
@@ -52,7 +51,7 @@ def _parse_aks_metadata(content: str) -> Optional[str]:
     return None
 
 
-def _get_aks_metadata_from_file() -> Optional[str]:
+def _get_aks_metadata_from_file() -> str | None:
     metadata_path = Path(_AKS_METADATA_FILE_PATH)
     try:
         if metadata_path.is_dir():
@@ -71,18 +70,13 @@ def _get_aks_metadata_from_file() -> Optional[str]:
 
 class AzureAKSResourceDetector(ResourceDetector):
     def detect(self) -> Resource:
-        resource_id = (
-            environ.get(_AKS_CLUSTER_RESOURCE_ID)
-            or _get_aks_metadata_from_file()
-        )
+        resource_id = environ.get(_AKS_CLUSTER_RESOURCE_ID) or _get_aks_metadata_from_file()
         if not resource_id:
             return Resource({})
 
         attributes = {
             ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AZURE.value,
-            ResourceAttributes.CLOUD_PLATFORM: (
-                CloudPlatformValues.AZURE_AKS.value
-            ),
+            ResourceAttributes.CLOUD_PLATFORM: (CloudPlatformValues.AZURE_AKS.value),
             ResourceAttributes.CLOUD_RESOURCE_ID: resource_id,
         }
         cluster_name = _extract_cluster_name(resource_id)

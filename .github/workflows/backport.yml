@@ -13,7 +13,7 @@ jobs:
   backport:
     permissions:
       contents: write # required for pushing branches
-      pull-requests: write # required for creating pull requests
+      pull-requests: write # required for creating and editing pull requests
     runs-on: ubuntu-latest
     steps:
       - run: |
@@ -30,13 +30,14 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
-      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: otelbot-token
         with:
-          app-id: ${{ vars.OTELBOT_APP_ID }}
+          client-id: ${{ vars.OTELBOT_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
 
       - name: Create pull request
+        id: create_pr
         env:
           NUMBER: ${{ github.event.inputs.number }}
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
@@ -49,7 +50,15 @@ jobs:
 
           git cherry-pick $commit
           git push origin HEAD:$branch
-          gh pr create --title "[$GITHUB_REF_NAME] $title" \
-                       --body "Clean cherry-pick of #$NUMBER to the \`$GITHUB_REF_NAME\` branch." \
-                       --head $branch \
-                       --base $GITHUB_REF_NAME
+          pr_url=$(gh pr create --title "[$GITHUB_REF_NAME] $title" \
+                                --body "Clean cherry-pick of #$NUMBER to the \`$GITHUB_REF_NAME\` branch." \
+                                --head $branch \
+                                --base $GITHUB_REF_NAME)
+          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+
+      - name: Add backport label to PR
+        if: steps.create_pr.outputs.pr_url != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ steps.create_pr.outputs.pr_url }} --add-label "backport"

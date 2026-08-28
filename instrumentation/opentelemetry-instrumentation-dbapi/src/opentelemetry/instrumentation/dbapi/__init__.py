@@ -163,8 +163,8 @@ import logging
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generic, TypeVar
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
 
@@ -329,9 +329,7 @@ def wrap_connect(
             use. If omitted the current configured one is used.
 
     """
-    db_api_integration_factory = (
-        db_api_integration_factory or DatabaseApiIntegration
-    )
+    db_api_integration_factory = db_api_integration_factory or DatabaseApiIntegration
 
     # pylint: disable=unused-argument
     def wrap_connect_(
@@ -356,16 +354,12 @@ def wrap_connect(
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
     try:
-        wrap_function_wrapper(
-            connect_module, connect_method_name, wrap_connect_
-        )
+        wrap_function_wrapper(connect_module, connect_method_name, wrap_connect_)
     except Exception as ex:  # pylint: disable=broad-except
         _logger.warning("Failed to integrate with DB API. %s", str(ex))
 
 
-def unwrap_connect(
-    connect_module: Callable[..., Any], connect_method_name: str
-):
+def unwrap_connect(connect_module: Callable[..., Any], connect_method_name: str):
     """Disable integration with DB API library.
     https://www.python.org/dev/peps/pep-0249/
 
@@ -422,9 +416,7 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_api_integration_factory = (
-        db_api_integration_factory or DatabaseApiIntegration
-    )
+    db_api_integration_factory = db_api_integration_factory or DatabaseApiIntegration
 
     db_integration = db_api_integration_factory(
         name,
@@ -478,11 +470,15 @@ class DatabaseApiIntegration:
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.DATABASE,
+        self._sem_conv_opt_in_mode_db = (
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            )
         )
-        self._sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP,
+        self._sem_conv_opt_in_mode_http = (
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP,
+            )
         )
 
         if connection_attributes is None:
@@ -515,16 +511,10 @@ class DatabaseApiIntegration:
                 self._name,
                 self._version,
                 meter_provider,
-                schema_url=_get_schema_url_for_signal_types(
-                    [_OpenTelemetryStabilitySignalType.DATABASE]
-                ),
+                schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE]),
             )
-            self._duration_histogram = create_db_client_operation_duration(
-                self._meter
-            )
-            self._returned_rows_histogram = (
-                create_db_client_response_returned_rows(self._meter)
-            )
+            self._duration_histogram = create_db_client_operation_duration(self._meter)
+            self._returned_rows_histogram = create_db_client_response_returned_rows(self._meter)
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
@@ -563,13 +553,9 @@ class DatabaseApiIntegration:
             # We can assume apilevel "1.0" if not given.
             # We use "unknown" for others to prevent uncaught AttributeError.
             # https://peps.python.org/pep-0249/#globals
-            "dbapi_threadsafety": getattr(
-                self.connect_module, "threadsafety", "unknown"
-            ),
+            "dbapi_threadsafety": getattr(self.connect_module, "threadsafety", "unknown"),
             "dbapi_level": getattr(self.connect_module, "apilevel", "1.0"),
-            "driver_paramstyle": getattr(
-                self.connect_module, "paramstyle", "unknown"
-            ),
+            "driver_paramstyle": getattr(self.connect_module, "paramstyle", "unknown"),
         }
 
         if self.database_system == "postgresql":
@@ -583,9 +569,7 @@ class DatabaseApiIntegration:
             # psycopg2
             if libpq_version is None:
                 # this the libpq version the client has been built against
-                libpq_version = getattr(
-                    self.connect_module, "__libpq_version__", None
-                )
+                libpq_version = getattr(self.connect_module, "__libpq_version__", None)
 
             # we instrument psycopg modules that are not the root one, in that case you
             # won't get the libpq_version
@@ -618,9 +602,7 @@ class DatabaseApiIntegration:
         for key, value in self.connection_attributes.items():
             # Allow attributes nested in connection object
             attribute = functools.reduce(
-                lambda attribute, attribute_value: getattr(
-                    attribute, attribute_value, None
-                ),
+                lambda attribute, attribute_value: getattr(attribute, attribute_value, None),
                 value.split("."),
                 connection,
             )
@@ -638,9 +620,7 @@ class DatabaseApiIntegration:
         if user and isinstance(user, bytes):
             user = user.decode()
         if user is not None:
-            _set_db_user(
-                self.span_attributes, str(user), self._sem_conv_opt_in_mode_db
-            )
+            _set_db_user(self.span_attributes, str(user), self._sem_conv_opt_in_mode_db)
         host = self.connection_props.get("host")
         if host is not None:
             _set_http_net_peer_name_client(
@@ -651,9 +631,7 @@ class DatabaseApiIntegration:
             self._server_address = host
         port = self.connection_props.get("port")
         if port is not None:
-            _set_http_peer_port_client(
-                self.span_attributes, port, self._sem_conv_opt_in_mode_http
-            )
+            _set_http_peer_port_client(self.span_attributes, port, self._sem_conv_opt_in_mode_http)
             self._server_port = port
 
 
@@ -672,9 +650,7 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
         if object.__getattribute__(self, name):
             return object.__getattribute__(self, name)
 
-        return object.__getattribute__(
-            object.__getattribute__(self, "_connection"), name
-        )
+        return object.__getattribute__(object.__getattribute__(self, "_connection"), name)
 
     def cursor(self, *args: Any, **kwargs: Any):
         return get_traced_cursor_proxy(
@@ -714,13 +690,9 @@ class CursorTracer(Generic[CursorT]):
         self._db_api_integration = db_api_integration
         self._commenter_enabled = self._db_api_integration.enable_commenter
         self._commenter_options = (
-            self._db_api_integration.commenter_options
-            if self._db_api_integration.commenter_options
-            else {}
+            self._db_api_integration.commenter_options if self._db_api_integration.commenter_options else {}
         )
-        self._enable_attribute_commenter = (
-            self._db_api_integration.enable_attribute_commenter
-        )
+        self._enable_attribute_commenter = self._db_api_integration.enable_attribute_commenter
         self._connect_module = self._db_api_integration.connect_module
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -728,11 +700,8 @@ class CursorTracer(Generic[CursorT]):
         """Lazy capture of mysql-connector client version using cursor, if applicable"""
         if (
             self._db_api_integration.database_system == "mysql"
-            and self._db_api_integration.connect_module.__name__
-            == "mysql.connector"
-            and not self._db_api_integration.commenter_data[
-                "mysql_client_version"
-            ]
+            and self._db_api_integration.connect_module.__name__ == "mysql.connector"
+            and not self._db_api_integration.commenter_data["mysql_client_version"]
         ):
             try:
                 # Autoinstrumentation and some programmatic calls
@@ -740,28 +709,18 @@ class CursorTracer(Generic[CursorT]):
             except AttributeError:
                 # Other programmatic instrumentation with reassigned wrapped connection
                 try:
-                    client_version = (
-                        cursor._connection._cmysql.get_client_info()
-                    )
+                    client_version = cursor._connection._cmysql.get_client_info()
                 except AttributeError as exc:
-                    _logger.debug(
-                        "Could not set mysql_client_version: %s", exc
-                    )
+                    _logger.debug("Could not set mysql_client_version: %s", exc)
                     client_version = "unknown"
-            self._db_api_integration.commenter_data["mysql_client_version"] = (
-                client_version
-            )
+            self._db_api_integration.commenter_data["mysql_client_version"] = client_version
 
     def _get_commenter_data(self) -> dict:
         """Uses DB-API integration to return commenter data for sqlcomment"""
         commenter_data = dict(self._db_api_integration.commenter_data)
         if self._commenter_options.get("opentelemetry_values", True):
             commenter_data.update(**_get_opentelemetry_values())
-        return {
-            k: v
-            for k, v in commenter_data.items()
-            if self._commenter_options.get(k, True)
-        }
+        return {k: v for k, v in commenter_data.items() if self._commenter_options.get(k, True)}
 
     def _update_args_with_added_sql_comment(self, args, cursor) -> tuple:
         """Updates args with cursor info and adds sqlcomment to query statement"""
@@ -769,9 +728,7 @@ class CursorTracer(Generic[CursorT]):
             args_list = list(args)
             self._capture_mysql_version(cursor)
             commenter_data = self._get_commenter_data()
-            if not isinstance(args_list[0], str) and not isinstance(
-                args_list[0], _Template
-            ):
+            if not isinstance(args_list[0], str) and not isinstance(args_list[0], _Template):
                 # Convert sql statement to string, handling psycopg2.sql.Composable object
                 if hasattr(args_list[0], "as_string"):
                     args_list[0] = args_list[0].as_string(cursor.connection)
@@ -779,9 +736,7 @@ class CursorTracer(Generic[CursorT]):
             args_list[0] = _add_sql_comment(args_list[0], **commenter_data)
             args = tuple(args_list)
         except Exception as exc:  # pylint: disable=broad-except
-            _logger.exception(
-                "Exception while generating sql comment: %s", exc
-            )
+            _logger.exception("Exception while generating sql comment: %s", exc)
         return args
 
     def _populate_span(
@@ -826,9 +781,7 @@ class CursorTracer(Generic[CursorT]):
         query = args[0]
         if isinstance(query, _Template):
             first_literal = query.strings[0] if query.strings else ""
-            tokens = self._leading_comment_remover.sub(
-                "", first_literal
-            ).split()
+            tokens = self._leading_comment_remover.sub("", first_literal).split()
             return tokens[0] if tokens else ""
 
         # `query` can be an empty string. See #2643
@@ -862,9 +815,7 @@ class CursorTracer(Generic[CursorT]):
         if operation_name:
             attributes[DB_OPERATION_NAME] = operation_name
         if self._db_api_integration._server_address is not None:
-            attributes[SERVER_ADDRESS] = (
-                self._db_api_integration._server_address
-            )
+            attributes[SERVER_ADDRESS] = self._db_api_integration._server_address
         if self._db_api_integration._server_port is not None:
             attributes[SERVER_PORT] = self._db_api_integration._server_port
         if error is not None:
@@ -883,15 +834,11 @@ class CursorTracer(Generic[CursorT]):
             return
         elapsed = time.perf_counter() - start_time
         attributes = self._get_metric_attributes(operation_name, error)
-        self._db_api_integration._duration_histogram.record(
-            elapsed, attributes=attributes
-        )
+        self._db_api_integration._duration_histogram.record(elapsed, attributes=attributes)
         if error is None:
             rowcount = getattr(cursor, "rowcount", None)
             if isinstance(rowcount, int) and rowcount >= 0:
-                self._db_api_integration._returned_rows_histogram.record(
-                    rowcount, attributes=attributes
-                )
+                self._db_api_integration._returned_rows_histogram.record(rowcount, attributes=attributes)
 
     def traced_execution(
         self,
@@ -912,24 +859,18 @@ class CursorTracer(Generic[CursorT]):
                 else self._db_api_integration.name
             )
 
-        with self._db_api_integration._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
+        with self._db_api_integration._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
                 if args and self._commenter_enabled:
                     if self._enable_attribute_commenter:
                         # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                        args = self._update_args_with_added_sql_comment(args, cursor)
                         self._populate_span(span, cursor, *args)
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text are set before add_sql_comment
                         self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                        args = self._update_args_with_added_sql_comment(args, cursor)
                 else:
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
@@ -950,6 +891,9 @@ class CursorTracer(Generic[CursorT]):
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
+        if not is_instrumentation_enabled():
+            return await query_method(*args, **kwargs)
+
         operation_name = self.get_operation_name(cursor, args)
         name = operation_name
         if not name:
@@ -959,24 +903,18 @@ class CursorTracer(Generic[CursorT]):
                 else self._db_api_integration.name
             )
 
-        with self._db_api_integration._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
+        with self._db_api_integration._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
                 if args and self._commenter_enabled:
                     if self._enable_attribute_commenter:
                         # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                        args = self._update_args_with_added_sql_comment(args, cursor)
                         self._populate_span(span, cursor, *args)
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text are set before add_sql_comment
                         self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                        args = self._update_args_with_added_sql_comment(args, cursor)
                 else:
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
@@ -1003,9 +941,7 @@ class TracedCursorProxy(ObjectProxy, Generic[CursorT]):
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
-        return self._self_cursor_tracer.traced_execution(
-            self.__wrapped__, self.__wrapped__.execute, *args, **kwargs
-        )
+        return self._self_cursor_tracer.traced_execution(self.__wrapped__, self.__wrapped__.execute, *args, **kwargs)
 
     def executemany(self, *args: Any, **kwargs: Any):
         return self._self_cursor_tracer.traced_execution(
@@ -1013,9 +949,7 @@ class TracedCursorProxy(ObjectProxy, Generic[CursorT]):
         )
 
     def callproc(self, *args: Any, **kwargs: Any):
-        return self._self_cursor_tracer.traced_execution(
-            self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
-        )
+        return self._self_cursor_tracer.traced_execution(self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs)
 
     def __enter__(self):
         self.__wrapped__.__enter__()

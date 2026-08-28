@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Mapping
 from unittest.mock import patch
 
 from opentelemetry.resource.detector.azure._utils import _is_on_aks
@@ -20,9 +20,7 @@ TEST_RESOURCE_ID = (
 
 
 class TestAzureAKSResourceDetector(unittest.TestCase):
-    @patch.dict(
-        "os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True
-    )
+    @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     def test_detects_aks_from_environment(self) -> None:
         attributes = AzureAKSResourceDetector().detect().attributes
 
@@ -50,9 +48,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
         self.assertEqual(attributes["k8s.cluster.name"], "my-cluster")
 
-    @patch.dict(
-        "os.environ", {"CLUSTER_RESOURCE_ID": "standalone-name"}, clear=True
-    )
+    @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": "standalone-name"}, clear=True)
     def test_cluster_name_falls_back_to_last_segment(self) -> None:
         attributes = AzureAKSResourceDetector().detect().attributes
 
@@ -73,13 +69,10 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         with TemporaryDirectory() as directory:
             metadata_path = Path(directory) / "aks-cluster-metadata"
             metadata_path.mkdir()
-            (metadata_path / "clusterResourceId").write_text(
-                f"{TEST_RESOURCE_ID}\n", encoding="utf-8"
-            )
+            (metadata_path / "clusterResourceId").write_text(f"{TEST_RESOURCE_ID}\n", encoding="utf-8")
 
             with patch(
-                "opentelemetry.resource.detector.azure.aks."
-                "_AKS_METADATA_FILE_PATH",
+                "opentelemetry.resource.detector.azure.aks._AKS_METADATA_FILE_PATH",
                 str(metadata_path),
             ):
                 attributes = AzureAKSResourceDetector().detect().attributes
@@ -94,8 +87,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
             metadata_path.write_text(f"{TEST_RESOURCE_ID}\n", encoding="utf-8")
 
             with patch(
-                "opentelemetry.resource.detector.azure.aks."
-                "_AKS_METADATA_FILE_PATH",
+                "opentelemetry.resource.detector.azure.aks._AKS_METADATA_FILE_PATH",
                 str(metadata_path),
             ):
                 attributes = AzureAKSResourceDetector().detect().attributes
@@ -104,9 +96,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_detects_aks_from_key_value_file(self) -> None:
-        content = (
-            f"\ufeff# AKS metadata\r\nclusterResourceId={TEST_RESOURCE_ID}\r\n"
-        )
+        content = f"\ufeff# AKS metadata\r\nclusterResourceId={TEST_RESOURCE_ID}\r\n"
 
         attributes = self._detect_from_file(content)
 
@@ -114,11 +104,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_explicit_key_wins_over_bare_lines(self) -> None:
-        content = (
-            f"clusterResourceId={TEST_RESOURCE_ID}\n"
-            "stray-token\n"
-            "// not a supported comment\n"
-        )
+        content = f"clusterResourceId={TEST_RESOURCE_ID}\nstray-token\n// not a supported comment\n"
 
         attributes = self._detect_from_file(content)
 
@@ -126,9 +112,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
     @patch.dict("os.environ", {}, clear=True)
     def test_ignores_ambiguous_bare_values(self) -> None:
-        attributes = self._detect_from_file(
-            f"{TEST_RESOURCE_ID}\nstray-token\n"
-        )
+        attributes = self._detect_from_file(f"{TEST_RESOURCE_ID}\nstray-token\n")
 
         self.assertEqual(attributes, {})
 
@@ -137,13 +121,10 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         with TemporaryDirectory() as directory:
             metadata_path = Path(directory) / "aks-cluster-metadata"
             metadata_path.mkdir()
-            (metadata_path / "somethingElse").write_text(
-                "value\n", encoding="utf-8"
-            )
+            (metadata_path / "somethingElse").write_text("value\n", encoding="utf-8")
 
             with patch(
-                "opentelemetry.resource.detector.azure.aks."
-                "_AKS_METADATA_FILE_PATH",
+                "opentelemetry.resource.detector.azure.aks._AKS_METADATA_FILE_PATH",
                 str(metadata_path),
             ):
                 attributes = AzureAKSResourceDetector().detect().attributes
@@ -165,9 +146,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
         self.assertEqual(attributes["k8s.cluster.name"], "from-env")
 
-    @patch.dict(
-        "os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True
-    )
+    @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_vm_detection_is_skipped_on_aks(self, mock_urlopen) -> None:
         resource = AzureVMResourceDetector().detect()
@@ -182,8 +161,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
             metadata_path.write_text(TEST_RESOURCE_ID, encoding="utf-8")
 
             with patch(
-                "opentelemetry.resource.detector.azure._utils."
-                "_AKS_METADATA_FILE_PATH",
+                "opentelemetry.resource.detector.azure._utils._AKS_METADATA_FILE_PATH",
                 str(metadata_path),
             ):
                 self.assertTrue(_is_on_aks())
@@ -194,8 +172,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
             metadata_path = Path(directory) / "aks-cluster-metadata"
             metadata_path.write_text(content, encoding="utf-8")
             with patch(
-                "opentelemetry.resource.detector.azure.aks."
-                "_AKS_METADATA_FILE_PATH",
+                "opentelemetry.resource.detector.azure.aks._AKS_METADATA_FILE_PATH",
                 str(metadata_path),
             ):
                 return AzureAKSResourceDetector().detect().attributes
