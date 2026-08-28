@@ -54,6 +54,7 @@ The Azure Kubernetes Service Resource Detector reads the cluster resource ID fro
 ``CLUSTER_RESOURCE_ID`` environment variable or from a mounted ``aks-cluster-metadata``
 ConfigMap at ``/etc/kubernetes/aks-cluster-metadata``. It sets the following Resource
 Attributes:
+
  * ``cloud.platform`` set to ``azure_aks``.
  * ``cloud.provider`` set to ``azure``.
  * ``cloud.resource_id`` set to the full Azure Resource Manager cluster resource ID.
