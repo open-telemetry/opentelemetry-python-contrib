@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 import grpc
 
@@ -207,10 +208,10 @@ def health_check() -> Condition[CallDetailsT]:
 
 
 __all__ = [
+    "full_method_name",
+    "health_check",
     "method_name",
     "method_prefix",
-    "full_method_name",
     "service_name",
     "service_prefix",
-    "health_check",
 ]

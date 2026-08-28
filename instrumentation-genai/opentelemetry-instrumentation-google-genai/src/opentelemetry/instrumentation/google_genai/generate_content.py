@@ -10,7 +10,8 @@ import logging
 import os
 import time
 import typing
-from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
+from collections.abc import AsyncIterator, Awaitable, Iterator
+from typing import Any
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
@@ -145,24 +146,24 @@ def _guess_genai_system_from_env():
     return _get_gemini_system_name()
 
 
-def _get_is_vertexai(models_object: Union[Models, AsyncModels]):
+def _get_is_vertexai(models_object: Models | AsyncModels):
     # Since commit 8e561de04965bb8766db87ad8eea7c57c1040442 of "googleapis/python-genai",
     # it is possible to obtain the information using a documented property.
     if hasattr(models_object, "vertexai"):
-        vertexai_attr = getattr(models_object, "vertexai")
+        vertexai_attr = models_object.vertexai
         if vertexai_attr is not None:
             return vertexai_attr
     # For earlier revisions, it is necessary to deeply inspect the internals.
     if hasattr(models_object, "_api_client"):
-        client = getattr(models_object, "_api_client")
+        client = models_object._api_client
         if not client:
             return None
         if hasattr(client, "vertexai"):
-            return getattr(client, "vertexai")
+            return client.vertexai
     return None
 
 
-def _determine_genai_system(models_object: Union[Models, AsyncModels]):
+def _determine_genai_system(models_object: Models | AsyncModels):
     vertexai_attr = _get_is_vertexai(models_object)
     if vertexai_attr is None:
         return _guess_genai_system_from_env()
@@ -326,7 +327,7 @@ def _tool_def_without_parameters_attr(
 
 
 def _create_request_attributes(
-    config: Optional[GenerateContentConfigOrDict],
+    config: GenerateContentConfigOrDict | None,
     allow_list: AllowList,
 ) -> dict[str, AttributeValue]:
     if not config:
@@ -409,8 +410,8 @@ def _wrapped_config_with_tools(
 
 
 def _config_to_system_instruction(
-    config: Union[GenerateContentConfigOrDict, None],
-) -> Union[ContentUnion, None]:
+    config: GenerateContentConfigOrDict | None,
+) -> ContentUnion | None:
     if not config:
         return None
 
@@ -420,8 +421,8 @@ def _config_to_system_instruction(
 
 
 def _config_to_tools(
-    config: Union[GenerateContentConfigOrDict, None],
-) -> Union[ToolListUnionDict, None]:
+    config: GenerateContentConfigOrDict | None,
+) -> ToolListUnionDict | None:
     if not config:
         return None
 
@@ -464,11 +465,11 @@ def _get_extra_generate_content_attributes() -> dict[str, AttributeValue]:
 class _GenerateContentInstrumentationHelper:
     def __init__(
         self,
-        models_object: Union[Models, AsyncModels],
+        models_object: Models | AsyncModels,
         otel_wrapper: OTelWrapper,
         model: str,
         completion_hook: CompletionHook,
-        generate_content_config_key_allowlist: Optional[AllowList] = None,
+        generate_content_config_key_allowlist: AllowList | None = None,
         is_async: bool = False,
     ):
         self._start_time = time.time_ns()
@@ -497,7 +498,7 @@ class _GenerateContentInstrumentationHelper:
         self._generate_content_config_key_allowlist = generate_content_config_key_allowlist or AllowList()
         self._is_async = is_async
 
-    def wrapped_config(self, config: Optional[GenerateContentConfigOrDict]) -> Optional[GenerateContentConfig]:
+    def wrapped_config(self, config: GenerateContentConfigOrDict | None) -> GenerateContentConfig | None:
         if config is None:
             return None
         return _wrapped_config_with_tools(
@@ -530,8 +531,8 @@ class _GenerateContentInstrumentationHelper:
 
     def process_request(
         self,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict],
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None,
         span: Span,
     ):
         span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system)
@@ -633,7 +634,7 @@ class _GenerateContentInstrumentationHelper:
         self,
         event: LogRecord,
         completion_details_attributes: dict[str, AttributeValue],
-        tool_definitions: Optional[list[ToolDefinition]] = None,
+        tool_definitions: list[ToolDefinition] | None = None,
     ):
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
@@ -655,7 +656,7 @@ class _GenerateContentInstrumentationHelper:
         self,
         span: Span,
         completion_details_attributes: dict[str, AttributeValue],
-        tool_definitions: Optional[list[ToolDefinition]] = None,
+        tool_definitions: list[ToolDefinition] | None = None,
     ):
         if self._content_recording_enabled in [
             ContentCapturingMode.SPAN_ONLY,
@@ -673,10 +674,10 @@ class _GenerateContentInstrumentationHelper:
         extra_attributes: dict[str, AttributeValue],
         request_attributes: dict[str, AttributeValue],
         final_attributes: dict[str, AttributeValue],
-        request: Union[ContentListUnion, ContentListUnionDict],
+        request: ContentListUnion | ContentListUnionDict,
         candidates: list[Candidate],
-        config: Optional[GenerateContentConfigOrDict] = None,
-        tool_definitions: Optional[list[ToolDefinition]] = None,
+        config: GenerateContentConfigOrDict | None = None,
+        tool_definitions: list[ToolDefinition] | None = None,
     ):
         if not self.experimental_sem_convs_enabled:
             return
@@ -728,7 +729,7 @@ class _GenerateContentInstrumentationHelper:
             tool_definitions=tool_definitions,
         )
 
-    def _maybe_log_system_instruction(self, config: Optional[GenerateContentConfigOrDict] = None):
+    def _maybe_log_system_instruction(self, config: GenerateContentConfigOrDict | None = None):
         content_union = _config_to_system_instruction(config)
         if not content_union:
             return
@@ -746,7 +747,7 @@ class _GenerateContentInstrumentationHelper:
             body={"content": (system_instruction if self._content_recording_enabled else _CONTENT_ELIDED)},
         )
 
-    def _maybe_log_user_prompt(self, contents: Union[ContentListUnion, ContentListUnionDict]):
+    def _maybe_log_user_prompt(self, contents: ContentListUnion | ContentListUnionDict):
         if isinstance(contents, list):
             total = len(contents)
             index = 0
@@ -756,7 +757,7 @@ class _GenerateContentInstrumentationHelper:
         else:
             self._maybe_log_single_user_prompt(contents)
 
-    def _maybe_log_single_user_prompt(self, contents: Union[ContentUnion, ContentUnionDict], index=0, total=1):
+    def _maybe_log_single_user_prompt(self, contents: ContentUnion | ContentUnionDict, index=0, total=1):
         # TODO: figure out how to report the index in a manner that is
         # aligned with the OTel semantic conventions.
         attributes = {
@@ -901,7 +902,7 @@ def _create_instrumented_generate_content(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
     completion_hook: CompletionHook,
-    generate_content_config_key_allowlist: Optional[AllowList] = None,
+    generate_content_config_key_allowlist: AllowList | None = None,
 ):
     wrapped_func = snapshot.generate_content
 
@@ -910,8 +911,8 @@ def _create_instrumented_generate_content(
         self: Models,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
         candidates = []
@@ -974,7 +975,7 @@ def _create_instrumented_generate_content_stream(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
     completion_hook: CompletionHook,
-    generate_content_config_key_allowlist: Optional[AllowList] = None,
+    generate_content_config_key_allowlist: AllowList | None = None,
 ):
     wrapped_func = snapshot.generate_content_stream
 
@@ -983,8 +984,8 @@ def _create_instrumented_generate_content_stream(
         self: Models,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
         candidates: list[Candidate] = []
@@ -1047,7 +1048,7 @@ def _create_instrumented_async_generate_content(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
     completion_hook: CompletionHook,
-    generate_content_config_key_allowlist: Optional[AllowList] = None,
+    generate_content_config_key_allowlist: AllowList | None = None,
 ):
     wrapped_func = snapshot.async_generate_content
 
@@ -1056,8 +1057,8 @@ def _create_instrumented_async_generate_content(
         self: AsyncModels,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(
@@ -1120,7 +1121,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
     completion_hook: CompletionHook,
-    generate_content_config_key_allowlist: Optional[AllowList] = None,
+    generate_content_config_key_allowlist: AllowList | None = None,
 ):
     wrapped_func = snapshot.async_generate_content_stream
 
@@ -1129,8 +1130,8 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         self: AsyncModels,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(
@@ -1226,7 +1227,7 @@ def uninstrument_generate_content(snapshot: object):
 def instrument_generate_content(
     otel_wrapper: OTelWrapper,
     completion_hook: CompletionHook,
-    generate_content_config_key_allowlist: Optional[AllowList] = None,
+    generate_content_config_key_allowlist: AllowList | None = None,
 ) -> object:
     opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
         _OpenTelemetryStabilitySignalType.GEN_AI
