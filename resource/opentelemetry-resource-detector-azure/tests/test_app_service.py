@@ -15,9 +15,9 @@ TEST_WEBSITE_HOSTNAME = "TEST_WEBSITE_HOSTNAME"
 TEST_WEBSITE_INSTANCE_ID = "TEST_WEBSITE_INSTANCE_ID"
 TEST_WEBSITE_HOME_STAMPNAME = "TEST_WEBSITE_HOME_STAMPNAME"
 
-TEST_WEBSITE_RESOURCE_GROUP = "TEST_WEBSITE_RESOURCE_GROUP"
-TEST_SUBSCRIPTION_ID = "TEST_SUBSCRIPTION_ID"
-TEST_WEBSITE_OWNER_NAME = f"{TEST_SUBSCRIPTION_ID}+TEST_WEBSPACE"
+TEST_WEBSITE_RESOURCE_GROUP = "example-resource-group"
+TEST_SUBSCRIPTION_ID = "00000000-0000-0000-0000-000000000000"
+TEST_WEBSITE_OWNER_NAME = f"{TEST_SUBSCRIPTION_ID}+{TEST_WEBSITE_RESOURCE_GROUP}-WestEuropewebspace"
 
 
 class TestAzureAppServiceResourceDetector(unittest.TestCase):
@@ -52,8 +52,8 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["deployment.environment.name"], TEST_WEBSITE_SLOT_NAME)
-        self.assertNotIn("deployment.environment", attributes)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
         self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
         self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)
@@ -88,8 +88,8 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["deployment.environment.name"], TEST_WEBSITE_SLOT_NAME)
-        self.assertNotIn("deployment.environment", attributes)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
         self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
         self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)

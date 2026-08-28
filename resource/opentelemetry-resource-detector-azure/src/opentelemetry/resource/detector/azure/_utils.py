@@ -28,6 +28,9 @@ def _can_ignore_vm_detect() -> bool:
 
 
 def _get_azure_subscription_id() -> str | None:
+    # WEBSITE_OWNER_NAME typically has the form
+    # "<subscription-id>+<resource-group>-<region>webspace". See:
+    # https://learn.microsoft.com/azure/app-service/reference-app-settings#app-environment
     website_owner_name = environ.get(_WEBSITE_OWNER_NAME)
     if website_owner_name and "+" in website_owner_name:
         return website_owner_name[0 : website_owner_name.index("+")]
