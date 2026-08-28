@@ -3,12 +3,14 @@
 
 # pylint: disable=import-error
 
+from .aks import AzureAKSResourceDetector
 from .app_service import AzureAppServiceResourceDetector
 from .functions import AzureFunctionsResourceDetector
 from .version import __version__
 from .vm import AzureVMResourceDetector
 
 __all__ = [
+    "AzureAKSResourceDetector",
     "AzureAppServiceResourceDetector",
     "AzureFunctionsResourceDetector",
     "AzureVMResourceDetector",
