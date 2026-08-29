@@ -66,7 +66,7 @@ Usage
 
     asyncio.run(go())
 
-+Stable Semantic Conventions
+Stable Semantic Conventions
 ***************************
 
 This instrumentation supports the database semantic convention migration plan.

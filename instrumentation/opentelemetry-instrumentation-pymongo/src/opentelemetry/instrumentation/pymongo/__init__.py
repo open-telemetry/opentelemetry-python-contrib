@@ -21,7 +21,7 @@ Usage
     collection = db["MongoDB_Collection"]
     collection.find_one()
 
-+Stable Semantic Conventions
+Stable Semantic Conventions
 ***************************
 
 This instrumentation supports the database semantic convention migration plan.
