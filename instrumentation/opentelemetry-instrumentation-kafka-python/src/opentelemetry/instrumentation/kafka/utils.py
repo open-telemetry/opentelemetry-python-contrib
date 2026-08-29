@@ -1,15 +1,19 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import json
 from collections.abc import Callable
+from contextlib import suppress
 from logging import getLogger
 
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 
@@ -22,6 +26,14 @@ class KafkaPropertiesExtractor:
         return instance.config.get("bootstrap_servers")
 
     @staticmethod
+    def extract_client_id(instance):
+        return instance.config.get("client_id")
+
+    @staticmethod
+    def extract_consumer_group(instance):
+        return instance.config.get("group_id")
+
+    @staticmethod
     def _extract_argument(key, position, default_value, args, kwargs):
         if len(args) > position:
             return args[position]
@@ -31,6 +43,11 @@ class KafkaPropertiesExtractor:
     def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
         return KafkaPropertiesExtractor._extract_argument("topic", 0, "unknown", args, kwargs)
+
+    @staticmethod
+    def extract_send_key(args, kwargs):
+        """extract key from `send` method arguments in KafkaProducer class"""
+        return KafkaPropertiesExtractor._extract_argument("key", 2, None, args, kwargs)
 
     @staticmethod
     def extract_send_headers(args, kwargs):
@@ -50,6 +67,17 @@ class KafkaPropertiesExtractor:
         except (AttributeError, IndexError, TypeError) as exception:
             _LOG.debug("Unable to extract partition: %s", exception)
             return None
+
+
+def _key_to_str(key) -> str | None:
+    if key is None:
+        return None
+
+    if isinstance(key, bytes):
+        with suppress(UnicodeDecodeError):
+            return key.decode()
+
+    return str(key)
 
 
 ProduceHookT = Callable[[Span, list, dict], None] | None
@@ -87,18 +115,103 @@ _kafka_getter = KafkaContextGetter()
 _kafka_setter = KafkaContextSetter()
 
 
-def _enrich_span(
-    span,
-    bootstrap_servers: list[str],
+def _enrich_base_span(
+    span: Span,
+    *,
+    bootstrap_servers,
+    client_id: str | None,
     topic: str,
     partition: int | None,
-):
-    if span.is_recording():
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        if partition is not None:
-            span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-        span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
+    key: str | None,
+) -> None:
+    span.set_attribute(
+        messaging_attributes.MESSAGING_SYSTEM,
+        messaging_attributes.MessagingSystemValues.KAFKA.value,
+    )
+    span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
+    if client_id is not None:
+        span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
+    span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
+
+    if partition is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID,
+            str(partition),
+        )
+
+    if key is not None:
+        span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key)
+
+
+def _enrich_send_span(
+    span: Span,
+    *,
+    bootstrap_servers,
+    client_id: str | None,
+    topic: str,
+    partition: int | None,
+    key: str | None,
+) -> None:
+    if not span.is_recording():
+        return
+
+    _enrich_base_span(
+        span,
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        topic=topic,
+        partition=partition,
+        key=key,
+    )
+
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_TYPE,
+        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+    )
+
+
+def _enrich_consume_span(
+    span: Span,
+    *,
+    bootstrap_servers,
+    client_id: str | None,
+    consumer_group: str | None,
+    topic: str,
+    partition: int | None,
+    key: str | None,
+    offset: int,
+) -> None:
+    if not span.is_recording():
+        return
+
+    _enrich_base_span(
+        span,
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        topic=topic,
+        partition=partition,
+        key=key,
+    )
+
+    if consumer_group is not None:
+        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
+
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_TYPE,
+        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+    )
+
+    span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset)
+
+    # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
+    # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
+    if partition is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_MESSAGE_ID,
+            f"{topic}.{partition}.{offset}",
+        )
 
 
 def _get_span_name(operation: str, topic: str):
@@ -114,6 +227,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+        client_id = KafkaPropertiesExtractor.extract_client_id(instance)
+        key = _key_to_str(KafkaPropertiesExtractor.extract_send_key(args, kwargs))
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             propagate.inject(
@@ -129,7 +244,14 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
 
             future = func(*args, **kwargs)
             partition = KafkaPropertiesExtractor.extract_send_partition(future)
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            _enrich_send_span(
+                span,
+                bootstrap_servers=bootstrap_servers,
+                client_id=client_id,
+                topic=topic,
+                partition=partition,
+                key=key,
+            )
             return future
 
     return _traced_send
@@ -141,6 +263,8 @@ def _create_consumer_span(
     record,
     extracted_context,
     bootstrap_servers,
+    client_id,
+    consumer_group,
     args,
     kwargs,
 ):
@@ -152,7 +276,16 @@ def _create_consumer_span(
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        _enrich_consume_span(
+            span,
+            bootstrap_servers=bootstrap_servers,
+            client_id=client_id,
+            consumer_group=consumer_group,
+            topic=record.topic,
+            partition=record.partition,
+            key=_key_to_str(record.key),
+            offset=record.offset,
+        )
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)
@@ -171,6 +304,8 @@ def _wrap_next(
 
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            client_id = KafkaPropertiesExtractor.extract_client_id(instance)
+            consumer_group = KafkaPropertiesExtractor.extract_consumer_group(instance)
 
             extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
@@ -179,6 +314,8 @@ def _wrap_next(
                 record,
                 extracted_context,
                 bootstrap_servers,
+                client_id,
+                consumer_group,
                 args,
                 kwargs,
             )
