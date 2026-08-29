@@ -179,8 +179,9 @@ from __future__ import annotations
 
 import functools
 import types
+from collections.abc import Callable, Collection
 from timeit import default_timer
-from typing import Any, Callable, Collection, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -254,8 +255,8 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
-_RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
-_ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
+_RequestHookT = Callable[[Span, PreparedRequest], None] | None
+_ResponseHookT = Callable[[Span, PreparedRequest, Response], None] | None
 
 
 def _set_http_status_code_attribute(
