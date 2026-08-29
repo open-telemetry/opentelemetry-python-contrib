@@ -152,7 +152,7 @@ will also be configured by this setting.
     )
 
 
-+Stable Semantic Conventions
+Stable Semantic Conventions
 ***************************
 
 This instrumentation supports the database semantic convention migration plan.
@@ -163,13 +163,17 @@ You can control which conventions are emitted by setting the
   old experimental conventions.
 - ``database/dup`` - emit both the old experimental and stable database
   conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
 
 The environment variable accepts a comma-separated list of opt-in values. For
 example, ``database,http/dup`` enables stable database conventions and emits
 both old and stable HTTP conventions.
 
 By default, when the environment variable is not set, the old experimental
-database conventions are emitted.
+database and HTTP conventions are emitted.
 
 API
 ---

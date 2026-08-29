@@ -22,7 +22,7 @@ Usage
     session = cluster.connect()
     rows = session.execute("SELECT * FROM test")
 
-+Stable Semantic Conventions
+Stable Semantic Conventions
 ***************************
 
 This instrumentation supports the database semantic convention migration plan.

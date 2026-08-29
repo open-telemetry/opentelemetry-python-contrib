@@ -36,7 +36,7 @@ Run instrumented code:
 
     asyncio.run(main())
 
-+Stable Semantic Conventions
+Stable Semantic Conventions
 ***************************
 
 This instrumentation supports the database semantic convention migration plan.
