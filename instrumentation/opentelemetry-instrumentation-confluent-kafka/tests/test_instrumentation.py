@@ -130,13 +130,11 @@ class TestConfluentKafka(TestBase):
 
         carrier_dict = {"key1": "val1"}
         context_setter.set(carrier_dict, "key2", "val2")
-        self.assertGreaterEqual(
-            carrier_dict.items(), {"key2": "val2".encode()}.items()
-        )
+        self.assertGreaterEqual(carrier_dict.items(), {"key2": b"val2"}.items())
 
         carrier_list = [("key1", "val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = KafkaContextSetter()
@@ -343,9 +341,7 @@ class TestConfluentKafka(TestBase):
             },
         )
         consumer = instrumentation.instrument_consumer(consumer)
-        consumer.consume(
-            1
-        )  # non-empty: sets _current_consume_span and _current_context_token
+        consumer.consume(1)  # non-empty: sets _current_consume_span and _current_context_token
         self.assertIsNotNone(consumer._current_consume_span)
         self.assertIsNotNone(consumer._current_context_token)
 
@@ -393,12 +389,8 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):
             self.assertEqual(expected_span["name"], span.name)
-            for attribute_key, expected_attribute_value in expected_span[
-                "attributes"
-            ].items():
-                self.assertEqual(
-                    expected_attribute_value, span.attributes[attribute_key]
-                )
+            for attribute_key, expected_attribute_value in expected_span["attributes"].items():
+                self.assertEqual(expected_attribute_value, span.attributes[attribute_key])
 
     def _assert_topic(self, span, expected_topic: str) -> None:
         self.assertEqual(
@@ -481,11 +473,7 @@ class TestConfluentKafka(TestBase):
         # shows up in the exporter.
         consumer.poll()
 
-        process_span = next(
-            s
-            for s in self.memory_exporter.get_finished_spans()
-            if s.name == "topic-1 process"
-        )
+        process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
 

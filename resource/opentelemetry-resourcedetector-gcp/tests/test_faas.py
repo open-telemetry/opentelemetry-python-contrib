@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import _faas
+from opentelemetry.resourcedetector.gcp_resource_detector import _faas
 
 
 # Reset stuff before every test
@@ -49,7 +49,5 @@ def test_detects_faas_instance(fake_get_metadata: MagicMock) -> None:
 
 
 def test_detects_faas_region(fake_get_metadata: MagicMock) -> None:
-    fake_get_metadata.return_value = {
-        "instance": {"region": "projects/233510669999/regions/us-east4"}
-    }
+    fake_get_metadata.return_value = {"instance": {"region": "projects/233510669999/regions/us-east4"}}
     assert _faas.faas_cloud_region() == "us-east4"

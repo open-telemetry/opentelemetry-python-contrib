@@ -38,6 +38,7 @@ Here's a framework-agnostic example showing manual use of the labeler:
         description="Duration of HTTP server requests.",
     )
 
+
     def record_request(user_id: str, duration_s: float) -> None:
         labeler = get_labeler()
         labeler.add("user_id", user_id)
@@ -79,9 +80,9 @@ from opentelemetry.instrumentation._labeler._internal import (
 
 __all__ = [
     "Labeler",
-    "get_labeler",
-    "set_labeler",
     "clear_labeler",
-    "get_labeler_attributes",
     "enrich_metric_attributes",
+    "get_labeler",
+    "get_labeler_attributes",
+    "set_labeler",
 ]

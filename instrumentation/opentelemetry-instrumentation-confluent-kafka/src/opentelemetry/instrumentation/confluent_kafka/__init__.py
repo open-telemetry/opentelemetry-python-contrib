@@ -97,7 +97,7 @@ For example:
 
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import confluent_kafka
 import wrapt
@@ -248,9 +248,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     """
 
     @staticmethod
-    def instrument_producer(
-        producer: Producer, tracer_provider=None
-    ) -> ProxiedProducer:
+    def instrument_producer(producer: Producer, tracer_provider=None) -> ProxiedProducer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -263,9 +261,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return manual_producer
 
     @staticmethod
-    def instrument_consumer(
-        consumer: Consumer, tracer_provider=None
-    ) -> ProxiedConsumer:
+    def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -313,24 +309,16 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         self._tracer = tracer
 
         def _inner_wrap_produce(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_produce(
-                func, instance, self._tracer, args, kwargs
-            )
+            return ConfluentKafkaInstrumentor.wrap_produce(func, instance, self._tracer, args, kwargs)
 
         def _inner_wrap_poll(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_poll(
-                func, instance, self._tracer, args, kwargs
-            )
+            return ConfluentKafkaInstrumentor.wrap_poll(func, instance, self._tracer, args, kwargs)
 
         def _inner_wrap_consume(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_consume(
-                func, instance, self._tracer, args, kwargs
-            )
+            return ConfluentKafkaInstrumentor.wrap_consume(func, instance, self._tracer, args, kwargs)
 
         def _inner_wrap_close(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_close(
-                func, instance, args, kwargs
-            )
+            return ConfluentKafkaInstrumentor.wrap_close(func, instance, args, kwargs)
 
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
@@ -370,22 +358,14 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             topic = args[0]
 
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            name=span_name, kind=trace.SpanKind.PRODUCER
-        ) as span:
-            headers = KafkaPropertiesExtractor.extract_produce_headers(
-                args, kwargs
-            )
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
+            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
             if headers is None:
                 headers = []
                 kwargs["headers"] = headers
 
-            topic = KafkaPropertiesExtractor.extract_produce_topic(
-                args, kwargs
-            )
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+            topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             _enrich_span(
                 span,
                 topic,
@@ -405,12 +385,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         record = func(*args, **kwargs)
         if record:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
-            with tracer.start_as_current_span(
-                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-            ):
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
                 _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
@@ -420,9 +396,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
                 )
-            instance._current_context_token = context.attach(
-                trace.set_span_in_context(instance._current_consume_span)
-            )
+            instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return record
 
@@ -433,12 +407,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         records = func(*args, **kwargs)
         if len(records) > 0:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
-            with tracer.start_as_current_span(
-                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-            ):
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
                 _create_new_consume_span(instance, tracer, records)
                 _enrich_span(
                     instance._current_consume_span,
@@ -446,9 +416,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
                 )
-            instance._current_context_token = context.attach(
-                trace.set_span_in_context(instance._current_consume_span)
-            )
+            instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return records
 

@@ -64,9 +64,10 @@ API
 ---
 """
 
+from collections.abc import Collection
 from importlib import import_module
-from typing import Collection
 
+from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._logs import get_logger
@@ -97,7 +98,19 @@ from .patch_responses import (
 )
 
 
+@deprecated(
+    "opentelemetry-instrumentation-openai-v2 is deprecated. Use the "
+    "opentelemetry-instrumentation-genai-openai package instead. This package "
+    "only receives security patches."
+)
 class OpenAIInstrumentor(BaseInstrumentor):
+    """OpenTelemetry instrumentation for the OpenAI Python client.
+
+    .. deprecated:: 2.5b0
+        Use the ``opentelemetry-instrumentation-genai-openai`` package instead.
+        This package only receives security patches.
+    """
+
     def __init__(self):
         self._meter = None
 
@@ -136,8 +149,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
-            completion_hook=kwargs.get("completion_hook")
-            or load_completion_hook(),
+            completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
         )
 
         wrap_function_wrapper(
@@ -146,9 +158,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             (
                 chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
-                else chat_completions_create_v_old(
-                    tracer, logger, instruments, is_content_enabled()
-                )
+                else chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
             ),
         )
 
@@ -158,9 +168,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             (
                 async_chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
-                else async_chat_completions_create_v_old(
-                    tracer, logger, instruments, is_content_enabled()
-                )
+                else async_chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
             ),
         )
 
@@ -168,17 +176,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "Embeddings.create",
-            embeddings_create(
-                tracer, instruments, latest_experimental_enabled
-            ),
+            embeddings_create(tracer, instruments, latest_experimental_enabled),
         )
 
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "AsyncEmbeddings.create",
-            async_embeddings_create(
-                tracer, instruments, latest_experimental_enabled
-            ),
+            async_embeddings_create(tracer, instruments, latest_experimental_enabled),
         )
 
         responses_module = _get_responses_module()
