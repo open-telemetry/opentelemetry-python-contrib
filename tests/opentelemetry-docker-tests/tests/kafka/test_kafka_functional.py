@@ -9,7 +9,7 @@ from kafka.errors import TopicAlreadyExistsError
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.kafka import KafkaInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.test.test_base import TestBase
 
 KAFKA_HOST = os.getenv("KAFKA_HOST", "localhost")
@@ -60,14 +60,17 @@ class TestFunctionalKafka(TestBase):
         for span, metadata in zip(spans, metadatas):
             self.assertEqual(span.name, f"{KAFKA_TOPIC} send")
             self.assertIs(span.kind, trace_api.SpanKind.PRODUCER)
-            self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "kafka")
             self.assertEqual(
-                span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+                span.attributes[messaging_attributes.MESSAGING_SYSTEM],
+                messaging_attributes.MessagingSystemValues.KAFKA.value,
+            )
+            self.assertEqual(
+                span.attributes[messaging_attributes.MESSAGING_DESTINATION_NAME],
                 KAFKA_TOPIC,
             )
-            partition = span.attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION]
-            self.assertIsInstance(partition, int)
-            self.assertEqual(partition, metadata.partition)
+            partition = span.attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID]
+            self.assertIsInstance(partition, str)
+            self.assertEqual(partition, str(metadata.partition))
 
     def test_send_with_explicit_partition(self):
         explicit_partition = KAFKA_PARTITION_COUNT - 1
@@ -78,6 +81,6 @@ class TestFunctionalKafka(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(
-            spans[0].attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION],
-            explicit_partition,
+            spans[0].attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID],
+            str(explicit_partition),
         )
