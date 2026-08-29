@@ -4,7 +4,8 @@
 import functools
 import inspect
 import json
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 from google.genai.types import (
     ToolListUnion,
@@ -141,7 +142,7 @@ def _record_function_call_result(otel_wrapper, wrapped_function, result):
 def _wrap_sync_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
-    extra_span_attributes: Optional[dict[str, str]] = None,
+    extra_span_attributes: dict[str, str] | None = None,
     **unused_kwargs,
 ):
     @functools.wraps(tool_function)
@@ -160,7 +161,7 @@ def _wrap_sync_tool_function(
 def _wrap_async_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
-    extra_span_attributes: Optional[dict[str, str]] = None,
+    extra_span_attributes: dict[str, str] | None = None,
     **unused_kwargs,
 ):
     @functools.wraps(tool_function)
@@ -183,7 +184,7 @@ def _wrap_tool_function(tool_function: ToolFunction, otel_wrapper: OTelWrapper, 
 
 
 def wrapped(
-    tool_or_tools: Optional[Union[ToolFunction, ToolOrDict, ToolListUnion, ToolListUnionDict]],
+    tool_or_tools: ToolFunction | ToolOrDict | ToolListUnion | ToolListUnionDict | None,
     otel_wrapper: OTelWrapper,
     **kwargs,
 ):

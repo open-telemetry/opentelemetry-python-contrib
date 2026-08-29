@@ -1,7 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Collection, Optional
+from collections.abc import Collection
+from typing import Any
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -18,7 +19,7 @@ from .otel_wrapper import OTelWrapper
 
 
 class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
-    def __init__(self, generate_content_config_key_allowlist: Optional[AllowList] = None):
+    def __init__(self, generate_content_config_key_allowlist: AllowList | None = None):
         self._generate_content_snapshot = None
         self._generate_content_config_key_allowlist = generate_content_config_key_allowlist or AllowList.from_env(
             "OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES",

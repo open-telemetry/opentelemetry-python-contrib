@@ -1,8 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
@@ -41,7 +42,7 @@ class OTTracePropagator(TextMapPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
         if context is None:
@@ -95,7 +96,7 @@ class OTTracePropagator(TextMapPropagator):
     def inject(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         setter: Setter[CarrierT] = default_setter,
     ) -> None:
         span_context = get_current_span(context).get_span_context()
@@ -149,7 +150,7 @@ class OTTracePropagator(TextMapPropagator):
 def _extract_first_element(
     items: Iterable[CarrierT],
     default: Any = None,
-) -> Optional[CarrierT]:
+) -> CarrierT | None:
     if items is None:
         return default
     return next(iter(items), None)
