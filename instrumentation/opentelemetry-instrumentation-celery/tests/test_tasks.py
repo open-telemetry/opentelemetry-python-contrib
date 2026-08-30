@@ -27,6 +27,30 @@ from .celery_test_tasks import (
 )
 
 
+def wait_for(predicate, message, timeout_s=60):
+    """Poll ``predicate`` until it is true, failing the test if it never is."""
+    deadline = time.time() + timeout_s
+    while not predicate():
+        if time.time() > deadline:
+            raise AssertionError(f"timed out after {timeout_s}s waiting for {message}")
+        time.sleep(0.05)
+
+
+def wait_for_spans(exporter, span_count, timeout_s=60):
+    """Wait until ``span_count`` spans have been exported.
+
+    Celery stores the task result before it dispatches ``task_postrun``, and the
+    instrumentation ends the run span from ``task_postrun``. So an ``AsyncResult``
+    can be ready while the run span has not been ended and exported yet, and
+    waiting on ``result.ready()`` alone makes the span assertions racy.
+    """
+    wait_for(
+        lambda: len(exporter.get_finished_spans()) >= span_count,
+        f"{span_count} spans to be exported",
+        timeout_s,
+    )
+
+
 class TestCeleryInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
@@ -45,13 +69,9 @@ class TestCeleryInstrumentation(TestBase):
     def test_task(self):
         CeleryInstrumentor().instrument()
 
-        result = task_add.delay(1, 2)
+        task_add.delay(1, 2)
 
-        timeout = time.time() + 60 * 1  # 1 minutes from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
+        wait_for_spans(self.memory_exporter, 2)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
@@ -98,11 +118,13 @@ class TestCeleryInstrumentation(TestBase):
 
         result = task_add.delay(1, 2)
 
-        timeout = time.time() + 60 * 1  # 1 minutes from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
+        wait_for_spans(self.memory_exporter, 2)
+        # the cache is cleared a few statements after the run span is ended, in
+        # the same task_postrun receiver, so it needs its own wait
+        wait_for(
+            lambda: not instrumentor.task_id_to_start_time,
+            "the task start time cache to be cleared",
+        )
 
         self.assertTrue(result.ready())
         self.assertEqual(result.result, 3)
@@ -111,13 +133,9 @@ class TestCeleryInstrumentation(TestBase):
     def test_task_raises(self):
         CeleryInstrumentor().instrument()
 
-        result = task_raises.delay()
+        task_raises.delay()
 
-        timeout = time.time() + 60 * 1  # 1 minutes from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
+        wait_for_spans(self.memory_exporter, 2)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
@@ -218,11 +236,7 @@ class TestCeleryInstrumentation(TestBase):
 
         result = task_add.delay(1, 2)
 
-        timeout = time.time() + 60 * 1  # 1 minutes from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
+        wait_for_spans(self.memory_exporter, 2)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
@@ -235,13 +249,9 @@ class TestCeleryInstrumentation(TestBase):
     def test_task_use_span_links(self):
         CeleryInstrumentor().instrument(use_span_links=True)
 
-        result = task_add.delay(1, 2)
+        task_add.delay(1, 2)
 
-        timeout = time.time() + 60 * 1  # 1 minute from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
+        wait_for_spans(self.memory_exporter, 2)
 
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
@@ -314,9 +324,8 @@ class TestCelerySignatureTask(TestBase):
         # no-op since already instrumented
         CeleryInstrumentor().instrument()
 
-        res = app.signature("tests.test_tasks.hidden_task", (2,)).apply_async()
-        while not res.ready():
-            time.sleep(0.05)
+        app.signature("tests.test_tasks.hidden_task", (2,)).apply_async()
+        wait_for_spans(self.memory_exporter, 2)
         spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
         self.assertEqual(len(spans), 2)
 
