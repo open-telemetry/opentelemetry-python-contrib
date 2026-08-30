@@ -1,24 +1,23 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
 
 import google.genai.types as genai_types
 
 
 def create_response(
-    part: Optional[genai_types.Part] = None,
-    parts: Optional[list[genai_types.Part]] = None,
-    content: Optional[genai_types.Content] = None,
-    candidate: Optional[genai_types.Candidate] = None,
-    candidates: Optional[list[genai_types.Candidate]] = None,
-    text: Optional[str] = None,
-    input_tokens: Optional[int] = None,
-    thinking_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
-    cached_tokens: Optional[int] = None,
-    model_version: Optional[str] = None,
-    usage_metadata: Optional[genai_types.GenerateContentResponseUsageMetadata] = None,
+    part: genai_types.Part | None = None,
+    parts: list[genai_types.Part] | None = None,
+    content: genai_types.Content | None = None,
+    candidate: genai_types.Candidate | None = None,
+    candidates: list[genai_types.Candidate] | None = None,
+    text: str | None = None,
+    input_tokens: int | None = None,
+    thinking_tokens: int | None = None,
+    output_tokens: int | None = None,
+    cached_tokens: int | None = None,
+    model_version: str | None = None,
+    usage_metadata: genai_types.GenerateContentResponseUsageMetadata | None = None,
     **kwargs,
 ) -> genai_types.GenerateContentResponse:
     # Build up the "candidates" subfield
@@ -55,7 +54,7 @@ def create_response(
 
 
 def convert_to_response(
-    arg: Union[str, genai_types.GenerateContentResponse, dict],
+    arg: str | genai_types.GenerateContentResponse | dict,
 ) -> genai_types.GenerateContentResponse:
     if isinstance(arg, str):
         return create_response(text=arg)

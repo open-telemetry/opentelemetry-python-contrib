@@ -191,14 +191,12 @@ from __future__ import annotations
 
 import types
 import typing
+from collections.abc import Callable, Collection
 from timeit import default_timer
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Collection,
     TypedDict,
-    Union,
     cast,
 )
 from urllib.parse import urlparse
@@ -262,20 +260,18 @@ from opentelemetry.util.http import (
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
-    RequestHookT = typing.Optional[typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]]
-    ResponseHookT = typing.Optional[
-        typing.Callable[
+    UrlFilterT = Callable[[yarl.URL], str] | None
+    RequestHookT = Callable[[Span, aiohttp.TraceRequestStartParams], None] | None
+    ResponseHookT = (
+        Callable[
             [
                 Span,
-                typing.Union[
-                    aiohttp.TraceRequestEndParams,
-                    aiohttp.TraceRequestExceptionParams,
-                ],
+                aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
             ],
             None,
         ]
-    ]
+        | None
+    )
 
     class ClientSessionInitKwargs(TypedDict, total=False):
         trace_configs: typing.Sequence[aiohttp.TraceConfig]
@@ -302,7 +298,7 @@ def _get_span_name(method: str) -> str:
 def _set_http_status_code_attribute(
     span: Span,
     status_code: int,
-    metric_attributes: Union[dict[str, Any], None] = None,
+    metric_attributes: dict[str, Any] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     status_code_str = str(status_code)
@@ -331,12 +327,12 @@ def create_trace_config(
     url_filter: UrlFilterT = None,
     request_hook: RequestHookT = None,
     response_hook: ResponseHookT = None,
-    tracer_provider: Union[TracerProvider, None] = None,
-    meter_provider: Union[MeterProvider, None] = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: typing.Optional[list[str]] = None,
-    captured_response_headers: typing.Optional[list[str]] = None,
-    sensitive_headers: typing.Optional[list[str]] = None,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
 
@@ -610,16 +606,16 @@ def create_trace_config(
 
 
 def _instrument(
-    tracer_provider: Union[TracerProvider, None] = None,
-    meter_provider: Union[MeterProvider, None] = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
     url_filter: UrlFilterT = None,
     request_hook: RequestHookT = None,
     response_hook: ResponseHookT = None,
-    trace_configs: typing.Optional[typing.Sequence[aiohttp.TraceConfig]] = None,
+    trace_configs: typing.Sequence[aiohttp.TraceConfig] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: typing.Optional[list[str]] = None,
-    captured_response_headers: typing.Optional[list[str]] = None,
-    sensitive_headers: typing.Optional[list[str]] = None,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     """Enables tracing of all ClientSessions
 

@@ -80,9 +80,9 @@ from opentelemetry.instrumentation._labeler._internal import (
 
 __all__ = [
     "Labeler",
-    "get_labeler",
-    "set_labeler",
     "clear_labeler",
-    "get_labeler_attributes",
     "enrich_metric_attributes",
+    "get_labeler",
+    "get_labeler_attributes",
+    "set_labeler",
 ]
