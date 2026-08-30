@@ -74,8 +74,8 @@ Attributes Added to OpenTelemetry Log Records
 
 When ``LoggingHandler`` converts a standard library ``LogRecord`` to an OpenTelemetry log, it translates fields as follows:
 
-* **Standard fields**: ``record.getMessage()`` (or formatted text if a formatter is present) is mapped to the log ``body``, ``record.created`` is converted to nanosecond ``timestamp``, and ``record.levelname`` is mapped to ``severity_text`` and ``severity_number``.
-* **Extra attributes**: Any non-standard fields on ``record`` (e.g., fields passed via ``logger.info("msg", extra={...})``) are added as OpenTelemetry log attributes, excluding standard Python log record attributes.
+* **Standard fields**: ``record.getMessage()`` (or formatted text if a formatter is present) is mapped to the log ``body``, ``record.created`` is converted to nanosecond ``timestamp``, ``record.levelno`` is mapped to ``severity_number``, and ``record.levelname`` is mapped to ``severity_text`` (with ``WARNING`` emitted as ``WARN`` and ``CRITICAL`` as ``FATAL``).
+* **Extra attributes**: Any non-standard fields on ``record`` (e.g., fields passed via ``logger.info("msg", extra={{...}})``) are added as OpenTelemetry log attributes, excluding standard Python log record attributes and event-name fields promoted to ``event_name``.
 * **Code attributes** (optional): When ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES=true`` (or ``log_code_attributes=True``), the following code namespace attributes are attached:
     * ``code.file.path``: Path of the source file emitting the log (``record.pathname``).
     * ``code.function.name``: Name of the function emitting the log (``record.funcName``).
