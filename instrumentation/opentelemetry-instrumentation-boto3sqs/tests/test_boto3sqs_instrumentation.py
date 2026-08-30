@@ -4,7 +4,7 @@
 # pylint: disable=no-name-in-module
 
 from contextlib import contextmanager
-from typing import Any, Dict
+from typing import Any
 from unittest import TestCase, mock
 
 import boto3
@@ -190,7 +190,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         with mock.patch("botocore.endpoint.Endpoint.make_request", new=response_func):
             yield
 
-    def _assert_injected_span(self, msg_attrs: Dict[str, Any], span: Span):
+    def _assert_injected_span(self, msg_attrs: dict[str, Any], span: Span):
         trace_parent = msg_attrs["traceparent"]["StringValue"]
         ctx = span.get_span_context()
         self.assertEqual(
@@ -227,7 +227,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             "MessageAttributes": {},
         }
 
-    def _add_trace_parent(self, message: Dict[str, Any], trace_id: int, span_id: int):
+    def _add_trace_parent(self, message: dict[str, Any], trace_id: int, span_id: int):
         message["MessageAttributes"]["traceparent"] = {
             "StringValue": self._to_trace_parent(trace_id, span_id, TraceFlags.get_default()),
             "DataType": "String",

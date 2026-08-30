@@ -28,8 +28,9 @@ from __future__ import annotations
 
 import functools
 import threading
+from collections.abc import Callable, Collection
 from concurrent import futures
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from typing import TYPE_CHECKING, Any
 
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
