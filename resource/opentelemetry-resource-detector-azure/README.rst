@@ -28,7 +28,6 @@ Usage example for ``opentelemetry-resource-detector-azure``
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.resource.detector.azure.app_service import (
         AzureAppServiceResourceDetector,
-        AzureVMResourceDetector,
     )
     from opentelemetry.resource.detector.azure.vm import (
         AzureVMResourceDetector,

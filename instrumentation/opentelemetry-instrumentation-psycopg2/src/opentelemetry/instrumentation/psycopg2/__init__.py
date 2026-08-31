@@ -18,7 +18,7 @@ Usage
     # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
-    cnx = psycopg2.connect(database='Database')
+    cnx = psycopg2.connect(database="Database")
 
     cursor = cnx.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
@@ -32,7 +32,7 @@ Usage
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
     # Alternatively, use instrument_connection for an individual connection
-    cnx = psycopg2.connect(database='Database')
+    cnx = psycopg2.connect(database="Database")
     instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
@@ -57,10 +57,17 @@ For more information, see:
 
 .. code:: python
 
+    import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
     Psycopg2Instrumentor().instrument(enable_commenter=True)
 
+    # OR with specific connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+    )
 
 SQLCommenter with commenter_options
 ***********************************
@@ -148,8 +155,9 @@ import logging
 import threading
 import typing
 import weakref
+from collections.abc import Collection
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Collection
+from typing import Any
 
 import psycopg2
 from psycopg2.extensions import (
@@ -212,9 +220,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
         capture_parameters = kwargs.get("capture_parameters", False)
         dbapi.wrap_connect(
             __name__,
@@ -239,7 +245,10 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_connection(
         connection: PgConnection,
-        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        tracer_provider: trace_api.TracerProvider | None = None,
+        enable_commenter: bool = False,
+        commenter_options: dict[Any, Any] | None = None,
+        enable_attribute_commenter: bool = False,
     ) -> PgConnection:
         """Enable instrumentation in a psycopg2 connection.
 
@@ -252,6 +261,12 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             tracer_provider: opentelemetry.trace.TracerProvider, optional
                 The TracerProvider to use for instrumentation. If not specified,
                 the global TracerProvider will be used.
+            enable_commenter: bool, optional
+                Optional flag to enable/disable sqlcommenter (default False).
+            commenter_options: dict, optional
+                Optional configurations for tags to be appended at the sql query.
+            enable_attribute_commenter:
+                Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
 
         Returns:
             An instrumented psycopg2 connection object.
@@ -259,19 +274,18 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
         with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
             if connection in Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS:
-                _logger.warning(
-                    "Attempting to instrument Psycopg connection while already instrumented"
-                )
+                _logger.warning("Attempting to instrument Psycopg connection while already instrumented")
                 return connection
 
             original_cursor_factory = connection.cursor_factory
             connection.cursor_factory = _new_cursor_factory(
                 base_factory=original_cursor_factory,
                 tracer_provider=tracer_provider,
+                enable_commenter=enable_commenter,
+                commenter_options=commenter_options,
+                enable_attribute_commenter=enable_attribute_commenter,
             )
-            Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = (
-                original_cursor_factory
-            )
+            Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = original_cursor_factory
 
         return connection
 
@@ -283,11 +297,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         Restores the original `cursor_factory` from `_INSTRUMENTED_CONNECTIONS`.
         """
         with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
-            original_cursor_factory = (
-                Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(
-                    connection, None
-                )
-            )
+            original_cursor_factory = Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(connection, None)
         connection.cursor_factory = original_cursor_factory
 
         return connection
@@ -298,8 +308,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -337,7 +347,14 @@ class CursorTracer(dbapi.CursorTracer):
         return statement
 
 
-def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
+def _new_cursor_factory(
+    db_api: dbapi.DatabaseApiIntegration = None,
+    base_factory: type[pg_cursor] | None = None,
+    tracer_provider: trace_api.TracerProvider | None = None,
+    enable_commenter: bool = False,
+    commenter_options: dict[Any, Any] | None = None,
+    enable_attribute_commenter: bool = False,
+):
     if not db_api:
         db_api = DatabaseApiIntegration(
             __name__,
@@ -345,6 +362,10 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
             connection_attributes=Psycopg2Instrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg2,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     base_factory = base_factory or pg_cursor
@@ -352,18 +373,12 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
 
     class TracedCursorFactory(base_factory):
         def execute(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().execute, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().execute, *args, **kwargs)
 
         def executemany(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().executemany, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().executemany, *args, **kwargs)
 
         def callproc(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().callproc, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().callproc, *args, **kwargs)
 
     return TracedCursorFactory

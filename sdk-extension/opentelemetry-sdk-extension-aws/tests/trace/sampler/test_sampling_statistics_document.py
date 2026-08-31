@@ -25,9 +25,7 @@ class TestSamplingStatisticsDocument(TestCase):
         self.assertEqual(statistics.SampleCount, 0)
         self.assertEqual(statistics.RequestCount, 0)
 
-        statistics = _SamplingStatisticsDocument(
-            "client_id", "rule_name", 1, 2, 3
-        )
+        statistics = _SamplingStatisticsDocument("client_id", "rule_name", 1, 2, 3)
         self.assertEqual(statistics.ClientID, "client_id")
         self.assertEqual(statistics.RuleName, "rule_name")
         self.assertEqual(statistics.RequestCount, 1)

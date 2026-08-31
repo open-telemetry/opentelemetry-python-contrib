@@ -95,13 +95,8 @@ def test_sys_excepthook_emits_log(
     assert isinstance(attributes[exception_attributes.EXCEPTION_TYPE], str)
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
     assert isinstance(attributes[exception_attributes.EXCEPTION_MESSAGE], str)
-    assert (
-        "ValueError: boom"
-        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
-    )
-    assert isinstance(
-        attributes[exception_attributes.EXCEPTION_STACKTRACE], str
-    )
+    assert "ValueError: boom" in attributes[exception_attributes.EXCEPTION_STACKTRACE]
+    assert isinstance(attributes[exception_attributes.EXCEPTION_STACKTRACE], str)
 
 
 def test_threading_excepthook_emits_log(
@@ -118,9 +113,7 @@ def test_threading_excepthook_emits_log(
     instrumentor.instrument()
 
     exc = _raised_value_error()
-    args = threading.ExceptHookArgs(
-        (type(exc), exc, exc.__traceback__, threading.current_thread())
-    )
+    args = threading.ExceptHookArgs((type(exc), exc, exc.__traceback__, threading.current_thread()))
     threading.excepthook(args)
 
     log_record = _finished_log(log_exporter)
@@ -133,10 +126,7 @@ def test_threading_excepthook_emits_log(
     attributes = log_record.attributes
     assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
-    assert (
-        "ValueError: boom"
-        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
-    )
+    assert "ValueError: boom" in attributes[exception_attributes.EXCEPTION_STACKTRACE]
 
 
 def test_asyncio_unhandled_exception_emits_log(
@@ -177,10 +167,7 @@ def test_asyncio_unhandled_exception_emits_log(
     attributes = log_record.attributes
     assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
-    assert (
-        "ValueError: boom"
-        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
-    )
+    assert "ValueError: boom" in attributes[exception_attributes.EXCEPTION_STACKTRACE]
 
 
 def test_asyncio_unhandled_exception_called_with_kwarg_emits_log(
@@ -207,9 +194,7 @@ def test_asyncio_unhandled_exception_called_with_kwarg_emits_log(
     loop.set_exception_handler(lambda _loop, _context: None)
     try:
         exc = _raised_value_error()
-        loop.call_exception_handler(
-            context={"exception": exc, "message": "task boom"}
-        )
+        loop.call_exception_handler(context={"exception": exc, "message": "task boom"})
     finally:
         loop.close()
 
@@ -223,10 +208,7 @@ def test_asyncio_unhandled_exception_called_with_kwarg_emits_log(
     attributes = log_record.attributes
     assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
-    assert (
-        "ValueError: boom"
-        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
-    )
+    assert "ValueError: boom" in attributes[exception_attributes.EXCEPTION_STACKTRACE]
 
 
 def test_asyncio_unhandled_exception_invalid_call(

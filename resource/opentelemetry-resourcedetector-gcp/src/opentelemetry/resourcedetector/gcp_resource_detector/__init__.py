@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from opentelemetry.resourcedetector.gcp_resource_detector import (
     _faas,
@@ -40,9 +40,7 @@ class GoogleCloudResourceDetector(ResourceDetector):
 def _gke_resource() -> Resource:
     zone_or_region = _gke.availability_zone_or_region()
     zone_or_region_key = (
-        ResourceAttributes.CLOUD_AVAILABILITY_ZONE
-        if zone_or_region.type == "zone"
-        else ResourceAttributes.CLOUD_REGION
+        ResourceAttributes.CLOUD_AVAILABILITY_ZONE if zone_or_region.type == "zone" else ResourceAttributes.CLOUD_REGION
     )
     return _make_resource(
         {
@@ -121,9 +119,7 @@ def _make_resource(attrs: Mapping[str, AttributeValue]) -> Resource:
     return Resource(
         {
             ResourceAttributes.CLOUD_PROVIDER: "gcp",
-            ResourceAttributes.CLOUD_ACCOUNT_ID: _metadata.get_metadata()[
-                "project"
-            ]["projectId"],
+            ResourceAttributes.CLOUD_ACCOUNT_ID: _metadata.get_metadata()["project"]["projectId"],
             **attrs,
         }
     )

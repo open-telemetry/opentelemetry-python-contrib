@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from functools import lru_cache
-from typing import TypedDict, Union
+from functools import cache
+from typing import TypedDict
 
 import requests
 
@@ -21,15 +21,13 @@ class Project(TypedDict):
     projectId: str
 
 
-Attributes = TypedDict(
-    "Attributes", {"cluster-location": str, "cluster-name": str}, total=False
-)
+Attributes = TypedDict("Attributes", {"cluster-location": str, "cluster-name": str}, total=False)
 
 
 class Instance(TypedDict):
     attributes: Attributes
     # id can be an integer on GCE VMs or a string on other environments
-    id: Union[int, str]
+    id: int | str
     machineType: str
     name: str
     region: str
@@ -45,7 +43,7 @@ class MetadataAccessException(Exception):
     pass
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_metadata() -> Metadata:
     """Get all instance and project metadata from the metadata server
 
@@ -65,7 +63,7 @@ def get_metadata() -> Metadata:
     return all_metadata
 
 
-@lru_cache(maxsize=None)
+@cache
 def is_available() -> bool:
     try:
         requests.get(
