@@ -1297,6 +1297,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1355,6 +1357,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1389,6 +1393,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1462,6 +1468,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
