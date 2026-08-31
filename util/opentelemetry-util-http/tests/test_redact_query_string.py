@@ -92,5 +92,45 @@ class TestRedactQueryString(unittest.TestCase):
             "next=//exa[mple&Signature=REDACTED",
         )
 
+    def test_extra_question_mark_becomes_part_of_the_parameter_name(self):
+        # Only the first `?` delimits a query; later ones are legal query
+        # characters (RFC 3986), so this parameter is named `foo?Signature`
+        # rather than `Signature` and there is no sensitive key to redact.
+        self.assertEqual(
+            redact_query_string("foo?Signature=SECRET&baz"),
+            "foo?Signature=SECRET&baz",
+        )
+
+    def test_query_made_only_of_question_marks_round_trips(self):
+        query = "foo?bar&baz"
+        self.assertEqual(redact_query_string(query), query)
+
+    def test_redacts_sensitive_param_whose_value_holds_a_question_mark(self):
+        self.assertEqual(
+            redact_query_string("Signature=a?b&x=1"),
+            "Signature=REDACTED&x=1",
+        )
+
+    def test_question_mark_in_another_value_does_not_stop_redaction(self):
+        self.assertEqual(
+            redact_query_string("x=1?y=2&Signature=s"),
+            "x=1?y=2&Signature=REDACTED",
+        )
+
+    def test_extra_question_marks_match_redact_query_parameters(self):
+        # `parse_qs` reads a trailing `?` as part of the name too, so both
+        # helpers agree on which values survive a query with several `?`.
+        for query in (
+            "foo?Signature=SECRET&baz",
+            "x=1?Signature=SECRET",
+            "?Signature=SECRET",
+            "Signature=SECRET?b&x=1",
+        ):
+            with self.subTest(query=query):
+                self.assertEqual(
+                    "SECRET" in redact_query_string(query),
+                    "SECRET" in redact_query_parameters(f"/p?{query}"),
+                )
+
     def test_returns_str(self):
         self.assertIsInstance(redact_query_string("Signature=s"), str)

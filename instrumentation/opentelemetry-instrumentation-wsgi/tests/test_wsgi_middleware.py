@@ -705,6 +705,24 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertEqual(attrs[URL_PATH], "/safe/path")
         self.assert_no_secrets_leaked(attrs)
 
+    def test_request_attributes_redacts_target_with_several_question_marks(self):
+        # Only the first `?` delimits the query, so a later one stays inside
+        # the query and must not stop the real `Signature` being redacted.
+        query = "next=/x?y=1&Signature=SUPERSECRET"
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["QUERY_STRING"] = query
+        self.environ["RAW_URI"] = f"/download?{query}"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[HTTP_TARGET], "/download?next=/x?y=1&Signature=REDACTED")
+        self.assertEqual(attrs[URL_QUERY], "next=/x?y=1&Signature=REDACTED")
+        self.assertEqual(attrs[URL_PATH], "/download")
+        self.assert_no_secrets_leaked(attrs)
+
     def test_request_attributes_redacts_target_without_query_string(self):
         # PEP 3333 does not oblige a server to supply QUERY_STRING, so the
         # target must be redacted from its own query rather than from it.
