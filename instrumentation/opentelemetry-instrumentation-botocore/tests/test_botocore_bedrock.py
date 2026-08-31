@@ -22,6 +22,10 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+)
 from opentelemetry.trace.status import StatusCode
 
 from .bedrock_utils import (
@@ -94,6 +98,51 @@ def test_converse_with_content(
     output_tokens = response["usage"]["outputTokens"]
     metrics = metric_reader.get_metrics_data().resource_metrics
     assert_metrics(metrics, "chat", llm_model_value, input_tokens, output_tokens)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 38, 0),
+    reason="Prompt cache token usage not in the bedrock-runtime service model",
+)
+@pytest.mark.vcr()
+def test_converse_with_prompt_caching(
+    span_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    # A prefix is only cached once it clears the model minimum (1k tokens for
+    # Nova Micro), so pad the system prompt past it.
+    system_content = [
+        {"text": "You are a helpful assistant for instrumentation tests. " * 300},
+        {"cachePoint": {"type": "default"}},
+    ]
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+    llm_model_value = "us.amazon.nova-micro-v1:0"
+
+    # The first call writes the prefix to the cache, the second reads it back.
+    responses = [
+        bedrock_runtime_client.converse(
+            system=system_content,
+            messages=messages,
+            modelId=llm_model_value,
+            inferenceConfig={"maxTokens": 10},
+        )
+        for _ in range(2)
+    ]
+
+    write_span, read_span = span_exporter.get_finished_spans()
+
+    cache_write = responses[0]["usage"]["cacheWriteInputTokens"]
+    assert cache_write > 0
+    written = write_span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+    assert written == cache_write
+    assert isinstance(written, int)
+
+    cache_read = responses[1]["usage"]["cacheReadInputTokens"]
+    assert cache_read > 0
+    read = read_span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+    assert read == cache_read
+    assert isinstance(read, int)
 
 
 @pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
