@@ -16,6 +16,18 @@ Usage
     DjangoInstrumentor().instrument()
 
 
+ASGI support
+------------
+When running a Django application through ASGI, install the optional ASGI
+dependency so this instrumentation can use the ASGI context helpers:
+
+.. code:: console
+
+    pip install "opentelemetry-instrumentation-django[asgi]"
+
+Then instrument Django the same way as a WSGI application.
+
+
 Configuration
 -------------
 
@@ -288,9 +300,9 @@ API
 
 """
 
+from collections.abc import Collection
 from logging import getLogger
 from os import environ
-from typing import Collection
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured

@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -21,8 +20,8 @@ class FakeTracerProvider:
     def get_tracer(  # pylint: disable=no-self-use
         self,
         instrumenting_module_name: str,
-        instrumenting_library_version: Optional[str] = None,
-        schema_url: Optional[str] = None,
+        instrumenting_library_version: str | None = None,
+        schema_url: str | None = None,
     ) -> ProxyTracer:
         return ProxyTracer(
             instrumenting_module_name,
@@ -75,7 +74,7 @@ class TestLoggingInstrumentor(TestBase):
         super().tearDown()
         LoggingInstrumentor().uninstrument()
 
-    def assert_trace_context_injected(self, span_id, trace_id, trace_sampled):
+    def assert_trace_context_injected(self, span_id, trace_id, trace_sampled, resource_attributes):
         with self.caplog.at_level(level=logging.INFO):
             logger = logging.getLogger("test logger")
             logger.info("hello")
@@ -84,7 +83,7 @@ class TestLoggingInstrumentor(TestBase):
             self.assertEqual(record.otelSpanID, span_id)
             self.assertEqual(record.otelTraceID, trace_id)
             self.assertEqual(record.otelTraceSampled, trace_sampled)
-            self.assertEqual(record.otelServiceName, "unknown_service")
+            self.assertEqual(record.otelServiceName, resource_attributes["service.name"])
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"})
     @mock.patch("logging.basicConfig")
@@ -97,7 +96,7 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span_ctx.span_id, "016x")
             trace_id = format(span_ctx.trace_id, "032x")
             trace_sampled = span_ctx.trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
 
     @mock.patch("logging.basicConfig")
     def test_trace_context_injection_with_log_correlation_instrument_arg(self, basic_config_mock):
@@ -109,7 +108,7 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span_ctx.span_id, "016x")
             trace_id = format(span_ctx.trace_id, "032x")
             trace_sampled = span_ctx.trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
 
     def test_no_trace_context_injection_by_default(self):
         with self.tracer.start_as_current_span("s1"):
@@ -133,21 +132,21 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span_ctx.span_id, "016x")
             trace_id = format(span_ctx.trace_id, "032x")
             trace_sampled = span_ctx.trace_flags.sampled
-            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled, span.resource.attributes)
 
     @mock.patch("logging.basicConfig")
     def test_inject_trace_context_arg_without_span(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(inject_trace_context=True)
         basic_config_mock.assert_not_called()
-        self.assert_trace_context_injected("0", "0", False)
+        self.assert_trace_context_injected("0", "0", False, self.tracer.resource.attributes)
 
     @mock.patch("logging.basicConfig")
     def test_trace_context_injection_without_span(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(set_logging_format=True)
         basic_config_mock.assert_called_once_with(format=DEFAULT_LOGGING_FORMAT, level=logging.INFO)
-        self.assert_trace_context_injected("0", "0", False)
+        self.assert_trace_context_injected("0", "0", False, self.tracer.resource.attributes)
 
     @mock.patch("logging.basicConfig")
     def test_basic_config_called(self, basic_config_mock):
@@ -225,7 +224,7 @@ class TestLoggingInstrumentor(TestBase):
                 record = self.caplog.records[0]
                 self.assertEqual(record.otelSpanID, span_id)
                 self.assertEqual(record.otelTraceID, trace_id)
-                self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertEqual(record.otelServiceName, span.resource.attributes["service.name"])
                 self.assertEqual(record.otelTraceSampled, trace_sampled)
                 self.assertEqual(record.custom_user_attribute_from_log_hook, "some-value")
 

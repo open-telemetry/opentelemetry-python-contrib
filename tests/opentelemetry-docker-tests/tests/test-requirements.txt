@@ -20,6 +20,7 @@ greenlet==3.3.1
 grpcio==1.81.1
 idna==3.15
 iniconfig==2.0.0
+kafka-python==3.0.8
 kombu==5.3.5
 mysql-connector-python==8.3.0
 mysqlclient==2.1.1
