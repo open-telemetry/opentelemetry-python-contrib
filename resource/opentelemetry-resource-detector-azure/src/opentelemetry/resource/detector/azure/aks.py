@@ -6,11 +6,6 @@ from os import environ
 from pathlib import Path
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
-from opentelemetry.semconv.resource import (
-    CloudPlatformValues,
-    CloudProviderValues,
-    ResourceAttributes,
-)
 
 from ._constants import (
     _AKS_CLUSTER_RESOURCE_ID,
@@ -19,6 +14,11 @@ from ._constants import (
 )
 
 _logger = getLogger(__name__)
+
+_CLOUD_PLATFORM = "cloud.platform"
+_CLOUD_PROVIDER = "cloud.provider"
+_CLOUD_RESOURCE_ID = "cloud.resource_id"
+_K8S_CLUSTER_NAME = "k8s.cluster.name"
 
 
 def _extract_cluster_name(resource_id: str) -> str | None:
@@ -75,12 +75,12 @@ class AzureAKSResourceDetector(ResourceDetector):
             return Resource({})
 
         attributes = {
-            ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AZURE.value,
-            ResourceAttributes.CLOUD_PLATFORM: (CloudPlatformValues.AZURE_AKS.value),
-            ResourceAttributes.CLOUD_RESOURCE_ID: resource_id,
+            _CLOUD_PROVIDER: "azure",
+            _CLOUD_PLATFORM: "azure.aks",
+            _CLOUD_RESOURCE_ID: resource_id,
         }
         cluster_name = _extract_cluster_name(resource_id)
         if cluster_name:
-            attributes[ResourceAttributes.K8S_CLUSTER_NAME] = cluster_name
+            attributes[_K8S_CLUSTER_NAME] = cluster_name
 
         return Resource(attributes)

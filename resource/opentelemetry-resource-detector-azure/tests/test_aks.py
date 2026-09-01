@@ -25,7 +25,7 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         attributes = AzureAKSResourceDetector().detect().attributes
 
         self.assertEqual(attributes["cloud.provider"], "azure")
-        self.assertEqual(attributes["cloud.platform"], "azure_aks")
+        self.assertEqual(attributes["cloud.platform"], "azure.aks")
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
         self.assertEqual(attributes["k8s.cluster.name"], "test-aks-cluster")
         self.assertIsInstance(attributes["cloud.provider"], str)
