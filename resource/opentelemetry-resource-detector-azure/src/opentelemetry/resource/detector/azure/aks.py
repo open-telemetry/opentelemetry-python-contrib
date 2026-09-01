@@ -15,10 +15,19 @@ from ._constants import (
 
 _logger = getLogger(__name__)
 
+_CLOUD_ACCOUNT_ID = "cloud.account.id"
 _CLOUD_PLATFORM = "cloud.platform"
 _CLOUD_PROVIDER = "cloud.provider"
 _CLOUD_RESOURCE_ID = "cloud.resource_id"
 _K8S_CLUSTER_NAME = "k8s.cluster.name"
+
+
+def _extract_subscription_id(resource_id: str) -> str | None:
+    segments = resource_id.split("/")
+    for index, segment in enumerate(segments):
+        if segment.lower() == "subscriptions" and index < len(segments) - 1:
+            return segments[index + 1] or None
+    return None
 
 
 def _extract_cluster_name(resource_id: str) -> str | None:
@@ -79,6 +88,10 @@ class AzureAKSResourceDetector(ResourceDetector):
             _CLOUD_PLATFORM: "azure.aks",
             _CLOUD_RESOURCE_ID: resource_id,
         }
+        subscription_id = _extract_subscription_id(resource_id)
+        if subscription_id:
+            attributes[_CLOUD_ACCOUNT_ID] = subscription_id
+
         cluster_name = _extract_cluster_name(resource_id)
         if cluster_name:
             attributes[_K8S_CLUSTER_NAME] = cluster_name
