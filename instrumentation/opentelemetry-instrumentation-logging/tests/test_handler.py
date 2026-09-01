@@ -3,6 +3,7 @@
 
 import logging
 import os
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -35,6 +36,18 @@ class MutatingFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         record.my_special_attr = "my-special-attr-value"
         return super().format(record)
+
+
+def _make_record(name: str, msg: str = "test message") -> logging.LogRecord:
+    return logging.LogRecord(
+        name=name,
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg=msg,
+        args=(),
+        exc_info=None,
+    )
 
 
 # pylint: disable=too-many-public-methods
@@ -594,6 +607,66 @@ class TestLoggingHandler(unittest.TestCase):
         mock_get_logger.assert_called_once()
         _, call_kwargs = mock_get_logger.call_args
         self.assertIsNone(call_kwargs.get("attributes"))
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_reuses_logger_for_same_record_name(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        handler.emit(_make_record("same.name"))
+        handler.emit(_make_record("same.name"))
+        handler.emit(_make_record("same.name"))
+
+        mock_get_logger.assert_called_once()
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_misses_for_different_record_names(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        handler.emit(_make_record("name.a"))
+        handler.emit(_make_record("name.b"))
+
+        self.assertEqual(mock_get_logger.call_count, 2)
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_evicts_least_recently_used_entry(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        for i in range(128):
+            handler.emit(_make_record(f"logger.{i}"))
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.0"))
+        self.assertEqual(mock_get_logger.call_count, 0)
+
+        handler.emit(_make_record("logger.128"))
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.1"))
+        mock_get_logger.assert_called_once()
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.0"))
+        mock_get_logger.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_is_thread_local(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        def emit_twice():
+            handler.emit(_make_record("shared.name"))
+            handler.emit(_make_record("shared.name"))
+
+        threads = [threading.Thread(target=emit_twice) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(mock_get_logger.call_count, 4)
 
     def test_logging_handler_without_env_var_uses_default_limit(self):
         """Test that without OTEL_ATTRIBUTE_COUNT_LIMIT, default limit (128) should apply."""
