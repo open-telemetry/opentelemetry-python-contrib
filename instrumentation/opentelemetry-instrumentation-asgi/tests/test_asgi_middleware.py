@@ -366,6 +366,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Ensure modifiers is a list
         modifiers = modifiers or []
         # Check for expected outputs
+        self.assertTrue(outputs, "ASGI application produced no response messages")
         response_start = outputs[0]
         response_final_body = [output for output in outputs if output["type"] == "http.response.body"][-1]
 
@@ -393,6 +394,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         # Check spans
         span_list = self.get_finished_spans()
+
         expected_old = [
             {
                 "name": "GET / http receive",
@@ -891,6 +893,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
+        await self.communicator.wait()
         outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
