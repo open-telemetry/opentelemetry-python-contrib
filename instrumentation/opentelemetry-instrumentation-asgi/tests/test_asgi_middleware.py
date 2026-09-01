@@ -204,6 +204,8 @@ async def background_execution_asgi(scope, receive, send):
                 "body": b"*",
             }
         )
+        # Record when the background task starts; the server span must already be ended by now.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -245,7 +247,7 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "more_trailers": False,
             }
         )
-        # Wrapped send() ends the SERVER span before returning; record that instant.
+        # Record when the background task starts; the server span must already be ended by now.
         scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
@@ -617,10 +619,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        span_duration_nanos = server_span.end_time - server_span.start_time
         self.assertLessEqual(
-            span_duration_nanos,
-            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+            server_span.end_time,
+            self.scope["background_task_start_ns"],
         )
 
     async def test_exclude_internal_spans(self):
@@ -672,7 +673,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        self.assertIsNotNone(server_span.end_time)
         self.assertLessEqual(
             server_span.end_time,
             self.scope["background_task_start_ns"],
