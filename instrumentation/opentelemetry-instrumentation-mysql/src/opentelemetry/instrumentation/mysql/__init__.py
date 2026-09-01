@@ -138,7 +138,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import mysql.connector
 
@@ -168,9 +168,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
         dbapi.wrap_connect(
             __name__,

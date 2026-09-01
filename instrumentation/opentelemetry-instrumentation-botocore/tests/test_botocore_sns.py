@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import botocore.session
@@ -28,14 +28,10 @@ class TestSnsExtension(TestBase):
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.client = session.create_client("sns", region_name="us-west-2")
         self.topic_name = "my-topic"
-        self.topic_arn = (
-            f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
-        )
+        self.topic_arn = f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
 
     def tearDown(self):
         super().tearDown()
@@ -53,9 +49,7 @@ class TestSnsExtension(TestBase):
     @contextlib.contextmanager
     def _mocked_aws_endpoint(self, response):
         response_func = self._make_aws_response_func(response)
-        with mock.patch(
-            "botocore.endpoint.Endpoint.make_request", new=response_func
-        ):
+        with mock.patch("botocore.endpoint.Endpoint.make_request", new=response_func):
             yield
 
     @staticmethod
@@ -72,13 +66,11 @@ class TestSnsExtension(TestBase):
 
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(name, span.name)
-        self.assertEqual(
-            "aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM]
-        )
+        self.assertEqual("aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM])
 
         return span
 
-    def assert_injected_span(self, message_attrs: Dict[str, Any], span: Span):
+    def assert_injected_span(self, message_attrs: dict[str, Any], span: Span):
         # traceparent: <ver>-<trace-id>-<span-id>-<flags>
         trace_parent = message_attrs["traceparent"]["StringValue"].split("-")
         span_context = span.get_span_context()

@@ -3,7 +3,8 @@
 
 import abc
 import inspect
-from typing import Any, Dict, MutableMapping, Optional, Tuple
+from collections.abc import MutableMapping
+from typing import Any
 
 from opentelemetry.instrumentation.botocore.extensions._messaging import (
     inject_propagation_context,
@@ -41,9 +42,7 @@ class _SnsOperation(abc.ABC):
         return SpanKind.CLIENT
 
     @classmethod
-    def extract_attributes(
-        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
-    ):
+    def extract_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
         pass
 
     @classmethod
@@ -64,27 +63,17 @@ class _OpPublish(_SnsOperation):
         return SpanKind.PRODUCER
 
     @classmethod
-    def extract_attributes(
-        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
-    ):
-        span_name, destination_name = cls._extract_destination_name(
-            call_context
-        )
+    def extract_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
+        span_name, destination_name = cls._extract_destination_name(call_context)
 
         call_context.span_name = f"{span_name} send"
 
-        attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = (
-            MessagingDestinationKindValues.TOPIC.value
-        )
+        attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.TOPIC.value
         attributes[SpanAttributes.MESSAGING_DESTINATION] = destination_name
-        attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = (
-            destination_name
-        )
+        attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = destination_name
 
     @classmethod
-    def _extract_destination_name(
-        cls, call_context: _AwsSdkCallContext
-    ) -> Tuple[str, str]:
+    def _extract_destination_name(cls, call_context: _AwsSdkCallContext) -> tuple[str, str]:
         arn = cls._extract_input_arn(call_context)
         if arn:
             return arn.rsplit(":", 1)[-1], arn
@@ -98,9 +87,7 @@ class _OpPublish(_SnsOperation):
         return "unknown", "unknown"
 
     @classmethod
-    def _extract_input_arn(
-        cls, call_context: _AwsSdkCallContext
-    ) -> Optional[str]:
+    def _extract_input_arn(cls, call_context: _AwsSdkCallContext) -> str | None:
         for input_arn in cls._arn_arg_names:
             arn = call_context.params.get(input_arn)
             if arn:
@@ -113,9 +100,7 @@ class _OpPublish(_SnsOperation):
 
     @classmethod
     def _inject_span_into_entry(cls, entry: MutableMapping[str, Any]):
-        entry["MessageAttributes"] = inject_propagation_context(
-            entry.get("MessageAttributes")
-        )
+        entry["MessageAttributes"] = inject_propagation_context(entry.get("MessageAttributes"))
 
 
 class _OpPublishBatch(_OpPublish):
@@ -136,12 +121,16 @@ class _OpPublishBatch(_OpPublish):
 # SNS extension
 ################################################################################
 
-_OPERATION_MAPPING: Dict[str, _SnsOperation] = {
-    op.operation_name(): op
-    for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _SnsOperation)
-    and not inspect.isabstract(op)
+
+def _is_operation(op: object) -> bool:
+    try:
+        return inspect.isclass(op) and issubclass(op, _SnsOperation) and not inspect.isabstract(op)
+    except TypeError:
+        return False
+
+
+_OPERATION_MAPPING: dict[str, _SnsOperation] = {
+    op.operation_name(): op for op in globals().values() if _is_operation(op)
 }
 
 
@@ -161,9 +150,7 @@ class _SnsExtension(_AwsSdkExtension):
         if self._op:
             self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(
-        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
-    ):
+    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
         if self._op:
             self._op.before_service_call(self._call_context, span)
 
