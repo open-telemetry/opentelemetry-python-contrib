@@ -25,12 +25,35 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         attributes = AzureAKSResourceDetector().detect().attributes
 
         self.assertEqual(attributes["cloud.provider"], "azure")
-        self.assertEqual(attributes["cloud.platform"], "azure_aks")
+        self.assertEqual(attributes["cloud.platform"], "azure.aks")
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
+        self.assertEqual(attributes["cloud.account.id"], "test-sub")
         self.assertNotIn("k8s.cluster.name", attributes)
         self.assertIsInstance(attributes["cloud.provider"], str)
         self.assertIsInstance(attributes["cloud.platform"], str)
         self.assertIsInstance(attributes["cloud.resource_id"], str)
+        self.assertIsInstance(attributes["cloud.account.id"], str)
+
+    @patch.dict(
+        "os.environ",
+        {
+            "CLUSTER_RESOURCE_ID": (
+                "/Subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                "Microsoft.ContainerService/ManagedClusters/my-cluster"
+            )
+        },
+        clear=True,
+    )
+    def test_subscription_segment_is_case_insensitive(self) -> None:
+        attributes = AzureAKSResourceDetector().detect().attributes
+
+        self.assertEqual(attributes["cloud.account.id"], "test-sub")
+
+    @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": "standalone-name"}, clear=True)
+    def test_omits_account_id_without_subscription_segment(self) -> None:
+        attributes = AzureAKSResourceDetector().detect().attributes
+
+        self.assertNotIn("cloud.account.id", attributes)
 
     @patch.dict("os.environ", {}, clear=True)
     @patch(

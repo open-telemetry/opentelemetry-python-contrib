@@ -6,11 +6,6 @@ from os import environ
 from pathlib import Path
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
-from opentelemetry.semconv.resource import (
-    CloudPlatformValues,
-    CloudProviderValues,
-    ResourceAttributes,
-)
 
 from ._constants import (
     _AKS_CLUSTER_RESOURCE_ID,
@@ -19,6 +14,19 @@ from ._constants import (
 )
 
 _logger = getLogger(__name__)
+
+_CLOUD_ACCOUNT_ID = "cloud.account.id"
+_CLOUD_PLATFORM = "cloud.platform"
+_CLOUD_PROVIDER = "cloud.provider"
+_CLOUD_RESOURCE_ID = "cloud.resource_id"
+
+
+def _extract_subscription_id(resource_id: str) -> str | None:
+    segments = resource_id.split("/")
+    for index, segment in enumerate(segments):
+        if segment.lower() == "subscriptions" and index < len(segments) - 1:
+            return segments[index + 1] or None
+    return None
 
 
 def _parse_aks_metadata(content: str) -> str | None:
@@ -66,10 +74,13 @@ class AzureAKSResourceDetector(ResourceDetector):
         if not resource_id:
             return Resource({})
 
-        return Resource(
-            {
-                ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AZURE.value,
-                ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AZURE_AKS.value,
-                ResourceAttributes.CLOUD_RESOURCE_ID: resource_id,
-            }
-        )
+        attributes = {
+            _CLOUD_PROVIDER: "azure",
+            _CLOUD_PLATFORM: "azure.aks",
+            _CLOUD_RESOURCE_ID: resource_id,
+        }
+        subscription_id = _extract_subscription_id(resource_id)
+        if subscription_id:
+            attributes[_CLOUD_ACCOUNT_ID] = subscription_id
+
+        return Resource(attributes)
