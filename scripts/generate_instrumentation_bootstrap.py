@@ -49,28 +49,57 @@ packages_to_exclude = [
     # by manually adding it to their environment.
     # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
     "opentelemetry-instrumentation-aws-lambda",
-    # Google GenAI instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
+    # These GenAI instrumentations moved to opentelemetry-python-genai. Exclude the
+    # packages that remain here during the migration so bootstrap does not recommend
+    # their deprecated implementations.
     "opentelemetry-instrumentation-google-genai",
-    # OpenAI Agents instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-openai-agents-v2",
+    "opentelemetry-instrumentation-openai-v2",
 ]
 
 # Static version specifiers for instrumentations that are released independently
 independent_packages = {
-    "opentelemetry-instrumentation-openai-v2": "",
     "opentelemetry-instrumentation-vertexai": ">=2.0b0",
-    "opentelemetry-instrumentation-google-genai": "",
 }
+
+# GenAI instrumentations maintained in opentelemetry-python-genai are not visible to
+# get_instrumentation_packages(), which only scans this repository. Keep their
+# library requirements aligned with that repository's package metadata.
+external_instrumentations = [
+    (
+        "anthropic >= 0.51.0",
+        "opentelemetry-instrumentation-genai-anthropic>=1.0b0",
+    ),
+    (
+        "google-genai >= 1.32.0, <3",
+        "opentelemetry-instrumentation-google-genai>=1.0b1",
+    ),
+    (
+        "langchain >= 0.3.21",
+        "opentelemetry-instrumentation-genai-langchain>=1.0b0",
+    ),
+    (
+        "openai >= 1.26.0",
+        "opentelemetry-instrumentation-genai-openai>=1.0b0",
+    ),
+    (
+        "openai-agents >= 0.3.3",
+        "opentelemetry-instrumentation-genai-openai-agents>=1.0b0",
+    ),
+]
 
 
 def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
+    for target_pkg, instrumentation in external_instrumentations:
+        libraries.elts.append(
+            ast.Dict(
+                keys=[ast.Str("library"), ast.Str("instrumentation")],
+                values=[ast.Str(target_pkg), ast.Str(instrumentation)],
+            )
+        )
     for pkg in get_instrumentation_packages(independent_packages=independent_packages):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
