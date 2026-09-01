@@ -637,10 +637,7 @@ def _set_messaging_system(
     system: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.MESSAGING_SYSTEM, system)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, messaging_attributes.MESSAGING_SYSTEM, system)
+    set_string_attribute(result, messaging_attributes.MESSAGING_SYSTEM, system)
 
 
 def _set_messaging_operation(
@@ -684,10 +681,7 @@ def _set_messaging_message_id(
     message_id: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
+    set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
 
 
 def _set_messaging_conversation_id(
