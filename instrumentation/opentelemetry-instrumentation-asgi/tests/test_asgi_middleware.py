@@ -245,6 +245,8 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "more_trailers": False,
             }
         )
+        # Wrapped send() ends the SERVER span before returning; record that instant.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -670,10 +672,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        span_duration_nanos = server_span.end_time - server_span.start_time
+        self.assertIsNotNone(server_span.end_time)
         self.assertLessEqual(
-            span_duration_nanos,
-            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+            server_span.end_time,
+            self.scope["background_task_start_ns"],
         )
 
     async def test_override_span_name(self):
