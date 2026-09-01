@@ -574,9 +574,7 @@ class TestLoggingHandler(unittest.TestCase):
     def test_scope_attributes_appear_on_instrumentation_scope(self):
         """scope_attributes end up on the instrumentation scope of emitted records."""
         scope_attrs = {"service.name": "test-service"}
-        processor, logger, handler = set_up_test_logging(
-            logging.WARNING, scope_attributes=scope_attrs
-        )
+        processor, logger, handler = set_up_test_logging(logging.WARNING, scope_attributes=scope_attrs)
         self.addCleanup(logger.removeHandler, handler)
 
         with self.assertLogs(level=logging.WARNING):

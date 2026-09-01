@@ -142,9 +142,7 @@ class LoggingHandler(logging.Handler):
 
     def _get_logger(self, name: str) -> Logger:
         # One lru_cache per thread avoids lock contention
-        cached_get_logger: Callable[[str], Logger] | None = getattr(
-            self._thread_local, "cached_get_logger", None
-        )
+        cached_get_logger: Callable[[str], Logger] | None = getattr(self._thread_local, "cached_get_logger", None)
         if cached_get_logger is None:
             logger_provider = self._logger_provider
             scope_attributes = self._scope_attributes
