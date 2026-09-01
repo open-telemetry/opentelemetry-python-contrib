@@ -636,7 +636,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1 + 1;")).fetchall()
 
-        for _ in range(0, 5):
+        for _ in range(5):
             make_shortlived_engine()
 
         gc.collect()

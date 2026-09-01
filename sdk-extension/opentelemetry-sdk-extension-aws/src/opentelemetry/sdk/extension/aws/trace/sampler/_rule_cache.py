@@ -7,9 +7,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from logging import getLogger
 from threading import Lock
-from typing import Dict, List, Sequence
 
 # pylint: disable=no-name-in-module
 from opentelemetry.context import Context
@@ -49,7 +49,7 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
         lock: Lock,
     ):
         self.__client_id = client_id
-        self.__rule_appliers: List[_SamplingRuleApplier] = []
+        self.__rule_appliers: list[_SamplingRuleApplier] = []
         self.__cache_lock = lock
         self.__resource = resource
         self._fallback_sampler = fallback_sampler
@@ -63,9 +63,9 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         rule_applier: _SamplingRuleApplier
         for rule_applier in self.__rule_appliers:
             if rule_applier.matches(self.__resource, attributes):
@@ -91,9 +91,9 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             trace_state=trace_state,
         )
 
-    def update_sampling_rules(self, new_sampling_rules: List[_SamplingRule]) -> None:
+    def update_sampling_rules(self, new_sampling_rules: list[_SamplingRule]) -> None:
         new_sampling_rules.sort()
-        temp_rule_appliers: List[_SamplingRuleApplier] = []
+        temp_rule_appliers: list[_SamplingRuleApplier] = []
         for sampling_rule in new_sampling_rules:
             if sampling_rule.RuleName == "":
                 _logger.debug("sampling rule without rule name is not supported")
@@ -108,7 +108,7 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
 
         with self.__cache_lock:
             # map list of rule appliers by each applier's sampling_rule name
-            rule_applier_map: Dict[str, _SamplingRuleApplier] = {
+            rule_applier_map: dict[str, _SamplingRuleApplier] = {
                 applier.sampling_rule.RuleName: applier for applier in self.__rule_appliers
             }
 
@@ -124,15 +124,15 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             self._last_modified = self._clock.now()
 
     def update_sampling_targets(self, sampling_targets_response: _SamplingTargetResponse):
-        targets: List[_SamplingTarget] = sampling_targets_response.SamplingTargetDocuments
+        targets: list[_SamplingTarget] = sampling_targets_response.SamplingTargetDocuments
 
         with self.__cache_lock:
             next_polling_interval = DEFAULT_TARGET_POLLING_INTERVAL_SECONDS
             min_polling_interval = None
 
-            target_map: Dict[str, _SamplingTarget] = {target.RuleName: target for target in targets}
+            target_map: dict[str, _SamplingTarget] = {target.RuleName: target for target in targets}
 
-            new_appliers: List[_SamplingRuleApplier] = []
+            new_appliers: list[_SamplingRuleApplier] = []
             applier: _SamplingRuleApplier
             for applier in self.__rule_appliers:
                 if applier.sampling_rule.RuleName in target_map:
@@ -156,7 +156,7 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             return (refresh_rules, next_polling_interval)
 
     def get_all_statistics(self):
-        all_statistics: list[dict[str, "str | float | int"]] = []
+        all_statistics: list[dict[str, str | float | int]] = []
         applier: _SamplingRuleApplier
         for applier in self.__rule_appliers:
             all_statistics.append(applier.get_then_reset_statistics())
