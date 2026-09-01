@@ -60,8 +60,9 @@ from __future__ import annotations
 
 # pylint: disable=no-name-in-module, no-member
 import logging
+from collections.abc import Callable, Collection
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Collection, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import oracledb
 import oracledb.connection as _oracledb_connection_module

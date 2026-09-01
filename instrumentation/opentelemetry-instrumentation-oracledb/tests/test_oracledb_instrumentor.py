@@ -551,6 +551,4 @@ class TestOracleDBInstrumentorAsync(
                     pass
 
         connection.cursor.return_value.__enter__.assert_called_once_with()
-        connection.cursor.return_value.__exit__.assert_called_once_with(
-            None, None, None
-        )
+        connection.cursor.return_value.__exit__.assert_called_once_with(None, None, None)
