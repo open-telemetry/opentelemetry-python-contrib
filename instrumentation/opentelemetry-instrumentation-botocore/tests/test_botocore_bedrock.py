@@ -145,6 +145,54 @@ def test_converse_with_prompt_caching(
     assert isinstance(read, int)
 
 
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 38, 0),
+    reason="Prompt cache token usage not in the bedrock-runtime service model",
+)
+@pytest.mark.vcr()
+def test_converse_stream_with_prompt_caching(
+    span_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    # A prefix is only cached once it clears the model minimum (1k tokens for
+    # Nova Micro), so pad the system prompt past it.
+    system_content = [
+        {"text": "You are a helpful assistant for streaming tests. " * 300},
+        {"cachePoint": {"type": "default"}},
+    ]
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+    llm_model_value = "us.amazon.nova-micro-v1:0"
+
+    # The first call writes the prefix to the cache, the second reads it back.
+    usages = []
+    for _ in range(2):
+        response = bedrock_runtime_client.converse_stream(
+            system=system_content,
+            messages=messages,
+            modelId=llm_model_value,
+            inferenceConfig={"maxTokens": 10},
+        )
+        # consume the stream in order to have it traced
+        for event in response["stream"]:
+            if "metadata" in event:
+                usages.append(event["metadata"]["usage"])
+
+    write_span, read_span = span_exporter.get_finished_spans()
+
+    cache_write = usages[0]["cacheWriteInputTokens"]
+    assert cache_write > 0
+    written = write_span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+    assert written == cache_write
+    assert isinstance(written, int)
+
+    cache_read = usages[1]["cacheReadInputTokens"]
+    assert cache_read > 0
+    read = read_span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+    assert read == cache_read
+    assert isinstance(read, int)
+
+
 @pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
 @pytest.mark.vcr()
 def test_converse_with_content_different_events(
