@@ -80,6 +80,8 @@ def _make_mock_async_connection(
     cursor.execute = AsyncMock()
     cursor.executemany = AsyncMock()
     cursor.callproc = AsyncMock()
+    cursor.__enter__.return_value = cursor
+    cursor.__exit__.return_value = None
     cursor.__aenter__ = AsyncMock(return_value=cursor)
     cursor.__aexit__ = AsyncMock(return_value=None)
 
@@ -527,3 +529,28 @@ class TestOracleDBInstrumentorAsync(
         connection.__aenter__.assert_awaited_once_with()
         connection.__aexit__.assert_awaited_once_with(None, None, None)
         self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
+    async def test_cursor_from_async_connection_supports_sync_context_manager(
+        self,
+    ):
+        connection = _make_mock_async_connection()
+        with (
+            patch.object(
+                oracledb,
+                "connect_async",
+                MagicMock(return_value=connection),
+            ),
+            self._instrumented(),
+        ):
+            async with oracledb.connect_async(
+                user="scott",
+                password="tiger",
+                dsn="localhost/freepdb1",
+            ) as instrumented:
+                with instrumented.cursor():
+                    pass
+
+        connection.cursor.return_value.__enter__.assert_called_once_with()
+        connection.cursor.return_value.__exit__.assert_called_once_with(
+            None, None, None
+        )

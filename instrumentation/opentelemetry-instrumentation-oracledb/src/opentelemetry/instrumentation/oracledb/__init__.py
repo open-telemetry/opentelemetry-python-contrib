@@ -127,6 +127,13 @@ class _AsyncTracedCursorProxy:
     def __getattr__(self, name: str) -> Any:
         return getattr(self.__wrapped__, name)
 
+    def __enter__(self) -> _AsyncTracedCursorProxy:
+        self.__wrapped__.__enter__()
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.__wrapped__.__exit__(*args, **kwargs)
+
     async def __aenter__(self) -> _AsyncTracedCursorProxy:
         await self.__wrapped__.__aenter__()
         return self
