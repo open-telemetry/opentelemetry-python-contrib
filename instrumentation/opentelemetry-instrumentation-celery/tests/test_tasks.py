@@ -231,6 +231,11 @@ class TestCeleryInstrumentation(TestBase):
             "retrieve_context",
             _retrieve_context_wrapper_none_token,
         )
+        # Unconditional: an assertion or a wait_for_spans timeout below would
+        # otherwise skip the cleanup and leave retrieve_context patched for the
+        # rest of the process, since tearDown only uninstruments and never
+        # unwraps this module-level patch.
+        self.addCleanup(unwrap, utils, "retrieve_context")
 
         CeleryInstrumentor().instrument()
 
@@ -243,8 +248,6 @@ class TestCeleryInstrumentation(TestBase):
 
         # TODO: assert we don't have "TypeError: expected an instance of Token, got None" in logs
         self.assertTrue(result)
-
-        unwrap(utils, "retrieve_context")
 
     def test_task_use_span_links(self):
         CeleryInstrumentor().instrument(use_span_links=True)
