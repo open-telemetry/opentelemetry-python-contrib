@@ -58,7 +58,6 @@ Attributes:
  * ``cloud.platform`` set to ``azure_aks``.
  * ``cloud.provider`` set to ``azure``.
  * ``cloud.resource_id`` set to the full Azure Resource Manager cluster resource ID.
- * ``k8s.cluster.name`` set to the cluster name extracted from the resource ID.
 
 The native AKS ConfigMap is named ``aks-cluster-metadata`` and contains a
 ``clusterResourceId`` key. It can be exposed to a pod as an environment variable:

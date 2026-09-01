@@ -27,32 +27,10 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         self.assertEqual(attributes["cloud.provider"], "azure")
         self.assertEqual(attributes["cloud.platform"], "azure_aks")
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
-        self.assertEqual(attributes["k8s.cluster.name"], "test-aks-cluster")
+        self.assertNotIn("k8s.cluster.name", attributes)
         self.assertIsInstance(attributes["cloud.provider"], str)
         self.assertIsInstance(attributes["cloud.platform"], str)
         self.assertIsInstance(attributes["cloud.resource_id"], str)
-        self.assertIsInstance(attributes["k8s.cluster.name"], str)
-
-    @patch.dict(
-        "os.environ",
-        {
-            "CLUSTER_RESOURCE_ID": (
-                "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
-                "Microsoft.ContainerService/ManagedClusters/my-cluster"
-            )
-        },
-        clear=True,
-    )
-    def test_cluster_name_resource_type_is_case_insensitive(self) -> None:
-        attributes = AzureAKSResourceDetector().detect().attributes
-
-        self.assertEqual(attributes["k8s.cluster.name"], "my-cluster")
-
-    @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": "standalone-name"}, clear=True)
-    def test_cluster_name_falls_back_to_last_segment(self) -> None:
-        attributes = AzureAKSResourceDetector().detect().attributes
-
-        self.assertEqual(attributes["k8s.cluster.name"], "standalone-name")
 
     @patch.dict("os.environ", {}, clear=True)
     @patch(
@@ -78,7 +56,6 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
                 attributes = AzureAKSResourceDetector().detect().attributes
 
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
-        self.assertEqual(attributes["k8s.cluster.name"], "test-aks-cluster")
 
     @patch.dict("os.environ", {}, clear=True)
     def test_detects_aks_from_subpath_mount(self) -> None:
@@ -144,7 +121,11 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
     def test_environment_takes_precedence_over_file(self) -> None:
         attributes = self._detect_from_file(TEST_RESOURCE_ID)
 
-        self.assertEqual(attributes["k8s.cluster.name"], "from-env")
+        self.assertEqual(
+            attributes["cloud.resource_id"],
+            "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+            "Microsoft.ContainerService/managedClusters/from-env",
+        )
 
     @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")

@@ -21,14 +21,6 @@ from ._constants import (
 _logger = getLogger(__name__)
 
 
-def _extract_cluster_name(resource_id: str) -> str | None:
-    segments = resource_id.split("/")
-    for index, segment in enumerate(segments):
-        if segment.lower() == "managedclusters" and index < len(segments) - 1:
-            return segments[index + 1]
-    return segments[-1] or None
-
-
 def _parse_aks_metadata(content: str) -> str | None:
     keyed_resource_id: str | None = None
     bare_values: list[str] = []
@@ -74,13 +66,10 @@ class AzureAKSResourceDetector(ResourceDetector):
         if not resource_id:
             return Resource({})
 
-        attributes = {
-            ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AZURE.value,
-            ResourceAttributes.CLOUD_PLATFORM: (CloudPlatformValues.AZURE_AKS.value),
-            ResourceAttributes.CLOUD_RESOURCE_ID: resource_id,
-        }
-        cluster_name = _extract_cluster_name(resource_id)
-        if cluster_name:
-            attributes[ResourceAttributes.K8S_CLUSTER_NAME] = cluster_name
-
-        return Resource(attributes)
+        return Resource(
+            {
+                ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AZURE.value,
+                ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AZURE_AKS.value,
+                ResourceAttributes.CLOUD_RESOURCE_ID: resource_id,
+            }
+        )
