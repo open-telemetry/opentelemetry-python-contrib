@@ -86,7 +86,7 @@ def test_sys_excepthook_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "FATAL"
     assert log_record.severity_number == SeverityNumber.FATAL
-    assert log_record.event_name == "ValueError"
+    assert log_record.event_name == "exception"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -119,7 +119,7 @@ def test_threading_excepthook_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "ERROR"
     assert log_record.severity_number == SeverityNumber.ERROR
-    assert log_record.event_name == "ValueError"
+    assert log_record.event_name == "exception"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -160,7 +160,7 @@ def test_asyncio_unhandled_exception_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "ERROR"
     assert log_record.severity_number == SeverityNumber.ERROR
-    assert log_record.event_name == "task boom"
+    assert log_record.event_name == "exception"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -201,7 +201,7 @@ def test_asyncio_unhandled_exception_called_with_kwarg_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "ERROR"
     assert log_record.severity_number == SeverityNumber.ERROR
-    assert log_record.event_name == "task boom"
+    assert log_record.event_name == "exception"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -245,15 +245,15 @@ def test_asyncio_unhandled_exception_invalid_call(
 
 
 @pytest.mark.parametrize(
-    ("message", "expected_event_name"),
-    ((None, "ValueError"), (42, "42")),
+    ("message", "expected_body"),
+    ((None, ""), (42, "42"), ("task boom", "task boom")),
 )
-def test_asyncio_event_name_falls_back_or_coerces(
+def test_asyncio_body_falls_back_to_loop_message(
     log_exporter: InMemoryLogRecordExporter,
     monkeypatch: pytest.MonkeyPatch,
     instrumentor: UnhandledExceptionInstrumentor,
     message: object,
-    expected_event_name: str,
+    expected_body: str,
 ) -> None:
     monkeypatch.setattr(
         asyncio.BaseEventLoop,
@@ -265,12 +265,16 @@ def test_asyncio_event_name_falls_back_or_coerces(
     loop = asyncio.new_event_loop()
     loop.set_exception_handler(lambda _loop, _context: None)
     try:
-        exc = _raised_value_error()
+        # An exception without arguments stringifies to "", so the body falls
+        # back to the event loop message.
+        exc = ValueError()
         loop.call_exception_handler({"exception": exc, "message": message})
     finally:
         loop.close()
 
-    assert _finished_log(log_exporter).event_name == expected_event_name
+    log_record = _finished_log(log_exporter)
+    assert log_record.event_name == "exception"
+    assert log_record.body == expected_body
 
 
 def test_base_exceptions_are_not_emitted(
