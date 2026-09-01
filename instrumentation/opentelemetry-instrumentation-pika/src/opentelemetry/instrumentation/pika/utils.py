@@ -16,6 +16,7 @@ from wrapt import ObjectProxy
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
@@ -167,14 +168,17 @@ def _enrich_span(
     task_destination: str,
     operation: MessagingOperationValues | None = None,
 ) -> None:
-    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq")
+    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq")
     if operation:
         span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
     else:
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
     if properties.message_id:
-        span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id)
+        span.set_attribute(
+            messaging_attributes.MESSAGING_MESSAGE_ID,
+            properties.message_id,
+        )
     if properties.correlation_id:
         span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id)
     if not channel:
