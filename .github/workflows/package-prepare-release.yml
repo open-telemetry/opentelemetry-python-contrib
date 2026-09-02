@@ -28,7 +28,7 @@ jobs:
       release_branch_name: ${{ steps.verify.outputs.release_branch_name }}
       next_version: ${{ steps.verify.outputs.next_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -96,7 +96,7 @@ jobs:
       contents: write # required for pushing branches
       pull-requests: write # required for creating pull requests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set environment variables
         run: |
@@ -116,7 +116,7 @@ jobs:
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${VERSION}\"/g" $VERSION_FILE
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.10'
       - name: Install tox
@@ -161,7 +161,7 @@ jobs:
       contents: write # required for pushing branches
       pull-requests: write # required for creating pull requests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set environment variables
         run: |
@@ -177,7 +177,7 @@ jobs:
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${NEXT_VERSION}.dev\"/g" $VERSION_FILE
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.10'
       - name: Install tox
