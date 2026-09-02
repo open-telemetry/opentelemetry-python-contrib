@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from opentelemetry.resourcedetector.gcp_resource_detector import (
     _faas,
