@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-confluent-kafka`: forward unproxied methods to the wrapped producer/consumer
