@@ -5,6 +5,7 @@ from os import environ
 
 from opentelemetry.resource.detector.azure._utils import (
     _get_azure_resource_uri,
+    _get_azure_subscription_id,
     _is_on_functions,
 )
 from opentelemetry.sdk.resources import Resource, ResourceDetector
@@ -14,7 +15,12 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,
 )
 
-from ._constants import _APP_SERVICE_ATTRIBUTE_ENV_VARS, _WEBSITE_SITE_NAME
+from ._constants import (
+    _APP_SERVICE_ATTRIBUTE_ENV_VARS,
+    _AZURE_RESOURCE_GROUP_NAME_RESOURCE_ATTRIBUTE,
+    _WEBSITE_RESOURCE_GROUP,
+    _WEBSITE_SITE_NAME,
+)
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
@@ -27,6 +33,14 @@ class AzureAppServiceResourceDetector(ResourceDetector):
                 attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
                 attributes[ResourceAttributes.CLOUD_PLATFORM] = CloudPlatformValues.AZURE_APP_SERVICE.value
             attributes[ResourceAttributes.CLOUD_PROVIDER] = CloudProviderValues.AZURE.value
+
+            subscription_id = _get_azure_subscription_id()
+            if subscription_id:
+                attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] = subscription_id
+
+            resource_group = environ.get(_WEBSITE_RESOURCE_GROUP)
+            if resource_group:
+                attributes[_AZURE_RESOURCE_GROUP_NAME_RESOURCE_ATTRIBUTE] = resource_group
 
             azure_resource_uri = _get_azure_resource_uri()
             if azure_resource_uri:
