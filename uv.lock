@@ -2623,7 +2623,6 @@ source = { editable = "opentelemetry-instrumentation" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-semantic-conventions" },
-    { name = "packaging" },
     { name = "wrapt" },
 ]
 
@@ -2631,7 +2630,6 @@ dependencies = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "packaging", specifier = ">=18.0" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 
@@ -3681,7 +3679,6 @@ dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
-    { name = "packaging" },
     { name = "wrapt" },
 ]
 
@@ -3695,7 +3692,6 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "packaging", specifier = ">=21.0" },
     { name = "sqlalchemy", marker = "extra == 'instruments'", specifier = ">=1.0.0,<2.1.0" },
     { name = "wrapt", specifier = ">=1.11.2" },
 ]
