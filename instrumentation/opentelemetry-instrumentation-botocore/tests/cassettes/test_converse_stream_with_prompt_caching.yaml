@@ -1,0 +1,196 @@
+interactions:
+- request:
+    body: |-
+      {
+        "system": [
+          {
+            "text": "You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. "
+          },
+          {
+            "cachePoint": {
+              "type": "default"
+            }
+          }
+        ],
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10
+        }
+      }
+    headers:
+      Content-Length:
+      - '14878'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.43.0 md/Botocore#1.43.0 ua/2.1 os/macos#25.5.0 md/arch#arm64 lang/python#3.12.13
+        md/pyimpl#CPython m/Z,b,g,D cfg/retry-mode#legacy Botocore/1.43.0
+      X-Amz-Date:
+      - 20260901T130459Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-dbb8d44b-cc7cbf6c084807b6ce94eccb;Parent=a78c7c8afc033eb6;Sampled=1
+      amz-sdk-invocation-id:
+      - 5b699213-ade8-4b13-9100-de3785a6da64
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-micro-v1%3A0/converse-stream
+  response:
+    body:
+      string: !!binary |
+        AAAAgQAAAFJswXaTCzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
+        cHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsicCI6ImFiY2QiLCJyb2xlIjoi
+        YXNzaXN0YW50In31EqAFAAAA2AAAAFcpqC+mCzpldmVudC10eXBlBwARY29udGVudEJsb2NrRGVs
+        dGENOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50
+        eyJjb250ZW50QmxvY2tJbmRleCI6MCwiZGVsdGEiOnsidGV4dCI6IkdvdCJ9LCJwIjoiYWJjZGVm
+        Z2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjAxMjM0NTY3In3+
+        5Jr4AAAAywAAAFcO6ML0CzpldmVudC10eXBlBwARY29udGVudEJsb2NrRGVsdGENOmNvbnRlbnQt
+        dHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJjb250ZW50Qmxv
+        Y2tJbmRleCI6MCwiZGVsdGEiOnsidGV4dCI6IiBpdCwifSwicCI6ImFiY2RlZmdoaWprbG1ub3Bx
+        cnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1QifeAWEPgAAADYAAAAVymoL6YLOmV2ZW50LXR5
+        cGUHABFjb250ZW50QmxvY2tEZWx0YQ06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24vanNvbg06
+        bWVzc2FnZS10eXBlBwAFZXZlbnR7ImNvbnRlbnRCbG9ja0luZGV4IjowLCJkZWx0YSI6eyJ0ZXh0
+        IjoiIHRoaXMgaXMgYSB0ZXN0In0sInAiOiJhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ekFCQ0RF
+        RkdISUpLTE1OT1BRUlNUVVYifYO5PsUAAAC6AAAAV8paC4sLOmV2ZW50LXR5cGUHABFjb250ZW50
+        QmxvY2tEZWx0YQ06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24vanNvbg06bWVzc2FnZS10eXBl
+        BwAFZXZlbnR7ImNvbnRlbnRCbG9ja0luZGV4IjowLCJkZWx0YSI6eyJ0ZXh0IjoiLiBJZiJ9LCJw
+        IjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkMifan3oQoAAADLAAAAVw7owvQLOmV2ZW50
+        LXR5cGUHABFjb250ZW50QmxvY2tEZWx0YQ06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24vanNv
+        bg06bWVzc2FnZS10eXBlBwAFZXZlbnR7ImNvbnRlbnRCbG9ja0luZGV4IjowLCJkZWx0YSI6eyJ0
+        ZXh0IjoiIHlvdSJ9LCJwIjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xN
+        Tk9QUVJTVCJ9QfY99QAAALQAAABWAm2FfAs6ZXZlbnQtdHlwZQcAEGNvbnRlbnRCbG9ja1N0b3AN
+        OmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJj
+        b250ZW50QmxvY2tJbmRleCI6MCwicCI6ImFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVG
+        R0hJSktMTU5PUFFSU1RVViJ9qr7BagAAAJ0AAABRUNhdqgs6ZXZlbnQtdHlwZQcAC21lc3NhZ2VT
+        dG9wDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVu
+        dHsicCI6ImFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6Iiwic3RvcFJlYXNvbiI6Im1heF90b2tl
+        bnMiffFcPUYAAAF8AAAATgM4bZULOmV2ZW50LXR5cGUHAAhtZXRhZGF0YQ06Y29udGVudC10eXBl
+        BwAQYXBwbGljYXRpb24vanNvbg06bWVzc2FnZS10eXBlBwAFZXZlbnR7Im1ldHJpY3MiOnsibGF0
+        ZW5jeU1zIjo0NTR9LCJwIjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xN
+        Tk9QUVJTVFVWV1giLCJ1c2FnZSI6eyJjYWNoZVJlYWRJbnB1dFRva2VuQ291bnQiOjAsImNhY2hl
+        UmVhZElucHV0VG9rZW5zIjowLCJjYWNoZVdyaXRlSW5wdXRUb2tlbkNvdW50IjoyNzAxLCJjYWNo
+        ZVdyaXRlSW5wdXRUb2tlbnMiOjI3MDEsImlucHV0VG9rZW5zIjo0LCJvdXRwdXRUb2tlbnMiOjEw
+        LCJzZXJ2ZXJUb29sVXNhZ2UiOnt9LCJ0b3RhbFRva2VucyI6MjcxNX19foZQwg==
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/vnd.amazon.eventstream
+      Date:
+      - Tue, 01 Sep 2026 13:05:00 GMT
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      x-amzn-RequestId:
+      - b31e3ac7-96fc-45a4-ab4b-9d4d66a0db0d
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "system": [
+          {
+            "text": "You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. You are a helpful assistant for streaming tests. "
+          },
+          {
+            "cachePoint": {
+              "type": "default"
+            }
+          }
+        ],
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10
+        }
+      }
+    headers:
+      Content-Length:
+      - '14878'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.43.0 md/Botocore#1.43.0 ua/2.1 os/macos#25.5.0 md/arch#arm64 lang/python#3.12.13
+        md/pyimpl#CPython m/Z,b,g,D cfg/retry-mode#legacy Botocore/1.43.0
+      X-Amz-Date:
+      - 20260901T130500Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-12cc5206-a78faad2f1f1f3ee384099d4;Parent=0c6a1c4c4154212a;Sampled=1
+      amz-sdk-invocation-id:
+      - f9eea2be-28dc-4460-a46b-a32ca7bb6a3b
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-micro-v1%3A0/converse-stream
+  response:
+    body:
+      string: !!binary |
+        AAAAkQAAAFIMIeERCzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
+        cHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsicCI6ImFiY2RlZmdoaWprbG1u
+        b3BxcnN0Iiwicm9sZSI6ImFzc2lzdGFudCJ9vw+WSAAAALkAAABXjfpxWws6ZXZlbnQtdHlwZQcA
+        EWNvbnRlbnRCbG9ja0RlbHRhDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNz
+        YWdlLXR5cGUHAAVldmVudHsiY29udGVudEJsb2NrSW5kZXgiOjAsImRlbHRhIjp7InRleHQiOiJJ
+        dCJ9LCJwIjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNEIn2M0+7dAAAA9AAAAFctme2j
+        CzpldmVudC10eXBlBwARY29udGVudEJsb2NrRGVsdGENOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0
+        aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJjb250ZW50QmxvY2tJbmRleCI6MCwiZGVs
+        dGEiOnsidGV4dCI6IiBzb3VuZHMgbGlrZSB5b3UncmUgaW5pdGlhdGluZyJ9LCJwIjoiYWJjZGVm
+        Z2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjAxMjM0NTY3OCJ9
+        iUMw/QAAAM8AAABX+2hkNAs6ZXZlbnQtdHlwZQcAEWNvbnRlbnRCbG9ja0RlbHRhDTpjb250ZW50
+        LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsiY29udGVudEJs
+        b2NrSW5kZXgiOjAsImRlbHRhIjp7InRleHQiOiIgYSB0ZXN0IHNjZW5hcmlvIn0sInAiOiJhYmNk
+        ZWZnaGlqa2xtbm9wcXJzdHV2d3h5ekFCQ0RFRkdISUpLTCJ9fyns8QAAALIAAABWjS1w3As6ZXZl
+        bnQtdHlwZQcAEGNvbnRlbnRCbG9ja1N0b3ANOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pz
+        b24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJjb250ZW50QmxvY2tJbmRleCI6MCwicCI6ImFiY2Rl
+        ZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1QifY2vo8sAAACUAAAAUV3I
+        P9sLOmV2ZW50LXR5cGUHAAttZXNzYWdlU3RvcA06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24v
+        anNvbg06bWVzc2FnZS10eXBlBwAFZXZlbnR7InAiOiJhYmNkZWZnaGlqa2xtbm9wcSIsInN0b3BS
+        ZWFzb24iOiJtYXhfdG9rZW5zIn2FlyN9AAABhgAAAE4BvCVpCzpldmVudC10eXBlBwAIbWV0YWRh
+        dGENOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50
+        eyJtZXRyaWNzIjp7ImxhdGVuY3lNcyI6Mzg3fSwicCI6ImFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3
+        eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2NyIsInVzYWdlIjp7ImNhY2hlUmVh
+        ZElucHV0VG9rZW5Db3VudCI6MjcwMSwiY2FjaGVSZWFkSW5wdXRUb2tlbnMiOjI3MDEsImNhY2hl
+        V3JpdGVJbnB1dFRva2VuQ291bnQiOjAsImNhY2hlV3JpdGVJbnB1dFRva2VucyI6MCwiaW5wdXRU
+        b2tlbnMiOjQsIm91dHB1dFRva2VucyI6MTAsInNlcnZlclRvb2xVc2FnZSI6e30sInRvdGFsVG9r
+        ZW5zIjoyNzE1fX0sQ9ok
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/vnd.amazon.eventstream
+      Date:
+      - Tue, 01 Sep 2026 13:05:01 GMT
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      x-amzn-RequestId:
+      - 90e0bb1b-9352-4da4-8760-66080eb905eb
+    status:
+      code: 200
+      message: OK
+version: 1
