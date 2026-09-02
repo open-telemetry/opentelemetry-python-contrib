@@ -15,6 +15,15 @@ Installation
 
     pip install opentelemetry-instrumentation-redis
 
+Semantic Conventions
+--------------------
+
+When the ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable is set to
+``database`` or ``database/dup``, the ``db.namespace`` attribute is set to the
+Redis database index (as a string) configured when the connection was
+established. For example, the default Redis database index ``0`` is emitted as
+``db.namespace = "0"``.
+
 References
 ----------
 
