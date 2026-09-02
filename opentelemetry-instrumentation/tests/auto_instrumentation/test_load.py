@@ -279,6 +279,10 @@ class TestLoad(TestCase):
                     "Instrumentation skipped for library %s",
                     ep_mock3.name,
                 ),
+            ]
+        )
+        mock_logger.error.assert_has_calls(
+            [
                 self._instrumentation_failed_to_load_call(
                     ep_mock4.name,
                     dependency_conflict,

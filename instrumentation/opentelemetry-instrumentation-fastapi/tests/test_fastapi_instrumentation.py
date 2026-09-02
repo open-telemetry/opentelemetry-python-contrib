@@ -1220,7 +1220,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
+        mock_logger.error.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
@@ -1230,7 +1230,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
+        mock_logger.error.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
     def _create_app(self):
         # instrumentation is handled by the instrument call

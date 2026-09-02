@@ -64,4 +64,8 @@ class TestInstrumentor(TestCase):
         conflict = DependencyConflict("missing", "missing")
         mock__check_dependency_conflicts.return_value = conflict
         self.assertIsNone(instrumentor.instrument(raise_exception_on_conflict=False))
-        mock_logger.error.assert_any_call(conflict)
+        mock_logger.error.assert_any_call(
+            "%s - instrumentation %s will not take effect",
+            conflict,
+            "Instrumentor",
+        )

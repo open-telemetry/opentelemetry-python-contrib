@@ -104,7 +104,11 @@ class BaseInstrumentor(ABC):
                 if raise_exception_on_conflict:
                     raise DependencyConflictError(conflict)
                 # manual instrumentation path: log the conflict as error
-                _LOG.error(conflict)
+                _LOG.error(
+                    "%s - instrumentation %s will not take effect",
+                    conflict,
+                    self.__class__.__name__,
+                )
                 return None
 
         # initialize semantic conventions opt-in if needed
