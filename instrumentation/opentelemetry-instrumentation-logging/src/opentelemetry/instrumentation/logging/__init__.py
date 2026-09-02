@@ -136,6 +136,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     _old_factory = None
     _log_hook = None
     _logging_handler = None
+    _old_handlers_state = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -158,7 +159,18 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
+            root = logging.getLogger()
+            old_level = root.level
+            old_handlers = list(root.handlers)
             logging.basicConfig(format=log_format, level=log_level)
+            # Record only the handlers basicConfig actually added so that
+            # uninstrument removes exactly those and does not drop handlers the
+            # application added while instrumented.
+            added_handlers = [h for h in root.handlers if h not in old_handlers]
+            LoggingInstrumentor._old_handlers_state = {
+                "old_level": old_level,
+                "added_handlers": added_handlers,
+            }
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
@@ -247,3 +259,14 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
             LoggingInstrumentor._logging_handler = None
+
+        if LoggingInstrumentor._old_handlers_state is not None:
+            state = LoggingInstrumentor._old_handlers_state
+            LoggingInstrumentor._old_handlers_state = None
+
+            root = logging.getLogger()
+            root.setLevel(state["old_level"])
+
+            for h in list(root.handlers):
+                if h in state["added_handlers"]:
+                    root.removeHandler(h)
