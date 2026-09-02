@@ -606,8 +606,9 @@ class TestLoggingHandler(unittest.TestCase):
         _, call_kwargs = mock_get_logger.call_args
         self.assertIsNone(call_kwargs.get("attributes"))
 
+    @staticmethod
     @patch("opentelemetry.instrumentation.logging.handler.get_logger")
-    def test_logger_cache_reuses_logger_for_same_record_name(self, mock_get_logger):
+    def test_logger_cache_reuses_logger_for_same_record_name(mock_get_logger):
         mock_get_logger.return_value = Mock()
         handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
 
@@ -632,8 +633,8 @@ class TestLoggingHandler(unittest.TestCase):
         mock_get_logger.return_value = Mock()
         handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
 
-        for i in range(128):
-            handler.emit(_make_record(f"logger.{i}"))
+        for index in range(128):
+            handler.emit(_make_record(f"logger.{index}"))
         mock_get_logger.reset_mock()
 
         handler.emit(_make_record("logger.0"))
@@ -659,10 +660,10 @@ class TestLoggingHandler(unittest.TestCase):
             handler.emit(_make_record("shared.name"))
 
         threads = [threading.Thread(target=emit_twice) for _ in range(4)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
 
         self.assertEqual(mock_get_logger.call_count, 4)
 
