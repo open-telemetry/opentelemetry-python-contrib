@@ -17,27 +17,38 @@ You can disable this by setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``fa
     By default, this instrumentation does not add ``code`` namespace attributes as the SDK's logger does, but adding them can be enabled by using the
     ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES`` environment variable.
 
-Enable trace context injection
-------------------------------
+The OpenTelemetry ``logging`` instrumentation provides two distinct capabilities:
 
-The OpenTelemetry ``logging`` integration can also be configured to inject tracing context into log statements.
+1. **Log Record Enrichment (Context Injection)**: Automatically enriches Python standard library ``logging.LogRecord`` objects with OpenTelemetry trace context (trace ID, span ID, trace flags, and service name) and optional custom attributes via hooks.
+2. **Log Export via LoggingHandler**: Automatically attaches a handler to standard library loggers that translates Python ``LogRecord`` objects into OpenTelemetry log format and forwards them to the configured OpenTelemetry ``LoggerProvider`` / exporters.
 
-The integration registers a custom log record factory with the the standard library logging module that automatically inject
+.. note::
+
+    **Log record enrichment vs. OpenTelemetry log export:**
+    Enriching standard library log records allows you to correlate logs produced by your application or framework with active OpenTelemetry traces in existing logging systems (e.g. stdout formatting, file logs, or traditional log aggregation tools).
+    In contrast, the OpenTelemetry logging handler converts records into OpenTelemetry logs that flow through OpenTelemetry processors and exporters (e.g. OTLP).
+
+Log Record Enrichment
+---------------------
+
+The integration registers a custom log record factory with the standard library logging module that automatically injects
 tracing context into log record objects. Optionally, the integration can also call ``logging.basicConfig()`` to set a logging
-format with placeholders for span ID, trace ID and service name.
+format with placeholders for span ID, trace ID, service name, and trace sampling flag.
 
-The following keys are injected into log record objects by the factory:
+Injected LogRecord Attributes
+*****************************
 
-- ``otelSpanID``
-- ``otelTraceID``
-- ``otelServiceName``
-- ``otelTraceSampled``
+When context injection is enabled, the following fields are injected into ``logging.LogRecord`` objects by the factory:
 
-The integration uses the following logging format by default:
+* ``otelSpanID``: Hex-encoded span ID of the currently active span (e.g., ``"7d0581e1f3f51bea"``) or ``"0"`` if no valid span is active.
+* ``otelTraceID``: Hex-encoded trace ID of the currently active span (e.g., ``"8b346ee9af8718bf73a4318d073cbbb1"``) or ``"0"`` if no valid span is active.
+* ``otelTraceSampled``: Boolean flag (``True`` / ``False``) indicating whether the current trace is sampled.
+* ``otelServiceName``: The ``service.name`` attribute configured on the active ``TracerProvider``'s resource, or an empty string ``""`` if none is found.
 
-.. code-block::
+Additionally, custom attributes can be attached to log records using a custom ``log_hook`` callback.
 
-    {DEFAULT_LOGGING_FORMAT}
+Enabling Trace Context Injection
+********************************
 
 Trace context injection is opt-in and can be enabled in two ways:
 
@@ -46,6 +57,35 @@ Trace context injection is opt-in and can be enabled in two ways:
   ``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName`` available on each record.
 - Set ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` (or pass ``set_logging_format=True``) to inject the same
   trace context attributes and call ``logging.basicConfig()`` with a format string that includes them.
+
+The integration uses the following logging format by default:
+
+.. code-block::
+
+    {DEFAULT_LOGGING_FORMAT}
+
+Log Export via LoggingHandler
+-----------------------------
+
+By default, the instrumentation installs a ``LoggingHandler`` that translates standard library ``LogRecord`` objects into OpenTelemetry ``LogRecord`` instances and emits them to the configured ``LoggerProvider``.
+
+Attributes Added to OpenTelemetry Log Records
+**********************************************
+
+When ``LoggingHandler`` converts a standard library ``LogRecord`` to an OpenTelemetry log, it translates fields as follows:
+
+* **Standard fields**: ``record.getMessage()`` (or formatted text if a formatter is present) is mapped to the log ``body``, ``record.created`` is converted to nanosecond ``timestamp``, ``record.levelno`` is mapped to ``severity_number``, and ``record.levelname`` is mapped to ``severity_text`` (with ``WARNING`` emitted as ``WARN`` and ``CRITICAL`` as ``FATAL``).
+* **Extra attributes**: Any non-standard fields on ``record`` (e.g., fields passed via ``logger.info("msg", extra={{...}})``) are added as OpenTelemetry log attributes, excluding standard Python log record attributes and event-name fields promoted to ``event_name``.
+* **Code attributes** (optional): When ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES=true`` (or ``log_code_attributes=True``), the following code namespace attributes are attached:
+    * ``code.file.path``: Path of the source file emitting the log (``record.pathname``).
+    * ``code.function.name``: Name of the function emitting the log (``record.funcName``).
+    * ``code.line.number``: Line number of the source code (``record.lineno``).
+* **Exception attributes**: If ``record.exc_info`` is present, exception attributes are attached per semantic conventions:
+    * ``exception.type``: The exception class name.
+    * ``exception.message``: The stringified exception argument.
+    * ``exception.stacktrace``: The formatted stacktrace string.
+* **Event name promotion**: If an ``otel.event.name`` (or deprecated ``event.name``) attribute is present in extra attributes, it is promoted to the top-level ``event_name`` field on the OpenTelemetry log record and excluded from attributes.
+
 
 Environment variables
 ---------------------
