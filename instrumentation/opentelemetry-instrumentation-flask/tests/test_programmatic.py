@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
+import json
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from flask import Flask, request
 
-from opentelemetry import trace
+from opentelemetry import baggage, trace
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -282,6 +283,19 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "GET /hello/<int:helloid>")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+
+    def test_baggage_extracted_and_active_in_handler(self):
+        resp = self.client.get(
+            "/baggage",
+            headers={"baggage": "key1=value1,key2=value2,key3=1%2F3"},
+        )
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(
+            json.loads(resp.data),
+            {"key1": "value1", "key2": "value2", "key3": "1/3"},
+        )
+        # the baggage context is detached once the request has ended
+        self.assertEqual(dict(baggage.get_all()), {})
 
     def test_trace_response(self):
         orig = get_global_response_propagator()
