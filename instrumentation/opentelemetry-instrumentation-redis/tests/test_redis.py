@@ -39,6 +39,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NetTransportValues,
 )
 from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
@@ -939,6 +940,10 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_SYSTEM, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value)
         self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
 
     @stability_mode("database")
     def test_pipeline_database_stable_mode(self):
@@ -960,6 +965,10 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_SYSTEM, span.attributes)
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
 
     @stability_mode("database/dup")
     def test_pipeline_database_dup_mode(self):
@@ -984,6 +993,12 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value)
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
 
     @stability_mode("")
     def test_db_statement_default_mode(self):
@@ -1058,6 +1073,8 @@ class TestRedisSemconvConfiguration(TestBase):
         span = spans[0]
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
 
     @stability_mode("database")
     def test_db_namespace_database_stable_mode(self):
@@ -1072,6 +1089,9 @@ class TestRedisSemconvConfiguration(TestBase):
 
         span = spans[0]
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
 
     @stability_mode("database/dup")
     def test_db_namespace_database_dup_mode(self):
@@ -1087,6 +1107,10 @@ class TestRedisSemconvConfiguration(TestBase):
         span = spans[0]
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
 
     @stability_mode("http")
     def test_db_statement_http_stable_mode(self):
@@ -1311,6 +1335,9 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1339,6 +1366,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1369,6 +1398,10 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1403,6 +1436,9 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_SYSTEM_NAME, span.attributes)
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1438,6 +1474,8 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
@@ -1476,6 +1514,10 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value)
         self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIsInstance(span.attributes[DB_REDIS_DATABASE_INDEX], int)
+        self.assertIn(DB_NAMESPACE, span.attributes)
+        self.assertEqual(span.attributes[DB_NAMESPACE], "0")
+        self.assertIsInstance(span.attributes[DB_NAMESPACE], str)
         self.assertIn(NET_TRANSPORT, span.attributes)
         self.assertEqual(
             span.attributes[NET_TRANSPORT],
