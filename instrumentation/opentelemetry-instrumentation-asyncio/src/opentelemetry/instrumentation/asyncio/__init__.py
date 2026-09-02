@@ -187,7 +187,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
             if args:
                 first_arg = args[0]
                 # Wrap the first argument
-                wrapped_first_arg = self.trace_to_thread(first_arg)
+                wrapped_first_arg = self.wrap_to_thread_func(first_arg)
                 wrapped_args = (wrapped_first_arg,) + args[1:]
 
                 return method(*wrapped_args, **kwargs)
@@ -214,7 +214,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
             wrap_taskgroup_create_task,
         )
 
-    def trace_to_thread(self, func: callable):
+    def wrap_to_thread_func(self, func: callable):
         """
         Wrap a function so that its execution in the worker thread is
         measured and, if enabled, traced.

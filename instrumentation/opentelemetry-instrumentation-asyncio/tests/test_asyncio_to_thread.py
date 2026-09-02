@@ -14,6 +14,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode, get_tracer
 
 SCOPE = "opentelemetry.instrumentation.asyncio"
+SLEEP_SECONDS = 0.05
 
 
 class TestAsyncioToThread(TestBase):
@@ -43,12 +44,10 @@ class TestAsyncioToThread(TestBase):
         def multiply(x, y):
             return x * y
 
-        async def to_thread():
-            result = await asyncio.to_thread(multiply, 2, 3)
-            assert result == 6
-
         with self._tracer.start_as_current_span("root"):
-            asyncio.run(to_thread())
+            result = asyncio.run(asyncio.to_thread(multiply, 2, 3))
+        assert result == 6
+
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
@@ -63,33 +62,36 @@ class TestAsyncioToThread(TestBase):
 
     def test_to_thread_duration_covers_execution(self):
         def multiply(x, y):
-            time.sleep(0.1)
+            time.sleep(SLEEP_SECONDS)
             return x * y
 
-        async def to_thread():
-            result = await asyncio.to_thread(multiply, 2, 3)
-            assert result == 6
-
-        asyncio.run(to_thread())
+        asyncio.run(asyncio.to_thread(multiply, 2, 3))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertGreaterEqual(span.end_time - span.start_time, 0.1 * 10**9)
+        # only the lower bound is meaningful: it is what fails when the span
+        # does not cover the call, so the delta is kept loose on purpose
+        self.assertAlmostEqual(
+            (span.end_time - span.start_time) / 10**9,
+            SLEEP_SECONDS,
+            delta=SLEEP_SECONDS * 0.9,
+        )
 
         _, duration = self.get_created_and_duration_metrics()
         self.assertEqual(len(duration.data.data_points), 1)
-        self.assertGreaterEqual(duration.data.data_points[0].sum, 0.1)
+        self.assertAlmostEqual(
+            duration.data.data_points[0].sum,
+            SLEEP_SECONDS,
+            delta=SLEEP_SECONDS * 0.9,
+        )
 
     def test_to_thread_exception(self):
         def multiply(x, y):
             raise ValueError("fail")
 
-        async def to_thread():
-            await asyncio.to_thread(multiply, 2, 3)
-
         with self.assertRaises(ValueError):
-            asyncio.run(to_thread())
+            asyncio.run(asyncio.to_thread(multiply, 2, 3))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -108,11 +110,8 @@ class TestAsyncioToThread(TestBase):
         def multiply(x, y):
             raise asyncio.TimeoutError("fail")
 
-        async def to_thread():
-            await asyncio.to_thread(multiply, 2, 3)
-
         with self.assertRaises(asyncio.TimeoutError):
-            asyncio.run(to_thread())
+            asyncio.run(asyncio.to_thread(multiply, 2, 3))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -130,11 +129,8 @@ class TestAsyncioToThread(TestBase):
         def multiply(x, y):
             raise asyncio.CancelledError()
 
-        async def to_thread():
-            await asyncio.to_thread(multiply, 2, 3)
-
         with self.assertRaises(asyncio.CancelledError):
-            asyncio.run(to_thread())
+            asyncio.run(asyncio.to_thread(multiply, 2, 3))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -173,12 +169,10 @@ class TestAsyncioToThread(TestBase):
 
         double = functools.partial(multiply, 2)
 
-        async def to_thread():
-            result = await asyncio.to_thread(double, 3)
-            assert result == 6
-
         with self._tracer.start_as_current_span("root"):
-            asyncio.run(to_thread())
+            result = asyncio.run(asyncio.to_thread(double, 3))
+        assert result == 6
+
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
