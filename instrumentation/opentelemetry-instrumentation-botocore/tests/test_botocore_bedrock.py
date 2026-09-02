@@ -1269,6 +1269,68 @@ def get_model_name_from_family(llm_model):
     return llm_model_name[llm_model]
 
 
+def get_embeddings_model_name_from_family(model_family):
+    return {
+        "amazon.titan": "amazon.titan-embed-text-v1",
+        "cohere.embed": "cohere.embed-v4:0",
+    }[model_family]
+
+
+def get_invoke_embeddings_body(llm_model):
+    if "cohere.embed" in llm_model:
+        return json.dumps(
+            {
+                "texts": ["Say this is a test"],
+                "input_type": "search_document",
+            }
+        )
+    if "amazon.titan" in llm_model:
+        return json.dumps({"inputText": "Say this is a test"})
+    raise ValueError(f"No embeddings config for {llm_model}")
+
+
+@pytest.mark.parametrize(
+    "model_family",
+    [
+        "amazon.titan",
+        "cohere.embed",
+    ],
+)
+@pytest.mark.vcr()
+def test_invoke_model_with_embeddings_model(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+    model_family,
+):
+    llm_model_value = get_embeddings_model_name_from_family(model_family)
+    body = get_invoke_embeddings_body(llm_model_value)
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    response_body = json.loads(response["body"].read())
+    assert response_body
+    if model_family == "amazon.titan":
+        assert "embedding" in response_body
+    elif model_family == "cohere.embed":
+        assert "embeddings" in response_body
+    else:
+        pytest.xfail(f"model family not handled: {model_family}")
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        operation_name="embeddings",
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
 @pytest.mark.parametrize(
     "model_family",
     [
