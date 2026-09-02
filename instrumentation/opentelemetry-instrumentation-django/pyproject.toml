@@ -37,7 +37,7 @@ asgi = [
   "opentelemetry-instrumentation-asgi == 0.66b0.dev",
 ]
 instruments = [
-  "django >= 2.0",
+  "django>=5.2.16",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
