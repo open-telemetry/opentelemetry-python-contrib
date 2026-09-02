@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "tornado>=6.5.8",
+  "tornado >= 5.1.1",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
