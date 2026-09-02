@@ -59,6 +59,27 @@ class TestSqlalchemyInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    def test_operation_name_comment_or_whitespace_only(self):
+        # Regression: a comment-only or whitespace-only statement is truthy but has
+        # no tokens after leading-comment stripping; executing it must not raise
+        # IndexError and the resulting span must not crash on naming either.
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        # Must not raise IndexError.
+        cnx.execute(text("/* comment only */"))
+        cnx.execute(text("   "))
+        spans = self.memory_exporter.get_finished_spans()
+        # connect + 2 executes
+        self.assertEqual(len(spans), 3)
+        for span in spans[1:]:
+            # No operation token survives comment/whitespace stripping, so the
+            # span name falls back to just the db name.
+            self.assertEqual(span.name, ":memory:")
+
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
