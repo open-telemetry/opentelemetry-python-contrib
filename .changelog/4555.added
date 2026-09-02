@@ -1,0 +1,2 @@
+`opentelemetry-instrumentation-fastapi`: Document auto-instrumentation setup and HTTP/WebSocket trace propagation
+`opentelemetry-instrumentation`: Include the instrumentation README in API docs
