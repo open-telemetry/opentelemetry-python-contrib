@@ -63,9 +63,10 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Callable, Collection
 from enum import Enum
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
@@ -326,9 +327,8 @@ def _instrument(
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
-    def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
-        call_wrapped, instance, args, kwargs
-    ):
+    # pylint: disable=too-many-branches
+    def _instrumented_lambda_handler_call(call_wrapped, instance, args, kwargs):
         lambda_event: Any = args[0]
         lambda_context: LambdaContext = args[1]
 

@@ -170,7 +170,7 @@ class TestBaseFastAPI(TestBase):
         if cls is TestBaseFastAPI:
             raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
-        super(TestBaseFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
         super().setUp()
@@ -268,7 +268,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         if cls is TestBaseManualFastAPI:
             raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
-        super(TestBaseManualFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def test_fastapi_unhandled_exception(self):
         """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
@@ -423,7 +423,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         if cls is TestBaseAutoFastAPI:
             raise unittest.SkipTest(f"{cls.__name__} is an abstract base class")
 
-        super(TestBaseAutoFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def test_sub_app_fastapi_call(self):
         """
@@ -713,9 +713,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.request.duration":
                         self.assertAlmostEqual(duration_s * 0.1, point.sum, places=1)
-                    elif metric.name == "http.server.response.body.size":
-                        self.assertEqual(25, point.sum)
-                    elif metric.name == "http.server.request.body.size":
+                    elif metric.name in (
+                        "http.server.response.body.size",
+                        "http.server.request.body.size",
+                    ):
                         self.assertEqual(25, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
@@ -767,13 +768,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
-                    elif metric.name == "http.server.response.body.size":
-                        self.assertEqual(25, point.sum)
-                        self.assertDictEqual(
-                            expected_duration_attributes_new,
-                            dict(point.attributes),
-                        )
-                    elif metric.name == "http.server.request.body.size":
+                    elif metric.name in (
+                        "http.server.response.body.size",
+                        "http.server.request.body.size",
+                    ):
                         self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
@@ -785,13 +783,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             expected_duration_attributes_old,
                             dict(point.attributes),
                         )
-                    elif metric.name == "http.server.response.size":
-                        self.assertEqual(25, point.sum)
-                        self.assertDictEqual(
-                            expected_duration_attributes_old,
-                            dict(point.attributes),
-                        )
-                    elif metric.name == "http.server.request.size":
+                    elif metric.name in (
+                        "http.server.response.size",
+                        "http.server.request.size",
+                    ):
                         self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_old,

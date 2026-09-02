@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping
 from os import environ
-from typing import Any, Iterable, List, Mapping
+from typing import Any
 from urllib.parse import urlparse
 
 import openai
@@ -372,7 +373,7 @@ def _is_text_part(content: Any) -> bool:
     )
 
 
-def _prepare_input_messages(messages) -> List[InputMessage]:
+def _prepare_input_messages(messages) -> list[InputMessage]:
     chat_messages = []
     for message in messages:
         role = get_property_value(message, "role")
@@ -441,7 +442,7 @@ def _prepare_tool_definitions(tools) -> list[ToolDefinition] | None:
     return definitions
 
 
-def _prepare_output_messages(choices) -> List[OutputMessage]:
+def _prepare_output_messages(choices) -> list[OutputMessage]:
     output_messages = []
     for choice in choices:
         if choice.message:

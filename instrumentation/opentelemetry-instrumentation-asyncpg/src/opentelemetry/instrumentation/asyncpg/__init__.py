@@ -41,7 +41,7 @@ API
 """
 
 import re
-from typing import Collection
+from collections.abc import Collection
 
 import asyncpg
 import asyncpg.prepared_stmt
