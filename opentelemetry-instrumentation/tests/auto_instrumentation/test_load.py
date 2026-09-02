@@ -293,9 +293,7 @@ class TestLoad(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.entry_points")
-    def test_load_instrumentors_dep_not_installed(
-        self, iter_mock, mock_logger, mock_dep
-    ):
+    def test_load_instrumentors_dep_not_installed(self, iter_mock, mock_logger, mock_dep):
         # Mock opentelemetry_instrumentor entry points
         ep_mock1 = Mock()
         ep_mock1.name = "instr1"
@@ -310,9 +308,7 @@ class TestLoad(TestCase):
         iter_mock.return_value = (ep_mock1, ep_mock2)
         mock_dep.side_effect = [None, dependency_conflict]
         _load._load_instrumentors(distro_mock)
-        distro_mock.load_instrumentor.assert_called_once_with(
-            ep_mock1, skip_dep_check=True
-        )
+        distro_mock.load_instrumentor.assert_called_once_with(ep_mock1, skip_dep_check=True)
         mock_logger.debug.assert_has_calls(
             [
                 call("Instrumented %s", ep_mock1.name),
