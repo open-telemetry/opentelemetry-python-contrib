@@ -266,3 +266,41 @@ class TestDependencyConflicts(TestBase):
             str(conflict),
             '''DependencyConflict: requested any of the following: "['bar~=2.0; extra == "instruments-any"', 'baz~=3.0; extra == "instruments-any"']" but found: "[]"''',
         )
+
+    def test_dependency_conflict_format_message_required_version_mismatch(self):
+        conflict = DependencyConflict("google-genai>=1.32.0,<3", "google-genai 1.31.0")
+        self.assertTrue(conflict.is_version_conflict)
+        self.assertEqual(
+            conflict.format_message("GoogleGenAIInstrumentor"),
+            'GoogleGenAIInstrumentor only instruments "google-genai>=1.32.0,<3", but currently installed version ("google-genai 1.31.0") falls outside of that range, so nothing can be instrumented.',
+        )
+
+    def test_dependency_conflict_format_message_required_not_installed(self):
+        conflict = DependencyConflict("google-genai>=1.32.0,<3", None)
+        self.assertFalse(conflict.is_version_conflict)
+        self.assertEqual(
+            conflict.format_message("GoogleGenAIInstrumentor"),
+            'GoogleGenAIInstrumentor only instruments "google-genai>=1.32.0,<3", but no installed version was found, so nothing can be instrumented.',
+        )
+
+    def test_dependency_conflict_format_message_required_any_version_mismatch(self):
+        conflict = DependencyConflict(
+            required_any=["psycopg2>=2.7.3.1", "psycopg2-binary>=2.7.3.1"],
+            found_any=["psycopg2 2.6.0"],
+        )
+        self.assertTrue(conflict.is_version_conflict)
+        self.assertEqual(
+            conflict.format_message("Psycopg2Instrumentor"),
+            "Psycopg2Instrumentor instruments any of \"['psycopg2>=2.7.3.1', 'psycopg2-binary>=2.7.3.1']\", but currently installed version(s) (\"['psycopg2 2.6.0']\") fall outside of that range, so nothing can be instrumented.",
+        )
+
+    def test_dependency_conflict_format_message_required_any_none_installed(self):
+        conflict = DependencyConflict(
+            required_any=["kafka-python>=2.0,<3.0", "kafka-python-ng>=2.0,<3.0"],
+            found_any=[],
+        )
+        self.assertFalse(conflict.is_version_conflict)
+        self.assertEqual(
+            conflict.format_message("KafkaInstrumentor"),
+            "KafkaInstrumentor requires any of \"['kafka-python>=2.0,<3.0', 'kafka-python-ng>=2.0,<3.0']\", but none are installed, so nothing can be instrumented.",
+        )
