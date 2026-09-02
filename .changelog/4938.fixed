@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: pass the response message to the aio client response hook, which previously received the gRPC status details string
