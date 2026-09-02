@@ -9,7 +9,7 @@ from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
 from typing import overload
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
@@ -272,6 +272,33 @@ def _parse_url_query(url: str) -> tuple[str, str]:
     path = parsed_url.path
     query_params = parsed_url.query
     return path, query_params
+
+
+def redact_query_string(query: str) -> str:
+    """Given a bare query string, redact sensitive query parameter values.
+
+    Unlike :func:`redact_query_parameters` this never parses a URL, so it is
+    safe to use on a query taken from an untrusted request without risking a
+    ``ValueError`` from a malformed target. Parameters that are not redacted
+    are preserved verbatim, including their original percent-encoding.
+
+    Parameter names are percent-decoded before being matched, so an encoded
+    spelling such as ``%53ignature`` is redacted just like ``Signature``. The
+    match itself is case sensitive, as the semantic conventions require.
+    """
+    if not query:
+        return query
+    redacted = False
+    parts: list[str] = []
+    for part in query.split("&"):
+        name, sep, _ = part.partition("=")
+        if sep and unquote(name) in PARAMS_TO_REDACT:
+            # Keep the name as it was sent; only the value is replaced.
+            parts.append(f"{name}=REDACTED")
+            redacted = True
+        else:
+            parts.append(part)
+    return "&".join(parts) if redacted else query
 
 
 def redact_query_parameters(url: str) -> str:
