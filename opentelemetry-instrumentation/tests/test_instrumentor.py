@@ -65,7 +65,16 @@ class TestInstrumentor(TestCase):
         mock__check_dependency_conflicts.return_value = conflict
         self.assertIsNone(instrumentor.instrument(raise_exception_on_conflict=False))
         mock_logger.error.assert_any_call(
-            "%s - instrumentation %s will not take effect",
-            conflict,
-            "Instrumentor",
+            'Instrumentor only instruments "missing", but currently installed version ("missing") falls outside of that range, so nothing can be instrumented.'
+        )
+
+    @patch("opentelemetry.instrumentation.instrumentor._LOG")
+    @patch("opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts")
+    def test_instrument_missing_dependency_not_installed_log_error(self, mock__check_dependency_conflicts, mock_logger):
+        instrumentor = self.Instrumentor()
+        conflict = DependencyConflict("missing", None)
+        mock__check_dependency_conflicts.return_value = conflict
+        self.assertIsNone(instrumentor.instrument(raise_exception_on_conflict=False))
+        mock_logger.error.assert_any_call(
+            'Instrumentor only instruments "missing", but no installed version was found, so nothing can be instrumented.'
         )

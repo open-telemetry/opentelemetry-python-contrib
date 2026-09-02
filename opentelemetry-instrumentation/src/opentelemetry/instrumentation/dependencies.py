@@ -53,6 +53,35 @@ class DependencyConflict:
         self.required_any = required_any
         self.found_any = found_any
 
+    @property
+    def is_version_conflict(self) -> bool:
+        return bool(self.found or self.found_any)
+
+    def format_message(self, instrumentor_name: str) -> str:
+        if self.required:
+            if self.found:
+                return (
+                    f'{instrumentor_name} only instruments "{self.required}", '
+                    f'but currently installed version ("{self.found}") falls outside of that range, '
+                    f"so nothing can be instrumented."
+                )
+            return (
+                f'{instrumentor_name} only instruments "{self.required}", '
+                f"but no installed version was found, so nothing can be instrumented."
+            )
+        if self.required_any:
+            if self.found_any:
+                return (
+                    f'{instrumentor_name} instruments any of "{self.required_any}", '
+                    f'but currently installed version(s) ("{self.found_any}") fall outside of that range, '
+                    f"so nothing can be instrumented."
+                )
+            return (
+                f'{instrumentor_name} requires any of "{self.required_any}", '
+                f"but none are installed, so nothing can be instrumented."
+            )
+        return str(self)
+
     def __str__(self):
         if not self.required and (self.required_any or self.found_any):
             return f'DependencyConflict: requested any of the following: "{self.required_any}" but found: "{self.found_any}"'

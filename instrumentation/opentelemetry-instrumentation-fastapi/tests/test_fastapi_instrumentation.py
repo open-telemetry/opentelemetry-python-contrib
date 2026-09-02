@@ -1200,7 +1200,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     @staticmethod
     def _instrumentation_failed_to_load_call(dependency_conflict):
-        return call("Skipping instrumentation %s: %s", "fastapi", dependency_conflict)
+        return call(dependency_conflict.format_message("fastapi"))
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_fastapi_installed(self, mock_logger):
@@ -1230,7 +1230,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.error.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
+        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
