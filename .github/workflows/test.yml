@@ -12013,6 +12013,63 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-aio-pika-3 -- -ra
 
+  py312-test-instrumentation-aio-pika-latest_ubuntu-latest:
+    name: instrumentation-aio-pika-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-aio-pika-latest -- -ra
+
+  py313-test-instrumentation-aio-pika-latest_ubuntu-latest:
+    name: instrumentation-aio-pika-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-aio-pika-latest -- -ra
+
+  py314-test-instrumentation-aio-pika-latest_ubuntu-latest:
+    name: instrumentation-aio-pika-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-aio-pika-latest -- -ra
+
   pypy3-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
