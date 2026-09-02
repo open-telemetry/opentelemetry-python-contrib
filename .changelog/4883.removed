@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: remove the runtime `packaging` dependency in favor of an internal PEP 440/508 implementation
