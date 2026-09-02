@@ -1,0 +1,1 @@
+`opentelemetry-sdk-extension-aws`: use the ECS metadata container name instead of the hostname for `container.name`
