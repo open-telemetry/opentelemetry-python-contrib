@@ -332,8 +332,11 @@ class CursorTracer(dbapi.CursorTracer):
             statement = statement.as_string(cursor)
 
         if isinstance(statement, str):
-            # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", statement).split()[0]
+            # Strip leading comments so we get the operation name. A statement that
+            # is truthy but has no tokens left (comment-only or whitespace-only)
+            # must not raise IndexError; return an empty operation name instead.
+            tokens = self._leading_comment_remover.sub("", statement).split()
+            return tokens[0] if tokens else ""
 
         return ""
 

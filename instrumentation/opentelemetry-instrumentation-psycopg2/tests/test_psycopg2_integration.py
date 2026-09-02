@@ -130,6 +130,22 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
 
+    def test_span_name_comment_or_whitespace_only(self):
+        # Regression: a comment-only or whitespace-only statement is truthy but has
+        # no tokens after leading-comment stripping; get_operation_name must not
+        # raise IndexError.
+        Psycopg2Instrumentor().instrument()
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        cursor.execute("/* comment only */")
+        cursor.execute("   ")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
+        # No tokens survive comment/whitespace stripping, so operation_name is
+        # empty and the span name falls back to the db vendor.
+        self.assertEqual(spans_list[0].name, "postgresql")
+        self.assertEqual(spans_list[1].name, "postgresql")
+
     # pylint: disable=unused-argument
     def test_not_recording(self):
         mock_tracer = mock.Mock()
