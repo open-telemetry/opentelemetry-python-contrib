@@ -1,13 +1,12 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 
 from confluent_kafka import Consumer, Producer
 
 
 class MockClusterMetadata:
-    def __init__(self, cluster_id: Optional[str] = None) -> None:
+    def __init__(self, cluster_id: str | None = None) -> None:
         self.cluster_id = cluster_id
         self.brokers: dict = {}
         self.topics: dict = {}
@@ -17,7 +16,7 @@ class MockConsumer(Consumer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
-        self._mock_cluster_id: Optional[str] = None
+        self._mock_cluster_id: str | None = None
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -41,8 +40,8 @@ class MockedMessage:
         partition: int,
         offset: int,
         headers,
-        key: Optional[str] = None,
-        value: Optional[str] = None,
+        key: str | None = None,
+        value: str | None = None,
     ):
         self._topic = topic
         self._partition = partition
@@ -74,7 +73,7 @@ class MockedProducer(Producer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
-        self._mock_cluster_id: Optional[str] = None
+        self._mock_cluster_id: str | None = None
         super().__init__(config)
 
     def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg

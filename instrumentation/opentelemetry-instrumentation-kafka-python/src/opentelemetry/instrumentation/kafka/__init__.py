@@ -82,7 +82,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import kafka
 from wrapt import wrap_function_wrapper
@@ -135,15 +135,9 @@ class KafkaInstrumentor(BaseInstrumentor):
             func(*args, **kwargs)
             _patch_cluster_id_capture(instance)
 
-        wrap_function_wrapper(
-            kafka.KafkaProducer, "__init__", _wrap_producer_init
-        )
-        wrap_function_wrapper(
-            kafka.KafkaConsumer, "__init__", _wrap_consumer_init
-        )
-        wrap_function_wrapper(
-            kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
-        )
+        wrap_function_wrapper(kafka.KafkaProducer, "__init__", _wrap_producer_init)
+        wrap_function_wrapper(kafka.KafkaConsumer, "__init__", _wrap_consumer_init)
+        wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",

@@ -1,8 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context
@@ -41,7 +42,7 @@ class OTTracePropagator(TextMapPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
         if context is None:
@@ -59,9 +60,7 @@ class OTTracePropagator(TextMapPropagator):
             INVALID_SPAN_ID,
         )
 
-        sampled = _extract_first_element(
-            getter.get(carrier, OT_SAMPLED_HEADER)
-        )
+        sampled = _extract_first_element(getter.get(carrier, OT_SAMPLED_HEADER))
 
         if sampled == "true":
             traceflags = TraceFlags.SAMPLED
@@ -87,9 +86,7 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = (
-                    _extract_first_element(getter.get(carrier, key))
-                )
+                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = _extract_first_element(getter.get(carrier, key))
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
@@ -99,7 +96,7 @@ class OTTracePropagator(TextMapPropagator):
     def inject(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         setter: Setter[CarrierT] = default_setter,
     ) -> None:
         span_context = get_current_span(context).get_span_context()
@@ -107,9 +104,7 @@ class OTTracePropagator(TextMapPropagator):
         if span_context.trace_id == INVALID_TRACE_ID:
             return
 
-        setter.set(
-            carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:]
-        )
+        setter.set(carrier, OT_TRACE_ID_HEADER, hex(span_context.trace_id)[2:][-16:])
         setter.set(
             carrier,
             OT_SPAN_ID_HEADER,
@@ -129,10 +124,7 @@ class OTTracePropagator(TextMapPropagator):
             return
 
         for header_name, header_value in baggage.items():
-            if (
-                _valid_header_name.fullmatch(header_name) is None
-                or _valid_header_value.fullmatch(header_value) is None
-            ):
+            if _valid_header_name.fullmatch(header_name) is None or _valid_header_value.fullmatch(header_value) is None:
                 continue
 
             setter.set(
@@ -158,15 +150,13 @@ class OTTracePropagator(TextMapPropagator):
 def _extract_first_element(
     items: Iterable[CarrierT],
     default: Any = None,
-) -> Optional[CarrierT]:
+) -> CarrierT | None:
     if items is None:
         return default
     return next(iter(items), None)
 
 
-def _extract_identifier(
-    items: Iterable[CarrierT], validator_pattern, default: int
-) -> int:
+def _extract_identifier(items: Iterable[CarrierT], validator_pattern, default: int) -> int:
     header = _extract_first_element(items)
     if header is None or validator_pattern.fullmatch(header) is None:
         return default

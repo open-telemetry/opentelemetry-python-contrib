@@ -50,15 +50,9 @@ class TestUtils(IsolatedAsyncioTestCase):
         self.assertEqual(context_getter.get(carrier_list, "key1"), ["val1"])
         self.assertEqual(["key1"], context_getter.keys(carrier_list))
 
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_send_span"
-    )
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_arg(
@@ -77,15 +71,9 @@ class TestUtils(IsolatedAsyncioTestCase):
             extract_bootstrap_servers,
         )
 
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_send_span"
-    )
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_kwarg(
@@ -122,19 +110,11 @@ class TestUtils(IsolatedAsyncioTestCase):
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
-        retval = await wrapped_send(
-            original_send_callback, kafka_producer, self.args, self.kwargs
-        )
+        retval = await wrapped_send(original_send_callback, kafka_producer, self.args, self.kwargs)
 
-        extract_bootstrap_servers.assert_called_once_with(
-            kafka_producer.client
-        )
-        extract_send_partition.assert_awaited_once_with(
-            kafka_producer, self.args, self.kwargs
-        )
-        tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name, kind=SpanKind.PRODUCER
-        )
+        extract_bootstrap_servers.assert_called_once_with(kafka_producer.client)
+        extract_send_partition.assert_awaited_once_with(kafka_producer, self.args, self.kwargs)
+        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
 
         span = tracer.start_as_current_span().__enter__.return_value
         enrich_span.assert_called_once_with(
@@ -149,30 +129,18 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         set_span_in_context.assert_called_once_with(span)
         context = set_span_in_context.return_value
-        inject.assert_called_once_with(
-            self.headers, context=context, setter=_aiokafka_setter
-        )
+        inject.assert_called_once_with(self.headers, context=context, setter=_aiokafka_setter)
 
         produce_hook.assert_awaited_once_with(span, self.args, self.kwargs)
 
-        original_send_callback.assert_awaited_once_with(
-            *self.args, **self.kwargs
-        )
+        original_send_callback.assert_awaited_once_with(*self.args, **self.kwargs)
         self.assertEqual(retval, original_send_callback.return_value)
 
     @mock.patch("opentelemetry.propagate.extract")
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._create_consumer_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_client_id"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
-    )
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
     async def test_wrap_getone(
         self,
         extract_consumer_group: mock.MagicMock,
@@ -188,13 +156,9 @@ class TestUtils(IsolatedAsyncioTestCase):
         kafka_consumer._client._otel_cluster_id = None
 
         wrapped_getone = _wrap_getone(tracer, consume_hook)
-        record = await wrapped_getone(
-            original_getone_callback, kafka_consumer, self.args, self.kwargs
-        )
+        record = await wrapped_getone(original_getone_callback, kafka_consumer, self.args, self.kwargs)
 
-        extract_bootstrap_servers.assert_called_once_with(
-            kafka_consumer._client
-        )
+        extract_bootstrap_servers.assert_called_once_with(kafka_consumer._client)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
         extract_client_id.assert_called_once_with(kafka_consumer._client)
@@ -203,14 +167,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_consumer_group.assert_called_once_with(kafka_consumer)
         consumer_group = extract_consumer_group.return_value
 
-        original_getone_callback.assert_awaited_once_with(
-            *self.args, **self.kwargs
-        )
+        original_getone_callback.assert_awaited_once_with(*self.args, **self.kwargs)
         self.assertEqual(record, original_getone_callback.return_value)
 
-        extract.assert_called_once_with(
-            record.headers, getter=_aiokafka_getter
-        )
+        extract.assert_called_once_with(record.headers, getter=_aiokafka_getter)
         context = extract.return_value
 
         _create_consumer_span.assert_called_once_with(
@@ -227,24 +187,12 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
 
     @mock.patch("opentelemetry.propagate.extract")
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._create_consumer_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_client_id"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
-    )
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
     # pylint: disable=too-many-locals
     async def test_wrap_getmany(
         self,
@@ -260,24 +208,16 @@ class TestUtils(IsolatedAsyncioTestCase):
         consume_hook = mock.AsyncMock()
         record_mock = mock.MagicMock()
         original_getmany_callback = mock.AsyncMock(
-            return_value={
-                aiokafka.TopicPartition(topic="topic_1", partition=0): [
-                    record_mock
-                ]
-            }
+            return_value={aiokafka.TopicPartition(topic="topic_1", partition=0): [record_mock]}
         )
         kafka_consumer = mock.MagicMock()
         kafka_consumer._client._otel_cluster_id = None
         _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
-        records = await wrapped_getmany(
-            original_getmany_callback, kafka_consumer, self.args, self.kwargs
-        )
+        records = await wrapped_getmany(original_getmany_callback, kafka_consumer, self.args, self.kwargs)
 
-        extract_bootstrap_servers.assert_called_once_with(
-            kafka_consumer._client
-        )
+        extract_bootstrap_servers.assert_called_once_with(kafka_consumer._client)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
         extract_client_id.assert_called_once_with(kafka_consumer._client)
@@ -286,14 +226,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_consumer_group.assert_called_once_with(kafka_consumer)
         consumer_group = extract_consumer_group.return_value
 
-        original_getmany_callback.assert_awaited_once_with(
-            *self.args, **self.kwargs
-        )
+        original_getmany_callback.assert_awaited_once_with(*self.args, **self.kwargs)
         self.assertEqual(records, original_getmany_callback.return_value)
 
-        extract.assert_called_once_with(
-            record_mock.headers, getter=_aiokafka_getter
-        )
+        extract.assert_called_once_with(record_mock.headers, getter=_aiokafka_getter)
         context = extract.return_value
 
         _create_consumer_span.assert_called_once_with(
@@ -311,9 +247,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span"
-    )
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
         self,
@@ -365,9 +299,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             offset=record.offset,
             cluster_id=None,
         )
-        consume_hook.assert_awaited_once_with(
-            span, record, self.args, self.kwargs
-        )
+        consume_hook.assert_awaited_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
     async def test_cluster_id_attribute_set_on_send_span(self) -> None:
@@ -375,12 +307,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         tracer = mock.MagicMock()
         span = mock.MagicMock()
         span.is_recording.return_value = True
-        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=span
-        )
-        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(
-            return_value=False
-        )
+        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
+        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
 
         producer = mock.MagicMock()
         producer.client._bootstrap_servers = "broker1:9092,broker2:9092"
@@ -394,10 +322,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         wrapped_send = _wrap_send(tracer, None)
         await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
 
-        set_attribute_calls = {
-            call.args[0]: call.args[1]
-            for call in span.set_attribute.call_args_list
-        }
+        set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
         self.assertEqual(
             set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID),
             "test-cluster-uuid",
@@ -408,12 +333,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         tracer = mock.MagicMock()
         span = mock.MagicMock()
         span.is_recording.return_value = True
-        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=span
-        )
-        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(
-            return_value=False
-        )
+        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
+        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
 
         producer = mock.MagicMock()
         producer.client._bootstrap_servers = "unknown-broker:9092"
@@ -427,17 +348,13 @@ class TestUtils(IsolatedAsyncioTestCase):
         wrapped_send = _wrap_send(tracer, None)
         await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
 
-        attribute_keys = [
-            call.args[0] for call in span.set_attribute.call_args_list
-        ]
+        attribute_keys = [call.args[0] for call in span.set_attribute.call_args_list]
         self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
 
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
         client = mock.MagicMock()
         client._otel_cluster_id = "abc-uuid-1234"
-        self.assertEqual(
-            _extract_cluster_id_from_client(client), "abc-uuid-1234"
-        )
+        self.assertEqual(_extract_cluster_id_from_client(client), "abc-uuid-1234")
 
     def test_extract_cluster_id_from_client_returns_none_when_not_set(
         self,
@@ -546,18 +463,6 @@ class TestUtils(IsolatedAsyncioTestCase):
         aiokafka_instance_mock._value_serializer = None
         aiokafka_instance_mock._partition.return_value = "partition"
         aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
-        assert (
-            await _extract_send_partition(
-                aiokafka_instance_mock, self.args, self.kwargs
-            )
-            == "partition"
-        )
-        aiokafka_instance_mock.client._wait_on_metadata.side_effect = (
-            Exception("mocked error")
-        )
-        assert (
-            await _extract_send_partition(
-                aiokafka_instance_mock, self.args, self.kwargs
-            )
-            is None
-        )
+        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
+        aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
+        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None

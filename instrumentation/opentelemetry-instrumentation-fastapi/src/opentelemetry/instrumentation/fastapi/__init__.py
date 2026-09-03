@@ -41,9 +41,7 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 
 .. code-block:: python
 
-    FastAPIInstrumentor.instrument_app(
-        app, excluded_urls="client/.*/info,healthcheck"
-    )
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="client/.*/info,healthcheck")
 
 Request/Response hooks
 **********************
@@ -64,23 +62,17 @@ right after a span is created for a request and right before the span is finishe
 
     def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
-            span.set_attribute(
-                "custom_user_attribute_from_request_hook", "some-value"
-            )
+            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
 
     def client_request_hook(span: Span, scope: Scope, message: Message):
         if span and span.is_recording():
-            span.set_attribute(
-                "custom_user_attribute_from_client_request_hook", "some-value"
-            )
+            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
 
     def client_response_hook(span: Span, scope: Scope, message: Message):
         if span and span.is_recording():
-            span.set_attribute(
-                "custom_user_attribute_from_response_hook", "some-value"
-            )
+            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
 
     FastAPIInstrumentor().instrument(
@@ -192,8 +184,8 @@ from __future__ import annotations
 import functools
 import logging
 import types
-from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Collection, Literal
+from collections.abc import Collection, Iterator, Sequence
+from typing import TYPE_CHECKING, Literal
 from weakref import WeakSet as _WeakSet
 
 import fastapi
@@ -314,9 +306,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 _OpenTelemetryStabilitySignalType.HTTP,
             )
             parsed_excluded_urls = (
-                _excluded_urls_from_env
-                if excluded_urls is None
-                else parse_excluded_urls(excluded_urls)
+                _excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)
             )
             tracer = get_tracer(
                 __name__,
@@ -341,9 +331,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     def __init__(self, app: ASGIApp) -> None:
                         self.app = app
 
-                    async def __call__(
-                        self, scope: Scope, receive: Receive, send: Send
-                    ) -> None:
+                    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
                         try:
                             await self.app(scope, receive, send)
                         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -366,13 +354,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # First, grab the original middleware stack from Starlette. It
                 # comprises a stack of
                 # `ServerErrorMiddleware` -> [user defined middlewares] -> `ExceptionMiddleware`
-                inner_server_error_middleware = (
-                    original_build_middleware_stack()
-                )
+                inner_server_error_middleware = original_build_middleware_stack()
 
-                if not isinstance(
-                    inner_server_error_middleware, ServerErrorMiddleware
-                ):
+                if not isinstance(inner_server_error_middleware, ServerErrorMiddleware):
                     # Oops, something changed about how Starlette creates middleware stacks
                     _logger.error(
                         "Skipping FastAPI instrumentation due to unexpected middleware stack: expected %s, got %s",
@@ -384,9 +368,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # We take [user defined middlewares] -> `ExceptionHandlerMiddleware`
                 # out of the outermost `ServerErrorMiddleware` and instead pass
                 # it to our own `ExceptionHandlerMiddleware`
-                exception_middleware = ExceptionHandlerMiddleware(
-                    inner_server_error_middleware.app
-                )
+                exception_middleware = ExceptionHandlerMiddleware(inner_server_error_middleware.app)
 
                 # Now, we create a new `ServerErrorMiddleware` that wraps
                 # `ExceptionHandlerMiddleware` but otherwise uses the same
@@ -436,9 +418,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 original_build_middleware_stack
             )
             app.build_middleware_stack = types.MethodType(
-                functools.wraps(app.build_middleware_stack)(
-                    build_middleware_stack
-                ),
+                functools.wraps(app.build_middleware_stack)(build_middleware_stack),
                 app,
             )
 
@@ -459,15 +439,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
         else:
-            _logger.warning(
-                "Attempting to instrument FastAPI app while already instrumented"
-            )
+            _logger.warning("Attempting to instrument FastAPI app while already instrumented")
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI) -> None:
-        original_build_middleware_stack = getattr(
-            app, "_original_build_middleware_stack", None
-        )
+        original_build_middleware_stack = getattr(app, "_original_build_middleware_stack", None)
         if original_build_middleware_stack:
             app.build_middleware_stack = original_build_middleware_stack
             del app._original_build_middleware_stack  # pyright: ignore[reportAttributeAccessIssue]
@@ -494,9 +470,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs: Unpack[_UninstrumentKwargs]) -> None:
         # Create a copy of the set to avoid RuntimeError during iteration
-        instances_to_uninstrument = list(
-            _InstrumentedFastAPI._instrumented_fastapi_apps
-        )
+        instances_to_uninstrument = list(_InstrumentedFastAPI._instrumented_fastapi_apps)
         for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
@@ -512,9 +486,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
-        FastAPIInstrumentor.instrument_app(
-            self, **_InstrumentedFastAPI._instrument_kwargs
-        )
+        FastAPIInstrumentor.instrument_app(self, **_InstrumentedFastAPI._instrument_kwargs)
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
 

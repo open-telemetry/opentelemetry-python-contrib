@@ -33,9 +33,9 @@ API
 
 import os
 import sys
+from collections.abc import Collection
 from functools import partial
 from logging import getLogger
-from typing import Collection
 
 import click
 from wrapt import wrap_function_wrapper
@@ -67,11 +67,7 @@ _logger = getLogger(__name__)
 
 def _skip_servers(ctx: click.Context):
     # flask run
-    if (
-        ctx.info_name == "run"
-        and FlaskScriptInfo
-        and isinstance(ctx.obj, FlaskScriptInfo)
-    ):
+    if ctx.info_name == "run" and FlaskScriptInfo and isinstance(ctx.obj, FlaskScriptInfo):
         return True
     # uvicorn
     if ctx.info_name == "uvicorn":
@@ -112,9 +108,7 @@ def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
             span.set_status(StatusCode.ERROR, str(exc))
             if span.is_recording():
                 span.set_attribute(ERROR_TYPE, exc.__class__.__qualname__)
-                span.set_attribute(
-                    PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1)
-                )
+                span.set_attribute(PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1))
             raise
 
 

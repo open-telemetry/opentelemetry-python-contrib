@@ -42,9 +42,9 @@ logger = logging.getLogger(__name__)
 
 def trace_integration(
     database_system: str,
-    connection_attributes: typing.Dict = None,
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    meter_provider: typing.Optional[MeterProvider] = None,
+    connection_attributes: dict = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ):
     """Integrate with aiopg library.
     based on dbapi integration, where replaced sync wrap methods to async
@@ -73,10 +73,10 @@ def trace_integration(
 def wrap_connect(
     name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: dict = None,
     version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    meter_provider: typing.Optional[MeterProvider] = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ):
     """Integrate with aiopg library.
     https://github.com/aio-libs/aiopg
@@ -98,8 +98,8 @@ def wrap_connect(
     def wrap_connect_(
         wrapped: typing.Callable[..., typing.Any],
         instance: typing.Any,
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         db_integration = AiopgIntegration(
             name,
@@ -131,10 +131,10 @@ def instrument_connection(
     name: str,
     connection,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: dict = None,
     version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    meter_provider: typing.Optional[MeterProvider] = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -166,9 +166,7 @@ def instrument_connection(
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
     )
-    db_integration.get_connection_attributes(
-        getattr(connection, "_conn", connection)
-    )
+    db_integration.get_connection_attributes(getattr(connection, "_conn", connection))
     return get_traced_connection_proxy(connection, db_integration)
 
 
@@ -191,17 +189,17 @@ def uninstrument_connection(connection):
 def wrap_create_pool(
     name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: dict = None,
     version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
-    meter_provider: typing.Optional[MeterProvider] = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ):
     # pylint: disable=unused-argument
     def wrap_create_pool_(
         wrapped: typing.Callable[..., typing.Any],
         instance: typing.Any,
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         db_integration = AiopgIntegration(
             name,
@@ -211,9 +209,7 @@ def wrap_create_pool(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
         )
-        return _PoolContextManager(
-            db_integration.wrapped_pool(wrapped, args, kwargs)
-        )
+        return _PoolContextManager(db_integration.wrapped_pool(wrapped, args, kwargs))
 
     try:
         wrapt.wrap_function_wrapper(aiopg, "create_pool", wrap_create_pool_)

@@ -96,8 +96,9 @@ API
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable, Collection
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import aiokafka
 from wrapt import (
@@ -148,13 +149,8 @@ async def _fetch_and_cache_cluster_id(
     if getattr(client, "_otel_cluster_id", None):
         return
 
-    failure_time: float | None = getattr(
-        client, "_otel_cluster_id_failure_time", None
-    )
-    if (
-        failure_time is not None
-        and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS
-    ):
+    failure_time: float | None = getattr(client, "_otel_cluster_id_failure_time", None)
+    if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
         return
 
     if _MetadataRequestV5 is None:
