@@ -40,6 +40,7 @@ libraries = [
     },
     {"library": "mysql-connector-python >= 8.0", "instrumentation": "opentelemetry-instrumentation-mysql==0.66b0.dev"},
     {"library": "mysqlclient < 3", "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.66b0.dev"},
+    {"library": "oracledb >= 2.0, < 5.0", "instrumentation": "opentelemetry-instrumentation-oracledb==0.66b0.dev"},
     {"library": "pika >= 0.12.0", "instrumentation": "opentelemetry-instrumentation-pika==0.66b0.dev"},
     {"library": "psycopg >= 3.1.0", "instrumentation": "opentelemetry-instrumentation-psycopg==0.66b0.dev"},
     {"library": "psycopg2 >= 2.7.3.1", "instrumentation": "opentelemetry-instrumentation-psycopg2==0.66b0.dev"},
