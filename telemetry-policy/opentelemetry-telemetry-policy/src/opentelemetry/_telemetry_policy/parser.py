@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from opentelemetry._telemetry_policy.model import (
     KNOWN_TARGET_TYPES,

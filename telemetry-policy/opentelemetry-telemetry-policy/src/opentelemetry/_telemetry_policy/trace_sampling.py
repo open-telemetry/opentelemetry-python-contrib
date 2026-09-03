@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from logging import getLogger
-from typing import Sequence
 
 from opentelemetry._telemetry_policy.implementer import PolicyImplementer
 from opentelemetry._telemetry_policy.model import (

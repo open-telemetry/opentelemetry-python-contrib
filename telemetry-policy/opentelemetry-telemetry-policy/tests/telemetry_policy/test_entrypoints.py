@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from importlib.metadata import entry_points
 from pathlib import Path
-from typing import Generator
 
 import pytest
 

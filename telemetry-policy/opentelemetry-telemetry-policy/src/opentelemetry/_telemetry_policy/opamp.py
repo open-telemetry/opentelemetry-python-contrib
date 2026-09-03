@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from logging import getLogger
-from typing import Any, Mapping, cast
+from typing import Any, cast
 
 from opentelemetry._telemetry_policy.model import SourceKind
 from opentelemetry._telemetry_policy.parser import parse_policy_document
