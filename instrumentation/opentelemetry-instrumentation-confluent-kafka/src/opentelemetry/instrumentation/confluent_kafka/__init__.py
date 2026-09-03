@@ -117,6 +117,7 @@ from .utils import (
     _create_new_consume_span,
     _end_current_consume_span,
     _enrich_span,
+    _get_real_instance,
     _get_span_name,
     _kafka_setter,
 )
@@ -369,6 +370,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 topic,
                 operation=MessagingOperationTypeValues.PUBLISH,
                 bootstrap_servers=bootstrap_servers,
+                instance=_get_real_instance(instance),
             )  # Publish
             propagate.inject(
                 headers,
@@ -393,6 +395,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
+                    instance=_get_real_instance(instance),
                 )
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
@@ -413,6 +416,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
+                    instance=_get_real_instance(instance),
                 )
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 

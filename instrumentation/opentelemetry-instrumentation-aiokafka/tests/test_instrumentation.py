@@ -31,11 +31,15 @@ class TestAIOKafkaInstrumentor(TestCase):
         instrumentation = AIOKafkaInstrumentor()
 
         instrumentation.instrument()
+        self.assertTrue(isinstance(AIOKafkaProducer.start, BoundFunctionWrapper))
+        self.assertTrue(isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
 
         instrumentation.uninstrument()
+        self.assertFalse(isinstance(AIOKafkaProducer.start, BoundFunctionWrapper))
+        self.assertFalse(isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
@@ -88,6 +92,10 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         consumer._client.bootstrap = mock.AsyncMock()
         consumer._client._wait_on_metadata = mock.AsyncMock()
+        # _start_consumer_wrapper calls _fetch_and_cache_cluster_id after start();
+        # mock the two client methods it uses so the call completes without I/O.
+        consumer._client.get_random_node = mock.Mock(return_value=0)
+        consumer._client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
         await consumer.start()
 
@@ -105,6 +113,10 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         producer._message_accumulator.add_message = mock.AsyncMock()
         producer._sender.start = mock.AsyncMock()
         producer._partition = mock.Mock(return_value=1)
+        # _start_producer_wrapper calls _fetch_and_cache_cluster_id after start();
+        # mock the two client methods it uses so the call completes without I/O.
+        producer.client.get_random_node = mock.Mock(return_value=0)
+        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
         await producer.start()
 
@@ -474,3 +486,32 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             )
         finally:
             await producer.stop()
+
+    async def test_start_producer_wrapper_fetches_cluster_id(self) -> None:
+        """_start_producer_wrapper calls _fetch_and_cache_cluster_id after start."""
+        producer = AIOKafkaProducer()
+        producer.client._wait_on_metadata = mock.AsyncMock()
+        producer.client.bootstrap = mock.AsyncMock()
+        producer._message_accumulator.add_message = mock.AsyncMock()
+        producer._sender.start = mock.AsyncMock()
+        producer._partition = mock.Mock(return_value=1)
+        producer.client.get_random_node = mock.Mock(return_value=0)
+        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="test-cluster-start"))
+
+        await producer.start()
+        await producer.stop()
+
+        self.assertEqual(producer.client._otel_cluster_id, "test-cluster-start")
+
+    async def test_start_consumer_wrapper_fetches_cluster_id(self) -> None:
+        """_start_consumer_wrapper calls _fetch_and_cache_cluster_id after start."""
+        consumer = AIOKafkaConsumer(group_id="g")
+        consumer._client.bootstrap = mock.AsyncMock()
+        consumer._client._wait_on_metadata = mock.AsyncMock()
+        consumer._client.get_random_node = mock.Mock(return_value=0)
+        consumer._client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="test-cluster-start"))
+
+        await consumer.start()
+        await consumer.stop()
+
+        self.assertEqual(consumer._client._otel_cluster_id, "test-cluster-start")

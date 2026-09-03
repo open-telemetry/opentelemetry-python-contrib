@@ -5,10 +5,18 @@
 from confluent_kafka import Consumer, Producer
 
 
+class MockClusterMetadata:
+    def __init__(self, cluster_id: str | None = None) -> None:
+        self.cluster_id = cluster_id
+        self.brokers: dict = {}
+        self.topics: dict = {}
+
+
 class MockConsumer(Consumer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
+        self._mock_cluster_id: str | None = None
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -20,6 +28,9 @@ class MockConsumer(Consumer):
         if len(self._queue) > 0:
             return self._queue.pop(0)
         return None
+
+    def list_topics(self, topic=None, timeout=-1):
+        return MockClusterMetadata(cluster_id=self._mock_cluster_id)
 
 
 class MockedMessage:
@@ -62,6 +73,7 @@ class MockedProducer(Producer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
+        self._mock_cluster_id: str | None = None
         super().__init__(config)
 
     def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -81,3 +93,6 @@ class MockedProducer(Producer):
 
     def flush(self, *args, **kwargs):
         return len(self._queue)
+
+    def list_topics(self, topic=None, timeout=-1):
+        return MockClusterMetadata(cluster_id=self._mock_cluster_id)
