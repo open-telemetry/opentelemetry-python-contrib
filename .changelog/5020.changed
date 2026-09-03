@@ -1,5 +1,4 @@
 `opentelemetry-instrumentation-exceptions`: use the `exception` event name for
 emitted log records, as the exception log semantic conventions prescribe for
 global unhandled exception handlers. The record body still carries the
-stringified exception, and falls back to the asyncio event loop message when
-the exception stringifies to an empty value.
+stringified exception.

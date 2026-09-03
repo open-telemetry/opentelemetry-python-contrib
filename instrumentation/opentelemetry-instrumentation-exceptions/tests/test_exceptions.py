@@ -244,16 +244,12 @@ def test_asyncio_unhandled_exception_invalid_call(
     assert not logs
 
 
-@pytest.mark.parametrize(
-    ("message", "expected_body"),
-    ((None, ""), (42, "42"), ("task boom", "task boom")),
-)
-def test_asyncio_body_falls_back_to_loop_message(
+@pytest.mark.parametrize("message", (None, 42, "task boom"))
+def test_asyncio_event_name_is_constant(
     log_exporter: InMemoryLogRecordExporter,
     monkeypatch: pytest.MonkeyPatch,
     instrumentor: UnhandledExceptionInstrumentor,
     message: object,
-    expected_body: str,
 ) -> None:
     monkeypatch.setattr(
         asyncio.BaseEventLoop,
@@ -265,16 +261,14 @@ def test_asyncio_body_falls_back_to_loop_message(
     loop = asyncio.new_event_loop()
     loop.set_exception_handler(lambda _loop, _context: None)
     try:
-        # An exception without arguments stringifies to "", so the body falls
-        # back to the event loop message.
-        exc = ValueError()
+        exc = _raised_value_error()
         loop.call_exception_handler({"exception": exc, "message": message})
     finally:
         loop.close()
 
     log_record = _finished_log(log_exporter)
     assert log_record.event_name == "exception"
-    assert log_record.body == expected_body
+    assert log_record.body == "boom"
 
 
 def test_base_exceptions_are_not_emitted(

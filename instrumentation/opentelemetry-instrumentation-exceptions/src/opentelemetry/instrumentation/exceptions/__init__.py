@@ -124,7 +124,6 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         *,
         severity_text: str,
         severity_number: SeverityNumber,
-        body: str | None = None,
     ) -> None:
         # BaseException includes process-control signals like KeyboardInterrupt.
         if not isinstance(exc, Exception) or self._logger is None:
@@ -136,7 +135,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             # recommend; the SDK derives them from it.
             self._logger.emit(
                 event_name=_EXCEPTION_EVENT_NAME,
-                body=str(exc) if body is None else body,
+                body=str(exc),
                 severity_text=severity_text,
                 severity_number=severity_number,
                 exception=exc,
@@ -187,15 +186,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         if context:
             exc = context.get("exception")
             if isinstance(exc, BaseException):
-                # Exceptions raised without arguments stringify to "", so the
-                # event loop message is the only description left to record.
-                message = context.get("message")
-                body = str(exc) or (str(message) if message else "")
                 self._emit_exception(
                     exc,
                     severity_text="ERROR",
                     severity_number=SeverityNumber.ERROR,
-                    body=body,
                 )
         wrapped(*args, **kwargs)
 
