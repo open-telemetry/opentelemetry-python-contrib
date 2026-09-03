@@ -17,6 +17,17 @@ Usage
 This instrumentation captures uncaught process exceptions, uncaught thread
 exceptions, and unhandled asyncio task exceptions and emits them as
 OpenTelemetry logs.
+
+Emitted records follow the `exception log semantic conventions
+<https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-logs/>`_:
+the exception instance is handed to the logs API, which records
+``exception.type``, ``exception.message`` and ``exception.stacktrace`` as log
+record attributes, and the event name is ``exception`` as prescribed for global
+unhandled exception handlers.
+
+The record body keeps carrying the stringified exception, so both
+representations stay supported. It duplicates the ``exception.message``
+attribute, but existing consumers reading the body are not broken.
 """
 
 from __future__ import annotations
@@ -38,6 +49,12 @@ from opentelemetry.instrumentation.exceptions.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
+
+# https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-logs/
+# "Instrumentations that are not specific to a particular operation or domain,
+# such as global unhandled exception handlers, SHOULD use the `exception`
+# event name."
+_EXCEPTION_EVENT_NAME = "exception"
 
 
 class UnhandledExceptionInstrumentor(BaseInstrumentor):
@@ -107,15 +124,17 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         *,
         severity_text: str,
         severity_number: SeverityNumber,
-        event_name: str,
     ) -> None:
         # BaseException includes process-control signals like KeyboardInterrupt.
         if not isinstance(exc, Exception) or self._logger is None:
             return
 
         try:
+            # The exception instance is passed through instead of setting the
+            # exception.* attributes by hand, as the semantic conventions
+            # recommend; the SDK derives them from it.
             self._logger.emit(
-                event_name=event_name,
+                event_name=_EXCEPTION_EVENT_NAME,
                 body=str(exc),
                 severity_text=severity_text,
                 severity_number=severity_number,
@@ -138,7 +157,6 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             exc,
             severity_text="FATAL",
             severity_number=SeverityNumber.FATAL,
-            event_name=type(exc).__name__,
         )
         wrapped(*args, **kwargs)
 
@@ -154,7 +172,6 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             hook_args.exc_value,
             severity_text="ERROR",
             severity_number=SeverityNumber.ERROR,
-            event_name=hook_args.exc_type.__name__,
         )
         wrapped(*args, **kwargs)
 
@@ -169,12 +186,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         if context:
             exc = context.get("exception")
             if isinstance(exc, BaseException):
-                message = context.get("message")
                 self._emit_exception(
                     exc,
                     severity_text="ERROR",
                     severity_number=SeverityNumber.ERROR,
-                    event_name=str(message) if message else type(exc).__name__,
                 )
         wrapped(*args, **kwargs)
 
