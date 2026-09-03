@@ -86,6 +86,10 @@ class OpAMPPolicyCallbacks(OpAMPCallbacks):
         return opamp_pb2.RemoteConfigStatuses_APPLIED, ""
 
     def _update_effective_config(self, client: OpAMPClient, policies: list[Any]) -> None:
+        # FIXME: the policy schema does not specify a payload encoding. JSON
+        # is the only encoding parse_policy_document accepts today, but once
+        # other encodings are parseable the effective config should be
+        # reported in the encoding the remote config arrived in.
         client.update_effective_config({self._config_map_key: {"policies": policies}}, "application/json")
 
 

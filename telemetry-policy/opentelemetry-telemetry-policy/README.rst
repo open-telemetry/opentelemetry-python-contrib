@@ -12,6 +12,7 @@ Experimental implementation of the telemetry policy concept proposed in
 The only policy target implemented today is trace sampling, applied through
 a runtime-swappable sampler. Policies are supplied by a local file provider
 or by an OpAMP server's remote config (via ``opentelemetry-opamp-client``).
+Declarative configuration is currently not supported.
 
 The API is not finalized; breaking changes can happen on any release.
 

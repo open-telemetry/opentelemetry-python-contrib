@@ -20,6 +20,15 @@ OTEL_PYTHON_EXPERIMENTAL_OPAMP_ENDPOINT = "OTEL_PYTHON_EXPERIMENTAL_OPAMP_ENDPOI
 Setting it enables the OpAMP policy provider during auto-configuration.
 """
 
+OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES = "OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES"
+"""Comma-separated resource attribute keys reported to the OpAMP server as
+the agent's identifying attributes (default
+``service.name,service.namespace,service.instance.id``).
+
+Keys not present on the resource are skipped; every other resource attribute
+is reported as non-identifying.
+"""
+
 OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_OPAMP_KEY = "OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_OPAMP_KEY"
 """Name of the OpAMP remote configuration entry to read the policy document
 from.

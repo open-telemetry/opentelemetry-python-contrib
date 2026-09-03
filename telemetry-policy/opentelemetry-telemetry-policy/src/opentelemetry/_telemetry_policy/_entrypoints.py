@@ -12,6 +12,7 @@ from pathlib import Path
 
 from opentelemetry._telemetry_policy.environment_variables import (
     OTEL_PYTHON_EXPERIMENTAL_OPAMP_ENDPOINT,
+    OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES,
     OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_FILE,
     OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_FILE_POLL_INTERVAL,
     OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_OPAMP_KEY,
@@ -35,7 +36,7 @@ from opentelemetry.util.types import AnyValue
 
 _logger = getLogger(__name__)
 
-_IDENTIFYING_ATTRIBUTE_KEYS = (SERVICE_NAME, SERVICE_NAMESPACE, SERVICE_INSTANCE_ID)
+_DEFAULT_IDENTIFYING_ATTRIBUTE_KEYS = (SERVICE_NAME, SERVICE_NAMESPACE, SERVICE_INSTANCE_ID)
 
 _lock = threading.Lock()
 # Keep track of providers to be able to reinitialize in tests.
@@ -119,19 +120,38 @@ def _file_poll_interval() -> float:
     if raw is None:
         return 30.0
     try:
-        return float(raw)
+        interval = float(raw)
+        if interval < 0:
+            raise ValueError()
+        return interval
     except ValueError:
         _logger.warning("invalid %s %r, using 30", OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_FILE_POLL_INTERVAL, raw)
         return 30.0
 
 
+def _identifying_attribute_keys() -> tuple[str, ...]:
+    raw = environ.get(OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES)
+    if raw is None:
+        return _DEFAULT_IDENTIFYING_ATTRIBUTE_KEYS
+    keys = tuple(key.strip() for key in raw.split(",") if key.strip())
+    if not keys:
+        _logger.warning(
+            "invalid %s %r, using the default identifying attributes",
+            OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES,
+            raw,
+        )
+        return _DEFAULT_IDENTIFYING_ATTRIBUTE_KEYS
+    return keys
+
+
 def _identifying_attributes(resource: Resource) -> dict[str, AnyValue]:
-    return {key: resource.attributes[key] for key in _IDENTIFYING_ATTRIBUTE_KEYS if key in resource.attributes}
+    return {key: resource.attributes[key] for key in _identifying_attribute_keys() if key in resource.attributes}
 
 
 def _non_identifying_attributes(resource: Resource) -> dict[str, AnyValue]:
+    identifying_keys = _identifying_attribute_keys()
     return {
         key: value
         for key, value in resource.attributes.items()
-        if key not in _IDENTIFYING_ATTRIBUTE_KEYS and isinstance(value, (str, bool, int, float))
+        if key not in identifying_keys and isinstance(value, (str, bool, int, float))
     }

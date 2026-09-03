@@ -16,6 +16,7 @@ from opentelemetry._telemetry_policy import (
     _entrypoints,
 )
 from opentelemetry._telemetry_policy.environment_variables import (
+    OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES,
     OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_FILE,
     OTEL_PYTHON_EXPERIMENTAL_TELEMETRY_POLICY_FILE_POLL_INTERVAL,
 )
@@ -136,3 +137,34 @@ def test_resource_attribute_split() -> None:
     assert identifying["service.instance.id"] == "instance-1"
     assert "service.name" not in non_identifying
     assert non_identifying["deployment.environment.name"] == "prod"
+
+
+def test_identifying_attributes_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
+    resource = Resource.create(
+        {
+            "service.name": "svc",
+            "service.instance.id": "instance-1",
+            "deployment.environment.name": "prod",
+        }
+    )
+    monkeypatch.setenv(
+        OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES,
+        "service.name, deployment.environment.name",
+    )
+
+    identifying = _entrypoints._identifying_attributes(resource)  # pylint: disable=protected-access
+    non_identifying = _entrypoints._non_identifying_attributes(resource)  # pylint: disable=protected-access
+
+    assert identifying == {"service.name": "svc", "deployment.environment.name": "prod"}
+    # A key outside the configured set is non-identifying, even a service one.
+    assert non_identifying["service.instance.id"] == "instance-1"
+    assert "deployment.environment.name" not in non_identifying
+
+
+def test_blank_identifying_attributes_uses_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    resource = Resource.create({"service.name": "svc"})
+    monkeypatch.setenv(OTEL_PYTHON_EXPERIMENTAL_OPAMP_IDENTIFYING_ATTRIBUTES, " , ")
+
+    identifying = _entrypoints._identifying_attributes(resource)  # pylint: disable=protected-access
+
+    assert identifying["service.name"] == "svc"
