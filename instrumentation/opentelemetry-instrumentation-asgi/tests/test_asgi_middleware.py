@@ -204,6 +204,8 @@ async def background_execution_asgi(scope, receive, send):
                 "body": b"*",
             }
         )
+        # Record when the background task starts; the server span must already be ended by now.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -245,7 +247,8 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "more_trailers": False,
             }
         )
-        scope["background_task_start_time_ns"] = time.time_ns()
+        # Record when the background task starts; the server span must already be ended by now.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -363,6 +366,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Ensure modifiers is a list
         modifiers = modifiers or []
         # Check for expected outputs
+        self.assertTrue(outputs, "ASGI application produced no response messages")
         response_start = outputs[0]
         response_final_body = [output for output in outputs if output["type"] == "http.response.body"][-1]
 
@@ -390,6 +394,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         # Check spans
         span_list = self.get_finished_spans()
+
         expected_old = [
             {
                 "name": "GET / http receive",
@@ -616,10 +621,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        span_duration_nanos = server_span.end_time - server_span.start_time
         self.assertLessEqual(
-            span_duration_nanos,
-            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+            server_span.end_time,
+            self.scope["background_task_start_ns"],
         )
 
     async def test_exclude_internal_spans(self):
@@ -673,8 +677,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         assert server_span.kind == SpanKind.SERVER
         self.assertLessEqual(
             server_span.end_time,
-            self.scope["background_task_start_time_ns"],
-            "server span must end before background execution starts",
+            self.scope["background_task_start_ns"],
         )
 
     async def test_override_span_name(self):
@@ -890,6 +893,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
+        await self.communicator.wait()
         outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,

@@ -632,14 +632,6 @@ def _set_db_redis_database_index(
 # Messaging
 
 
-def _set_messaging_system(
-    result: MutableMapping[str, AttributeValue],
-    system: str,
-    sem_conv_opt_in_mode: _StabilityMode,
-) -> None:
-    set_string_attribute(result, messaging_attributes.MESSAGING_SYSTEM, system)
-
-
 def _set_messaging_operation(
     result: MutableMapping[str, AttributeValue],
     operation: str,
@@ -674,14 +666,6 @@ def _set_messaging_destination(
         set_string_attribute(result, SpanAttributes.MESSAGING_DESTINATION, destination)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
-
-
-def _set_messaging_message_id(
-    result: MutableMapping[str, AttributeValue],
-    message_id: str,
-    sem_conv_opt_in_mode: _StabilityMode,
-) -> None:
-    set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
 
 
 def _set_messaging_conversation_id(
