@@ -3,16 +3,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, MutableSequence
 from contextlib import contextmanager
 from dataclasses import asdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
     Literal,
-    MutableSequence,
-    Union,
     cast,
     overload,
 )
@@ -123,11 +120,8 @@ class MethodWrappers:
         self,
         tracer: Tracer,
         logger: Logger,
-        capture_content: Union[bool, ContentCapturingMode],
-        sem_conv_opt_in_mode: Union[
-            Literal[_StabilityMode.DEFAULT],
-            Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
-        ],
+        capture_content: bool | ContentCapturingMode,
+        sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
         completion_hook: CompletionHook,
     ) -> None:
         self.tracer = tracer
