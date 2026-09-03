@@ -28,7 +28,7 @@ from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
 )
 from opentelemetry.instrumentation.grpc._semconv import (
-    RPC_RESPONSE_STATUS_CODE,
+    RPC_STATUS_CODE,
     RPC_SYSTEM_NAME,
 )
 from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
@@ -71,7 +71,7 @@ def _new_client_rpc_attrs(full_method, status_name="OK", error_type=None):
     attrs = {
         RPC_SYSTEM_NAME: "grpc",
         RPC_METHOD: full_method,
-        RPC_RESPONSE_STATUS_CODE: status_name,
+        RPC_STATUS_CODE: status_name,
         SERVER_ADDRESS: _CLIENT_SERVER_HOST,
         SERVER_PORT: _CLIENT_SERVER_PORT,
     }
@@ -124,7 +124,9 @@ class Interceptor(
 class TestClientProto(TestBase):
     def setUp(self):
         super().setUp()
-        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        test_name = (
+            self._testMethodName if hasattr(self, "_testMethodName") else ""
+        )
         sem_conv_mode = "default"
         if "new_semconv" in test_name:
             sem_conv_mode = "rpc"
@@ -326,7 +328,9 @@ class TestClientProto(TestBase):
                 RPC_METHOD: "ServerStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -344,7 +348,9 @@ class TestClientProto(TestBase):
                 RPC_METHOD: "BidirectionalStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -452,7 +458,8 @@ class TestClientProto(TestBase):
         span = spans[0]
         self.assertEqual(span.name, "/GRPCTestServer/ServerStreamingMethod")
         self.assertSpanHasAttributes(
-            span, _new_client_rpc_attrs("/GRPCTestServer/ServerStreamingMethod")
+            span,
+            _new_client_rpc_attrs("/GRPCTestServer/ServerStreamingMethod"),
         )
 
     def test_stream_unary_new_semconv(self):
@@ -462,7 +469,8 @@ class TestClientProto(TestBase):
         span = spans[0]
         self.assertEqual(span.name, "/GRPCTestServer/ClientStreamingMethod")
         self.assertSpanHasAttributes(
-            span, _new_client_rpc_attrs("/GRPCTestServer/ClientStreamingMethod")
+            span,
+            _new_client_rpc_attrs("/GRPCTestServer/ClientStreamingMethod"),
         )
 
     def test_stream_stream_new_semconv(self):
@@ -470,10 +478,14 @@ class TestClientProto(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
         self.assertSpanHasAttributes(
             span,
-            _new_client_rpc_attrs("/GRPCTestServer/BidirectionalStreamingMethod"),
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/BidirectionalStreamingMethod"
+            ),
         )
 
     def test_error_simple_new_semconv(self):
@@ -612,7 +624,7 @@ class TestClientProto(TestBase):
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 # new semconv attributes
                 RPC_SYSTEM_NAME: "grpc",
-                RPC_RESPONSE_STATUS_CODE: "OK",
+                RPC_STATUS_CODE: "OK",
                 SERVER_ADDRESS: _CLIENT_SERVER_HOST,
                 SERVER_PORT: _CLIENT_SERVER_PORT,
             },

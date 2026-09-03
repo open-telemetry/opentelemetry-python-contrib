@@ -19,26 +19,57 @@ import grpc
 from grpc.aio import ClientCallDetails, Metadata
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.grpc._semconv import _apply_grpc_status
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
+from opentelemetry.instrumentation.grpc._semconv import _apply_grpc_status
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 
 logger = logging.getLogger(__name__)
 
 
-def _unary_done_callback(span, code, details, response_hook, sem_conv_opt_in_mode):
+def _unary_done_callback(
+    span, code, details, response_hook, sem_conv_opt_in_mode
+):
     def callback(call):
         try:
-            _apply_grpc_status(span, code, trace.SpanKind.CLIENT, sem_conv_opt_in_mode, details)
+            _apply_grpc_status(
+                span,
+                code,
+                trace.SpanKind.CLIENT,
+                sem_conv_opt_in_mode,
+                details,
+            )
             response_hook(span, details)
         finally:
             span.end()
 
     return callback
+
+
+async def _capture_response_metadata(span, call, metadata_capture):
+    """Record gRPC initial and trailing metadata on an aio client span.
+
+    The aio API returns both as awaitables, unlike the sync API.
+    """
+    if metadata_capture.response_headers:
+        try:
+            metadata_capture.response_headers.apply(
+                span, await call.initial_metadata()
+            )
+        except Exception:  # pylint:disable=broad-except
+            logger.debug("Failed to read gRPC initial metadata", exc_info=True)
+    if metadata_capture.response_trailers:
+        try:
+            metadata_capture.response_trailers.apply(
+                span, await call.trailing_metadata()
+            )
+        except Exception:  # pylint:disable=broad-except
+            logger.debug(
+                "Failed to read gRPC trailing metadata", exc_info=True
+            )
 
 
 class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
@@ -58,6 +89,11 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             mutable_metadata,
             client_call_details.credentials,
             client_call_details.wait_for_ready,
+        )
+
+    def _capture_request_headers(self, span, client_call_details):
+        self._metadata_capture.request_headers.apply(
+            span, client_call_details.metadata
         )
 
     def _start_interceptor_span(self, method):
@@ -85,6 +121,9 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             # to the callback.
             code = await call.code()
             details = await call.details()
+            await _capture_response_metadata(
+                span, call, self._metadata_capture
+            )
 
             call.add_done_callback(
                 _unary_done_callback(
@@ -108,7 +147,12 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
                     self._call_response_hook(span, response)
                 yield response
             code = await call.code()
-            _apply_grpc_status(span, code, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode)
+            await _capture_response_metadata(
+                span, call, self._metadata_capture
+            )
+            _apply_grpc_status(
+                span, code, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode
+            )
         except Exception as exc:
             self.add_error_details_to_span(span, exc)
             raise exc
@@ -138,6 +182,7 @@ class UnaryUnaryAioClientInterceptor(
         with self._start_interceptor_span(
             client_call_details.method,
         ) as span:
+            self._capture_request_headers(span, client_call_details)
             new_details = self.propagate_trace_in_details(client_call_details)
 
             if self._request_hook:
@@ -164,6 +209,7 @@ class UnaryStreamAioClientInterceptor(
         with self._start_interceptor_span(
             client_call_details.method,
         ) as span:
+            self._capture_request_headers(span, client_call_details)
             new_details = self.propagate_trace_in_details(client_call_details)
 
             resp = await continuation(new_details, request)
@@ -185,6 +231,7 @@ class StreamUnaryAioClientInterceptor(
         with self._start_interceptor_span(
             client_call_details.method,
         ) as span:
+            self._capture_request_headers(span, client_call_details)
             new_details = self.propagate_trace_in_details(client_call_details)
 
             continuation_with_args = functools.partial(
@@ -208,6 +255,7 @@ class StreamStreamAioClientInterceptor(
         with self._start_interceptor_span(
             client_call_details.method,
         ) as span:
+            self._capture_request_headers(span, client_call_details)
             new_details = self.propagate_trace_in_details(client_call_details)
 
             resp = await continuation(new_details, request_iterator)

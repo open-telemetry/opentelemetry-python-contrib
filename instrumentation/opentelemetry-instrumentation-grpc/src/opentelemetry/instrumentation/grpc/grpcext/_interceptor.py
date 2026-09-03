@@ -55,7 +55,10 @@ class _InterceptorUnaryUnaryMultiCallable(grpc.UnaryUnaryMultiCallable):
         compression=None,
     ):
         def invoker(request, metadata):
-            return self._base_callable(
+            # with_call so the interceptor can read the status and the
+            # response metadata off the call object; the extra call object is
+            # unwrapped below, so callers see the plain response.
+            return self._base_callable.with_call(
                 request,
                 timeout,
                 metadata,
@@ -65,9 +68,10 @@ class _InterceptorUnaryUnaryMultiCallable(grpc.UnaryUnaryMultiCallable):
             )
 
         client_info = _UnaryClientInfo(self._method, timeout)
-        return self._interceptor.intercept_unary(
+        result = self._interceptor.intercept_unary(
             request, metadata, client_info, invoker
         )
+        return result[0] if isinstance(result, tuple) else result
 
     def with_call(
         self,

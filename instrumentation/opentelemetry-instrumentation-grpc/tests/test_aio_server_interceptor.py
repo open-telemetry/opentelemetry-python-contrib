@@ -29,7 +29,7 @@ from opentelemetry.instrumentation.grpc import (
 )
 from opentelemetry.instrumentation.grpc._semconv import (
     RPC_METHOD_ORIGINAL,
-    RPC_RESPONSE_STATUS_CODE,
+    RPC_STATUS_CODE,
     RPC_SYSTEM_NAME,
 )
 from opentelemetry.sdk import trace as trace_sdk
@@ -106,7 +106,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
     def setUp(self):
         super().setUp()
-        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        test_name = (
+            self._testMethodName if hasattr(self, "_testMethodName") else ""
+        )
         sem_conv_mode = "default"
         if "new_semconv" in test_name:
             sem_conv_mode = "rpc"
@@ -123,13 +125,15 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
 
-    def _new_server_rpc_attrs(self, full_method, status_name="OK", error_type=None):
+    def _new_server_rpc_attrs(
+        self, full_method, status_name="OK", error_type=None
+    ):
         """Build expected new-semconv attributes for a server RPC span."""
         attrs = {
             **self.new_semconv_net_peer_span_attributes,
             RPC_SYSTEM_NAME: "grpc",
             RPC_METHOD: full_method,
-            RPC_RESPONSE_STATUS_CODE: status_name,
+            RPC_STATUS_CODE: status_name,
         }
         if error_type:
             attrs[ERROR_TYPE] = error_type
@@ -675,7 +679,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             # pylint:disable=C0103
             async def ServerStreamingMethod(self, request, context):
                 yield Response(server_id=1, response_data="first")
-                await context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+                await context.abort(
+                    grpc.StatusCode.INTERNAL, "mid-stream error"
+                )
 
         testcase = self
 
@@ -811,7 +817,6 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             },
         )
 
-
     # --- new semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc) tests ---
 
     async def test_create_span_new_semconv(self):
@@ -823,14 +828,18 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = req.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, rpc_call)
         self.assertIs(span.kind, trace.SpanKind.SERVER)
-        self.assertSpanHasAttributes(span, self._new_server_rpc_attrs(rpc_call))
+        self.assertSpanHasAttributes(
+            span, self._new_server_rpc_attrs(rpc_call)
+        )
 
     async def test_create_span_streaming_new_semconv(self):
         """Check that the interceptor records new-semconv attributes on a streaming span."""
@@ -842,12 +851,16 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for _ in channel.unary_stream(rpc_call)(msg):
                 pass
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertSpanHasAttributes(span, self._new_server_rpc_attrs(rpc_call))
+        self.assertSpanHasAttributes(
+            span, self._new_server_rpc_attrs(rpc_call)
+        )
 
     async def test_abort_new_semconv(self):
         """Check that abort sets new-semconv error attributes correctly.
@@ -897,7 +910,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             # pylint:disable=C0103
             async def ServerStreamingMethod(self, request, context):
                 yield Response(server_id=1, response_data="first")
-                await context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+                await context.abort(
+                    grpc.StatusCode.INTERNAL, "mid-stream error"
+                )
 
         testcase = self
 
@@ -935,7 +950,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class UnimplementedServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(grpc.StatusCode.UNIMPLEMENTED, "not implemented")
+                await context.abort(
+                    grpc.StatusCode.UNIMPLEMENTED, "not implemented"
+                )
 
         testcase = self
 
@@ -944,7 +961,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = req.SerializeToString()
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
-            testcase.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            testcase.assertEqual(
+                cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+            )
 
         await run_with_test_server(
             request,
@@ -976,9 +995,13 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = req.SerializeToString()
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
-            testcase.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            testcase.assertEqual(
+                cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+            )
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -993,7 +1016,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_SYSTEM_NAME: "grpc",
                 "rpc.method": "_OTHER",
                 RPC_METHOD_ORIGINAL: rpc_call,
-                RPC_RESPONSE_STATUS_CODE: "UNIMPLEMENTED",
+                RPC_STATUS_CODE: "UNIMPLEMENTED",
                 ERROR_TYPE: "UNIMPLEMENTED",
             },
         )
@@ -1009,7 +1032,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = req.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -1027,7 +1052,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 # new semconv
                 **self.new_semconv_net_peer_span_attributes,
                 RPC_SYSTEM_NAME: "grpc",
-                RPC_RESPONSE_STATUS_CODE: "OK",
+                RPC_STATUS_CODE: "OK",
             },
         )
 

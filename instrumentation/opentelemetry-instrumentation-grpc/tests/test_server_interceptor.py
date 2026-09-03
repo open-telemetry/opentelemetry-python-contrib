@@ -35,7 +35,7 @@ from opentelemetry.instrumentation.grpc import (
 )
 from opentelemetry.instrumentation.grpc._semconv import (
     RPC_METHOD_ORIGINAL,
-    RPC_RESPONSE_STATUS_CODE,
+    RPC_STATUS_CODE,
     RPC_SYSTEM_NAME,
 )
 from opentelemetry.sdk import trace as trace_sdk
@@ -113,7 +113,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
     def setUp(self):
         super().setUp()
-        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        test_name = (
+            self._testMethodName if hasattr(self, "_testMethodName") else ""
+        )
         sem_conv_mode = "default"
         if "new_semconv" in test_name:
             sem_conv_mode = "rpc"
@@ -130,13 +132,15 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
 
-    def _new_server_rpc_attrs(self, full_method, status_name="OK", error_type=None):
+    def _new_server_rpc_attrs(
+        self, full_method, status_name="OK", error_type=None
+    ):
         """Build expected new-semconv attributes for a server RPC span."""
         attrs = {
             **self.new_semconv_net_peer_span_attributes,
             RPC_SYSTEM_NAME: "grpc",
             RPC_METHOD: full_method,
-            RPC_RESPONSE_STATUS_CODE: status_name,
+            RPC_STATUS_CODE: status_name,
         }
         if error_type:
             attrs[ERROR_TYPE] = error_type
@@ -708,7 +712,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             max_workers=1,
             interceptors=[interceptor],
         ) as (server, channel):
-            add_GRPCTestServerServicer_to_server(MidStreamErrorServicer(), server)
+            add_GRPCTestServerServicer_to_server(
+                MidStreamErrorServicer(), server
+            )
 
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
             request = Request(client_id=1, request_data="test")
@@ -749,7 +755,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             interceptors=[interceptor],
         ) as (server, channel):
             # The base servicer sets UNIMPLEMENTED and raises NotImplementedError
-            add_GRPCTestServerServicer_to_server(GRPCTestServerServicer(), server)
+            add_GRPCTestServerServicer_to_server(
+                GRPCTestServerServicer(), server
+            )
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
@@ -758,7 +766,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.start()
                 with self.assertRaises(grpc.RpcError) as cm:
                     channel.unary_unary(rpc_call)(msg)
-                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+                self.assertEqual(
+                    cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+                )
             finally:
                 server.stop(None)
 
@@ -827,14 +837,16 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             },
         )
 
-
     # --- new semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc) tests ---
 
     def test_create_span_new_semconv(self):
         """Check that the interceptor records new-semconv attributes on a unary span."""
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
@@ -858,7 +870,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         """Check that the interceptor records new-semconv attributes on a streaming span."""
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
             request = Request(client_id=1, request_data="test")
@@ -896,8 +911,13 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             (precondition_handler, grpc.StatusCode.FAILED_PRECONDITION, False),
         ]:
             self.memory_exporter.clear()
-            with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
-                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+            with self.server(max_workers=1, interceptors=[interceptor]) as (
+                server,
+                channel,
+            ):
+                server.add_generic_rpc_handlers(
+                    (UnaryUnaryRpcHandler(handler),)
+                )
                 rpc_call = f"TestServicer/{handler.__name__}"
                 try:
                     server.start()
@@ -915,7 +935,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                     span,
                     {
                         RPC_SYSTEM_NAME: "grpc",
-                        RPC_RESPONSE_STATUS_CODE: expected_code.name,
+                        RPC_STATUS_CODE: expected_code.name,
                         ERROR_TYPE: expected_code.name,
                     },
                 )
@@ -925,7 +945,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                     span,
                     {
                         RPC_SYSTEM_NAME: "grpc",
-                        RPC_RESPONSE_STATUS_CODE: expected_code.name,
+                        RPC_STATUS_CODE: expected_code.name,
                     },
                 )
                 self.assertNotIn(ERROR_TYPE, span.attributes or {})
@@ -941,8 +961,13 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
-            add_GRPCTestServerServicer_to_server(MidStreamErrorServicer(), server)
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
+            add_GRPCTestServerServicer_to_server(
+                MidStreamErrorServicer(), server
+            )
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
             request = Request(client_id=1, request_data="test")
             msg = request.SerializeToString()
@@ -970,8 +995,13 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         """Check that an unimplemented handler records UNIMPLEMENTED in new semconv."""
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
-            add_GRPCTestServerServicer_to_server(GRPCTestServerServicer(), server)
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
+            add_GRPCTestServerServicer_to_server(
+                GRPCTestServerServicer(), server
+            )
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
             msg = request.SerializeToString()
@@ -979,7 +1009,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.start()
                 with self.assertRaises(grpc.RpcError) as cm:
                     channel.unary_unary(rpc_call)(msg)
-                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+                self.assertEqual(
+                    cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+                )
             finally:
                 server.stop(None)
 
@@ -1000,7 +1032,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         """In new-semconv mode, a totally unknown method produces an _OTHER span."""
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             rpc_call = "/GRPCTestServer/UnknownMethod"
             request = Request(client_id=1, request_data="test")
@@ -1009,7 +1044,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 server.start()
                 with self.assertRaises(grpc.RpcError) as cm:
                     channel.unary_unary(rpc_call)(msg)
-                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+                self.assertEqual(
+                    cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+                )
             finally:
                 server.stop(None)
 
@@ -1026,7 +1063,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 RPC_SYSTEM_NAME: "grpc",
                 "rpc.method": "_OTHER",
                 RPC_METHOD_ORIGINAL: rpc_call,
-                RPC_RESPONSE_STATUS_CODE: "UNIMPLEMENTED",
+                RPC_STATUS_CODE: "UNIMPLEMENTED",
                 ERROR_TYPE: "UNIMPLEMENTED",
             },
         )
@@ -1037,7 +1074,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         """Verify that dup mode reports both old and new semconv attributes on a server span."""
         interceptor = server_interceptor()
 
-        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
             rpc_call = "/GRPCTestServer/SimpleMethod"
             request = Request(client_id=1, request_data="test")
@@ -1063,7 +1103,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 # new semconv
                 **self.new_semconv_net_peer_span_attributes,
                 RPC_SYSTEM_NAME: "grpc",
-                RPC_RESPONSE_STATUS_CODE: "OK",
+                RPC_STATUS_CODE: "OK",
             },
         )
 

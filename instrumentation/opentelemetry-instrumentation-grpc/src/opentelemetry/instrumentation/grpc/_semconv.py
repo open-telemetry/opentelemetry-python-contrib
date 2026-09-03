@@ -14,16 +14,25 @@
 
 """gRPC-specific semantic convention helpers for the stability migration."""
 
-from typing import MutableMapping, Optional
+import base64
+import os
+from typing import (
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+)
 
 import grpc
 
 from opentelemetry import trace
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.instrumentation._semconv import (
-    _StabilityMode,
     _report_new,
     _report_old,
+    _StabilityMode,
     set_int_attribute,
     set_string_attribute,
 )
@@ -50,27 +59,29 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
-
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
 # New stable RPC attribute names. Not yet published as stable constants in the
 # opentelemetry-semantic-conventions package because the stable RPC conventions
 # are still a work in progress.
 RPC_SYSTEM_NAME = "rpc.system.name"
-RPC_RESPONSE_STATUS_CODE = "rpc.response.status_code"
+RPC_STATUS_CODE = "rpc.status_code"
 RPC_METHOD_ORIGINAL = "rpc.method_original"
 
 # gRPC status codes that are considered errors on the server side under the
 # new stable RPC conventions. See:
 # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/rpc/rpc-spans.md
-_GRPC_SERVER_ERROR_STATUS_CODES = frozenset({
-    grpc.StatusCode.UNKNOWN,
-    grpc.StatusCode.DEADLINE_EXCEEDED,
-    grpc.StatusCode.UNIMPLEMENTED,
-    grpc.StatusCode.INTERNAL,
-    grpc.StatusCode.UNAVAILABLE,
-    grpc.StatusCode.DATA_LOSS,
-})
+_GRPC_SERVER_ERROR_STATUS_CODES = frozenset(
+    {
+        grpc.StatusCode.UNKNOWN,
+        grpc.StatusCode.DEADLINE_EXCEEDED,
+        grpc.StatusCode.UNIMPLEMENTED,
+        grpc.StatusCode.INTERNAL,
+        grpc.StatusCode.UNAVAILABLE,
+        grpc.StatusCode.DATA_LOSS,
+    }
+)
 
 
 def _apply_grpc_status(
@@ -93,7 +104,7 @@ def _apply_grpc_status(
     if _report_old(sem_conv_opt_in_mode):
         span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
     if _report_new(sem_conv_opt_in_mode):
-        span.set_attribute(RPC_RESPONSE_STATUS_CODE, code.name)
+        span.set_attribute(RPC_STATUS_CODE, code.name)
 
     is_error = (
         code in _GRPC_SERVER_ERROR_STATUS_CODES
@@ -103,9 +114,15 @@ def _apply_grpc_status(
 
     if is_error:
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(ERROR_TYPE, code.name if code else  ErrorTypeValues.OTHER)
-        status_description = f"{code}:{description}" if description else str(code)
-        span.set_status(Status(StatusCode.ERROR, description=status_description))
+            span.set_attribute(
+                ERROR_TYPE, code.name if code else ErrorTypeValues.OTHER
+            )
+        status_description = (
+            f"{code}:{description}" if description else str(code)
+        )
+        span.set_status(
+            Status(StatusCode.ERROR, description=status_description)
+        )
 
 
 def _add_error_details_to_span(span, exc, span_kind, sem_conv_opt_in_mode):
@@ -124,7 +141,9 @@ def _add_error_details_to_span(span, exc, span_kind, sem_conv_opt_in_mode):
         description = f"{type(exc).__name__}: {exc}"
 
     if isinstance(exc, grpc.RpcError):
-        _apply_grpc_status(span, exc.code(), span_kind, sem_conv_opt_in_mode, description)
+        _apply_grpc_status(
+            span, exc.code(), span_kind, sem_conv_opt_in_mode, description
+        )
     else:
         span.set_status(Status(StatusCode.ERROR, description=description))
         if _report_new(sem_conv_opt_in_mode):
@@ -141,9 +160,13 @@ def _apply_server_error(span, exc, code, details, sem_conv_opt_in_mode):
     Otherwise record the unexpected exception details.
     """
     if code is not None:
-        _apply_grpc_status(span, code, trace.SpanKind.SERVER, sem_conv_opt_in_mode, details)
+        _apply_grpc_status(
+            span, code, trace.SpanKind.SERVER, sem_conv_opt_in_mode, details
+        )
     else:
-        _add_error_details_to_span(span, exc, trace.SpanKind.SERVER, sem_conv_opt_in_mode)
+        _add_error_details_to_span(
+            span, exc, trace.SpanKind.SERVER, sem_conv_opt_in_mode
+        )
 
 
 def _set_rpc_system(
@@ -192,12 +215,12 @@ def _set_rpc_grpc_status_code(
     """Set gRPC status code attribute.
 
     Old: rpc.grpc.status_code (integer, e.g. 0 for OK)
-    New: rpc.response.status_code (string, e.g. "OK"); non-OK also sets error.type
+    New: rpc.status_code (string, e.g. "OK"); non-OK also sets error.type
     """
     if _report_old(sem_conv_opt_in_mode):
         result[RPC_GRPC_STATUS_CODE] = code_int
     if _report_new(sem_conv_opt_in_mode):
-        result[RPC_RESPONSE_STATUS_CODE] = code_str
+        result[RPC_STATUS_CODE] = code_str
         if code_int != 0:  # non-OK status
             result[ERROR_TYPE] = code_str
 
@@ -275,10 +298,10 @@ def _parse_grpc_target(target: str) -> tuple:
     # Handles both "unix:path" and "unix:///path" (URI form).
     if target.startswith("unix:") or target.startswith("unix-abstract:"):
         prefix = "unix:" if target.startswith("unix:") else "unix-abstract:"
-        path = target[len(prefix):]
+        path = target[len(prefix) :]
         # Strip the authority component from URI form ("//[authority]/path")
         if path.startswith("//"):
-            slash = path.find("/", 2)   # first "/" after the leading "//"
+            slash = path.find("/", 2)  # first "/" after the leading "//"
             path = path[slash:] if slash != -1 else ""
         return path or None, None
 
@@ -293,7 +316,7 @@ def _parse_grpc_target(target: str) -> tuple:
         if scheme == "dns":
             # dns://[resolver]/host:port — endpoint follows the authority
             slash = rest.find("/")
-            endpoint = rest[slash + 1:] if slash != -1 else rest
+            endpoint = rest[slash + 1 :] if slash != -1 else rest
             return _parse_host_port(endpoint)
         # Unknown URI scheme — cannot determine a low-cardinality identifier.
         return target, None
@@ -313,7 +336,7 @@ def _parse_host_port(target: str) -> tuple:
         if bracket_end == -1:
             return None, None
         host = target[1:bracket_end]
-        remainder = target[bracket_end + 1:]
+        remainder = target[bracket_end + 1 :]
         if remainder.startswith(":"):
             try:
                 return host, int(remainder[1:])
@@ -349,3 +372,181 @@ def _set_server_address_port(
         result[SERVER_ADDRESS] = host
     if port is not None:
         result[SERVER_PORT] = port
+
+
+# --- gRPC metadata capture (rpc.request.header / rpc.response.header /
+# --- rpc.response.trailer) --------------------------------------------------
+
+RPC_REQUEST_HEADER_TEMPLATE = "rpc.request.header.{}"
+RPC_RESPONSE_HEADER_TEMPLATE = "rpc.response.header.{}"
+RPC_RESPONSE_TRAILER_TEMPLATE = "rpc.response.trailer.{}"
+
+_ENV_CAPTURE_CLIENT_REQUEST_HEADERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_REQUEST_HEADERS"
+)
+_ENV_CAPTURE_CLIENT_RESPONSE_HEADERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_RESPONSE_HEADERS"
+)
+_ENV_CAPTURE_CLIENT_RESPONSE_TRAILERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_RESPONSE_TRAILERS"
+)
+_ENV_CAPTURE_SERVER_REQUEST_HEADERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_REQUEST_HEADERS"
+)
+_ENV_CAPTURE_SERVER_RESPONSE_HEADERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_RESPONSE_HEADERS"
+)
+_ENV_CAPTURE_SERVER_RESPONSE_TRAILERS = (
+    "OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_RESPONSE_TRAILERS"
+)
+
+
+def _iter_metadata(metadata) -> Iterator[Tuple[str, object]]:
+    """Yield ``(key, value)`` pairs from any of the shapes gRPC uses.
+
+    Sync APIs return a tuple of ``Metadatum`` namedtuples or plain 2-tuples,
+    ``grpc.aio.Metadata`` is iterable as 2-tuples, and interceptors may be
+    handed a plain mapping.
+    """
+    if metadata is None:
+        return
+    if isinstance(metadata, Mapping):
+        yield from metadata.items()
+        return
+    for entry in metadata:
+        key = getattr(entry, "key", None)
+        if key is None:
+            key, value = entry
+        else:
+            value = entry.value
+        yield key, value
+
+
+def _metadata_value_to_str(value) -> str:
+    """Render a metadata value as a string.
+
+    Values under keys ending in ``-bin`` are bytes that are not necessarily
+    valid UTF-8, so the semantic conventions record them base64-encoded.
+    """
+    if isinstance(value, bytes):
+        return base64.b64encode(value).decode("ascii")
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
+class _MetadataCapture:
+    """Collects the configured metadata entries as span attributes.
+
+    Capture is opt-in per the RPC semantic conventions: only the keys the user
+    explicitly listed are recorded, so no unlisted metadata can leak.
+    """
+
+    __slots__ = ("_template", "_keys")
+
+    def __init__(self, template: str, keys: Optional[Iterable[str]]):
+        self._template = template
+        self._keys = frozenset(
+            key.strip().lower() for key in (keys or ()) if key and key.strip()
+        )
+
+    def __bool__(self) -> bool:
+        return bool(self._keys)
+
+    def collect(self, metadata) -> MutableMapping[str, List[str]]:
+        if not self._keys:
+            return {}
+        collected: MutableMapping[str, List[str]] = {}
+        for key, value in _iter_metadata(metadata):
+            key = key.lower()
+            if key not in self._keys:
+                continue
+            collected.setdefault(self._template.format(key), []).append(
+                _metadata_value_to_str(value)
+            )
+        return collected
+
+    def apply(self, span, metadata) -> None:
+        if not self._keys or span is None or not span.is_recording():
+            return
+        for name, values in self.collect(metadata).items():
+            span.set_attribute(name, values)
+
+
+def _capture_from_env(
+    template: str, keys: Optional[Iterable[str]], env_var: str
+) -> _MetadataCapture:
+    """Build a capture from an explicit key list, falling back to ``env_var``."""
+    if keys is None:
+        keys = os.environ.get(env_var, "").split(",")
+    return _MetadataCapture(template, keys)
+
+
+class _ClientMetadataCapture:
+    """The three client-span metadata captures."""
+
+    __slots__ = ("request_headers", "response_headers", "response_trailers")
+
+    def __init__(
+        self,
+        request_headers: Optional[Iterable[str]] = None,
+        response_headers: Optional[Iterable[str]] = None,
+        response_trailers: Optional[Iterable[str]] = None,
+    ):
+        self.request_headers = _capture_from_env(
+            RPC_REQUEST_HEADER_TEMPLATE,
+            request_headers,
+            _ENV_CAPTURE_CLIENT_REQUEST_HEADERS,
+        )
+        self.response_headers = _capture_from_env(
+            RPC_RESPONSE_HEADER_TEMPLATE,
+            response_headers,
+            _ENV_CAPTURE_CLIENT_RESPONSE_HEADERS,
+        )
+        self.response_trailers = _capture_from_env(
+            RPC_RESPONSE_TRAILER_TEMPLATE,
+            response_trailers,
+            _ENV_CAPTURE_CLIENT_RESPONSE_TRAILERS,
+        )
+
+    def __bool__(self) -> bool:
+        return bool(
+            self.request_headers
+            or self.response_headers
+            or self.response_trailers
+        )
+
+
+class _ServerMetadataCapture:
+    """The three server-span metadata captures."""
+
+    __slots__ = ("request_headers", "response_headers", "response_trailers")
+
+    def __init__(
+        self,
+        request_headers: Optional[Iterable[str]] = None,
+        response_headers: Optional[Iterable[str]] = None,
+        response_trailers: Optional[Iterable[str]] = None,
+    ):
+        self.request_headers = _capture_from_env(
+            RPC_REQUEST_HEADER_TEMPLATE,
+            request_headers,
+            _ENV_CAPTURE_SERVER_REQUEST_HEADERS,
+        )
+        self.response_headers = _capture_from_env(
+            RPC_RESPONSE_HEADER_TEMPLATE,
+            response_headers,
+            _ENV_CAPTURE_SERVER_RESPONSE_HEADERS,
+        )
+        self.response_trailers = _capture_from_env(
+            RPC_RESPONSE_TRAILER_TEMPLATE,
+            response_trailers,
+            _ENV_CAPTURE_SERVER_RESPONSE_TRAILERS,
+        )
+
+    def __bool__(self) -> bool:
+        return bool(
+            self.request_headers
+            or self.response_headers
+            or self.response_trailers
+        )

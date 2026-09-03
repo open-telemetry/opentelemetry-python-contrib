@@ -30,14 +30,15 @@ import grpc
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation._semconv import (
-    _StabilityMode,
-    _report_old,
     _report_new,
+    _report_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.grpc._semconv import (
     RPC_METHOD_ORIGINAL,
     _apply_grpc_status,
     _apply_server_error,
+    _ServerMetadataCapture,
     _set_rpc_method,
     _set_rpc_peer_ip_server,
     _set_rpc_peer_name_server,
@@ -79,10 +80,12 @@ def _wrap_rpc_behavior(handler, continuation):
 
 # pylint:disable=abstract-method
 class _OpenTelemetryServicerContext(grpc.ServicerContext):
-    def __init__(self, servicer_context):
+    def __init__(self, servicer_context, span=None, metadata_capture=None):
         self._servicer_context = servicer_context
         self._code = None
         self._details = None
+        self._span = span
+        self._metadata_capture = metadata_capture
         super().__init__()
 
     def __getattr__(self, attr):
@@ -122,10 +125,25 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.set_compression(compression)
 
     def send_initial_metadata(self, *args, **kwargs):
+        self._capture_response_metadata("response_headers", args, kwargs)
         return self._servicer_context.send_initial_metadata(*args, **kwargs)
 
     def set_trailing_metadata(self, *args, **kwargs):
+        self._capture_response_metadata("response_trailers", args, kwargs)
         return self._servicer_context.set_trailing_metadata(*args, **kwargs)
+
+    def _capture_response_metadata(self, capture_name, args, kwargs):
+        """Record metadata the servicer hands back to gRPC.
+
+        There is no server-side API to read it once sent, so it has to be
+        observed on the way out.
+        """
+        if self._metadata_capture is None:
+            return
+        metadata = kwargs.get("metadata", args[0] if args else None)
+        getattr(self._metadata_capture, capture_name).apply(
+            self._span, metadata
+        )
 
     def trailing_metadata(self):
         return self._servicer_context.trailing_metadata()
@@ -138,6 +156,10 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def abort_with_status(self, status):
         self._code = status.code
         self._details = status.details
+        if self._metadata_capture is not None:
+            self._metadata_capture.response_trailers.apply(
+                self._span, getattr(status, "trailing_metadata", None)
+            )
         return self._servicer_context.abort_with_status(status)
 
     def code(self):
@@ -191,10 +213,12 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         tracer,
         filter_=None,
         sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        metadata_capture=None,
     ):
         self._tracer = tracer
         self._filter = filter_
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self._metadata_capture = metadata_capture or _ServerMetadataCapture()
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -231,6 +255,12 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             if "user-agent" in metadata:
                 attributes["rpc.user_agent"] = metadata["user-agent"]
 
+        attributes.update(
+            self._metadata_capture.request_headers.collect(
+                context.invocation_metadata()
+            )
+        )
+
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
             kind=trace.SpanKind.SERVER,
@@ -245,6 +275,11 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             attributes["rpc.method"] = "_OTHER"
             if handler_call_details.method:
                 attributes[RPC_METHOD_ORIGINAL] = handler_call_details.method
+            attributes.update(
+                self._metadata_capture.request_headers.collect(
+                    context.invocation_metadata()
+                )
+            )
             with self._tracer.start_as_current_span(
                 name="_OTHER",
                 kind=trace.SpanKind.SERVER,
@@ -277,7 +312,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             _set_rpc_peer_ip_server(attrs, ip, self._sem_conv_opt_in_mode)
             _set_rpc_peer_port_server(attrs, port, self._sem_conv_opt_in_mode)
             if ip in ("[::1]", "127.0.0.1"):
-                _set_rpc_peer_name_server(attrs, "localhost", self._sem_conv_opt_in_mode)
+                _set_rpc_peer_name_server(
+                    attrs, "localhost", self._sem_conv_opt_in_mode
+                )
             for k, v in attrs.items():
                 span.set_attribute(k, v)
         except IndexError:
@@ -307,20 +344,26 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         self._set_peer_attributes(span, context)
                         # wrap the context
                         context = _OpenTelemetryServicerContext(
-                            context
+                            context, span, self._metadata_capture
                         )
 
                         # And now we run the actual RPC.
                         try:
                             result = behavior(request_or_iterator, context)
                             _apply_grpc_status(
-                                    span, context._code, trace.SpanKind.SERVER,
-                                    self._sem_conv_opt_in_mode, context._details,
-                                )
+                                span,
+                                context._code,
+                                trace.SpanKind.SERVER,
+                                self._sem_conv_opt_in_mode,
+                                context._details,
+                            )
                             return result
                         except Exception as error:
                             _apply_server_error(
-                                span, error, context._code, context._details,
+                                span,
+                                error,
+                                context._code,
+                                context._details,
                                 self._sem_conv_opt_in_mode,
                             )
                             raise error
@@ -330,8 +373,10 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         handler = continuation(handler_call_details)
         if handler is None:
             if _report_new(self._sem_conv_opt_in_mode):
+
                 def _unimplemented(_request, context):
                     self._handle_unimplemented(handler_call_details, context)
+
                 return grpc.unary_unary_rpc_method_handler(_unimplemented)
             return None
         return _wrap_rpc_behavior(handler, telemetry_wrapper)
@@ -348,19 +393,24 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             ) as span:
                 self._set_peer_attributes(span, context)
                 context = _OpenTelemetryServicerContext(
-                    context
+                    context, span, self._metadata_capture
                 )
 
                 try:
                     yield from behavior(request_or_iterator, context)
                     _apply_grpc_status(
-                        span, context._code, trace.SpanKind.SERVER,
-                        self._sem_conv_opt_in_mode, context._details,
+                        span,
+                        context._code,
+                        trace.SpanKind.SERVER,
+                        self._sem_conv_opt_in_mode,
+                        context._details,
                     )
                 except Exception as error:
                     _apply_server_error(
-                        span, error, context._code, context._details,
+                        span,
+                        error,
+                        context._code,
+                        context._details,
                         self._sem_conv_opt_in_mode,
                     )
                     raise error
-

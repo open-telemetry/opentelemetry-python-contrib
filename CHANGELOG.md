@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-grpc`: Migrate to release candidate RPC semantic conventions,
+  opted into with `OTEL_SEMCONV_STABILITY_OPT_IN=rpc` or `rpc/dup`, including opt-in capture of
+  gRPC metadata as `rpc.request.header.<key>`, `rpc.response.header.<key>` and `rpc.response.trailer.<key>`
+  ([#4279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4279))
 - Add Python 3.14 support
   ([#4193](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4193))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics

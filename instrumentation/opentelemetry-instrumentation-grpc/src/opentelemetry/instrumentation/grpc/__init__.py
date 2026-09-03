@@ -281,33 +281,74 @@ Environment variables
   - ``rpc`` — emit only the stable (new) RPC conventions. Key changes:
 
     - ``rpc.system`` → ``rpc.system.name``
-    - ``rpc.grpc.status_code`` (int) → ``rpc.response.status_code`` (string,
+    - ``rpc.grpc.status_code`` (int) → ``rpc.status_code`` (string,
       e.g. ``"OK"``, ``"UNAVAILABLE"``); non-OK codes also set ``error.type``
     - ``rpc.method`` now contains the fully-qualified name
       (e.g. ``"helloworld.Greeter/SayHello"``); ``rpc.service`` is removed
+    - ``rpc.method_original`` is set when ``rpc.method`` falls back to
+      ``"_OTHER"``
     - ``net.peer.ip`` / ``net.peer.name`` / ``net.peer.port`` (server spans)
-      → ``client.address`` / ``client.port``
+      → ``network.peer.address`` / ``network.peer.port``
+    - client spans set ``server.address`` / ``server.port``, parsed from the
+      channel target
 
   - ``rpc/dup`` — emit both old and new RPC conventions simultaneously,
     useful for a phased rollout.
 
   - *(default, no value)* — continue emitting the old RPC conventions.
 
+Metadata capture
+^^^^^^^^^^^^^^^^
+
+Capturing gRPC metadata is opt-in: only the keys listed below are recorded, so
+no unlisted metadata can leak into telemetry.  Each variable takes a
+comma-separated list of metadata keys (case-insensitive).  Binary metadata
+(``-bin`` suffix) is recorded base64-encoded.  These apply on the new semconv
+code path only.
+
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_REQUEST_HEADERS``
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_REQUEST_HEADERS``
+  Recorded as ``rpc.request.header.<key>``.
+
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_RESPONSE_HEADERS``
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_RESPONSE_HEADERS``
+  gRPC *initial* metadata, recorded as ``rpc.response.header.<key>``.
+
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_RESPONSE_TRAILERS``
+``OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_RESPONSE_TRAILERS``
+  gRPC *trailing* metadata, recorded as ``rpc.response.trailer.<key>``.
+
+The same lists can be passed to the instrumentors and interceptor factories as
+``capture_request_headers``, ``capture_response_headers`` and
+``capture_response_trailers``, which take precedence over the environment:
+
+.. code-block:: python
+
+    GrpcInstrumentorClient(
+        capture_request_headers=["x-tenant-id"],
+        capture_response_trailers=["x-cost"],
+    ).instrument()
+
 """
 
 import os
-from typing import Callable, Collection, List, Optional, Tuple, Union
+from typing import Callable, Collection, List, Union
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _StabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _StabilityMode,
 )
-from opentelemetry.instrumentation.grpc._semconv import _parse_grpc_target
+from opentelemetry.instrumentation.grpc._semconv import (
+    _ClientMetadataCapture,
+    _parse_grpc_target,
+    _ServerMetadataCapture,
+)
 from opentelemetry.instrumentation.grpc.filters import (
     any_of,
     negate,
@@ -345,7 +386,13 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
-    def __init__(self, filter_=None):
+    def __init__(
+        self,
+        filter_=None,
+        capture_request_headers=None,
+        capture_response_headers=None,
+        capture_response_trailers=None,
+    ):
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -353,6 +400,11 @@ class GrpcInstrumentorServer(BaseInstrumentor):
             else:
                 filter_ = any_of(filter_, excluded_service_filter)
         self._filter = filter_
+        self._capture_kwargs = {
+            "capture_request_headers": capture_request_headers,
+            "capture_response_headers": capture_response_headers,
+            "capture_response_trailers": capture_response_trailers,
+        }
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -368,13 +420,17 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        **self._capture_kwargs,
                     ),
                 )
             else:
                 kwargs["interceptors"] = [
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        **self._capture_kwargs,
                     )
                 ]
 
@@ -399,7 +455,13 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
-    def __init__(self, filter_=None):
+    def __init__(
+        self,
+        filter_=None,
+        capture_request_headers=None,
+        capture_response_headers=None,
+        capture_response_trailers=None,
+    ):
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -407,6 +469,11 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
             else:
                 filter_ = any_of(filter_, excluded_service_filter)
         self._filter = filter_
+        self._capture_kwargs = {
+            "capture_request_headers": capture_request_headers,
+            "capture_response_headers": capture_response_headers,
+            "capture_response_trailers": capture_response_trailers,
+        }
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -422,13 +489,17 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        **self._capture_kwargs,
                     ),
                 )
             else:
                 kwargs["interceptors"] = [
                     aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        **self._capture_kwargs,
                     )
                 ]
             return self._original_func(*args, **kwargs)
@@ -458,7 +529,13 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     """
 
-    def __init__(self, filter_=None):
+    def __init__(
+        self,
+        filter_=None,
+        capture_request_headers=None,
+        capture_response_headers=None,
+        capture_response_trailers=None,
+    ):
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -466,6 +543,11 @@ class GrpcInstrumentorClient(BaseInstrumentor):
             else:
                 filter_ = any_of(filter_, excluded_service_filter)
         self._filter = filter_
+        self._capture_kwargs = {
+            "capture_request_headers": capture_request_headers,
+            "capture_response_headers": capture_response_headers,
+            "capture_response_trailers": capture_response_trailers,
+        }
         self._request_hook = None
         self._response_hook = None
 
@@ -516,6 +598,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
                 response_hook=self._response_hook,
                 host=host,
                 port=port,
+                **self._capture_kwargs,
             ),
         )
 
@@ -533,7 +616,13 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
     # pylint:disable=attribute-defined-outside-init, redefined-outer-name
 
-    def __init__(self, filter_=None):
+    def __init__(
+        self,
+        filter_=None,
+        capture_request_headers=None,
+        capture_response_headers=None,
+        capture_response_trailers=None,
+    ):
         excluded_service_filter = _excluded_service_filter()
         if excluded_service_filter is not None:
             if filter_ is None:
@@ -541,6 +630,11 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
             else:
                 filter_ = any_of(filter_, excluded_service_filter)
         self._filter = filter_
+        self._capture_kwargs = {
+            "capture_request_headers": capture_request_headers,
+            "capture_response_headers": capture_response_headers,
+            "capture_response_trailers": capture_response_trailers,
+        }
         self._request_hook = None
         self._response_hook = None
 
@@ -557,6 +651,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
             response_hook=self._response_hook,
             host=host,
             port=port,
+            **self._capture_kwargs,
         )
         if "interceptors" in kwargs and kwargs["interceptors"]:
             kwargs["interceptors"] = ours + list(kwargs["interceptors"])
@@ -588,8 +683,15 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
 
 def client_interceptor(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None,
-    host=None, port=None,
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    host=None,
+    port=None,
+    capture_request_headers=None,
+    capture_response_headers=None,
+    capture_response_trailers=None,
 ):
     """Create a gRPC client channel interceptor.
 
@@ -605,6 +707,16 @@ def client_interceptor(
 
         port: Server port parsed from the channel target.  Used to set
               ``server.port`` / ``net.peer.port`` on client spans.
+
+        capture_request_headers: metadata keys to record as
+              ``rpc.request.header.<key>``.  Overrides
+              ``OTEL_INSTRUMENTATION_GRPC_CAPTURE_CLIENT_REQUEST_HEADERS``.
+
+        capture_response_headers: metadata keys to record as
+              ``rpc.response.header.<key>`` (gRPC initial metadata).
+
+        capture_response_trailers: metadata keys to record as
+              ``rpc.response.trailer.<key>`` (gRPC trailing metadata).
 
     Returns:
         An invocation-side interceptor object.
@@ -631,10 +743,24 @@ def client_interceptor(
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         host=host,
         port=port,
+        metadata_capture=_ClientMetadataCapture(
+            *_capture_lists(
+                sem_conv_opt_in_mode,
+                capture_request_headers,
+                capture_response_headers,
+                capture_response_trailers,
+            )
+        ),
     )
 
 
-def server_interceptor(tracer_provider=None, filter_=None):
+def server_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    capture_request_headers=None,
+    capture_response_headers=None,
+    capture_response_trailers=None,
+):
     """Create a gRPC server interceptor.
 
     Args:
@@ -643,6 +769,16 @@ def server_interceptor(tracer_provider=None, filter_=None):
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        capture_request_headers: metadata keys to record as
+              ``rpc.request.header.<key>``.  Overrides
+              ``OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_REQUEST_HEADERS``.
+
+        capture_response_headers: metadata keys to record as
+              ``rpc.response.header.<key>`` (gRPC initial metadata).
+
+        capture_response_trailers: metadata keys to record as
+              ``rpc.response.trailer.<key>`` (gRPC trailing metadata).
 
     Returns:
         A service-side interceptor object.
@@ -662,13 +798,30 @@ def server_interceptor(tracer_provider=None, filter_=None):
     )
 
     return _server.OpenTelemetryServerInterceptor(
-        tracer, filter_=filter_, sem_conv_opt_in_mode=sem_conv_opt_in_mode
+        tracer,
+        filter_=filter_,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        metadata_capture=_ServerMetadataCapture(
+            *_capture_lists(
+                sem_conv_opt_in_mode,
+                capture_request_headers,
+                capture_response_headers,
+                capture_response_trailers,
+            )
+        ),
     )
 
 
 def aio_client_interceptors(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None,
-    host=None, port=None,
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    host=None,
+    port=None,
+    capture_request_headers=None,
+    capture_response_headers=None,
+    capture_response_trailers=None,
 ):
     """Create a gRPC client channel interceptor.
 
@@ -702,20 +855,52 @@ def aio_client_interceptors(
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         host=host,
         port=port,
+        metadata_capture=_ClientMetadataCapture(
+            *_capture_lists(
+                sem_conv_opt_in_mode,
+                capture_request_headers,
+                capture_response_headers,
+                capture_response_trailers,
+            )
+        ),
     )
     return [
-        _aio_client.UnaryUnaryAioClientInterceptor(tracer, **interceptor_kwargs),
-        _aio_client.UnaryStreamAioClientInterceptor(tracer, **interceptor_kwargs),
-        _aio_client.StreamUnaryAioClientInterceptor(tracer, **interceptor_kwargs),
-        _aio_client.StreamStreamAioClientInterceptor(tracer, **interceptor_kwargs),
+        _aio_client.UnaryUnaryAioClientInterceptor(
+            tracer, **interceptor_kwargs
+        ),
+        _aio_client.UnaryStreamAioClientInterceptor(
+            tracer, **interceptor_kwargs
+        ),
+        _aio_client.StreamUnaryAioClientInterceptor(
+            tracer, **interceptor_kwargs
+        ),
+        _aio_client.StreamStreamAioClientInterceptor(
+            tracer, **interceptor_kwargs
+        ),
     ]
 
 
-def aio_server_interceptor(tracer_provider=None, filter_=None):
+def aio_server_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    capture_request_headers=None,
+    capture_response_headers=None,
+    capture_response_trailers=None,
+):
     """Create a gRPC aio server interceptor.
 
     Args:
         tracer: The tracer to use to create server-side spans.
+
+        capture_request_headers: metadata keys to record as
+              ``rpc.request.header.<key>``.  Overrides
+              ``OTEL_INSTRUMENTATION_GRPC_CAPTURE_SERVER_REQUEST_HEADERS``.
+
+        capture_response_headers: metadata keys to record as
+              ``rpc.response.header.<key>`` (gRPC initial metadata).
+
+        capture_response_trailers: metadata keys to record as
+              ``rpc.response.trailer.<key>`` (gRPC trailing metadata).
 
     Returns:
         A service-side interceptor object.
@@ -735,7 +920,17 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     )
 
     return _aio_server.OpenTelemetryAioServerInterceptor(
-        tracer, filter_=filter_, sem_conv_opt_in_mode=sem_conv_opt_in_mode
+        tracer,
+        filter_=filter_,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        metadata_capture=_ServerMetadataCapture(
+            *_capture_lists(
+                sem_conv_opt_in_mode,
+                capture_request_headers,
+                capture_response_headers,
+                capture_response_trailers,
+            )
+        ),
     )
 
 
@@ -758,8 +953,19 @@ def _parse_services(excluded_services: str) -> List[str]:
         excluded_service_list = []
     return excluded_service_list
 
+
+def _capture_lists(mode: _StabilityMode, *key_lists):
+    """Disable metadata capture on the old semconv code path.
+
+    ``rpc.request.header`` and friends only exist in the new conventions, and
+    an empty list also stops the env-var fallback from re-enabling capture.
+    """
+    if not _report_new(mode):
+        return ((),) * len(key_lists)
+    return key_lists
+
+
 def _get_rpc_schema_url(mode: _StabilityMode) -> str:
     if mode is _StabilityMode.DEFAULT:
         return "https://opentelemetry.io/schemas/1.11.0"
-    # TODO: update to 1.40.0
     return Schemas.V1_38_0.value

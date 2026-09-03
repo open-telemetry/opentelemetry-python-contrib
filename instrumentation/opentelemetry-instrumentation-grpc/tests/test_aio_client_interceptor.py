@@ -29,7 +29,7 @@ from opentelemetry.instrumentation.grpc._aio_client import (
     UnaryUnaryAioClientInterceptor,
 )
 from opentelemetry.instrumentation.grpc._semconv import (
-    RPC_RESPONSE_STATUS_CODE,
+    RPC_STATUS_CODE,
     RPC_SYSTEM_NAME,
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
@@ -55,11 +55,12 @@ def _new_aio_client_rpc_attrs(full_method, status_name="OK", error_type=None):
     attrs = {
         RPC_SYSTEM_NAME: "grpc",
         RPC_METHOD: full_method,
-        RPC_RESPONSE_STATUS_CODE: status_name,
+        RPC_STATUS_CODE: status_name,
     }
     if error_type:
         attrs[ERROR_TYPE] = error_type
     return attrs
+
 
 from ._aio_client import (
     bidirectional_streaming_method,
@@ -85,7 +86,9 @@ class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
 class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
-        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        test_name = (
+            self._testMethodName if hasattr(self, "_testMethodName") else ""
+        )
         sem_conv_mode = "default"
         if "new_semconv" in test_name:
             sem_conv_mode = "rpc"
@@ -322,7 +325,9 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_METHOD: "ServerStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -343,7 +348,9 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_METHOD: "BidirectionalStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[
+                    0
+                ],
             },
         )
 
@@ -476,7 +483,9 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
 
     async def test_error_stream_stream_new_semconv(self):
         with self.assertRaises(grpc.RpcError):
-            async for _ in bidirectional_streaming_method(self._stub, error=True):
+            async for _ in bidirectional_streaming_method(
+                self._stub, error=True
+            ):
                 pass
 
         spans = self.memory_exporter.get_finished_spans()
@@ -574,7 +583,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 # new semconv attributes
                 RPC_SYSTEM_NAME: "grpc",
-                RPC_RESPONSE_STATUS_CODE: "OK",
+                RPC_STATUS_CODE: "OK",
             },
         )
 

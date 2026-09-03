@@ -27,14 +27,15 @@ import grpc
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import _StabilityMode
+from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._semconv import (
     _add_error_details_to_span,
     _apply_grpc_status,
+    _ClientMetadataCapture,
     _set_rpc_method,
     _set_rpc_system,
     _set_server_address_port,
 )
-from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
@@ -54,14 +55,51 @@ class _CarrierSetter(Setter):
 _carrier_setter = _CarrierSetter()
 
 
-def _make_future_done_callback(span, sem_conv_opt_in_mode):
+def _make_future_done_callback(
+    span, sem_conv_opt_in_mode, metadata_capture=None
+):
     def callback(response_future):
         with trace.use_span(span, end_on_exit=True):
             code = response_future.code()
             details = response_future.details()
-            _apply_grpc_status(span, code, trace.SpanKind.CLIENT, sem_conv_opt_in_mode, details)
+            if metadata_capture is not None:
+                _capture_response_metadata(
+                    span, response_future, metadata_capture
+                )
+            _apply_grpc_status(
+                span,
+                code,
+                trace.SpanKind.CLIENT,
+                sem_conv_opt_in_mode,
+                details,
+            )
 
     return callback
+
+
+def _capture_response_metadata(span, call, metadata_capture):
+    """Record gRPC initial and trailing metadata on a client span.
+
+    gRPC surfaces the two separately, matching `rpc.response.header.<key>`
+    (sent before the response payload) and `rpc.response.trailer.<key>`
+    (sent after it).
+    """
+    if metadata_capture.response_headers:
+        try:
+            metadata_capture.response_headers.apply(
+                span, call.initial_metadata()
+            )
+        except Exception:  # pylint:disable=broad-except
+            logger.debug("Failed to read gRPC initial metadata", exc_info=True)
+    if metadata_capture.response_trailers:
+        try:
+            metadata_capture.response_trailers.apply(
+                span, call.trailing_metadata()
+            )
+        except Exception:  # pylint:disable=broad-except
+            logger.debug(
+                "Failed to read gRPC trailing metadata", exc_info=True
+            )
 
 
 def _safe_invoke(function: Callable, *args):
@@ -87,6 +125,7 @@ class OpenTelemetryClientInterceptor(
         sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
         host=None,
         port=None,
+        metadata_capture=None,
     ):
         self._tracer = tracer
         self._filter = filter_
@@ -95,15 +134,20 @@ class OpenTelemetryClientInterceptor(
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
         self._host = host
         self._port = port
+        self._metadata_capture = metadata_capture or _ClientMetadataCapture()
 
     def add_error_details_to_span(self, span, exc):
-        _add_error_details_to_span(span, exc, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode)
+        _add_error_details_to_span(
+            span, exc, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode
+        )
 
     def _start_span(self, method, **kwargs):
         attributes = {}
         _set_rpc_system(attributes, "grpc", self._sem_conv_opt_in_mode)
         _set_rpc_method(attributes, method, self._sem_conv_opt_in_mode)
-        _set_server_address_port(attributes, self._host, self._port, self._sem_conv_opt_in_mode)
+        _set_server_address_port(
+            attributes, self._host, self._port, self._sem_conv_opt_in_mode
+        )
 
         return self._tracer.start_as_current_span(
             name=method,
@@ -117,7 +161,9 @@ class OpenTelemetryClientInterceptor(
         # when the future is done, else end the span immediately
         if isinstance(result, grpc.Future):
             result.add_done_callback(
-                _make_future_done_callback(span, self._sem_conv_opt_in_mode)
+                _make_future_done_callback(
+                    span, self._sem_conv_opt_in_mode, self._metadata_capture
+                )
             )
             return result
         # Handle the case when the RPC is initiated via the with_call
@@ -127,13 +173,20 @@ class OpenTelemetryClientInterceptor(
             response, call = result[0], result[1]
             code = call.code()
             details = call.details()
+            _capture_response_metadata(span, call, self._metadata_capture)
         else:
             # Defensive fallback: should not be reached when using grpcext
             # interceptors (which always use with_call), keeping it just in case
             response = result
             code = grpc.StatusCode.OK
             details = None
-        _apply_grpc_status(span, code, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode, details)
+        _apply_grpc_status(
+            span,
+            code,
+            trace.SpanKind.CLIENT,
+            self._sem_conv_opt_in_mode,
+            details,
+        )
         if self._response_hook and response is not None:
             self._call_response_hook(span, response)
         span.end()
@@ -154,6 +207,7 @@ class OpenTelemetryClientInterceptor(
             set_status_on_exception=False,
         ) as span:
             try:
+                self._metadata_capture.request_headers.apply(span, metadata)
                 inject(mutable_metadata, setter=_carrier_setter)
                 metadata = tuple(mutable_metadata.items())
                 if self._request_hook:
@@ -192,13 +246,20 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_span(client_info.full_method) as span:
+            self._metadata_capture.request_headers.apply(span, metadata)
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
 
             try:
                 call = invoker(request_or_iterator, metadata)
                 yield from call
-                _apply_grpc_status(span, call.code(), trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode)
+                _capture_response_metadata(span, call, self._metadata_capture)
+                _apply_grpc_status(
+                    span,
+                    call.code(),
+                    trace.SpanKind.CLIENT,
+                    self._sem_conv_opt_in_mode,
+                )
             except grpc.RpcError as err:
                 self.add_error_details_to_span(span, err)
                 raise err
