@@ -27,9 +27,10 @@
 >
 > These libraries are also excluded from the general release.
 >
-> The deprecated GenAI instrumentations listed under [Releasing individual package](#releasing-individual-package)
-> are intentionally absent here: they no longer get major or minor releases from this repository, only
-> patch releases from their existing `package-release/` branches.
+> The deprecated GenAI instrumentations and the dropped elasticsearch instrumentation, listed under
+> [Releasing individual package](#releasing-individual-package), are intentionally absent here: they no
+> longer get major or minor releases from this repository, only patch releases from their existing
+> `package-release/` branches.
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
 to pick a specific package to release. It follows the same versioning strategy and process as the general release.
@@ -95,12 +96,17 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
+> - opentelemetry-instrumentation-elasticsearch
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-util-genai
 >
 > These libraries are also excluded from the general patch release.
+>
+> The elasticsearch instrumentation was dropped from `main` by #4759 and is no longer
+> developed here. It is listed only so that its published metadata can still be
+> corrected by a patch release from its `package-release/` branch.
 
 Per-package release is handled by the [`[Package] Release`](./.github/workflows/package-release.yml) workflow that allows
 to pick a specific package to release.
