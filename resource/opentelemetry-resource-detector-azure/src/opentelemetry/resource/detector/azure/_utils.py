@@ -1,9 +1,12 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 from os import environ
+from pathlib import Path
 
 from ._constants import (
     _AKS_ARM_NAMESPACE_ID,
+    _AKS_CLUSTER_RESOURCE_ID,
+    _AKS_METADATA_FILE_PATH,
     _FUNCTIONS_WORKER_RUNTIME,
     _WEBSITE_OWNER_NAME,
     _WEBSITE_RESOURCE_GROUP,
@@ -12,7 +15,11 @@ from ._constants import (
 
 
 def _is_on_aks() -> bool:
-    return environ.get(_AKS_ARM_NAMESPACE_ID) is not None
+    return (
+        environ.get(_AKS_ARM_NAMESPACE_ID) is not None
+        or environ.get(_AKS_CLUSTER_RESOURCE_ID) is not None
+        or Path(_AKS_METADATA_FILE_PATH).exists()
+    )
 
 
 def _is_on_app_service() -> bool:
