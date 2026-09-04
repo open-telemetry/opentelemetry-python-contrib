@@ -7,12 +7,10 @@ import asyncio
 import json
 import os
 import re
+from collections.abc import Callable, Generator, Mapping, MutableMapping
 from typing import (
     Any,
-    Callable,
-    Generator,
-    Mapping,
-    MutableMapping,
+    Concatenate,
     Protocol,
     TypeVar,
 )
@@ -25,7 +23,7 @@ from google.auth.aio.credentials import (
 )
 from google.auth.credentials import AnonymousCredentials
 from google.cloud.aiplatform.initializer import _set_async_rest_credentials
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import ParamSpec
 from vcr import VCR
 from vcr.record_mode import RecordMode
 from vcr.request import Request
@@ -122,21 +120,15 @@ def vertexai_init(vcr: VCR) -> None:
     if vcr.record_mode == RecordMode.NONE:
         credentials = AnonymousCredentials()
         project = FAKE_PROJECT
-    vertexai.init(
-        api_transport="rest", credentials=credentials, project=project
-    )
+    vertexai.init(api_transport="rest", credentials=credentials, project=project)
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(
-    tracer_provider, logger_provider, meter_provider, request
-):
+def instrument_no_content(tracer_provider, logger_provider, meter_provider, request):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"})
 
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
@@ -152,17 +144,11 @@ def instrument_no_content(
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content_with_experimental_semconvs(
-    tracer_provider, logger_provider, meter_provider, request
-):
+def instrument_no_content_with_experimental_semconvs(tracer_provider, logger_provider, meter_provider, request):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
-    os.environ.update(
-        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
-    )
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"}
-    )
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"})
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"})
 
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
@@ -178,17 +164,11 @@ def instrument_no_content_with_experimental_semconvs(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_experimental_semconvs(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_with_experimental_semconvs(tracer_provider, logger_provider, meter_provider):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
-    os.environ.update(
-        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
-    )
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"}
-    )
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"})
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"})
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -203,9 +183,7 @@ def instrument_with_experimental_semconvs(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_upload_hook(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_with_upload_hook(tracer_provider, logger_provider, meter_provider):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update(
@@ -232,15 +210,11 @@ def instrument_with_upload_hook(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(
-    tracer_provider, logger_provider, meter_provider, request
-):
+def instrument_with_content(tracer_provider, logger_provider, meter_provider, request):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"})
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -268,17 +242,12 @@ def vcr_config():
         return {
             key: val
             for key, val in headers.items()
-            if not any(
-                re.match(filter_re, key, re.IGNORECASE)
-                for filter_re in filter_header_regexes
-            )
+            if not any(re.match(filter_re, key, re.IGNORECASE) for filter_re in filter_header_regexes)
         }
 
     def before_record_cb(request: Request):
         request.headers = filter_headers(request.headers)
-        request.uri = re.sub(
-            r"/projects/[^/]+/", "/projects/fake-project/", request.uri
-        )
+        request.uri = re.sub(r"/projects/[^/]+/", "/projects/fake-project/", request.uri)
         return request
 
     def before_response_cb(response: MutableMapping[str, Any]):
@@ -345,9 +314,7 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):
@@ -366,9 +333,7 @@ _R = TypeVar("_R")
 
 def _copy_signature(
     func_type: Callable[_P, _R],
-) -> Callable[
-    [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
-]:
+) -> Callable[[Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]]:
     return lambda func: func
 
 
@@ -404,7 +369,5 @@ def fixture_generate_content(
             return asyncio.run(model.generate_content_async(*args, **kwargs))
         return model.generate_content(*args, **kwargs)
 
-    with vcr.use_cassette(
-        request.node.originalname, allow_playback_repeats=True
-    ):
+    with vcr.use_cassette(request.node.originalname, allow_playback_repeats=True):
         yield wrapper

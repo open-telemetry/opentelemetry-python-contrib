@@ -28,16 +28,14 @@ Usage Client
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(
-        SimpleSpanProcessor(ConsoleSpanExporter())
-    )
+    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
     grpc_client_instrumentor = GrpcInstrumentorClient()
     grpc_client_instrumentor.instrument()
 
+
     def run():
         with grpc.insecure_channel("localhost:50051") as channel:
-
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
 
@@ -71,12 +69,11 @@ Usage Server
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(
-        SimpleSpanProcessor(ConsoleSpanExporter())
-    )
+    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
     grpc_server_instrumentor = GrpcInstrumentorServer()
     grpc_server_instrumentor.instrument()
+
 
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         def SayHello(self, request, context):
@@ -104,8 +101,7 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import server_interceptor
 
-    server = grpc.server(futures.ThreadPoolExecutor(),
-                         interceptors = [server_interceptor()])
+    server = grpc.server(futures.ThreadPoolExecutor(), interceptors=[server_interceptor()])
 
 Usage Aio Client
 ----------------
@@ -130,16 +126,14 @@ Usage Aio Client
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(
-        SimpleSpanProcessor(ConsoleSpanExporter())
-    )
+    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
     grpc_client_instrumentor = GrpcAioInstrumentorClient()
     grpc_client_instrumentor.instrument()
 
+
     async def run():
         async with grpc.aio.insecure_channel("localhost:50051") as channel:
-
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
 
@@ -183,12 +177,11 @@ Usage Aio Server
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(
-        SimpleSpanProcessor(ConsoleSpanExporter())
-    )
+    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
     grpc_server_instrumentor = GrpcAioInstrumentorServer()
     grpc_server_instrumentor.instrument()
+
 
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         async def SayHello(self, request, context):
@@ -216,7 +209,7 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import aio_server_interceptor
 
-    server = grpc.aio.server(interceptors = [aio_server_interceptor()])
+    server = grpc.aio.server(interceptors=[aio_server_interceptor()])
 
 Filters
 -------
@@ -269,7 +262,7 @@ services ``GRPCTestServer`` and ``GRPCHealthServer``.
 """
 
 import os
-from typing import Callable, Collection, List, Union
+from collections.abc import Callable, Collection
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
@@ -335,7 +328,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         sem_conv_opt_in_mode = _rpc_stability_mode()
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs and kwargs["interceptors"]:
+            if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
@@ -397,7 +390,7 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
         sem_conv_opt_in_mode = _rpc_stability_mode()
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs and kwargs["interceptors"]:
+            if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
@@ -553,10 +546,8 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
             target=target,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
-        if "interceptors" in kwargs and kwargs["interceptors"]:
-            kwargs["interceptors"] = interceptors + list(
-                kwargs["interceptors"]
-            )
+        if kwargs.get("interceptors"):
+            kwargs["interceptors"] = interceptors + list(kwargs["interceptors"])
         else:
             kwargs["interceptors"] = interceptors
 
@@ -826,21 +817,17 @@ def _rpc_stability_mode():
     )
 
 
-def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
-    services = _parse_services(
-        os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
-    )
+def _excluded_service_filter() -> Callable[[object], bool] | None:
+    services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
     return negate(any_of(*filters))
 
 
-def _parse_services(excluded_services: str) -> List[str]:
+def _parse_services(excluded_services: str) -> list[str]:
     if excluded_services != "":
-        excluded_service_list = [
-            s.strip() for s in excluded_services.split(",")
-        ]
+        excluded_service_list = [s.strip() for s in excluded_services.split(",")]
     else:
         excluded_service_list = []
     return excluded_service_list

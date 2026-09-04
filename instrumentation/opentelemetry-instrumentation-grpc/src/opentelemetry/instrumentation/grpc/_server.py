@@ -24,6 +24,7 @@ from opentelemetry.instrumentation.grpc._semconv import (
     _create_server_duration_histograms,
     _record_server_duration,
 )
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import extract
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
@@ -62,9 +63,7 @@ def _wrap_rpc_behavior(handler, continuation):
         handler_factory = grpc.unary_unary_rpc_method_handler
 
     return handler_factory(
-        continuation(
-            behavior_fn, handler.request_streaming, handler.response_streaming
-        ),
+        continuation(behavior_fn, handler.request_streaming, handler.response_streaming),
         request_deserializer=handler.request_deserializer,
         response_serializer=handler.response_serializer,
     )
@@ -137,17 +136,12 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
 
     def code(self):
         if not hasattr(self._servicer_context, "code"):
-            raise RuntimeError(
-                "code() is not supported with the installed version of grpcio"
-            )
+            raise RuntimeError("code() is not supported with the installed version of grpcio")
         return self._servicer_context.code()
 
     def details(self):
         if not hasattr(self._servicer_context, "details"):
-            raise RuntimeError(
-                "details() is not supported with the installed version of "
-                "grpcio"
-            )
+            raise RuntimeError("details() is not supported with the installed version of grpcio")
         return self._servicer_context.details()
 
     def set_code(self, code):
@@ -224,9 +218,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         else:
             yield
 
-    def _start_span(
-        self, handler_call_details, context, set_status_on_exception=False
-    ):
+    def _start_span(self, handler_call_details, context, set_status_on_exception=False):
         # standard attributes
         attributes = {
             RPC_SYSTEM: "grpc",
@@ -235,9 +227,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         # if we have details about the call, split into service and method
         if handler_call_details.method:
-            service, method = handler_call_details.method.lstrip("/").split(
-                "/", 1
-            )
+            service, method = handler_call_details.method.lstrip("/").split("/", 1)
             attributes.update(
                 {
                     RPC_METHOD: method,
@@ -258,12 +248,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         #
         if not context.peer().startswith("unix:"):
             try:
-                ip, port = (
-                    context.peer()
-                    .split(",")[0]
-                    .split(":", 1)[1]
-                    .rsplit(":", 1)
-                )
+                ip, port = context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
                 ip = unquote(ip)
                 attributes.update(
                     {
@@ -277,9 +262,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     attributes[NET_PEER_NAME] = "localhost"
 
             except IndexError:
-                logger.warning(
-                    "Failed to parse peer address '%s'", context.peer()
-                )
+                logger.warning("Failed to parse peer address '%s'", context.peer())
 
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
@@ -289,10 +272,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         )
 
     def _record_duration(self, handler_call_details, start_time, status_code):
-        if (
-            self._duration_histogram_old is None
-            and self._duration_histogram_new is None
-        ):
+        if self._duration_histogram_old is None and self._duration_histogram_new is None:
             return
         elapsed = time.perf_counter() - start_time
         _record_server_duration(
@@ -305,6 +285,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         )
 
     def intercept_service(self, continuation, handler_call_details):
+        if not is_instrumentation_enabled():
+            return continuation(handler_call_details)
+
         if self._filter is not None and not self._filter(handler_call_details):
             return continuation(handler_call_details)
 
@@ -355,22 +338,16 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
             return telemetry_interceptor
 
-        return _wrap_rpc_behavior(
-            continuation(handler_call_details), telemetry_wrapper
-        )
+        return _wrap_rpc_behavior(continuation(handler_call_details), telemetry_wrapper)
 
     # Handle streaming responses separately - we have to do this
     # to return a *new* generator or various upstream things
     # get confused, or we'll lose the consistent trace
-    def _intercept_server_stream(
-        self, behavior, handler_call_details, request_or_iterator, context
-    ):
+    def _intercept_server_stream(self, behavior, handler_call_details, request_or_iterator, context):
         start_time = time.perf_counter()
 
         with self._set_remote_context(context):
-            with self._start_span(
-                handler_call_details, context, set_status_on_exception=False
-            ) as span:
+            with self._start_span(handler_call_details, context, set_status_on_exception=False) as span:
                 context = _OpenTelemetryServicerContext(context, span)
 
                 metric_status = None

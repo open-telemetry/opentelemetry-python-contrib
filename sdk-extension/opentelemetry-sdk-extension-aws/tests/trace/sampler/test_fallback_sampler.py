@@ -32,87 +32,63 @@ class TestRateLimitingSampler(TestCase):
 
         # 0 seconds passed, 0 quota available
         sampled = 0
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         # 0.4 seconds passed, 0.4 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         # 0.8 seconds passed, 0.8 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         # 1.2 seconds passed, 1 quota consumed, 0 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 1)
 
         # 1.6 seconds passed, 0.4 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         # 2.0 seconds passed, 0.8 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         # 2.4 seconds passed, one more quota consumed, 0 quota available
         sampled = 0
         clock.add_time(0.4)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 1)
 
         # 30 seconds passed, only one quota can be consumed
         sampled = 0
         clock.add_time(100)
-        for _ in range(0, 30):
-            if (
-                sampler.should_sample(None, 1234, "name").decision
-                != Decision.DROP
-            ):
+        for _ in range(30):
+            if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 1)

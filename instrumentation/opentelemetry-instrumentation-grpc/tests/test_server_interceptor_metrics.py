@@ -116,9 +116,7 @@ class TestServerInterceptorMetricsDefault(_ServerMetricsTestMixin, TestBase):
         self.assertEqual(attrs[RPC_SYSTEM], "grpc")
         self.assertEqual(attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
         self.assertNotIn(RPC_SYSTEM_NAME, attrs)
         self.assertNotIn(RPC_RESPONSE_STATUS_CODE, attrs)
         self.assertNotIn(ERROR_TYPE, attrs)
@@ -189,9 +187,7 @@ class TestServerInterceptorMetricsDefault(_ServerMetricsTestMixin, TestBase):
         attrs = dict(point.attributes)
         self.assertEqual(attrs[RPC_METHOD], "ServerStreamingMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
 
 
 class TestServerInterceptorMetricsNew(_ServerMetricsTestMixin, TestBase):
@@ -208,9 +204,7 @@ class TestServerInterceptorMetricsNew(_ServerMetricsTestMixin, TestBase):
 
         point = list(duration_metric.data.data_points)[0]
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
         self.assertNotIn(ERROR_TYPE, attrs)
@@ -274,8 +268,6 @@ class TestServerInterceptorMetricsDup(_ServerMetricsTestMixin, TestBase):
         self.assertEqual(old_attrs[RPC_SYSTEM], "grpc")
         self.assertEqual(old_attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(old_attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            new_attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(new_attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(new_attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(new_attrs[RPC_RESPONSE_STATUS_CODE], "OK")

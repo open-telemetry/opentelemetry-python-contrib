@@ -49,10 +49,6 @@ packages_to_exclude = [
     # by manually adding it to their environment.
     # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
     "opentelemetry-instrumentation-aws-lambda",
-    # Google GenAI instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
-    "opentelemetry-instrumentation-google-genai",
     # OpenAI Agents instrumentation is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
@@ -63,7 +59,6 @@ packages_to_exclude = [
 independent_packages = {
     "opentelemetry-instrumentation-openai-v2": "",
     "opentelemetry-instrumentation-vertexai": ">=2.0b0",
-    "opentelemetry-instrumentation-google-genai": "",
 }
 
 
@@ -71,9 +66,7 @@ def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
-    for pkg in get_instrumentation_packages(
-        independent_packages=independent_packages
-    ):
+    for pkg in get_instrumentation_packages(independent_packages=independent_packages):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
@@ -100,9 +93,7 @@ def main():
     tree.body[1].value = default_instrumentations
     source = astor.to_source(tree)
 
-    with open(
-        os.path.join(scripts_path, "license_header.txt"), encoding="utf-8"
-    ) as header_file:
+    with open(os.path.join(scripts_path, "license_header.txt"), encoding="utf-8") as header_file:
         header = header_file.read()
         source = _template.format(header=header, source=source)
 

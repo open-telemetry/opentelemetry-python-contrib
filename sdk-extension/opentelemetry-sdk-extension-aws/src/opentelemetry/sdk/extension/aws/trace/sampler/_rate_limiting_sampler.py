@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 # pylint: disable=no-name-in-module
 from opentelemetry.context import Context
@@ -33,9 +33,9 @@ class _RateLimitingSampler(Sampler):  # pyright: ignore[reportUnusedClass]
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         if self.__reservoir.try_spend(1):
             return SamplingResult(
                 decision=Decision.RECORD_AND_SAMPLE,

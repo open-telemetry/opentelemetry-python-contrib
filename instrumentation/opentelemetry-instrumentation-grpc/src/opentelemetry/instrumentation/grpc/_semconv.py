@@ -15,7 +15,7 @@ This module only covers the metrics side of the migration.  Span attributes are
 still emitted using the pre-migration conventions.
 """
 
-from typing import MutableMapping, Optional
+from collections.abc import MutableMapping
 
 import grpc
 
@@ -66,9 +66,7 @@ _RPC_DURATION_BUCKET_BOUNDARIES_S = (
     7.5,
     10,
 )
-_RPC_DURATION_BUCKET_BOUNDARIES_MS = tuple(
-    b * 1000 for b in _RPC_DURATION_BUCKET_BOUNDARIES_S
-)
+_RPC_DURATION_BUCKET_BOUNDARIES_MS = tuple(b * 1000 for b in _RPC_DURATION_BUCKET_BOUNDARIES_S)
 
 
 def _create_client_duration_histograms(meter, sem_conv_opt_in_mode):
@@ -111,7 +109,7 @@ def _create_server_duration_histograms(meter, sem_conv_opt_in_mode):
     return old, new
 
 
-def _split_method(full_method: Optional[str]) -> tuple:
+def _split_method(full_method: str | None) -> tuple:
     """Return ``(service, method)`` from a raw gRPC path like ``/pkg.Svc/Method``.
 
     Returns ``(None, None)`` if the path is missing or unparseable.
@@ -126,10 +124,10 @@ def _split_method(full_method: Optional[str]) -> tuple:
 
 
 def _build_old_metric_attributes(
-    full_method: Optional[str],
+    full_method: str | None,
     status_code: grpc.StatusCode,
-    server_address: Optional[str] = None,
-    server_port: Optional[int] = None,
+    server_address: str | None = None,
+    server_port: int | None = None,
 ) -> MutableMapping[str, AttributeValue]:
     """Metric attributes for the v1.37.0 duration histograms."""
     service, method = _split_method(full_method)
@@ -149,10 +147,10 @@ def _build_old_metric_attributes(
 
 
 def _build_new_metric_attributes(
-    full_method: Optional[str],
+    full_method: str | None,
     status_code: grpc.StatusCode,
-    server_address: Optional[str] = None,
-    server_port: Optional[int] = None,
+    server_address: str | None = None,
+    server_port: int | None = None,
 ) -> MutableMapping[str, AttributeValue]:
     """Metric attributes for the v1.40 ``rpc.{client,server}.call.duration`` histograms."""
     method = full_method.lstrip("/") if full_method else _DEFAULT_RPC_METHOD
@@ -174,26 +172,22 @@ def _record_client_duration(
     old_histogram,
     new_histogram,
     elapsed_seconds: float,
-    full_method: Optional[str],
+    full_method: str | None,
     status_code: grpc.StatusCode,
-    server_address: Optional[str],
-    server_port: Optional[int],
+    server_address: str | None,
+    server_port: int | None,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
     """Record client-side duration on the histograms enabled by ``sem_conv_opt_in_mode``."""
     if old_histogram is not None and _report_old(sem_conv_opt_in_mode):
         old_histogram.record(
             elapsed_seconds * 1000,
-            attributes=_build_old_metric_attributes(
-                full_method, status_code, server_address, server_port
-            ),
+            attributes=_build_old_metric_attributes(full_method, status_code, server_address, server_port),
         )
     if new_histogram is not None and _report_new(sem_conv_opt_in_mode):
         new_histogram.record(
             elapsed_seconds,
-            attributes=_build_new_metric_attributes(
-                full_method, status_code, server_address, server_port
-            ),
+            attributes=_build_new_metric_attributes(full_method, status_code, server_address, server_port),
         )
 
 
@@ -201,7 +195,7 @@ def _record_server_duration(
     old_histogram,
     new_histogram,
     elapsed_seconds: float,
-    full_method: Optional[str],
+    full_method: str | None,
     status_code: grpc.StatusCode,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:

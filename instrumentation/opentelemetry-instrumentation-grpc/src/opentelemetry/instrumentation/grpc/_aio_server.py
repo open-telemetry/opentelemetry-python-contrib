@@ -12,6 +12,7 @@ try:
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
 )
@@ -31,9 +32,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     async def abort(self, code, details="", trailing_metadata=tuple()):
         self._self_code = code
         self._self_details = details
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
+        self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
         status = _server_status(code, details)
         self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
@@ -41,9 +40,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     def set_code(self, code):
         self._self_code = code
         details = self._self_details or code.value[1]
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
+        self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
         if code != grpc.StatusCode.OK:
             status = _server_status(code, details)
             self._self_active_span.set_status(status)
@@ -57,9 +54,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
         return self.__wrapped__.set_details(details)
 
 
-class OpenTelemetryAioServerInterceptor(
-    grpc.aio.ServerInterceptor, OpenTelemetryServerInterceptor
-):
+class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetryServerInterceptor):
     """
     An AsyncIO gRPC server interceptor, to add OpenTelemetry.
     Usage::
@@ -73,6 +68,9 @@ class OpenTelemetryAioServerInterceptor(
     """
 
     async def intercept_service(self, continuation, handler_call_details):
+        if not is_instrumentation_enabled():
+            return await continuation(handler_call_details)
+
         if self._filter is not None and not self._filter(handler_call_details):
             return await continuation(handler_call_details)
 
@@ -145,9 +143,7 @@ class OpenTelemetryAioServerInterceptor(
 
                     metric_status = None
                     try:
-                        async for response in behavior(
-                            request_or_iterator, context
-                        ):
+                        async for response in behavior(request_or_iterator, context):
                             yield response
 
                     except Exception as error:

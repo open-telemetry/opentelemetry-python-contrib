@@ -136,9 +136,7 @@ class TestClientInterceptorMetricsDefault(_ClientMetricsTestMixin, TestBase):
         self.assertEqual(attrs[RPC_SYSTEM], "grpc")
         self.assertEqual(attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
         self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
         self.assertEqual(attrs[SERVER_PORT], 25565)
         self.assertNotIn(RPC_SYSTEM_NAME, attrs)
@@ -173,9 +171,7 @@ class TestClientInterceptorMetricsDefault(_ClientMetricsTestMixin, TestBase):
         attrs = dict(point.attributes)
         self.assertEqual(attrs[RPC_METHOD], "ServerStreamingMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
 
     def test_future_call_records_correct_status(self):
         future = simple_method_future(self._stub, error=True)
@@ -215,9 +211,7 @@ class TestClientInterceptorMetricsNew(_ClientMetricsTestMixin, TestBase):
         self.assertEqual(point.explicit_bounds, _NEW_BUCKET_BOUNDARIES_S)
 
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
         self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
@@ -250,9 +244,7 @@ class TestClientInterceptorMetricsNew(_ClientMetricsTestMixin, TestBase):
 
         point = list(duration_metric.data.data_points)[0]
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_METHOD], "GRPCTestServer/ServerStreamingMethod"
-        )
+        self.assertEqual(attrs[RPC_METHOD], "GRPCTestServer/ServerStreamingMethod")
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
 
 
@@ -280,9 +272,7 @@ class TestClientInterceptorMetricsDup(_ClientMetricsTestMixin, TestBase):
         self.assertEqual(old_attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(old_attrs[RPC_SERVICE], "GRPCTestServer")
 
-        self.assertEqual(
-            new_attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(new_attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(new_attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(new_attrs[RPC_RESPONSE_STATUS_CODE], "OK")
 
@@ -304,7 +294,5 @@ class TestClientInterceptorMetricsDup(_ClientMetricsTestMixin, TestBase):
             old_attrs[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
-        self.assertEqual(
-            new_attrs[RPC_RESPONSE_STATUS_CODE], "INVALID_ARGUMENT"
-        )
+        self.assertEqual(new_attrs[RPC_RESPONSE_STATUS_CODE], "INVALID_ARGUMENT")
         self.assertEqual(new_attrs[ERROR_TYPE], "INVALID_ARGUMENT")

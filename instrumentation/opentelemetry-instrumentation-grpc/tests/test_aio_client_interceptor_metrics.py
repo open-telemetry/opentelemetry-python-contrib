@@ -67,9 +67,7 @@ class _AioClientMetricsTestMixin:
         _OpenTelemetrySemanticConventionStability._initialized = False
 
 
-class TestAioClientInterceptorMetricsDefault(
-    _AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioClientInterceptorMetricsDefault(_AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "default"
 
     async def test_unary_call_records_duration_metric(self):
@@ -91,9 +89,7 @@ class TestAioClientInterceptorMetricsDefault(
         self.assertEqual(attrs[RPC_SYSTEM], "grpc")
         self.assertEqual(attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
         self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
         self.assertEqual(attrs[SERVER_PORT], 25565)
         self.assertNotIn(RPC_SYSTEM_NAME, attrs)
@@ -140,9 +136,7 @@ class TestAioClientInterceptorMetricsDefault(
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
 
 
-class TestAioClientInterceptorMetricsNew(
-    _AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioClientInterceptorMetricsNew(_AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "rpc"
 
     async def test_unary_call_records_duration_metric(self):
@@ -161,9 +155,7 @@ class TestAioClientInterceptorMetricsNew(
 
         point = list(duration_metric.data.data_points)[0]
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
         self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
@@ -190,9 +182,7 @@ class TestAioClientInterceptorMetricsNew(
         self.assertEqual(attrs[ERROR_TYPE], "INVALID_ARGUMENT")
 
 
-class TestAioClientInterceptorMetricsDup(
-    _AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioClientInterceptorMetricsDup(_AioClientMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "rpc/dup"
 
     async def test_unary_call_emits_both_histograms(self):

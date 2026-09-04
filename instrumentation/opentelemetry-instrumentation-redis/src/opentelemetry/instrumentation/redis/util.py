@@ -36,21 +36,18 @@ if TYPE_CHECKING:
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 
-def _extract_conn_attributes(
-    conn_kwargs, db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode
-):
+def _extract_conn_attributes(conn_kwargs, db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode):
     """Transform redis conn info into dict"""
     attributes = {}
-    _set_db_system(
-        attributes, DbSystemValues.REDIS.value, db_sem_conv_opt_in_mode
-    )
+    _set_db_system(attributes, DbSystemValues.REDIS.value, db_sem_conv_opt_in_mode)
 
-    db = conn_kwargs.get("db", 0)
+    # redis-py may pass db=None explicitly (e.g. from_url); treat that as 0.
+    db = conn_kwargs.get("db")
+    if db is None:
+        db = 0
     _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
-        _set_http_net_peer_name_client(
-            attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode
-        )
+        _set_http_net_peer_name_client(attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode)
         _set_net_transport(
             attributes,
             NetTransportValues.OTHER.value,
@@ -90,10 +87,7 @@ def _format_command_args(args: list[str]):
         out_str = " ".join(out)
 
         if len(out_str) > cmd_max_len:
-            out_str = (
-                out_str[: cmd_max_len - len(value_too_long_mark)]
-                + value_too_long_mark
-            )
+            out_str = out_str[: cmd_max_len - len(value_too_long_mark)] + value_too_long_mark
     else:
         out_str = ""
 
@@ -132,9 +126,7 @@ def _set_connection_attributes(
         span.set_attribute(key, value)
 
 
-def _build_span_name(
-    instance: RedisInstance | AsyncRedisInstance, cmd_args: tuple[Any, ...]
-) -> str:
+def _build_span_name(instance: RedisInstance | AsyncRedisInstance, cmd_args: tuple[Any, ...]) -> str:
     if len(cmd_args) > 0 and cmd_args[0]:
         if cmd_args[0] == "FT.SEARCH":
             name = "redis.search"
@@ -143,14 +135,14 @@ def _build_span_name(
         else:
             name = cmd_args[0]
     else:
-        name = instance.connection_pool.connection_kwargs.get("db", 0)
-    return name
+        name = instance.connection_pool.connection_kwargs.get("db")
+        if name is None:
+            name = 0
+    return str(name)
 
 
 def _add_create_attributes(span: Span, args: tuple[Any, ...]):
-    _set_span_attribute_if_value(
-        span, "redis.create_index.index", _value_or_none(args, 1)
-    )
+    _set_span_attribute_if_value(span, "redis.create_index.index", _value_or_none(args, 1))
     # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
     try:
         schema_index = args.index("SCHEMA")
@@ -173,12 +165,8 @@ def _add_create_attributes(span: Span, args: tuple[Any, ...]):
 
 
 def _add_search_attributes(span: Span, response, args):
-    _set_span_attribute_if_value(
-        span, "redis.search.index", _value_or_none(args, 1)
-    )
-    _set_span_attribute_if_value(
-        span, "redis.search.query", _value_or_none(args, 2)
-    )
+    _set_span_attribute_if_value(span, "redis.search.index", _value_or_none(args, 1))
+    _set_span_attribute_if_value(span, "redis.search.query", _value_or_none(args, 2))
     # Parse response from search
     # https://redis.io/docs/latest/commands/ft.search/
     # Response in format:
@@ -186,9 +174,7 @@ def _add_search_attributes(span: Span, response, args):
     # Returned documents in array format:
     # [first_field_name, first_field_value, second_field_name, second_field_value ...]
     number_of_returned_documents = _value_or_none(response, 0)
-    _set_span_attribute_if_value(
-        span, "redis.search.total", number_of_returned_documents
-    )
+    _set_span_attribute_if_value(span, "redis.search.total", number_of_returned_documents)
     if "NOCONTENT" in args or not number_of_returned_documents:
         return
     for document_number in range(number_of_returned_documents):
@@ -214,31 +200,19 @@ def _build_span_meta_data_for_pipeline(
         # ``_command_queue`` attribute. Fall back to ``command_stack`` /
         # ``_command_stack`` for non-cluster pipelines and older redis-py.
         execution_strategy = getattr(instance, "_execution_strategy", None)
-        if execution_strategy is not None and hasattr(
-            execution_strategy, "command_queue"
-        ):
+        if execution_strategy is not None and hasattr(execution_strategy, "command_queue"):
             command_stack = execution_strategy.command_queue
-        elif execution_strategy is not None and hasattr(
-            execution_strategy, "_command_queue"
-        ):
+        elif execution_strategy is not None and hasattr(execution_strategy, "_command_queue"):
             command_stack = execution_strategy._command_queue
         elif hasattr(instance, "command_stack"):
             command_stack = instance.command_stack
         else:
             command_stack = instance._command_stack
 
-        cmds = [
-            _format_command_args(c.args if hasattr(c, "args") else c[0])
-            for c in command_stack
-        ]
+        cmds = [_format_command_args(c.args if hasattr(c, "args") else c[0]) for c in command_stack]
         resource = "\n".join(cmds)
 
-        span_name = " ".join(
-            [
-                (c.args[0] if hasattr(c, "args") else c[0][0])
-                for c in command_stack
-            ]
-        )
+        span_name = " ".join([(c.args[0] if hasattr(c, "args") else c[0][0]) for c in command_stack])
     except (AttributeError, IndexError):
         command_stack = []
         resource = ""

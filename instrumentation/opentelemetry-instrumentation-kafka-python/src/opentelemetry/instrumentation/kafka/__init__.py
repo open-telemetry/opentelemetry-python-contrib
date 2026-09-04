@@ -82,7 +82,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import kafka
 from wrapt import wrap_function_wrapper
@@ -123,9 +123,7 @@ class KafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        wrap_function_wrapper(
-            kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
-        )
+        wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",

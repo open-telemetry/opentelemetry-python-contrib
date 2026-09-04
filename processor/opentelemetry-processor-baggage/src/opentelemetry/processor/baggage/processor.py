@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Callable, Optional, Sequence, Union
+from collections.abc import Callable, Sequence
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
@@ -10,12 +10,10 @@ from opentelemetry.trace import Span
 
 # A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
 BaggageKeyPredicateT = Callable[[str], bool]
-BaggageKeyPredicates = Union[
-    BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]
-]
+BaggageKeyPredicates = BaggageKeyPredicateT | Sequence[BaggageKeyPredicateT]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731 # pylint:disable=invalid-name
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # pylint:disable=invalid-name  # noqa: E731
 
 
 class BaggageSpanProcessor(SpanProcessor):
@@ -48,9 +46,7 @@ class BaggageSpanProcessor(SpanProcessor):
         else:
             self._predicates = list(baggage_key_predicate)
 
-    def on_start(
-        self, span: "Span", parent_context: Optional[Context] = None
-    ) -> None:
+    def on_start(self, span: "Span", parent_context: Context | None = None) -> None:
         baggage = get_all_baggage(parent_context)
         for key, value in baggage.items():
             if any(predicate(key) for predicate in self._predicates):

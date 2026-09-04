@@ -94,9 +94,7 @@ class _AioServerMetricsTestMixin:
             await server.stop(None)
 
 
-class TestAioServerInterceptorMetricsDefault(
-    _AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioServerInterceptorMetricsDefault(_AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "default"
 
     async def test_unary_call_records_duration_metric(self):
@@ -113,9 +111,7 @@ class TestAioServerInterceptorMetricsDefault(
         self.assertEqual(attrs[RPC_SYSTEM], "grpc")
         self.assertEqual(attrs[RPC_METHOD], "SimpleMethod")
         self.assertEqual(attrs[RPC_SERVICE], "GRPCTestServer")
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.OK.value[0])
         self.assertNotIn(RPC_SYSTEM_NAME, attrs)
         self.assertNotIn(RPC_RESPONSE_STATUS_CODE, attrs)
         self.assertNotIn(ERROR_TYPE, attrs)
@@ -134,14 +130,10 @@ class TestAioServerInterceptorMetricsDefault(
 
         point = list(duration_metric.data.data_points)[0]
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.INTERNAL.value[0]
-        )
+        self.assertEqual(attrs[RPC_GRPC_STATUS_CODE], grpc.StatusCode.INTERNAL.value[0])
 
 
-class TestAioServerInterceptorMetricsNew(
-    _AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioServerInterceptorMetricsNew(_AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "rpc"
 
     async def test_unary_call_records_duration_metric(self):
@@ -155,9 +147,7 @@ class TestAioServerInterceptorMetricsNew(
 
         point = list(duration_metric.data.data_points)[0]
         attrs = dict(point.attributes)
-        self.assertEqual(
-            attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value
-        )
+        self.assertEqual(attrs[RPC_SYSTEM_NAME], RpcSystemNameValues.GRPC.value)
         self.assertEqual(attrs[RPC_METHOD], "GRPCTestServer/SimpleMethod")
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
         self.assertNotIn(ERROR_TYPE, attrs)
@@ -181,9 +171,7 @@ class TestAioServerInterceptorMetricsNew(
         self.assertEqual(attrs[ERROR_TYPE], "INTERNAL")
 
 
-class TestAioServerInterceptorMetricsDup(
-    _AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestAioServerInterceptorMetricsDup(_AioServerMetricsTestMixin, TestBase, IsolatedAsyncioTestCase):
     _SEM_CONV_MODE = "rpc/dup"
 
     async def test_unary_call_emits_both_histograms(self):
