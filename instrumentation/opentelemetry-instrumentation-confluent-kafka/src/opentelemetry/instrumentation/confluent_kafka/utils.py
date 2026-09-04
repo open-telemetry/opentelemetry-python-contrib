@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from logging import getLogger
-from typing import List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
@@ -56,7 +55,7 @@ class KafkaPropertiesExtractor:
 
 
 class KafkaContextGetter(textmap.Getter):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -71,7 +70,7 @@ class KafkaContextGetter(textmap.Getter):
 
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
 
@@ -153,10 +152,10 @@ def _set_bootstrap_servers_attributes(span, bootstrap_servers):
 def _enrich_span(
     span,
     topic,
-    partition: Optional[int] = None,
-    offset: Optional[int] = None,
-    operation: Optional[MessagingOperationTypeValues] = None,
-    bootstrap_servers: Optional[str] = None,
+    partition: int | None = None,
+    offset: int | None = None,
+    operation: MessagingOperationTypeValues | None = None,
+    bootstrap_servers: str | None = None,
 ):
     if not span.is_recording():
         return

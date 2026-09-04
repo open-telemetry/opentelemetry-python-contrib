@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, List, cast
+from typing import Any, cast
 
 _logger = getLogger(__name__)
 
@@ -47,12 +47,12 @@ class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         LastRuleModification: float | None,
-        SamplingTargetDocuments: List[_SamplingTarget] | None = None,
-        UnprocessedStatistics: List[_UnprocessedStatistics] | None = None,
+        SamplingTargetDocuments: list[_SamplingTarget] | None = None,
+        UnprocessedStatistics: list[_UnprocessedStatistics] | None = None,
     ):
         self.LastRuleModification: float = LastRuleModification if LastRuleModification is not None else 0.0
 
-        self.SamplingTargetDocuments: List[_SamplingTarget] = []
+        self.SamplingTargetDocuments: list[_SamplingTarget] = []
         if SamplingTargetDocuments is not None:
             for document in SamplingTargetDocuments:
                 try:
@@ -60,7 +60,7 @@ class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     _logger.debug("Error creating _SamplingTarget: %s", e)
 
-        self.UnprocessedStatistics: List[_UnprocessedStatistics] = []
+        self.UnprocessedStatistics: list[_UnprocessedStatistics] = []
         if UnprocessedStatistics is not None:
             for unprocessed in UnprocessedStatistics:
                 try:
