@@ -38,8 +38,14 @@ from opentelemetry.trace.status import Status, StatusCode
 logger = logging.getLogger(__name__)
 
 
-def _parse_target(target):
+# gRPC target schemes that do not carry a network host/port.
+_NON_NETWORK_TARGET_SCHEMES = ("unix:", "unix-abstract:", "vsock:")
+
+
+def _parse_target(target: str | None) -> tuple[str | None, int | None]:
     if not target:
+        return None, None
+    if target.startswith(_NON_NETWORK_TARGET_SCHEMES):
         return None, None
     if ":///" in target:
         target = target.split("///", 1)[1]

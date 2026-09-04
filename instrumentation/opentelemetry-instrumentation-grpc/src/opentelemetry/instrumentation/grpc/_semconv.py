@@ -24,6 +24,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_old,
     _StabilityMode,
 )
+from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
@@ -69,7 +70,9 @@ _RPC_DURATION_BUCKET_BOUNDARIES_S = (
 _RPC_DURATION_BUCKET_BOUNDARIES_MS = tuple(b * 1000 for b in _RPC_DURATION_BUCKET_BOUNDARIES_S)
 
 
-def _create_client_duration_histograms(meter, sem_conv_opt_in_mode):
+def _create_client_duration_histograms(
+    meter: Meter, sem_conv_opt_in_mode: _StabilityMode
+) -> tuple[Histogram | None, Histogram | None]:
     """Create the client-side duration histograms for the active semconv modes."""
     old = new = None
     if _report_old(sem_conv_opt_in_mode):
@@ -89,7 +92,9 @@ def _create_client_duration_histograms(meter, sem_conv_opt_in_mode):
     return old, new
 
 
-def _create_server_duration_histograms(meter, sem_conv_opt_in_mode):
+def _create_server_duration_histograms(
+    meter: Meter, sem_conv_opt_in_mode: _StabilityMode
+) -> tuple[Histogram | None, Histogram | None]:
     """Create the server-side duration histograms for the active semconv modes."""
     old = new = None
     if _report_old(sem_conv_opt_in_mode):
@@ -109,7 +114,7 @@ def _create_server_duration_histograms(meter, sem_conv_opt_in_mode):
     return old, new
 
 
-def _split_method(full_method: str | None) -> tuple:
+def _split_method(full_method: str | None) -> tuple[str | None, str | None]:
     """Return ``(service, method)`` from a raw gRPC path like ``/pkg.Svc/Method``.
 
     Returns ``(None, None)`` if the path is missing or unparseable.
@@ -169,8 +174,8 @@ def _build_new_metric_attributes(
 
 
 def _record_client_duration(
-    old_histogram,
-    new_histogram,
+    old_histogram: Histogram | None,
+    new_histogram: Histogram | None,
     elapsed_seconds: float,
     full_method: str | None,
     status_code: grpc.StatusCode,
@@ -192,8 +197,8 @@ def _record_client_duration(
 
 
 def _record_server_duration(
-    old_histogram,
-    new_histogram,
+    old_histogram: Histogram | None,
+    new_histogram: Histogram | None,
     elapsed_seconds: float,
     full_method: str | None,
     status_code: grpc.StatusCode,
