@@ -17,61 +17,25 @@ from urllib.parse import urlparse
 import grpc
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _StabilityMode
 from opentelemetry.instrumentation.grpc import grpcext
+from opentelemetry.instrumentation.grpc._semconv import (
+    _create_client_duration_histograms,
+    _record_client_duration,
+)
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.semconv._incubating.attributes.error_attributes import (
-    ERROR_TYPE,
-)
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
-    RPC_RESPONSE_STATUS_CODE,
     RPC_SERVICE,
     RPC_SYSTEM,
-    RPC_SYSTEM_NAME,
-    RpcSystemNameValues,
-)
-from opentelemetry.semconv._incubating.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
-)
-from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
-    RPC_CLIENT_CALL_DURATION,
 )
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_RPC_METHOD = "_OTHER"
-
-_RPC_DURATION_BUCKET_BOUNDARIES = (
-    0.005,
-    0.01,
-    0.025,
-    0.05,
-    0.075,
-    0.1,
-    0.25,
-    0.5,
-    0.75,
-    1,
-    2.5,
-    5,
-    7.5,
-    10,
-)
-
-
-def _create_duration_histogram(meter):
-    return meter.create_histogram(
-        name=RPC_CLIENT_CALL_DURATION,
-        description="Measures the duration of an outgoing Remote Procedure Call (RPC).",
-        unit="s",
-        explicit_bucket_boundaries_advisory=_RPC_DURATION_BUCKET_BOUNDARIES,
-    )
 
 
 def _parse_target(target):
@@ -143,14 +107,21 @@ class OpenTelemetryClientInterceptor(
         response_hook=None,
         meter=None,
         target=None,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         self._tracer = tracer
         self._filter = filter_
         self._request_hook = request_hook
         self._response_hook = response_hook
-        self._duration_histogram = (
-            _create_duration_histogram(meter) if meter else None
-        )
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        if meter is not None:
+            (
+                self._duration_histogram_old,
+                self._duration_histogram_new,
+            ) = _create_client_duration_histograms(meter, sem_conv_opt_in_mode)
+        else:
+            self._duration_histogram_old = None
+            self._duration_histogram_new = None
         self._server_address, self._server_port = _parse_target(target)
 
     def _start_span(self, method, **kwargs):
@@ -195,27 +166,23 @@ class OpenTelemetryClientInterceptor(
         self._record_duration(method, start_time, grpc.StatusCode.OK)
         return result
 
-    def _build_metric_attributes(self, method, status_code):
-        full_method = method.lstrip("/") if method else _DEFAULT_RPC_METHOD
-        attrs = {
-            RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
-            RPC_METHOD: full_method,
-            RPC_RESPONSE_STATUS_CODE: status_code.name,
-        }
-        if self._server_address:
-            attrs[SERVER_ADDRESS] = self._server_address
-            if self._server_port is not None:
-                attrs[SERVER_PORT] = self._server_port
-        if status_code != grpc.StatusCode.OK:
-            attrs[ERROR_TYPE] = status_code.name
-        return attrs
-
     def _record_duration(self, method, start_time, status_code):
-        if self._duration_histogram is None:
+        if (
+            self._duration_histogram_old is None
+            and self._duration_histogram_new is None
+        ):
             return
         elapsed = time.perf_counter() - start_time
-        attrs = self._build_metric_attributes(method, status_code)
-        self._duration_histogram.record(elapsed, attributes=attrs)
+        _record_client_duration(
+            self._duration_histogram_old,
+            self._duration_histogram_new,
+            elapsed,
+            method,
+            status_code,
+            self._server_address,
+            self._server_port,
+            self._sem_conv_opt_in_mode,
+        )
 
     def _make_future_duration_callback(self, method, start_time):
         def callback(response_future):

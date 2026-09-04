@@ -19,10 +19,12 @@ import grpc
 
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
-from opentelemetry.propagate import extract
-from opentelemetry.semconv._incubating.attributes.error_attributes import (
-    ERROR_TYPE,
+from opentelemetry.instrumentation._semconv import _StabilityMode
+from opentelemetry.instrumentation.grpc._semconv import (
+    _create_server_duration_histograms,
+    _record_server_duration,
 )
+from opentelemetry.propagate import extract
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
     NET_PEER_NAME,
@@ -31,47 +33,13 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
-    RPC_RESPONSE_STATUS_CODE,
     RPC_SERVICE,
     RPC_SYSTEM,
-    RPC_SYSTEM_NAME,
-    RpcSystemNameValues,
-)
-from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
-    RPC_SERVER_CALL_DURATION,
 )
 
 from ._utilities import _server_status
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_RPC_METHOD = "_OTHER"
-
-_RPC_DURATION_BUCKET_BOUNDARIES = (
-    0.005,
-    0.01,
-    0.025,
-    0.05,
-    0.075,
-    0.1,
-    0.25,
-    0.5,
-    0.75,
-    1,
-    2.5,
-    5,
-    7.5,
-    10,
-)
-
-
-def _create_duration_histogram(meter):
-    return meter.create_histogram(
-        name=RPC_SERVER_CALL_DURATION,
-        description="Measures the duration of an incoming Remote Procedure Call (RPC).",
-        unit="s",
-        explicit_bucket_boundaries_advisory=_RPC_DURATION_BUCKET_BOUNDARIES,
-    )
 
 
 # wrap an RPC call
@@ -222,12 +190,24 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer, filter_=None, meter=None):
+    def __init__(
+        self,
+        tracer,
+        filter_=None,
+        meter=None,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    ):
         self._tracer = tracer
         self._filter = filter_
-        self._duration_histogram = (
-            _create_duration_histogram(meter) if meter else None
-        )
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        if meter is not None:
+            (
+                self._duration_histogram_old,
+                self._duration_histogram_new,
+            ) = _create_server_duration_histograms(meter, sem_conv_opt_in_mode)
+        else:
+            self._duration_histogram_old = None
+            self._duration_histogram_new = None
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -308,26 +288,21 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             set_status_on_exception=set_status_on_exception,
         )
 
-    def _build_metric_attributes(self, handler_call_details, status_code):
-        method = handler_call_details.method
-        full_method = method.lstrip("/") if method else _DEFAULT_RPC_METHOD
-        attrs = {
-            RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
-            RPC_METHOD: full_method,
-            RPC_RESPONSE_STATUS_CODE: status_code.name,
-        }
-        if status_code != grpc.StatusCode.OK:
-            attrs[ERROR_TYPE] = status_code.name
-        return attrs
-
     def _record_duration(self, handler_call_details, start_time, status_code):
-        if self._duration_histogram is None:
+        if (
+            self._duration_histogram_old is None
+            and self._duration_histogram_new is None
+        ):
             return
         elapsed = time.perf_counter() - start_time
-        attrs = self._build_metric_attributes(
-            handler_call_details, status_code
+        _record_server_duration(
+            self._duration_histogram_old,
+            self._duration_histogram_new,
+            elapsed,
+            handler_call_details.method,
+            status_code,
+            self._sem_conv_opt_in_mode,
         )
-        self._duration_histogram.record(elapsed, attributes=attrs)
 
     def intercept_service(self, continuation, handler_call_details):
         if self._filter is not None and not self._filter(handler_call_details):
