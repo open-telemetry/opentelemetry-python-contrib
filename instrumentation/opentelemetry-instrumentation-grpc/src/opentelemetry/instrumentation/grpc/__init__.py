@@ -268,6 +268,10 @@ import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.grpc.filters import (
     any_of,
     negate,
@@ -278,6 +282,7 @@ from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
 
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
@@ -319,6 +324,8 @@ class GrpcInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
+        sem_conv_opt_in_mode = _rpc_stability_mode()
 
         def server(*args, **kwargs):
             if kwargs.get("interceptors"):
@@ -326,10 +333,22 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
+                    server_interceptor(
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        meter_provider=meter_provider,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    ),
                 )
             else:
-                kwargs["interceptors"] = [server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [
+                    server_interceptor(
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        meter_provider=meter_provider,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    )
+                ]
 
             return self._original_func(*args, **kwargs)
 
@@ -367,6 +386,8 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.aio.server
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
+        sem_conv_opt_in_mode = _rpc_stability_mode()
 
         def server(*args, **kwargs):
             if kwargs.get("interceptors"):
@@ -374,10 +395,22 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        meter_provider=meter_provider,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    ),
                 )
             else:
-                kwargs["interceptors"] = [aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
+                        meter_provider=meter_provider,
+                        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+                    )
+                ]
             return self._original_func(*args, **kwargs)
 
         grpc.aio.server = server
@@ -438,6 +471,9 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
+        self._tracer_provider = kwargs.get("tracer_provider")
+        self._meter_provider = kwargs.get("meter_provider")
+        self._sem_conv_opt_in_mode = _rpc_stability_mode()
         for ctype in self._which_channel(kwargs):
             _wrap(
                 "grpc",
@@ -451,16 +487,17 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
-        tracer_provider = kwargs.get("tracer_provider")
-        request_hook = self._request_hook
-        response_hook = self._response_hook
+        target = args[0] if args else kwargs.get("target")
         return intercept_channel(
             channel,
             client_interceptor(
-                tracer_provider=tracer_provider,
+                tracer_provider=self._tracer_provider,
                 filter_=self._filter,
-                request_hook=request_hook,
-                response_hook=response_hook,
+                request_hook=self._request_hook,
+                response_hook=self._response_hook,
+                meter_provider=self._meter_provider,
+                target=target,
+                sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
             ),
         )
 
@@ -492,25 +529,27 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _add_interceptors(self, tracer_provider, kwargs):
+    def _add_interceptors(
+        self,
+        tracer_provider,
+        meter_provider,
+        target,
+        kwargs,
+        sem_conv_opt_in_mode,
+    ):
+        interceptors = aio_client_interceptors(
+            tracer_provider=tracer_provider,
+            filter_=self._filter,
+            request_hook=self._request_hook,
+            response_hook=self._response_hook,
+            meter_provider=meter_provider,
+            target=target,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        )
         if kwargs.get("interceptors"):
-            kwargs["interceptors"] = list(kwargs["interceptors"])
-            kwargs["interceptors"] = (
-                aio_client_interceptors(
-                    tracer_provider=tracer_provider,
-                    filter_=self._filter,
-                    request_hook=self._request_hook,
-                    response_hook=self._response_hook,
-                )
-                + kwargs["interceptors"]
-            )
+            kwargs["interceptors"] = interceptors + list(kwargs["interceptors"])
         else:
-            kwargs["interceptors"] = aio_client_interceptors(
-                tracer_provider=tracer_provider,
-                filter_=self._filter,
-                request_hook=self._request_hook,
-                response_hook=self._response_hook,
-            )
+            kwargs["interceptors"] = interceptors
 
         return kwargs
 
@@ -520,15 +559,29 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
+        sem_conv_opt_in_mode = _rpc_stability_mode()
 
         def insecure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            target = args[0] if args else kwargs.get("target")
+            kwargs = self._add_interceptors(
+                tracer_provider,
+                meter_provider,
+                target,
+                kwargs,
+                sem_conv_opt_in_mode,
+            )
             return self._original_insecure(*args, **kwargs)
 
         def secure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            target = args[0] if args else kwargs.get("target")
+            kwargs = self._add_interceptors(
+                tracer_provider,
+                meter_provider,
+                target,
+                kwargs,
+                sem_conv_opt_in_mode,
+            )
             return self._original_secure(*args, **kwargs)
 
         grpc.aio.insecure_channel = insecure
@@ -539,7 +592,15 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def client_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+    target=None,
+    sem_conv_opt_in_mode=None,
+):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -548,6 +609,15 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, re
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        meter_provider: The meter provider to use for metrics.
+
+        target: The target address of the channel (e.g. "host:port").
+
+        sem_conv_opt_in_mode: The RPC semantic convention stability mode
+                              controlling which metrics conventions are
+                              emitted. Defaults to reading the value from
+                              ``OTEL_SEMCONV_STABILITY_OPT_IN``.
 
     Returns:
         An invocation-side interceptor object.
@@ -561,15 +631,32 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, re
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
+    if sem_conv_opt_in_mode is None:
+        sem_conv_opt_in_mode = _rpc_stability_mode()
+
     return _client.OpenTelemetryClientInterceptor(
         tracer,
         filter_=filter_,
         request_hook=request_hook,
         response_hook=response_hook,
+        meter=meter,
+        target=target,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 
-def server_interceptor(tracer_provider=None, filter_=None):
+def server_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    meter_provider=None,
+    sem_conv_opt_in_mode=None,
+):
     """Create a gRPC server interceptor.
 
     Args:
@@ -578,6 +665,13 @@ def server_interceptor(tracer_provider=None, filter_=None):
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        meter_provider: The meter provider to use for metrics.
+
+        sem_conv_opt_in_mode: The RPC semantic convention stability mode
+                              controlling which metrics conventions are
+                              emitted. Defaults to reading the value from
+                              ``OTEL_SEMCONV_STABILITY_OPT_IN``.
 
     Returns:
         A service-side interceptor object.
@@ -591,14 +685,45 @@ def server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
+    if sem_conv_opt_in_mode is None:
+        sem_conv_opt_in_mode = _rpc_stability_mode()
+
+    return _server.OpenTelemetryServerInterceptor(
+        tracer,
+        filter_=filter_,
+        meter=meter,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
 
 
-def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def aio_client_interceptors(
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+    target=None,
+    sem_conv_opt_in_mode=None,
+):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
+
+        meter_provider: The meter provider to use for metrics.
+
+        target: The target address of the channel (e.g. "host:port").
+
+        sem_conv_opt_in_mode: The RPC semantic convention stability mode
+                              controlling which metrics conventions are
+                              emitted. Defaults to reading the value from
+                              ``OTEL_SEMCONV_STABILITY_OPT_IN``.
 
     Returns:
         An invocation-side interceptor object.
@@ -612,39 +737,49 @@ def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=Non
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
+    if sem_conv_opt_in_mode is None:
+        sem_conv_opt_in_mode = _rpc_stability_mode()
+
+    common_kwargs = {
+        "filter_": filter_,
+        "request_hook": request_hook,
+        "response_hook": response_hook,
+        "meter": meter,
+        "target": target,
+        "sem_conv_opt_in_mode": sem_conv_opt_in_mode,
+    }
+
     return [
-        _aio_client.UnaryUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
-        _aio_client.UnaryStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
-        _aio_client.StreamUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
-        _aio_client.StreamStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
+        _aio_client.UnaryUnaryAioClientInterceptor(tracer, **common_kwargs),
+        _aio_client.UnaryStreamAioClientInterceptor(tracer, **common_kwargs),
+        _aio_client.StreamUnaryAioClientInterceptor(tracer, **common_kwargs),
+        _aio_client.StreamStreamAioClientInterceptor(tracer, **common_kwargs),
     ]
 
 
-def aio_server_interceptor(tracer_provider=None, filter_=None):
+def aio_server_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    meter_provider=None,
+    sem_conv_opt_in_mode=None,
+):
     """Create a gRPC aio server interceptor.
 
     Args:
         tracer: The tracer to use to create server-side spans.
+
+        meter_provider: The meter provider to use for metrics.
+
+        sem_conv_opt_in_mode: The RPC semantic convention stability mode
+                              controlling which metrics conventions are
+                              emitted. Defaults to reading the value from
+                              ``OTEL_SEMCONV_STABILITY_OPT_IN``.
 
     Returns:
         A service-side interceptor object.
@@ -658,7 +793,28 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
+    if sem_conv_opt_in_mode is None:
+        sem_conv_opt_in_mode = _rpc_stability_mode()
+
+    return _aio_server.OpenTelemetryAioServerInterceptor(
+        tracer,
+        filter_=filter_,
+        meter=meter,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
+
+
+def _rpc_stability_mode():
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.RPC
+    )
 
 
 def _excluded_service_filter() -> Callable[[object], bool] | None:

@@ -11,6 +11,7 @@ Implementation of the service-side open-telemetry interceptor.
 """
 
 import logging
+import time
 from contextlib import contextmanager
 from urllib.parse import unquote
 
@@ -18,6 +19,11 @@ import grpc
 
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
+from opentelemetry.instrumentation._semconv import _StabilityMode
+from opentelemetry.instrumentation.grpc._semconv import (
+    _create_server_duration_histograms,
+    _record_server_duration,
+)
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import extract
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
@@ -178,9 +184,24 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer, filter_=None):
+    def __init__(
+        self,
+        tracer,
+        filter_=None,
+        meter=None,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    ):
         self._tracer = tracer
         self._filter = filter_
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        if meter is not None:
+            (
+                self._duration_histogram_old,
+                self._duration_histogram_new,
+            ) = _create_server_duration_histograms(meter, sem_conv_opt_in_mode)
+        else:
+            self._duration_histogram_old = None
+            self._duration_histogram_new = None
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -250,6 +271,19 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             set_status_on_exception=set_status_on_exception,
         )
 
+    def _record_duration(self, handler_call_details, start_time, status_code):
+        if self._duration_histogram_old is None and self._duration_histogram_new is None:
+            return
+        elapsed = time.perf_counter() - start_time
+        _record_server_duration(
+            self._duration_histogram_old,
+            self._duration_histogram_new,
+            elapsed,
+            handler_call_details.method,
+            status_code,
+            self._sem_conv_opt_in_mode,
+        )
+
     def intercept_service(self, continuation, handler_call_details):
         if not is_instrumentation_enabled():
             return continuation(handler_call_details)
@@ -268,6 +302,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         context,
                     )
 
+                start_time = time.perf_counter()
+
                 with self._set_remote_context(context):
                     with self._start_span(
                         handler_call_details,
@@ -278,6 +314,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         context = _OpenTelemetryServicerContext(context, span)
 
                         # And now we run the actual RPC.
+                        metric_status = None
                         try:
                             return behavior(request_or_iterator, context)
 
@@ -288,7 +325,16 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             # pylint:disable=unidiomatic-typecheck
                             if type(error) != Exception:  # noqa: E721
                                 span.record_exception(error)
+                                if context._code == grpc.StatusCode.OK:
+                                    metric_status = grpc.StatusCode.UNKNOWN
                             raise error
+
+                        finally:
+                            self._record_duration(
+                                handler_call_details,
+                                start_time,
+                                metric_status or context._code,
+                            )
 
             return telemetry_interceptor
 
@@ -298,10 +344,13 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     # to return a *new* generator or various upstream things
     # get confused, or we'll lose the consistent trace
     def _intercept_server_stream(self, behavior, handler_call_details, request_or_iterator, context):
+        start_time = time.perf_counter()
+
         with self._set_remote_context(context):
             with self._start_span(handler_call_details, context, set_status_on_exception=False) as span:
                 context = _OpenTelemetryServicerContext(context, span)
 
+                metric_status = None
                 try:
                     yield from behavior(request_or_iterator, context)
 
@@ -309,4 +358,13 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     # pylint:disable=unidiomatic-typecheck
                     if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
+                        if context._code == grpc.StatusCode.OK:
+                            metric_status = grpc.StatusCode.UNKNOWN
                     raise error
+
+                finally:
+                    self._record_duration(
+                        handler_call_details,
+                        start_time,
+                        metric_status or context._code,
+                    )
