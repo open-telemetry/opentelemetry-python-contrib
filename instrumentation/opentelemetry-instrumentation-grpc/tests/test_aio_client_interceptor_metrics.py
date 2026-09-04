@@ -42,6 +42,7 @@ def _find_metric(metrics, name):
 class _AioClientMetricsTestMixin:
     _SEM_CONV_MODE = "default"
 
+    # pylint:disable=C0103
     def setUp(self):
         super().setUp()
         self.env_patch = mock.patch.dict(
@@ -57,6 +58,7 @@ class _AioClientMetricsTestMixin:
         self.server = create_test_server(25565)
         self.server.start()
 
+    # pylint:disable=C0103
     def tearDown(self):
         super().tearDown()
         GrpcAioInstrumentorClient().uninstrument()

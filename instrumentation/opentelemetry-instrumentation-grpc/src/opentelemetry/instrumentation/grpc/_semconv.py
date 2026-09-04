@@ -32,6 +32,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SYSTEM,
     RPC_SYSTEM_NAME,
     RpcSystemNameValues,
+    RpcSystemValues,
 )
 from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
     RPC_CLIENT_CALL_DURATION,
@@ -133,7 +134,7 @@ def _build_old_metric_attributes(
     """Metric attributes for the v1.37.0 duration histograms."""
     service, method = _split_method(full_method)
     attrs: MutableMapping[str, AttributeValue] = {
-        RPC_SYSTEM: "grpc",
+        RPC_SYSTEM: RpcSystemValues.GRPC.value,
         RPC_GRPC_STATUS_CODE: status_code.value[0],
     }
     if method:
@@ -154,9 +155,7 @@ def _build_new_metric_attributes(
     server_port: Optional[int] = None,
 ) -> MutableMapping[str, AttributeValue]:
     """Metric attributes for the v1.40 ``rpc.{client,server}.call.duration`` histograms."""
-    method = (
-        full_method.lstrip("/") if full_method else _DEFAULT_RPC_METHOD
-    )
+    method = full_method.lstrip("/") if full_method else _DEFAULT_RPC_METHOD
     attrs: MutableMapping[str, AttributeValue] = {
         RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
         RPC_METHOD: method,

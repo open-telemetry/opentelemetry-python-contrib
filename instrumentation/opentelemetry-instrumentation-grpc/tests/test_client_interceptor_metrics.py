@@ -81,6 +81,7 @@ class _ClientMetricsTestMixin:
 
     _SEM_CONV_MODE = "default"
 
+    # pylint:disable=C0103
     def setUp(self):
         super().setUp()
         self.env_patch = mock.patch.dict(
@@ -98,6 +99,7 @@ class _ClientMetricsTestMixin:
         self.channel = grpc.insecure_channel("localhost:25565")
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
 
+    # pylint:disable=C0103
     def tearDown(self):
         super().tearDown()
         GrpcInstrumentorClient().uninstrument()

@@ -56,6 +56,7 @@ class Servicer(GRPCTestServerServicer):
 class _AioServerMetricsTestMixin:
     _SEM_CONV_MODE = "default"
 
+    # pylint:disable=C0103
     def setUp(self):
         super().setUp()
         self.env_patch = mock.patch.dict(
@@ -65,6 +66,7 @@ class _AioServerMetricsTestMixin:
         self.env_patch.start()
         _OpenTelemetrySemanticConventionStability._initialized = False
 
+    # pylint:disable=C0103
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
