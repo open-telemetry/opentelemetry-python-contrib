@@ -21,9 +21,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_user,
     _set_messaging_conversation_id,
     _set_messaging_destination,
-    _set_messaging_message_id,
     _set_messaging_operation,
-    _set_messaging_system,
     _set_messaging_temp_destination,
     _set_net_transport,
     _set_status,
@@ -793,22 +791,10 @@ class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
     def test_string_attribute_mappings(self):
         mappings = (
             (
-                _set_messaging_system,
-                "rabbitmq",
-                SpanAttributes.MESSAGING_SYSTEM,
-                messaging_attributes.MESSAGING_SYSTEM,
-            ),
-            (
                 _set_messaging_destination,
                 "orders",
                 SpanAttributes.MESSAGING_DESTINATION,
                 messaging_attributes.MESSAGING_DESTINATION_NAME,
-            ),
-            (
-                _set_messaging_message_id,
-                "message-1",
-                SpanAttributes.MESSAGING_MESSAGE_ID,
-                messaging_attributes.MESSAGING_MESSAGE_ID,
             ),
             (
                 _set_messaging_conversation_id,
@@ -846,11 +832,9 @@ class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
 
     def test_none_values_are_ignored(self):
         setters = (
-            _set_messaging_system,
             _set_messaging_operation,
             _set_messaging_temp_destination,
             _set_messaging_destination,
-            _set_messaging_message_id,
             _set_messaging_conversation_id,
         )
         for setter in setters:
