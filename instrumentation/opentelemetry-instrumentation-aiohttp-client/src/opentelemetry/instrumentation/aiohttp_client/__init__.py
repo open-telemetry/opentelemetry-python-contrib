@@ -233,7 +233,7 @@ from opentelemetry.instrumentation.utils import (
     is_http_instrumentation_enabled,
     unwrap,
 )
-from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.metrics import Histogram, MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import (
@@ -321,78 +321,15 @@ def _set_http_status_code_attribute(
     )
 
 
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-statements
-def create_trace_config(
-    url_filter: UrlFilterT = None,
-    request_hook: RequestHookT = None,
-    response_hook: ResponseHookT = None,
-    tracer_provider: TracerProvider | None = None,
-    meter_provider: MeterProvider | None = None,
-    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: list[str] | None = None,
-    captured_response_headers: list[str] | None = None,
-    sensitive_headers: list[str] | None = None,
-) -> aiohttp.TraceConfig:
-    """Create an aiohttp-compatible trace configuration.
-
-    One span is created for the entire HTTP request, including initial
-    TCP/TLS setup if the connection doesn't exist.
-
-    By default the span name is set to the HTTP request method.
-
-    Example usage:
-
-    .. code:: python
-
-        import aiohttp
-        from opentelemetry.instrumentation.aiohttp_client import create_trace_config
-
-        async with aiohttp.ClientSession(trace_configs=[create_trace_config()]) as session:
-            async with session.get(url) as response:
-                await response.text()
-
-
-    :param url_filter: A callback to process the requested URL prior to adding
-        it as a span attribute. This can be useful to remove sensitive data
-        such as API keys or user personal information.
-
-    :param Callable request_hook: Optional callback that can modify span name and request params.
-    :param Callable response_hook: Optional callback that can modify span name and response params.
-    :param tracer_provider: optional TracerProvider from which to get a Tracer
-    :param meter_provider: optional Meter provider to use
-    :param captured_request_headers: List of HTTP request header regexes to capture as
-        span attributes. Header names matching these patterns will be added as span
-        attributes with the format ``http.request.header.<header_name>``.
-    :param captured_response_headers: List of HTTP response header regexes to capture as
-        span attributes. Header names matching these patterns will be added as span
-        attributes with the format ``http.response.header.<header_name>``.
-    :param sensitive_headers: List of HTTP header regexes whose values should be
-        sanitized (redacted) when captured. Header values matching these patterns
-        will be replaced with ``[REDACTED]``.
-
-    :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
-    :rtype: :py:class:`aiohttp.TraceConfig`
-    """
-    # `aiohttp.TraceRequestStartParams` resolves to `aiohttp.tracing.TraceRequestStartParams`
-    # which doesn't exist in the aiohttp intersphinx inventory.
-    # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
-    # around this issue.
-
-    schema_url = _get_schema_url(sem_conv_opt_in_mode)
-
-    tracer = get_tracer(
-        __name__,
-        __version__,
-        tracer_provider,
-        schema_url=schema_url,
-    )
-
+def _create_duration_histograms(
+    meter_provider: MeterProvider | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> tuple[Histogram | None, Histogram | None]:
     meter = get_meter(
         __name__,
         __version__,
         meter_provider,
-        schema_url,
+        _get_schema_url(sem_conv_opt_in_mode),
     )
 
     duration_histogram_old = None
@@ -411,6 +348,31 @@ def create_trace_config(
             description="Duration of HTTP client requests.",
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
+    return duration_histogram_old, duration_histogram_new
+
+
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
+def _create_trace_config(
+    url_filter: UrlFilterT = None,
+    request_hook: RequestHookT = None,
+    response_hook: ResponseHookT = None,
+    tracer_provider: TracerProvider | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
+    duration_histogram_old: Histogram | None = None,
+    duration_histogram_new: Histogram | None = None,
+) -> aiohttp.TraceConfig:
+    schema_url = _get_schema_url(sem_conv_opt_in_mode)
+
+    tracer = get_tracer(
+        __name__,
+        __version__,
+        tracer_provider,
+        schema_url=schema_url,
+    )
 
     excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
@@ -605,6 +567,76 @@ def create_trace_config(
     return trace_config
 
 
+def create_trace_config(
+    url_filter: UrlFilterT = None,
+    request_hook: RequestHookT = None,
+    response_hook: ResponseHookT = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
+) -> aiohttp.TraceConfig:
+    """Create an aiohttp-compatible trace configuration.
+
+    One span is created for the entire HTTP request, including initial
+    TCP/TLS setup if the connection doesn't exist.
+
+    By default the span name is set to the HTTP request method.
+
+    Example usage:
+
+    .. code:: python
+
+        import aiohttp
+        from opentelemetry.instrumentation.aiohttp_client import create_trace_config
+
+        async with aiohttp.ClientSession(trace_configs=[create_trace_config()]) as session:
+            async with session.get(url) as response:
+                await response.text()
+
+
+    :param url_filter: A callback to process the requested URL prior to adding
+        it as a span attribute. This can be useful to remove sensitive data
+        such as API keys or user personal information.
+
+    :param Callable request_hook: Optional callback that can modify span name and request params.
+    :param Callable response_hook: Optional callback that can modify span name and response params.
+    :param tracer_provider: optional TracerProvider from which to get a Tracer
+    :param meter_provider: optional Meter provider to use
+    :param captured_request_headers: List of HTTP request header regexes to capture as
+        span attributes. Header names matching these patterns will be added as span
+        attributes with the format ``http.request.header.<header_name>``.
+    :param captured_response_headers: List of HTTP response header regexes to capture as
+        span attributes. Header names matching these patterns will be added as span
+        attributes with the format ``http.response.header.<header_name>``.
+    :param sensitive_headers: List of HTTP header regexes whose values should be
+        sanitized (redacted) when captured. Header values matching these patterns
+        will be replaced with ``[REDACTED]``.
+
+    :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
+    :rtype: :py:class:`aiohttp.TraceConfig`
+    """
+    # `aiohttp.TraceRequestStartParams` resolves to `aiohttp.tracing.TraceRequestStartParams`
+    # which doesn't exist in the aiohttp intersphinx inventory.
+    # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
+    # around this issue.
+    duration_histogram_old, duration_histogram_new = _create_duration_histograms(meter_provider, sem_conv_opt_in_mode)
+    return _create_trace_config(
+        url_filter=url_filter,
+        request_hook=request_hook,
+        response_hook=response_hook,
+        tracer_provider=tracer_provider,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        captured_request_headers=captured_request_headers,
+        captured_response_headers=captured_response_headers,
+        sensitive_headers=sensitive_headers,
+        duration_histogram_old=duration_histogram_old,
+        duration_histogram_new=duration_histogram_new,
+    )
+
+
 def _instrument(
     tracer_provider: TracerProvider | None = None,
     meter_provider: MeterProvider | None = None,
@@ -625,6 +657,11 @@ def _instrument(
 
     trace_configs = trace_configs or ()
 
+    # The instruments are created once here rather than per session: a meter is
+    # retained by its provider for the lifetime of the process, so building one
+    # in instrumented_init would accumulate one per ClientSession.
+    duration_histogram_old, duration_histogram_new = _create_duration_histograms(meter_provider, sem_conv_opt_in_mode)
+
     # pylint:disable=unused-argument
     def instrumented_init(
         wrapped: Callable[..., None],
@@ -635,16 +672,17 @@ def _instrument(
         client_trace_configs = list(kwargs.get("trace_configs") or [])
         client_trace_configs.extend(trace_configs)
 
-        trace_config = create_trace_config(
+        trace_config = _create_trace_config(
             url_filter=url_filter,
             request_hook=request_hook,
             response_hook=response_hook,
             tracer_provider=tracer_provider,
-            meter_provider=meter_provider,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             captured_request_headers=captured_request_headers,
             captured_response_headers=captured_response_headers,
             sensitive_headers=sensitive_headers,
+            duration_histogram_old=duration_histogram_old,
+            duration_histogram_new=duration_histogram_new,
         )
         setattr(trace_config, "_is_instrumented_by_opentelemetry", True)
         client_trace_configs.append(trace_config)
