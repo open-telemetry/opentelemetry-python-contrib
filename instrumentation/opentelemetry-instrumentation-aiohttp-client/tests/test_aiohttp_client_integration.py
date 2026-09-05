@@ -1509,6 +1509,22 @@ class TestAioHttpClientInstrumentor(TestBase):
         self._assert_spans(0)
         self._assert_metrics(0)
 
+    def test_instrument_creates_one_meter_for_all_sessions(self):
+        AioHttpClientInstrumentor().uninstrument()
+
+        async def open_and_close_sessions(count: int):
+            for _ in range(count):
+                await aiohttp.ClientSession().close()
+
+        with mock.patch(
+            "opentelemetry.instrumentation.aiohttp_client.get_meter",
+            wraps=aiohttp_client.get_meter,
+        ) as patched_get_meter:
+            AioHttpClientInstrumentor().instrument()
+            asyncio.run(open_and_close_sessions(5))
+
+        self.assertEqual(1, patched_get_meter.call_count)
+
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
     def test_loading_instrumentor(self):
