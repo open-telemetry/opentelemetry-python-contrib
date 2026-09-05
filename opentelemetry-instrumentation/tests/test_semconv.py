@@ -19,10 +19,15 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_messaging_conversation_id,
+    _set_messaging_destination,
+    _set_messaging_operation,
+    _set_messaging_temp_destination,
     _set_net_transport,
     _set_status,
     _StabilityMode,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
@@ -31,9 +36,7 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_SYSTEM,
     DB_USER,
 )
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_TRANSPORT,
-)
+from opentelemetry.semconv._incubating.attributes.net_attributes import NET_TRANSPORT
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_NAME,
@@ -43,6 +46,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
 )
+from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.trace.status import StatusCode
 
 
@@ -77,6 +81,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.DEFAULT,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
             ),
             _StabilityMode.DEFAULT,
         )
@@ -115,6 +125,33 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.DATABASE
             ),
             _StabilityMode.DATABASE_DUP,
+        )
+
+    @stability_mode("messaging")
+    def test_messaging_stable_mode(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING,
+        )
+
+    @stability_mode("messaging/dup")
+    def test_messaging_dup_mode(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING_DUP,
+        )
+
+    @stability_mode("messaging,messaging/dup")
+    def test_messaging_dup_mode_precedence(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING_DUP,
         )
 
     @stability_mode("gen_ai_latest_experimental")
@@ -174,6 +211,15 @@ class TestOpenTelemetrySemConvStability(TestCase):
             {
                 _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
                 _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP_DUP,
+            },
+        )
+
+    @stability_mode("messaging")
+    def test_get_semconv_opt_in_modes_messaging(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,)),
+            {
+                _OpenTelemetryStabilitySignalType.MESSAGING: _StabilityMode.MESSAGING,
             },
         )
 
@@ -254,6 +300,11 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
         version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.DEFAULT)
         self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
 
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.MESSAGING, _StabilityMode.DEFAULT
+        )
+        self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
+
     @stability_mode("")
     def test_get_schema_version_for_opt_in_mode_http_stable(self):
         version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.HTTP)
@@ -275,6 +326,14 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
         self.assertEqual(version, "1.26.0")
 
     @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_messaging_stable(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.MESSAGING,
+            _StabilityMode.MESSAGING,
+        )
+        self.assertEqual(version, "1.44.0")
+
+    @stability_mode("")
     def test_get_schema_url_for_signal_types_single_http_default(self):
         url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.HTTP])
         self.assertEqual(url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}")
@@ -288,6 +347,11 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
     def test_get_schema_url_for_signal_types_single_database_stable(self):
         url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE])
         self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("messaging")
+    def test_get_schema_url_for_signal_types_single_messaging_stable(self):
+        url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING])
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.44.0")
 
     @stability_mode("http,database")
     def test_get_schema_url_for_signal_types_multiple_both_stable(self):
@@ -707,3 +771,74 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         _set_db_operation(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_OPERATION, result)
         self.assertNotIn(DB_OPERATION_NAME, result)
+
+
+class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
+    def _assert_attribute_mapping(self, setter, input_value, expected_value, old_key, new_key, expected_type):
+        cases = (
+            (_StabilityMode.DEFAULT, (old_key,)),
+            (_StabilityMode.MESSAGING, (new_key,)),
+            (_StabilityMode.MESSAGING_DUP, (old_key, new_key)),
+        )
+        for mode, expected_keys in cases:
+            with self.subTest(mode=mode):
+                result = {}
+                setter(result, input_value, sem_conv_opt_in_mode=mode)
+                self.assertEqual(result, {key: expected_value for key in expected_keys})
+                for value in result.values():
+                    self.assertIs(type(value), expected_type)
+
+    def test_string_attribute_mappings(self):
+        mappings = (
+            (
+                _set_messaging_destination,
+                "orders",
+                SpanAttributes.MESSAGING_DESTINATION,
+                messaging_attributes.MESSAGING_DESTINATION_NAME,
+            ),
+            (
+                _set_messaging_conversation_id,
+                "conversation-1",
+                SpanAttributes.MESSAGING_CONVERSATION_ID,
+                messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+            ),
+        )
+        for setter, value, old_key, new_key in mappings:
+            with self.subTest(setter=setter.__name__):
+                self._assert_attribute_mapping(setter, value, value, old_key, new_key, str)
+
+    def test_operation_mapping(self):
+        old_operation = MessagingOperationValues.RECEIVE.value
+        new_operation = messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
+        self.assertEqual(old_operation, new_operation)
+        self._assert_attribute_mapping(
+            _set_messaging_operation,
+            old_operation,
+            new_operation,
+            SpanAttributes.MESSAGING_OPERATION,
+            messaging_attributes.MESSAGING_OPERATION_TYPE,
+            str,
+        )
+
+    def test_temporary_destination_mapping_preserves_false(self):
+        self._assert_attribute_mapping(
+            _set_messaging_temp_destination,
+            False,
+            False,
+            SpanAttributes.MESSAGING_TEMP_DESTINATION,
+            messaging_attributes.MESSAGING_DESTINATION_TEMPORARY,
+            bool,
+        )
+
+    def test_none_values_are_ignored(self):
+        setters = (
+            _set_messaging_operation,
+            _set_messaging_temp_destination,
+            _set_messaging_destination,
+            _set_messaging_conversation_id,
+        )
+        for setter in setters:
+            with self.subTest(setter=setter.__name__):
+                result = {}
+                setter(result, None, sem_conv_opt_in_mode=_StabilityMode.MESSAGING_DUP)
+                self.assertEqual(result, {})
