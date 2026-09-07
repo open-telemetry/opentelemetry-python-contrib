@@ -132,6 +132,8 @@ For example,
 
 will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
+Captured request headers are sanitized and included when SERVER spans are created, so they can be used by samplers.
+
 Request header names in WSGI are case-insensitive and ``-`` characters are replaced by ``_``. So, giving the header
 name as ``CUStom_Header`` in the environment variable will capture the header named ``custom-header``.
 
@@ -660,6 +662,9 @@ class OpenTelemetryMiddleware:
             self._sem_conv_opt_in_mode,
         )
 
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            req_attrs.update(collect_custom_request_headers_attributes(environ))
+
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
             span_name=get_default_span_name(environ),
@@ -668,10 +673,6 @@ class OpenTelemetryMiddleware:
             context_getter=wsgi_getter,
             attributes=req_attrs,
         )
-        if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-            custom_attributes = collect_custom_request_headers_attributes(environ)
-            if len(custom_attributes) > 0:
-                span.set_attributes(custom_attributes)
 
         if self.request_hook:
             self.request_hook(span, environ)
