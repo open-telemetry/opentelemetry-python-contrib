@@ -88,7 +88,7 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         return self._servicer_context.add_callback(*args, **kwargs)
 
     def disable_next_message_compression(self):
-        return self._service_context.disable_next_message_compression()
+        return self._servicer_context.disable_next_message_compression()
 
     def invocation_metadata(self, *args, **kwargs):
         return self._servicer_context.invocation_metadata(*args, **kwargs)
