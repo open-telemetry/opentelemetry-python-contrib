@@ -231,10 +231,8 @@ attributes at the same keys.
     from opentelemetry.instrumentation._labeler import get_labeler
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
-    urls = (
-        '/', 'index',
-        '/users/(.+)/', 'user_profile'
-    )
+    urls = ("/", "index", "/users/(.+)/", "user_profile")
+
 
     class user_profile:
         def GET(self, user_id):
@@ -246,11 +244,9 @@ attributes at the same keys.
             labeler.add("user_type", "registered")
 
             # Or, add multiple attributes at once
-            labeler.add_attributes({
-                "feature_flag": "new_ui",
-                "experiment_group": "control"
-            })
+            labeler.add_attributes({"feature_flag": "new_ui", "experiment_group": "control"})
             return f"User profile for {user_id}"
+
 
     if __name__ == "__main__":
         app = web.application(urls, globals())
@@ -258,9 +254,7 @@ attributes at the same keys.
 
         func = OpenTelemetryMiddleware(func)
 
-        server = wsgi.WSGIServer(
-            ("localhost", 5100), func, server_name="localhost"
-        )
+        server = wsgi.WSGIServer(("localhost", 5100), func, server_name="localhost")
         server.start()
 
 API
@@ -705,9 +699,7 @@ class OpenTelemetryMiddleware:
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-statements
-    def __call__(
-        self, environ: WSGIEnvironment, start_response: StartResponse
-    ):
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse):
         """The WSGI application
 
         Args:
@@ -719,9 +711,7 @@ class OpenTelemetryMiddleware:
             req_attrs,
             self._sem_conv_opt_in_mode,
         )
-        active_requests_count_attrs = enrich_metric_attributes(
-            active_requests_count_attrs
-        )
+        active_requests_count_attrs = enrich_metric_attributes(active_requests_count_attrs)
 
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
@@ -776,12 +766,8 @@ class OpenTelemetryMiddleware:
             duration_s = default_timer() - start
             active_metric_ctx = trace.set_span_in_context(span)
             if self.duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    req_attrs, _StabilityMode.DEFAULT
-                )
-                duration_attrs_old = enrich_metric_attributes(
-                    duration_attrs_old
-                )
+                duration_attrs_old = _parse_duration_attrs(req_attrs, _StabilityMode.DEFAULT)
+                duration_attrs_old = enrich_metric_attributes(duration_attrs_old)
                 for key, value in labeler_metric_attributes.items():
                     if key not in duration_attrs_old:
                         duration_attrs_old[key] = value
@@ -791,12 +777,8 @@ class OpenTelemetryMiddleware:
                     context=active_metric_ctx,
                 )
             if self.duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    req_attrs, _StabilityMode.HTTP
-                )
-                duration_attrs_new = enrich_metric_attributes(
-                    duration_attrs_new
-                )
+                duration_attrs_new = _parse_duration_attrs(req_attrs, _StabilityMode.HTTP)
+                duration_attrs_new = enrich_metric_attributes(duration_attrs_new)
                 for key, value in labeler_metric_attributes.items():
                     if key not in duration_attrs_new:
                         duration_attrs_new[key] = value

@@ -796,9 +796,7 @@ class OpenTelemetryMiddleware:
             attributes,
             self._sem_conv_opt_in_mode,
         )
-        active_requests_count_attrs = enrich_metric_attributes(
-            active_requests_count_attrs
-        )
+        active_requests_count_attrs = enrich_metric_attributes(active_requests_count_attrs)
 
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
@@ -854,18 +852,12 @@ class OpenTelemetryMiddleware:
                 duration_attrs_old = _parse_duration_attrs(attributes, _StabilityMode.DEFAULT)
                 if target:
                     duration_attrs_old[HTTP_TARGET] = target
-                duration_attrs_old = enrich_metric_attributes(
-                    duration_attrs_old
-                )
+                duration_attrs_old = enrich_metric_attributes(duration_attrs_old)
                 for key, value in labeler_metric_attributes.items():
                     if key not in duration_attrs_old:
                         duration_attrs_old[key] = value
-                duration_attrs_new = _parse_duration_attrs(
-                    attributes, _StabilityMode.HTTP
-                )
-                duration_attrs_new = enrich_metric_attributes(
-                    duration_attrs_new
-                )
+                duration_attrs_new = _parse_duration_attrs(attributes, _StabilityMode.HTTP)
+                duration_attrs_new = enrich_metric_attributes(duration_attrs_new)
                 for key, value in labeler_metric_attributes.items():
                     if key not in duration_attrs_new:
                         duration_attrs_new[key] = value

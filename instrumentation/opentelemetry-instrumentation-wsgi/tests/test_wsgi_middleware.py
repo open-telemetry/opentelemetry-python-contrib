@@ -538,9 +538,7 @@ class TestWsgiApplication(WsgiTestBase):
     def test_wsgi_duration_metrics_custom_attributes_skip_override_old_semconv(
         self,
     ):
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            error_wsgi_unhandled_override_attrs
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled_override_attrs)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
 
         metrics = self.get_sorted_metrics(SCOPE)
@@ -563,9 +561,7 @@ class TestWsgiApplication(WsgiTestBase):
     def test_wsgi_duration_metrics_custom_attributes_skip_override_new_semconv(
         self,
     ):
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            error_wsgi_unhandled_override_attrs_new_semconv
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled_override_attrs_new_semconv)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
 
         metrics = self.get_sorted_metrics(SCOPE)

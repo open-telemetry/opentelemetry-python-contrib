@@ -1663,10 +1663,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             if not call.args:
                 continue
             attrs = call.args[0]
-            if (
-                HTTP_REQUEST_METHOD in attrs
-                and HTTP_RESPONSE_STATUS_CODE not in attrs
-            ):
+            if HTTP_REQUEST_METHOD in attrs and HTTP_RESPONSE_STATUS_CODE not in attrs:
                 enriched_active_attrs_seen = True
                 break
 
