@@ -49,13 +49,9 @@ class TestInitialize(TestCase):
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
-    def test_preserves_pythonpath_changes_during_init(
-        self, load_distro_mock, _logger_mock
-    ):
+    def test_preserves_pythonpath_changes_during_init(self, load_distro_mock, _logger_mock):
         def modify_pythonpath(*_):
-            environ["PYTHONPATH"] = (
-                environ.get("PYTHONPATH", "") + pathsep + "added_during_init"
-            )
+            environ["PYTHONPATH"] = environ.get("PYTHONPATH", "") + pathsep + "added_during_init"
             distro = MagicMock()
             distro.configure.return_value = None
             return distro
@@ -72,9 +68,7 @@ class TestInitialize(TestCase):
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
-    def test_subprocess_sees_pythonpath_changes(
-        self, load_distro_mock, _logger_mock
-    ):
+    def test_subprocess_sees_pythonpath_changes(self, load_distro_mock, _logger_mock):
         during_init_paths: list[str] | None = None
 
         def capture_pythonpath_in_subprocess(*_):
@@ -121,9 +115,7 @@ class TestInitialize(TestCase):
         # pylint:disable=no-self-use
         load_distro_mock.side_effect = ValueError
         auto_instrumentation.initialize()
-        logger_mock.exception.assert_called_once_with(
-            "Failed to auto initialize OpenTelemetry"
-        )
+        logger_mock.exception.assert_called_once_with("Failed to auto initialize OpenTelemetry")
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
@@ -132,17 +124,13 @@ class TestInitialize(TestCase):
         load_distro_mock.side_effect = ValueError("inner exception")
         with self.assertRaises(ValueError) as em:
             auto_instrumentation.initialize(swallow_exceptions=False)
-            logger_mock.exception.assert_called_once_with(
-                "Failed to auto initialize OpenTelemetry"
-            )
+            logger_mock.exception.assert_called_once_with("Failed to auto initialize OpenTelemetry")
 
         self.assertEqual("inner exception", str(em.exception))
 
     @patch.dict(
         "os.environ",
-        {
-            "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_foo"
-        },
+        {"OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_foo"},
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     def test_handles_invalid_gevent_monkeypatch(self, logger_mock):
@@ -155,9 +143,7 @@ class TestInitialize(TestCase):
 
     @patch.dict(
         "os.environ",
-        {
-            "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_all"
-        },
+        {"OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_all"},
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     def test_handles_patch_all_gevent_monkeypatch(self, logger_mock):

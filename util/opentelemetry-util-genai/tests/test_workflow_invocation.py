@@ -21,9 +21,7 @@ class TestWorkflowInvocation(unittest.TestCase):
     def setUp(self):
         self.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         self.handler = TelemetryHandler(tracer_provider=tracer_provider)
 
     def test_default_values(self):
@@ -37,9 +35,7 @@ class TestWorkflowInvocation(unittest.TestCase):
         assert not invocation.attributes
 
     def test_custom_name(self):
-        invocation = self.handler.start_workflow(
-            name="customer_support_pipeline"
-        )
+        invocation = self.handler.start_workflow(name="customer_support_pipeline")
         invocation.stop()
         assert invocation.name == "customer_support_pipeline"
 
@@ -52,9 +48,7 @@ class TestWorkflowInvocation(unittest.TestCase):
         assert invocation.input_messages[0].role == "user"
 
     def test_with_output_messages(self):
-        msg = OutputMessage(
-            role="assistant", parts=[Text(content="hi")], finish_reason="stop"
-        )
+        msg = OutputMessage(role="assistant", parts=[Text(content="hi")], finish_reason="stop")
         invocation = self.handler.start_workflow(name="test")
         invocation.output_messages = [msg]
         invocation.stop()

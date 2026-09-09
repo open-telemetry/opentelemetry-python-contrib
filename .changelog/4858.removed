@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: remove unused `KafkaPropertiesExtractor.extract_send_key` and `KafkaPropertiesExtractor.extract_send_value` helpers

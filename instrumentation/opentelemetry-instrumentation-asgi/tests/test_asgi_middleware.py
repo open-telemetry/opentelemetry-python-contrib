@@ -113,9 +113,7 @@ _recommended_attrs_new = {
 
 _recommended_attrs_both = _recommended_attrs_old.copy()
 _recommended_attrs_both.update(_recommended_attrs_new)
-_recommended_attrs_both["http.server.active_requests"].extend(
-    _server_active_requests_count_attrs_old
-)
+_recommended_attrs_both["http.server.active_requests"].extend(_server_active_requests_count_attrs_old)
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
@@ -178,18 +176,10 @@ async def long_response_asgi(scope, receive, send):
                 ],
             }
         )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": False}
-        )
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
 
 
 async def background_execution_asgi(scope, receive, send):
@@ -215,6 +205,8 @@ async def background_execution_asgi(scope, receive, send):
                 "body": b"*",
             }
         )
+        # Record when the background task starts; the server span must already be ended by now.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -236,12 +228,8 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "trailers": True,
             }
         )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": True}
-        )
-        await send(
-            {"type": "http.response.body", "body": b"*", "more_body": False}
-        )
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
         await send(
             {
                 "type": "http.response.trailers",
@@ -260,6 +248,8 @@ async def background_execution_trailers_asgi(scope, receive, send):
                 "more_trailers": False,
             }
         )
+        # Record when the background task starts; the server span must already be ended by now.
+        scope["background_task_start_ns"] = time.time_ns()
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
@@ -369,16 +359,17 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
+    def tearDown(self):
+        self.env_patch.stop()
+        super().tearDown()
+
     def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
-        # Reinitialize test state to avoid state pollution
-        self.setUp()
+        self.memory_exporter.clear()
         return sub
 
     # Helper to assert exemplars presence across specified histogram metric names.
-    def _assert_exemplars_present(
-        self, metric_names: set[str], context: str = ""
-    ):
+    def _assert_exemplars_present(self, metric_names: set[str], context: str = ""):
         metrics = self.get_sorted_metrics(SCOPE)
 
         found = {name: 0 for name in metric_names}
@@ -421,12 +412,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Ensure modifiers is a list
         modifiers = modifiers or []
         # Check for expected outputs
+        self.assertTrue(outputs, "ASGI application produced no response messages")
         response_start = outputs[0]
-        response_final_body = [
-            output
-            for output in outputs
-            if output["type"] == "http.response.body"
-        ][-1]
+        response_final_body = [output for output in outputs if output["type"] == "http.response.body"][-1]
 
         self.assertEqual(response_start["type"], "http.response.start")
         self.assertEqual(response_final_body["type"], "http.response.body")
@@ -452,6 +440,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         # Check spans
         span_list = self.get_finished_spans()
+
         expected_old = [
             {
                 "name": "GET / http receive",
@@ -625,9 +614,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=mock_span
-        )
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -680,10 +667,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        span_duration_nanos = server_span.end_time - server_span.start_time
         self.assertLessEqual(
-            span_duration_nanos,
-            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+            server_span.end_time,
+            self.scope["background_task_start_ns"],
         )
 
     async def test_exclude_internal_spans(self):
@@ -698,9 +684,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         ]
         for exclude_spans, excluded_spans in cases:
             self.memory_exporter.clear()
-            app = otel_asgi.OpenTelemetryMiddleware(
-                simple_asgi, exclude_spans=exclude_spans
-            )
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, exclude_spans=exclude_spans)
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
@@ -713,9 +697,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
     async def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""
-        app = otel_asgi.OpenTelemetryMiddleware(
-            background_execution_trailers_asgi
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_trailers_asgi)
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
@@ -739,10 +721,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         span_list = self.get_finished_spans()
         server_span = span_list[-1]
         assert server_span.kind == SpanKind.SERVER
-        span_duration_nanos = server_span.end_time - server_span.start_time
         self.assertLessEqual(
-            span_duration_nanos,
-            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
+            server_span.end_time,
+            self.scope["background_task_start_ns"],
         )
 
     async def test_override_span_name(self):
@@ -757,14 +738,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 if entry["kind"] == trace_api.SpanKind.SERVER:
                     entry["name"] = span_name
                 else:
-                    entry["name"] = " ".join(
-                        [span_name] + entry["name"].split(" ")[2:]
-                    )
+                    entry["name"] = " ".join([span_name] + entry["name"].split(" ")[2:])
             return expected
 
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, default_span_details=get_predefined_span_details
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, default_span_details=get_predefined_span_details)
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
@@ -775,21 +752,15 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         result = TestBase.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
 
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=tracer_provider
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=tracer_provider)
         self.seed_app(app)
         await self.send_default_request()
         span_list = exporter.get_finished_spans()
         for span in span_list:
-            self.assertEqual(
-                span.resource.attributes["service-test-key"], "value"
-            )
+            self.assertEqual(span.resource.attributes["service-test-key"], "value")
 
     async def test_no_op_tracer_provider_otel_asgi(self):
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=trace_api.NoOpTracerProvider())
         self.seed_app(app)
         await self.send_default_request()
 
@@ -921,9 +892,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
-            expected[3]["attributes"].update(
-                {HTTP_USER_AGENT: user_agent.decode("utf8")}
-            )
+            expected[3]["attributes"].update({HTTP_USER_AGENT: user_agent.decode("utf8")})
             return expected
 
         self.scope["headers"].append([b"user-agent", user_agent])
@@ -938,9 +907,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
-            expected[3]["attributes"].update(
-                {USER_AGENT_ORIGINAL: user_agent.decode("utf8")}
-            )
+            expected[3]["attributes"].update({USER_AGENT_ORIGINAL: user_agent.decode("utf8")})
             return expected
 
         self.scope["headers"].append([b"user-agent", user_agent])
@@ -972,6 +939,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
+        await self.communicator.wait()
         outputs = await self.get_all_output()
         self.validate_outputs(
             outputs,
@@ -995,9 +963,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_bot(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_synthetic_bot(expected, ua: bytes = user_agent):
                     expected[3]["attributes"].update(
                         {
                             HTTP_USER_AGENT: ua.decode("utf8"),
@@ -1011,9 +977,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_synthetic_bot]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_synthetic_bot])
 
     async def test_user_agent_synthetic_test_detection(self):
         """Test that test user agents are detected as synthetic with type 'test'"""
@@ -1029,9 +993,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_test(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_synthetic_test(expected, ua: bytes = user_agent):
                     expected[3]["attributes"].update(
                         {
                             HTTP_USER_AGENT: ua.decode("utf8"),
@@ -1045,9 +1007,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_synthetic_test]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_synthetic_test])
 
     async def test_user_agent_non_synthetic(self):
         """Test that normal user agents are not marked as synthetic"""
@@ -1064,9 +1024,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_non_synthetic(
-                    expected, ua: bytes = user_agent
-                ):
+                def update_expected_non_synthetic(expected, ua: bytes = user_agent):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
@@ -1080,9 +1038,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.seed_app(app)
                 await self.send_default_request()
                 outputs = await self.get_all_output()
-                self.validate_outputs(
-                    outputs, modifiers=[update_expected_non_synthetic]
-                )
+                self.validate_outputs(outputs, modifiers=[update_expected_non_synthetic])
 
     async def test_user_agent_synthetic_new_semconv(self):
         """Test synthetic user agent detection with new semantic conventions"""
@@ -1454,9 +1410,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
-        self.validate_outputs(
-            outputs, modifiers=[update_expected_hook_results]
-        )
+        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
 
     async def test_hook_exceptions(self):
         def exception_event(msg):
@@ -1488,9 +1442,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         outputs = await self.get_all_output()
-        self.validate_outputs(
-            outputs, modifiers=[update_expected_hook_results]
-        )
+        self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
 
     async def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1727,9 +1679,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
-        self._assert_exemplars_present(
-            {"http.server.duration"}, context="old semconv"
-        )
+        self._assert_exemplars_present({"http.server.duration"}, context="old semconv")
 
     async def test_asgi_metrics_exemplars_expected_new_semconv(self):
         """Failing test placeholder asserting exemplars should be present for request duration histogram (new semconv)."""
@@ -1738,9 +1688,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.seed_app(app)
             await self.send_default_request()
             await self.get_all_output()
-        self._assert_exemplars_present(
-            {"http.server.request.duration"}, context="new semconv"
-        )
+        self._assert_exemplars_present({"http.server.request.duration"}, context="new semconv")
 
     async def test_asgi_metrics_exemplars_expected_both_semconv(self):
         """Failing test placeholder asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
@@ -1803,9 +1751,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
-            return_value=mock_span
-        )
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
@@ -1840,9 +1786,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                         )
                         self.assertEqual(point.count, 1)
                         if metric.name == "http.server.duration":
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=15
-                            )
+                            self.assertAlmostEqual(duration, point.sum, delta=15)
                         elif metric.name == "http.server.response.size":
                             self.assertEqual(1024, point.sum)
                         elif metric.name == "http.server.request.size":
@@ -2026,9 +1970,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
     async def test_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, excluded_urls="test_excluded_urls"
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, excluded_urls="test_excluded_urls")
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
@@ -2037,9 +1979,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
     async def test_no_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, excluded_urls="test_excluded_urls"
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, excluded_urls="test_excluded_urls")
         self.seed_app(app)
         self.scope["path"] = "/test_no_excluded_urls"
         await self.send_default_request()
@@ -2276,15 +2216,11 @@ class TestWrappedApplication(AsyncAsgiTestBase):
     ):
         tracer_provider, exporter = TestBase.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
-        app = otel_asgi.OpenTelemetryMiddleware(
-            simple_asgi, tracer_provider=tracer_provider
-        )
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, tracer_provider=tracer_provider)
 
         # Wrapping the otel intercepted app with server span
         async def wrapped_app(scope, receive, send):
-            with tracer.start_as_current_span(
-                "test", kind=SpanKind.SERVER
-            ) as _:
+            with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as _:
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
@@ -2301,9 +2237,7 @@ class TestWrappedApplication(AsyncAsgiTestBase):
         self.assertEqual(SpanKind.SERVER, span_list[4].kind)
 
         # internal span should be child of the test span we have provided
-        self.assertEqual(
-            span_list[4].context.span_id, span_list[3].parent.span_id
-        )
+        self.assertEqual(span_list[4].context.span_id, span_list[3].parent.span_id)
 
 
 class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
@@ -2327,10 +2261,7 @@ class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
         except ValueError as exc_info:
             self.assertEqual(exc_info.args[0], "whatever")
         except Exception as exc_info:  # pylint: disable=W0703
-            self.fail(
-                "expecting ValueError('whatever'), received instead: "
-                + str(exc_info)
-            )
+            self.fail("expecting ValueError('whatever'), received instead: " + str(exc_info))
         else:
             self.fail("expecting ValueError('whatever')")
 

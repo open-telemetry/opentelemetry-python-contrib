@@ -10,9 +10,7 @@ from opentelemetry.util.http import get_excluded_urls
 class TestGetExcludedUrls(unittest.TestCase):
     @patch.dict(
         "os.environ",
-        {
-            "OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "excluded_arg/123,excluded_noarg"
-        },
+        {"OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "excluded_arg/123,excluded_noarg"},
     )
     def test_config_from_instrumentation_env(self):
         exclude_list = get_excluded_urls("DJANGO")

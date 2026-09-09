@@ -148,9 +148,7 @@ class TestOTTracePropagator(TestCase):
                     _Span(
                         "child",
                         SpanContext(
-                            trace_id=int(
-                                "80f198ee56343ba864fe8b2a57d3eff7", 16
-                            ),
+                            trace_id=int("80f198ee56343ba864fe8b2a57d3eff7", 16),
                             span_id=int("e457b5a2e4d86bd1", 16),
                             is_remote=True,
                             trace_flags=TraceFlags.SAMPLED,
@@ -176,9 +174,7 @@ class TestOTTracePropagator(TestCase):
                     _Span(
                         "child",
                         SpanContext(
-                            trace_id=int(
-                                "80f198ee56343ba864fe8b2a57d3eff7", 16
-                            ),
+                            trace_id=int("80f198ee56343ba864fe8b2a57d3eff7", 16),
                             span_id=int("e457b5a2e4d86bd1", 16),
                             is_remote=True,
                             trace_flags=TraceFlags.SAMPLED,
@@ -204,9 +200,7 @@ class TestOTTracePropagator(TestCase):
                     _Span(
                         "child",
                         SpanContext(
-                            trace_id=int(
-                                "80f198ee56343ba864fe8b2a57d3eff7", 16
-                            ),
+                            trace_id=int("80f198ee56343ba864fe8b2a57d3eff7", 16),
                             span_id=int("e457b5a2e4d86bd1", 16),
                             is_remote=True,
                             trace_flags=TraceFlags.SAMPLED,
@@ -231,15 +225,11 @@ class TestOTTracePropagator(TestCase):
             )
         ).get_span_context()
 
-        self.assertEqual(
-            hex(span_context.trace_id)[2:], "80f198ee56343ba864fe8b2a57d3eff7"
-        )
+        self.assertEqual(hex(span_context.trace_id)[2:], "80f198ee56343ba864fe8b2a57d3eff7")
         self.assertEqual(hex(span_context.span_id)[2:], "e457b5a2e4d86bd1")
         self.assertTrue(span_context.is_remote)
         self.assertEqual(span_context.trace_flags, TraceFlags.SAMPLED)
-        self.assertIsInstance(
-            get_current_span().get_span_context().trace_flags, TraceFlags
-        )
+        self.assertIsInstance(get_current_span().get_span_context().trace_flags, TraceFlags)
 
     def test_extract_trace_id_span_id_sampled_false(self):
         """Test valid trace_id, span_id and sampled false"""
@@ -254,15 +244,11 @@ class TestOTTracePropagator(TestCase):
             )
         ).get_span_context()
 
-        self.assertEqual(
-            hex(span_context.trace_id)[2:], "80f198ee56343ba864fe8b2a57d3eff7"
-        )
+        self.assertEqual(hex(span_context.trace_id)[2:], "80f198ee56343ba864fe8b2a57d3eff7")
         self.assertEqual(hex(span_context.span_id)[2:], "e457b5a2e4d86bd1")
         self.assertTrue(span_context.is_remote)
         self.assertEqual(span_context.trace_flags, TraceFlags.DEFAULT)
-        self.assertIsInstance(
-            get_current_span().get_span_context().trace_flags, TraceFlags
-        )
+        self.assertIsInstance(get_current_span().get_span_context().trace_flags, TraceFlags)
 
     def test_extract_invalid_trace_header_to_explict_ctx(self):
         invalid_headers = [

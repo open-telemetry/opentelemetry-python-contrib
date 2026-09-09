@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: Add sqlcommenter support for `instrument_connection`

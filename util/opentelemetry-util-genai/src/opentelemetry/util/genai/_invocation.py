@@ -5,12 +5,13 @@ from __future__ import annotations
 
 import timeit
 from abc import ABC, abstractmethod
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import Token
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, TypeAlias
 
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, attach, detach
@@ -70,13 +71,9 @@ class GenAIInvocation(ABC):
         self._logger = logger
         self._completion_hook = completion_hook
         self._operation_name: str = operation_name
-        self.attributes: dict[str, Any] = (
-            {} if attributes is None else attributes
-        )
+        self.attributes: dict[str, Any] = {} if attributes is None else attributes
         """Additional attributes to set on spans and/or events. Not set on metrics."""
-        self.metric_attributes: dict[str, Any] = (
-            {} if metric_attributes is None else metric_attributes
-        )
+        self.metric_attributes: dict[str, Any] = {} if metric_attributes is None else metric_attributes
         """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
         self.span: Span = _INVALID_SPAN
         self._span_context: Context
@@ -217,11 +214,7 @@ def get_content_attributes(
     # Tool definitions are always captured, the sem conv recommends adding params / description only
     # when the content capture mode is set..
     if mode not in allowed_modes:
-        return (
-            {GenAI.GEN_AI_TOOL_DEFINITIONS: serialize(tool_definitions)}
-            if tool_definitions
-            else {}
-        )
+        return {GenAI.GEN_AI_TOOL_DEFINITIONS: serialize(tool_definitions)} if tool_definitions else {}
 
     optional_attrs = (
         (

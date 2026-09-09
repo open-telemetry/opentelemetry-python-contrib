@@ -1,1 +1,0 @@
-Refactor unit tests to allow for population of the random trace id flag in the `traceparent` header

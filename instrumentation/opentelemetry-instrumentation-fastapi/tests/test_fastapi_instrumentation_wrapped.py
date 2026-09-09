@@ -28,9 +28,7 @@ class TestWrappedApplication(TestBase):
             otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
 
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace.SpanKind.SERVER
-        ) as parent_span:
+        with self.tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER) as parent_span:
             resp = self.client.get("/foobar")
             self.assertEqual(200, resp.status_code)
 
@@ -43,11 +41,7 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[1].kind)
         # main INTERNAL span - child of test
         self.assertEqual(trace.SpanKind.INTERNAL, span_list[2].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[2].parent.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[2].parent.span_id)
         # SERVER "test"
         self.assertEqual(trace.SpanKind.SERVER, span_list[3].kind)
-        self.assertEqual(
-            parent_span.context.span_id, span_list[3].context.span_id
-        )
+        self.assertEqual(parent_span.context.span_id, span_list[3].context.span_id)

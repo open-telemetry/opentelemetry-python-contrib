@@ -54,9 +54,7 @@ class TestLabeler(unittest.TestCase):
 
     def test_add_invalid_types_logs_warning_and_skips(self):
         labeler = Labeler()
-        with patch(
-            "opentelemetry.instrumentation._labeler._internal._logger.warning"
-        ) as mock_warning:
+        with patch("opentelemetry.instrumentation._labeler._internal._logger.warning") as mock_warning:
             labeler.add("valid", "value")
             labeler.add("dict_key", {"nested": "dict"})
             labeler.add("list_key", [1, 2, 3])
@@ -64,9 +62,7 @@ class TestLabeler(unittest.TestCase):
             labeler.add("another_valid", 123)
 
         self.assertEqual(mock_warning.call_count, 3)
-        self.assertEqual(
-            labeler.get_attributes(), {"valid": "value", "another_valid": 123}
-        )
+        self.assertEqual(labeler.get_attributes(), {"valid": "value", "another_valid": 123})
 
     def test_limit_and_truncation(self):
         labeler = Labeler(max_custom_attrs=2, max_attr_value_length=5)
@@ -95,10 +91,7 @@ class TestLabeler(unittest.TestCase):
             for index in range(num_ops):
                 labeler.add(f"thread_{thread_id}_{index}", f"v_{index}")
 
-        threads = [
-            threading.Thread(target=worker, args=(i,))
-            for i in range(num_threads)
-        ]
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -128,9 +121,7 @@ class TestLabelerContext(unittest.TestCase):
         self.assertIs(get_labeler(), custom_labeler)
 
     def test_set_labeler_invalid_type_is_ignored(self):
-        with patch(
-            "opentelemetry.instrumentation._labeler._internal._logger.warning"
-        ) as mock_warning:
+        with patch("opentelemetry.instrumentation._labeler._internal._logger.warning") as mock_warning:
             set_labeler("bad")  # type: ignore[arg-type]
         self.assertEqual(mock_warning.call_count, 1)
 

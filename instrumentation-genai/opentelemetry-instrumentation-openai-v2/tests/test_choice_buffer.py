@@ -61,9 +61,7 @@ def test_choicebuffer_append_tool_call_with_none_arguments():
             index=0,
             id="call_1",
             type="function",
-            function=ChoiceDeltaToolCallFunction(
-                name="get_weather", arguments=None
-            ),
+            function=ChoiceDeltaToolCallFunction(name="get_weather", arguments=None),
         )
     )
     buf.append_tool_call(
@@ -86,9 +84,7 @@ def test_choicebuffer_append_tool_call_normal_flow():
             index=0,
             id="call_1",
             type="function",
-            function=ChoiceDeltaToolCallFunction(
-                name="get_weather", arguments=""
-            ),
+            function=ChoiceDeltaToolCallFunction(name="get_weather", arguments=""),
         )
     )
     buf.append_tool_call(
@@ -112,9 +108,7 @@ def test_choicebuffer_append_multiple_tool_calls_with_none_arguments():
             index=0,
             id="call_1",
             type="function",
-            function=ChoiceDeltaToolCallFunction(
-                name="get_weather", arguments=None
-            ),
+            function=ChoiceDeltaToolCallFunction(name="get_weather", arguments=None),
         )
     )
     buf.append_tool_call(
@@ -130,9 +124,7 @@ def test_choicebuffer_append_multiple_tool_calls_with_none_arguments():
             index=1,
             id="call_2",
             type="function",
-            function=ChoiceDeltaToolCallFunction(
-                name="get_time", arguments=None
-            ),
+            function=ChoiceDeltaToolCallFunction(name="get_time", arguments=None),
         )
     )
     buf.append_tool_call(
@@ -154,9 +146,7 @@ def test_choicebuffer_append_tool_call_with_none_function():
             index=0,
             id="call_1",
             type="function",
-            function=ChoiceDeltaToolCallFunction(
-                name="get_weather", arguments='{"city": "NYC"}'
-            ),
+            function=ChoiceDeltaToolCallFunction(name="get_weather", arguments='{"city": "NYC"}'),
         )
     )
     # Subsequent delta with function=None should not crash

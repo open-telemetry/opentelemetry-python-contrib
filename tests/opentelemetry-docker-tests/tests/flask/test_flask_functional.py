@@ -94,12 +94,8 @@ class TestFunctionalFlask(TestBase):
 
                     # Trace and span ID of exemplar are part of finished spans
                     finished_spans = self.memory_exporter.get_finished_spans()
-                    finished_span_ids = [
-                        span.context.span_id for span in finished_spans
-                    ]
-                    finished_trace_ids = [
-                        span.context.trace_id for span in finished_spans
-                    ]
+                    finished_span_ids = [span.context.span_id for span in finished_spans]
+                    finished_trace_ids = [span.context.trace_id for span in finished_spans]
                     self.assertIn(exemplar.span_id, finished_span_ids)
                     self.assertIn(exemplar.trace_id, finished_trace_ids)
 

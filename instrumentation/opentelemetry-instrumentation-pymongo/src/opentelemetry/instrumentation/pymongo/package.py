@@ -3,3 +3,5 @@
 
 
 _instruments = ("pymongo >= 3.1, < 5.0",)
+
+_semconv_status = "migration"

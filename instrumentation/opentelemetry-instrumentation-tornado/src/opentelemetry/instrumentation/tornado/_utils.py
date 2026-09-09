@@ -80,9 +80,7 @@ def route_from_rule(rule: Rule, handler: RequestHandler) -> str | None:
 
     method = getattr(handler, handler.request.method.lower())
     # wrap the parameters with curly brackets so we can distinguish them from the fixed path
-    method_args = tuple(
-        f"{{{param}}}" for param in inspect.signature(method).parameters.keys()
-    )
+    method_args = tuple(f"{{{param}}}" for param in inspect.signature(method).parameters.keys())
     if len(method_args) == num_params:
         route = format_str % method_args
     else:

@@ -44,17 +44,11 @@ class TestInstrumentor(TestCase):
         self.assertIs(self.Instrumentor(), self.Instrumentor())
 
     @patch("opentelemetry.instrumentation.instrumentor._LOG")
-    @patch(
-        "opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts"
-    )
-    def test_instrument_missing_dependency_raise(
-        self, mock__check_dependency_conflicts, mock_logger
-    ):
+    @patch("opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts")
+    def test_instrument_missing_dependency_raise(self, mock__check_dependency_conflicts, mock_logger):
         instrumentor = self.Instrumentor()
 
-        mock__check_dependency_conflicts.return_value = DependencyConflict(
-            "missing", "missing"
-        )
+        mock__check_dependency_conflicts.return_value = DependencyConflict("missing", "missing")
 
         self.assertRaises(
             DependencyConflictError,
@@ -64,16 +58,10 @@ class TestInstrumentor(TestCase):
         mock_logger.error.assert_not_called()
 
     @patch("opentelemetry.instrumentation.instrumentor._LOG")
-    @patch(
-        "opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts"
-    )
-    def test_instrument_missing_dependency_log_error(
-        self, mock__check_dependency_conflicts, mock_logger
-    ):
+    @patch("opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts")
+    def test_instrument_missing_dependency_log_error(self, mock__check_dependency_conflicts, mock_logger):
         instrumentor = self.Instrumentor()
         conflict = DependencyConflict("missing", "missing")
         mock__check_dependency_conflicts.return_value = conflict
-        self.assertIsNone(
-            instrumentor.instrument(raise_exception_on_conflict=False)
-        )
+        self.assertIsNone(instrumentor.instrument(raise_exception_on_conflict=False))
         mock_logger.error.assert_any_call(conflict)

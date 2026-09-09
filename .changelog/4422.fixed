@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`

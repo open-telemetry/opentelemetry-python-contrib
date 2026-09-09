@@ -16,12 +16,8 @@ class TestRun(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.execl_patcher = patch(
-            "opentelemetry.instrumentation.auto_instrumentation.execl"
-        )
-        cls.which_patcher = patch(
-            "opentelemetry.instrumentation.auto_instrumentation.which"
-        )
+        cls.execl_patcher = patch("opentelemetry.instrumentation.auto_instrumentation.execl")
+        cls.which_patcher = patch("opentelemetry.instrumentation.auto_instrumentation.which")
 
         cls.execl_patcher.start()
         cls.which_patcher.start()
@@ -64,11 +60,7 @@ class TestRun(TestCase):
     @patch("sys.argv", ["instrument", ""])
     @patch.dict(
         "os.environ",
-        {
-            "PYTHONPATH": pathsep.join(
-                [auto_instrumentation_path, "abc", auto_instrumentation_path]
-            )
-        },
+        {"PYTHONPATH": pathsep.join([auto_instrumentation_path, "abc", auto_instrumentation_path])},
     )
     def test_single_path(self):
         auto_instrumentation.run()
@@ -83,7 +75,7 @@ class TestExecl(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation.which")
     @patch("opentelemetry.instrumentation.auto_instrumentation.execl")
     def test_execl(self, mock_execl, mock_which):  # pylint: disable=no-self-use
-        mock_which.configure_mock(**{"return_value": "python"})
+        mock_which.configure_mock(return_value="python")
 
         auto_instrumentation.run()
 

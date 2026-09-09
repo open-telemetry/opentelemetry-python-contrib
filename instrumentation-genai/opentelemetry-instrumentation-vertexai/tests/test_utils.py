@@ -23,9 +23,7 @@ def test_get_server_attributes() -> None:
     }
 
     # with port
-    assert get_server_attributes(
-        "us-central1-aiplatform.googleapis.com:5432"
-    ) == {
+    assert get_server_attributes("us-central1-aiplatform.googleapis.com:5432") == {
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 5432,
     }

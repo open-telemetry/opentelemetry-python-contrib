@@ -78,9 +78,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
         def handler(request, context):
             return b""
 
-        grpc_server_instrumentor = GrpcInstrumentorServer(
-            filter_=filters.method_name("handler")
-        )
+        grpc_server_instrumentor = GrpcInstrumentorServer(filter_=filters.method_name("handler"))
         grpc_server_instrumentor.instrument()
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
             server = grpc.server(
@@ -107,9 +105,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
             self.assertIs(span.kind, trace.SpanKind.SERVER)
 
             # Check version and name in span's instrumentation info
-            self.assertEqualSpanInstrumentationScope(
-                span, opentelemetry.instrumentation.grpc
-            )
+            self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
             # Check attributes
             self.assertSpanHasAttributes(
@@ -130,9 +126,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
         def handler(request, context):
             return b""
 
-        grpc_server_instrumentor = GrpcInstrumentorServer(
-            filter_=filters.method_name("SimpleMethod")
-        )
+        grpc_server_instrumentor = GrpcInstrumentorServer(filter_=filters.method_name("SimpleMethod"))
         grpc_server_instrumentor.instrument()
         grpc_server_instrumentor.uninstrument()
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -160,9 +154,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
         """Check that the interceptor wraps calls with spans server-side."""
 
         # Intercept gRPC calls...
-        interceptor = server_interceptor(
-            filter_=filters.method_name("SimpleMethod")
-        )
+        interceptor = server_interceptor(filter_=filters.method_name("SimpleMethod"))
 
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
             server = grpc.server(
@@ -191,9 +183,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         # Check attributes
         self.assertSpanHasAttributes(

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 from logging import getLogger
-from typing import List
 
 import requests
 
@@ -41,8 +40,8 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
 
         self.__session = requests.Session()
 
-    def get_sampling_rules(self) -> List[_SamplingRule]:
-        sampling_rules: List["_SamplingRule"] = []
+    def get_sampling_rules(self) -> list[_SamplingRule]:
+        sampling_rules: list[_SamplingRule] = []
         headers = {"content-type": "application/json"}
 
         with suppress_instrumentation():
@@ -53,27 +52,18 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
                     timeout=20,
                 )
                 sampling_rules_response = xray_response.json()
-                if (
-                    sampling_rules_response is None
-                    or "SamplingRuleRecords" not in sampling_rules_response
-                ):
+                if sampling_rules_response is None or "SamplingRuleRecords" not in sampling_rules_response:
                     _logger.error(
                         "SamplingRuleRecords is missing in getSamplingRules response: %s",
                         sampling_rules_response,
                     )
                     return []
-                sampling_rules_records = sampling_rules_response[
-                    "SamplingRuleRecords"
-                ]
+                sampling_rules_records = sampling_rules_response["SamplingRuleRecords"]
                 for record in sampling_rules_records:
                     if "SamplingRule" not in record:
-                        _logger.error(
-                            "SamplingRule is missing in SamplingRuleRecord"
-                        )
+                        _logger.error("SamplingRule is missing in SamplingRuleRecord")
                     else:
-                        sampling_rules.append(
-                            _SamplingRule(**record["SamplingRule"])
-                        )
+                        sampling_rules.append(_SamplingRule(**record["SamplingRule"]))
 
             except requests.exceptions.RequestException as req_err:
                 _logger.error("Request error occurred: %s", req_err)
@@ -81,15 +71,11 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
                 _logger.error("Error in decoding JSON response: %s", json_err)
             # pylint: disable=broad-exception-caught
             except Exception as err:
-                _logger.error(
-                    "Error occurred when attempting to fetch rules: %s", err
-                )
+                _logger.error("Error occurred when attempting to fetch rules: %s", err)
 
             return sampling_rules
 
-    def get_sampling_targets(
-        self, statistics: List["dict[str, str | float | int]"]
-    ) -> _SamplingTargetResponse:
+    def get_sampling_targets(self, statistics: list[dict[str, str | float | int]]) -> _SamplingTargetResponse:
         sampling_targets_response = _SamplingTargetResponse(
             LastRuleModification=None,
             SamplingTargetDocuments=None,
@@ -111,22 +97,16 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
                     or "SamplingTargetDocuments" not in xray_response_json
                     or "LastRuleModification" not in xray_response_json
                 ):
-                    _logger.debug(
-                        "getSamplingTargets response is invalid. Unable to update targets."
-                    )
+                    _logger.debug("getSamplingTargets response is invalid. Unable to update targets.")
                     return sampling_targets_response
 
-                sampling_targets_response = _SamplingTargetResponse(
-                    **xray_response_json
-                )
+                sampling_targets_response = _SamplingTargetResponse(**xray_response_json)
             except requests.exceptions.RequestException as req_err:
                 _logger.debug("Request error occurred: %s", req_err)
             except json.JSONDecodeError as json_err:
                 _logger.debug("Error in decoding JSON response: %s", json_err)
             # pylint: disable=broad-exception-caught
             except Exception as err:
-                _logger.debug(
-                    "Error occurred when attempting to fetch targets: %s", err
-                )
+                _logger.debug("Error occurred when attempting to fetch targets: %s", err)
 
             return sampling_targets_response

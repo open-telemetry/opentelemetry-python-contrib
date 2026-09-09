@@ -50,14 +50,10 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
-            self.assert_pool_idle_used_expected(
-                pool_name=pool_name, idle=0, used=1
-            )
+            self.assert_pool_idle_used_expected(pool_name=pool_name, idle=0, used=1)
 
         # After the connection is closed
-        self.assert_pool_idle_used_expected(
-            pool_name=pool_name, idle=1, used=0
-        )
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
 
     def test_metrics_without_pool_name(self):
         pool_name = "pool_test_name"
@@ -71,14 +67,10 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
-            self.assert_pool_idle_used_expected(
-                pool_name=pool_name, idle=0, used=1
-            )
+            self.assert_pool_idle_used_expected(pool_name=pool_name, idle=0, used=1)
 
         # After the connection is closed
-        self.assert_pool_idle_used_expected(
-            pool_name=pool_name, idle=1, used=0
-        )
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
 
     def test_metrics_two_connections(self):
         pool_name = "pool_test_name"
@@ -114,25 +106,17 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         with engine.connect():
             with engine.connect():
-                self.assert_pool_idle_used_expected(
-                    pool_name=pool_name, idle=0, used=2
-                )
+                self.assert_pool_idle_used_expected(pool_name=pool_name, idle=0, used=2)
 
             # After the first connection is closed
-            self.assert_pool_idle_used_expected(
-                pool_name=pool_name, idle=1, used=1
-            )
+            self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=1)
 
             # Resume from idle to used
             with engine.connect():
-                self.assert_pool_idle_used_expected(
-                    pool_name=pool_name, idle=0, used=2
-                )
+                self.assert_pool_idle_used_expected(pool_name=pool_name, idle=0, used=2)
 
         # After the two connections are closed
-        self.assert_pool_idle_used_expected(
-            pool_name=pool_name, idle=2, used=0
-        )
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=2, used=0)
 
     def test_metric_uninstrument(self):
         SQLAlchemyInstrumentor().uninstrument()

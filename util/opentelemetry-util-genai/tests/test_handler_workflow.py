@@ -35,9 +35,7 @@ class _WorkflowTestBase(TestCase):
     def setUp(self) -> None:
         self.span_exporter = InMemorySpanExporter()
         self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        self.tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         self.handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
         )
@@ -206,17 +204,13 @@ class TelemetryHandlerWorkflowSamplingTest(_WorkflowTestBase):
                 return "AttributeCapturingSampler"
 
         sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
-        sampler_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        sampler_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
         invocation = handler.start_workflow(name="my-workflow")
         invocation.stop()
 
-        self.assertEqual(
-            captured_attributes[GenAI.GEN_AI_OPERATION_NAME], "invoke_workflow"
-        )
+        self.assertEqual(captured_attributes[GenAI.GEN_AI_OPERATION_NAME], "invoke_workflow")
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -253,9 +247,7 @@ class TelemetryHandlerWorkflowSamplingTest(_WorkflowTestBase):
 
     def test_workflow_context_manager_with_messages(self) -> None:
         inp = InputMessage(role="user", parts=[Text(content="hello")])
-        out = OutputMessage(
-            role="assistant", parts=[Text(content="hi")], finish_reason="stop"
-        )
+        out = OutputMessage(role="assistant", parts=[Text(content="hi")], finish_reason="stop")
         with self.handler.workflow("msg_wf") as inv:
             inv.input_messages = [inp]
             inv.output_messages = [out]

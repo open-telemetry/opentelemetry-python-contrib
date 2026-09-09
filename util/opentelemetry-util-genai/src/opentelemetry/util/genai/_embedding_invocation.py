@@ -37,16 +37,14 @@ class EmbeddingInvocation(GenAIInvocation):
         server_port: int | None = None,
     ) -> None:
         """Use handler.start_embedding(provider) or handler.embedding(provider) instead of calling this directly."""
-        _operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+        _operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value  # pyright: ignore[reportDeprecated]
         super().__init__(
             tracer,
             metrics_recorder,
             logger,
             completion_hook,
             operation_name=_operation_name,
-            span_name=f"{_operation_name} {request_model}"
-            if request_model
-            else _operation_name,
+            span_name=f"{_operation_name} {request_model}" if request_model else _operation_name,
             span_kind=SpanKind.CLIENT,
         )
         self.provider = provider  # e.g., azure.ai.openai, openai, aws.bedrock
@@ -91,7 +89,7 @@ class EmbeddingInvocation(GenAIInvocation):
 
     def _get_metric_token_counts(self) -> dict[str, int]:
         if self.input_tokens is not None:
-            return {GenAI.GenAiTokenTypeValues.INPUT.value: self.input_tokens}
+            return {GenAI.GenAiTokenTypeValues.INPUT.value: self.input_tokens}  # pyright: ignore[reportDeprecated]
         return {}
 
     def _apply_finish(self, error: Error | None = None) -> None:
@@ -107,11 +105,7 @@ class EmbeddingInvocation(GenAIInvocation):
         )
         attributes: dict[str, Any] = {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
-            **{
-                key: value
-                for key, value in optional_attrs
-                if value is not None
-            },
+            **{key: value for key, value in optional_attrs if value is not None},
         }
         if error is not None:
             self._apply_error_attributes(error)

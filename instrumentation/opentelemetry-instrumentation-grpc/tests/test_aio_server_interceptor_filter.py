@@ -21,9 +21,7 @@ from .test_aio_server_interceptor import Servicer
 # pylint:disable=no-self-use
 
 
-async def run_with_test_server(
-    runnable, filter_=None, servicer=Servicer(), add_interceptor=True
-):
+async def run_with_test_server(runnable, filter_=None, servicer=Servicer(), add_interceptor=True):
     if add_interceptor:
         interceptors = [aio_server_interceptor(filter_=filter_)]
         server = grpc.aio.server(interceptors=interceptors)
@@ -47,9 +45,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         """Check that automatic instrumentation configures the interceptor"""
         rpc_call = "/GRPCTestServer/SimpleMethod"
 
-        grpc_aio_server_instrumentor = GrpcAioInstrumentorServer(
-            filter_=filters.method_name("NotSimpleMethod")
-        )
+        grpc_aio_server_instrumentor = GrpcAioInstrumentorServer(filter_=filters.method_name("NotSimpleMethod"))
         try:
             grpc_aio_server_instrumentor.instrument()
 

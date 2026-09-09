@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: treat explicit `db=None` as database index 0

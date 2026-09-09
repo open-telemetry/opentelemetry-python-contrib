@@ -4,7 +4,7 @@
 DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
 
 
-_MODULE_DOC = """
+_MODULE_DOC = f"""
 The OpenTelemetry ``logging`` instrumentation automatically instruments Python logging
 with a handler to convert Python log messages into OpenTelemetry logs and export them.
 You can disable this by setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false``.
@@ -37,11 +37,15 @@ The integration uses the following logging format by default:
 
 .. code-block::
 
-    {default_logging_format}
+    {DEFAULT_LOGGING_FORMAT}
 
-The integration is opt-in and must be enabled explicitly by setting the environment variable ``OTEL_PYTHON_LOG_CORRELATION`` to ``true``.
-Setting ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` calls ``logging.basicConfig()`` to set a logging format that actually makes
-use of the injected variables.
+Trace context injection is opt-in and can be enabled in two ways:
+
+- Pass ``inject_trace_context=True`` to inject trace context attributes into every log record without modifying
+  the logging format. Use this when you manage the logging format yourself but still want
+  ``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName`` available on each record.
+- Set ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` (or pass ``set_logging_format=True``) to inject the same
+  trace context attributes and call ``logging.basicConfig()`` with a format string that includes them.
 
 Environment variables
 ---------------------
@@ -52,7 +56,7 @@ Set this env var to ``false`` to skip installing the logging handler provided by
 
 The default value is ``true``.
 
-.. envvar:: OTEL_PYTHON_CODE_ATTRIBUTES
+.. envvar:: OTEL_PYTHON_LOG_CODE_ATTRIBUTES
 
 Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``, ``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
 
@@ -87,7 +91,7 @@ The default value is:
 
 .. code-block::
 
-    {default_logging_format}
+    {DEFAULT_LOGGING_FORMAT}
 
 .. envvar:: OTEL_PYTHON_LOG_HANDLER_LEVEL
 
@@ -151,15 +155,23 @@ API
 
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
+    # inject trace context attributes only (manage your own format)
+    LoggingInstrumentor().instrument(inject_trace_context=True)
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+    # inject trace context attributes and set the logging format
     LoggingInstrumentor().instrument(set_logging_format=True)
 
 
 Note
 -----
 
-If you do not set ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` but instead set the logging format manually or through your framework, you must ensure that this
-integration is enabled before you set the logging format. This is important because unless the integration is enabled, the tracing context variables
-are not injected into the log record objects. This means any attempted log statements made after setting the logging format and before enabling this integration
-will result in KeyError exceptions. Such exceptions are automatically swallowed by the logging module and do not result in crashes but you may still lose out
-on important log messages.
-""".format(default_logging_format=DEFAULT_LOGGING_FORMAT)
+If you set a logging format with trace context placeholders (e.g. ``%(otelSpanID)s``) but do not enable
+trace context injection via ``inject_trace_context=True`` or ``set_logging_format=True``, the placeholders
+will not be populated. Any log statements emitted before injection is enabled will result in ``KeyError``
+exceptions, which the logging module silently swallows. Enable this integration as early as possible to
+avoid these issues.
+"""

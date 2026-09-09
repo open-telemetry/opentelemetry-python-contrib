@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-anthropic`, `opentelemetry-instrumentation-claude-agent-sdk`, `opentelemetry-instrumentation-langchain`, `opentelemetry-instrumentation-weaviate`: removed from this repository; these instrumentations now live in and are maintained from the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai) repository

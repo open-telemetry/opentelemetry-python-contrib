@@ -1,0 +1,229 @@
+# serializer version: 1
+# name: test_get_monitored_resource[aws ec2 region fallback]
+  dict({
+    'labels': dict({
+      'aws_account': 'myawsaccount',
+      'instance_id': 'myhostid',
+      'region': 'myregion',
+    }),
+    'type': 'aws_ec2_instance',
+  })
+# ---
+# name: test_get_monitored_resource[aws ec2]
+  dict({
+    'labels': dict({
+      'aws_account': 'myawsaccount',
+      'instance_id': 'myhostid',
+      'region': 'myavailzone',
+    }),
+    'type': 'aws_ec2_instance',
+  })
+# ---
+# name: test_get_monitored_resource[empty]
+  dict({
+    'labels': dict({
+      'location': 'global',
+      'namespace': '',
+      'node_id': '',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[fallback generic node]
+  dict({
+    'labels': dict({
+      'location': 'global',
+      'namespace': '',
+      'node_id': '',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[gce instance]
+  dict({
+    'labels': dict({
+      'instance_id': 'myhost',
+      'zone': 'foo',
+    }),
+    'type': 'gce_instance',
+  })
+# ---
+# name: test_get_monitored_resource[generic node fallback global]
+  dict({
+    'labels': dict({
+      'location': 'global',
+      'namespace': 'servicens',
+      'node_id': 'hostid',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[generic node fallback host name]
+  dict({
+    'labels': dict({
+      'location': 'global',
+      'namespace': 'servicens',
+      'node_id': 'hostname',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[generic node fallback region]
+  dict({
+    'labels': dict({
+      'location': 'myregion',
+      'namespace': 'servicens',
+      'node_id': 'hostid',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[generic node]
+  dict({
+    'labels': dict({
+      'location': 'myavailzone',
+      'namespace': 'servicens',
+      'node_id': 'hostid',
+    }),
+    'type': 'generic_node',
+  })
+# ---
+# name: test_get_monitored_resource[generic task faas fallback]
+  dict({
+    'labels': dict({
+      'job': 'unknown_service',
+      'location': 'myregion',
+      'namespace': 'servicens',
+      'task_id': 'faasinstance',
+    }),
+    'type': 'generic_task',
+  })
+# ---
+# name: test_get_monitored_resource[generic task faas]
+  dict({
+    'labels': dict({
+      'job': 'faasname',
+      'location': 'myregion',
+      'namespace': 'servicens',
+      'task_id': 'faasinstance',
+    }),
+    'type': 'generic_task',
+  })
+# ---
+# name: test_get_monitored_resource[generic task fallback global]
+  dict({
+    'labels': dict({
+      'job': 'servicename',
+      'location': 'global',
+      'namespace': 'servicens',
+      'task_id': 'serviceinstanceid',
+    }),
+    'type': 'generic_task',
+  })
+# ---
+# name: test_get_monitored_resource[generic task fallback region]
+  dict({
+    'labels': dict({
+      'job': 'servicename',
+      'location': 'myregion',
+      'namespace': 'servicens',
+      'task_id': 'serviceinstanceid',
+    }),
+    'type': 'generic_task',
+  })
+# ---
+# name: test_get_monitored_resource[generic task]
+  dict({
+    'labels': dict({
+      'job': 'servicename',
+      'location': 'myavailzone',
+      'namespace': 'servicens',
+      'task_id': 'serviceinstanceid',
+    }),
+    'type': 'generic_task',
+  })
+# ---
+# name: test_get_monitored_resource[k8s cluster region fallback]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myregion',
+    }),
+    'type': 'k8s_cluster',
+  })
+# ---
+# name: test_get_monitored_resource[k8s cluster]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myavailzone',
+    }),
+    'type': 'k8s_cluster',
+  })
+# ---
+# name: test_get_monitored_resource[k8s container region fallback]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'container_name': 'mycontainer',
+      'location': 'myregion',
+      'namespace_name': 'myns',
+      'pod_name': 'mypod',
+    }),
+    'type': 'k8s_container',
+  })
+# ---
+# name: test_get_monitored_resource[k8s container]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'container_name': 'mycontainer',
+      'location': 'myavailzone',
+      'namespace_name': 'myns',
+      'pod_name': 'mypod',
+    }),
+    'type': 'k8s_container',
+  })
+# ---
+# name: test_get_monitored_resource[k8s node region fallback]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myregion',
+      'node_name': 'mynode',
+    }),
+    'type': 'k8s_node',
+  })
+# ---
+# name: test_get_monitored_resource[k8s node]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myavailzone',
+      'node_name': 'mynode',
+    }),
+    'type': 'k8s_node',
+  })
+# ---
+# name: test_get_monitored_resource[k8s pod region fallback]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myregion',
+      'namespace_name': 'myns',
+      'pod_name': 'mypod',
+    }),
+    'type': 'k8s_pod',
+  })
+# ---
+# name: test_get_monitored_resource[k8s pod]
+  dict({
+    'labels': dict({
+      'cluster_name': 'mycluster',
+      'location': 'myavailzone',
+      'namespace_name': 'myns',
+      'pod_name': 'mypod',
+    }),
+    'type': 'k8s_pod',
+  })
+# ---

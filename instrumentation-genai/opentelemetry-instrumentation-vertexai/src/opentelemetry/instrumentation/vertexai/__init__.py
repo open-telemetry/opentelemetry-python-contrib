@@ -30,7 +30,8 @@ API
 
 from __future__ import annotations
 
-from typing import Any, Collection
+from collections.abc import Collection
+from typing import Any
 
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
@@ -99,18 +100,12 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
-        completion_hook = (
-            kwargs.get("completion_hook") or load_completion_hook()
-        )
+        completion_hook = kwargs.get("completion_hook") or load_completion_hook()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI,
         )
         tracer_provider = kwargs.get("tracer_provider")
-        schema = (
-            Schemas.V1_28_0.value
-            if sem_conv_opt_in_mode == _StabilityMode.DEFAULT
-            else Schemas.V1_36_0.value
-        )
+        schema = Schemas.V1_28_0.value if sem_conv_opt_in_mode == _StabilityMode.DEFAULT else Schemas.V1_36_0.value
         tracer = get_tracer(
             __name__,
             "",
@@ -147,9 +142,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
             )
         else:
             raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
-        for client_class, method_name, wrapper in _methods_to_wrap(
-            method_wrappers
-        ):
+        for client_class, method_name, wrapper in _methods_to_wrap(method_wrappers):
             wrap_function_wrapper(
                 client_class,
                 method_name,

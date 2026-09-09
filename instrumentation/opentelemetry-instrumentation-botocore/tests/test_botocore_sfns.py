@@ -19,13 +19,9 @@ class TestSfnsExtension(TestBase):
         super().setUp()
         BotocoreInstrumentor().instrument()
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.region = "us-west-2"
-        self.client = session.create_client(
-            "stepfunctions", region_name=self.region
-        )
+        self.client = session.create_client("stepfunctions", region_name=self.region)
 
     def tearDown(self):
         super().tearDown()
@@ -43,9 +39,7 @@ class TestSfnsExtension(TestBase):
         },
     }
 
-    def create_state_machine_and_get_arn(
-        self, name: str = "TestStateMachine"
-    ) -> str:
+    def create_state_machine_and_get_arn(self, name: str = "TestStateMachine") -> str:
         """
         Create a state machine in mocked Step Functions and return its ARN.
         """

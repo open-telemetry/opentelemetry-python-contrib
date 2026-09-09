@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation`: Register `OTEL_SEMCONV_STABILITY_OPT_IN` in `environment_variables.py` so `opentelemetry-instrument` exposes a `--semconv_stability_opt_in` CLI argument

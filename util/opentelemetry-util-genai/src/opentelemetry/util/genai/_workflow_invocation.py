@@ -76,25 +76,17 @@ class WorkflowInvocation(GenAIInvocation):
         optional_attrs = (
             (
                 GenAI.GEN_AI_INPUT_MESSAGES,
-                gen_ai_json_dumps([asdict(m) for m in self.input_messages])
-                if self.input_messages
-                else None,
+                gen_ai_json_dumps([asdict(m) for m in self.input_messages]) if self.input_messages else None,
             ),
             (
                 GenAI.GEN_AI_OUTPUT_MESSAGES,
-                gen_ai_json_dumps([asdict(m) for m in self.output_messages])
-                if self.output_messages
-                else None,
+                gen_ai_json_dumps([asdict(m) for m in self.output_messages]) if self.output_messages else None,
             ),
         )
-        return {
-            key: value for key, value in optional_attrs if value is not None
-        }
+        return {key: value for key, value in optional_attrs if value is not None}
 
     def _apply_finish(self, error: Error | None = None) -> None:
-        attributes: dict[str, Any] = {
-            GenAI.GEN_AI_OPERATION_NAME: self._operation_name
-        }
+        attributes: dict[str, Any] = {GenAI.GEN_AI_OPERATION_NAME: self._operation_name}
         attributes.update(self._get_messages_for_span())
         if error is not None:
             self._apply_error_attributes(error)

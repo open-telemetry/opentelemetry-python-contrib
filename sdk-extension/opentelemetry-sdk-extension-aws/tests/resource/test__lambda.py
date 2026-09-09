@@ -29,24 +29,14 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
     @patch.dict(
         "os.environ",
         {
-            "AWS_REGION": MockLambdaResourceAttributes[
-                ResourceAttributes.CLOUD_REGION
-            ],
-            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_NAME
-            ],
-            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_VERSION
-            ],
-            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_INSTANCE
-            ],
+            "AWS_REGION": MockLambdaResourceAttributes[ResourceAttributes.CLOUD_REGION],
+            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_NAME],
+            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[ResourceAttributes.FAAS_VERSION],
+            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_INSTANCE],
             "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
         },
         clear=True,
     )
     def test_simple_create(self):
         actual = AwsLambdaResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockLambdaResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockLambdaResourceAttributes))

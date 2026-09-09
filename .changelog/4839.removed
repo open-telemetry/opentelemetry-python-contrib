@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: drop support for the deprecated `kafka-python-ng` fork now that `kafka-python` is actively maintained again

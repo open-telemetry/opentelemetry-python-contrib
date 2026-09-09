@@ -124,7 +124,7 @@ For more information about the maintainer role, see the [community repository](h
 - [Emídio Neto](https://github.com/emdneto), Independent
 - [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Keith Decker](https://github.com/keith-decker), Cisco/Splunk
-- [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
+- [Liudmila Molkova](https://github.com/lmolkova), Google
 - [Lukas Hering](https://github.com/herin049), Oracle
 - [Mike Goldsmith](https://github.com/MikeGoldsmith), Honeycomb
 - [Pablo Collins](https://github.com/pmcollins), Splunk

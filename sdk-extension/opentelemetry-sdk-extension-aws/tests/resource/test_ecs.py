@@ -24,31 +24,23 @@ MockEcsResourceAttributes = {
 
 
 def _read_file(filename: str) -> str:
-    with open(
-        join(dirname(__file__), "ecs", filename), encoding="utf-8"
-    ) as file:
+    with open(join(dirname(__file__), "ecs", filename), encoding="utf-8") as file:
         return file.read()
 
 
 MetadataV4Uri = "mock-uri-4"
 
 
-MetadataV4ContainerResponseEc2 = _read_file(
-    "metadatav4-response-container-ec2.json"
-)
+MetadataV4ContainerResponseEc2 = _read_file("metadatav4-response-container-ec2.json")
 
 
 MetadataV4TaskResponseEc2 = _read_file("metadatav4-response-task-ec2.json")
 
 
-MetadataV4ContainerResponseFargate = _read_file(
-    "metadatav4-response-container-fargate.json"
-)
+MetadataV4ContainerResponseFargate = _read_file("metadatav4-response-container-fargate.json")
 
 
-MetadataV4TaskResponseFargate = _read_file(
-    "metadatav4-response-task-fargate.json"
-)
+MetadataV4TaskResponseFargate = _read_file("metadatav4-response-task-fargate.json")
 
 
 def _http_get_function_ec2(url: str, *args, **kwargs) -> str:
@@ -107,9 +99,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
         mock_socket_gethostname,
     ):
         actual = AwsEcsResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockEcsResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEcsResourceAttributes))
 
     @patch.dict(
         "os.environ",
@@ -159,9 +149,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata",
                     ),
-                    ResourceAttributes.AWS_LOG_STREAM_NAMES: (
-                        "ecs/curl/8f03e41243824aea923aca126495f665",
-                    ),
+                    ResourceAttributes.AWS_LOG_STREAM_NAMES: ("ecs/curl/8f03e41243824aea923aca126495f665",),
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata:log-stream:ecs/curl/8f03e41243824aea923aca126495f665",
                     ),
@@ -219,15 +207,11 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
-                    ResourceAttributes.AWS_LOG_GROUP_NAMES: (
-                        "/ecs/containerlogs",
-                    ),
+                    ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/containerlogs",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs",
                     ),
-                    ResourceAttributes.AWS_LOG_STREAM_NAMES: (
-                        "ecs/curl/cd189a933e5849daa93386466019ab50",
-                    ),
+                    ResourceAttributes.AWS_LOG_STREAM_NAMES: ("ecs/curl/cd189a933e5849daa93386466019ab50",),
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs:log-stream:ecs/curl/cd189a933e5849daa93386466019ab50",
                     ),

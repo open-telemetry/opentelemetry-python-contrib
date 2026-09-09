@@ -23,9 +23,7 @@ def responses_create(handler: TelemetryHandler):
 
     def traced_method(wrapped, instance, args, kwargs):
         params = extract_params(**kwargs)
-        invocation = handler.start_inference(
-            **get_inference_creation_kwargs(params, instance)
-        )
+        invocation = handler.start_inference(**get_inference_creation_kwargs(params, instance))
         apply_request_attributes(invocation, params, capture_content)
 
         try:
@@ -39,9 +37,7 @@ def responses_create(handler: TelemetryHandler):
                     capture_content,
                 )
 
-            set_invocation_response_attributes(
-                invocation, parsed_result, capture_content
-            )
+            set_invocation_response_attributes(invocation, parsed_result, capture_content)
             invocation.stop()
             return result
         except Exception as error:

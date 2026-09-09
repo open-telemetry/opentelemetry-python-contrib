@@ -16,16 +16,12 @@ class _NoOpCallbacks(OpAMPCallbacks):
 
 
 def test_can_instantiate_agent():
-    agent = OpAMPAgent(
-        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     assert isinstance(agent, OpAMPAgent)
 
 
 def test_can_start_agent():
-    agent = OpAMPAgent(
-        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     agent.start()
     agent.stop()
 
@@ -50,31 +46,23 @@ def test_agent_start_will_send_connection_and_disconnetion_messages():
     assert agent._schedule is True
     # on_connect and on_message called for the connection response
     cb.on_connect.assert_called_once_with(agent, client_mock)
-    cb.on_message.assert_called_once_with(
-        agent, client_mock, MessageData(remote_config=None)
-    )
+    cb.on_message.assert_called_once_with(agent, client_mock, MessageData(remote_config=None))
 
 
 def test_agent_can_call_agent_stop_multiple_times():
-    agent = OpAMPAgent(
-        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     agent.start()
     agent.stop()
     agent.stop()
 
 
 def test_agent_can_call_agent_stop_before_start():
-    agent = OpAMPAgent(
-        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     agent.stop()
 
 
 def test_agent_send_warns_without_worker_thread(caplog):
-    agent = OpAMPAgent(
-        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     agent.send(payload="payload")
 
     assert caplog.record_tuples == [
@@ -258,9 +246,7 @@ def test_dispatch_order_with_error():
         server_msg,  # connection message with error
         mock.Mock(),  # disconnect
     ]
-    agent = OpAMPAgent(
-        interval=30, client=client_mock, callbacks=OrderTrackingCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=OrderTrackingCallbacks())
     agent.start()
     sleep(0.1)
     agent.stop()
@@ -289,9 +275,7 @@ def test_dispatch_order_without_error():
         server_msg,  # connection message, no error
         mock.Mock(),  # disconnect
     ]
-    agent = OpAMPAgent(
-        interval=30, client=client_mock, callbacks=OrderTrackingCallbacks()
-    )
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=OrderTrackingCallbacks())
     agent.start()
     sleep(0.1)
     agent.stop()
@@ -334,10 +318,7 @@ def test_safe_invoke_logs_error(caplog):
 
     _safe_invoke(bad_callback)
 
-    assert any(
-        "Error when invoking function 'bad_callback'" in record.message
-        for record in caplog.records
-    )
+    assert any("Error when invoking function 'bad_callback'" in record.message for record in caplog.records)
 
 
 def test_safe_invoke_does_not_propagate():
@@ -372,23 +353,13 @@ def test_job_delay():
 
     assert job.initial_backoff == 1
     job.attempt = 1
-    assert (
-        job.initial_backoff * 0.8 <= job.delay() <= job.initial_backoff * 1.2
-    )
+    assert job.initial_backoff * 0.8 <= job.delay() <= job.initial_backoff * 1.2
 
     job.attempt = 2
-    assert (
-        2 * job.initial_backoff * 0.8
-        <= job.delay()
-        <= 2 * job.initial_backoff * 1.2
-    )
+    assert 2 * job.initial_backoff * 0.8 <= job.delay() <= 2 * job.initial_backoff * 1.2
 
     job.attempt = 3
-    assert (
-        (2**2) * job.initial_backoff * 0.8
-        <= job.delay()
-        <= (2**2) * job.initial_backoff * 1.2
-    )
+    assert (2**2) * job.initial_backoff * 0.8 <= job.delay() <= (2**2) * job.initial_backoff * 1.2
 
 
 def test_job_delay_has_jitter():

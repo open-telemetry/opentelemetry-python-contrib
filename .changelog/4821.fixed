@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiopg`: fix connection metadata for manual instrumentation

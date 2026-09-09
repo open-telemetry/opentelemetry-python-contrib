@@ -1,0 +1,1 @@
+Pass tool definitions from `tools` kwarg to `InferenceInvocation.tool_definitions` so `gen_ai.tool.definitions` span attribute is populated on chat completion spans

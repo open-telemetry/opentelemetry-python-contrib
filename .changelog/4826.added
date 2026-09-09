@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiopg`: Add DB client operation duration and returned rows metrics.

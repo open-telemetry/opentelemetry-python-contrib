@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
-from typing import Type
 from unittest import TestCase, mock, skipIf
 from unittest.mock import MagicMock
 
@@ -58,27 +57,19 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
     def test_get_publish_span(self):
         exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
         tracer = mock.MagicMock()
-        PublishDecorator(tracer, exchange)._get_publish_span(
-            MESSAGE, ROUTING_KEY
-        )
+        PublishDecorator(tracer, exchange)._get_publish_span(MESSAGE, ROUTING_KEY)
         tracer.start_span.assert_called_once_with(
             f"{EXCHANGE_NAME},{ROUTING_KEY} send",
             kind=SpanKind.PRODUCER,
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
-        with mock.patch.object(
-            PublishDecorator, "_get_publish_span"
-        ) as mock_get_publish_span:
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             with mock.patch.object(Exchange, "publish") as mock_publish:
-                decorated_publish = PublishDecorator(
-                    self.tracer, exchange
-                ).decorate(mock_publish)
-                self.loop.run_until_complete(
-                    decorated_publish(MESSAGE, ROUTING_KEY)
-                )
+                decorated_publish = PublishDecorator(self.tracer, exchange).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
         mock_publish.assert_called_once()
         mock_get_publish_span.assert_called_once()
 
@@ -90,9 +81,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 
     def _test_publish_works_with_not_recording_span(self, exchange_type):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
-        with mock.patch.object(
-            PublishDecorator, "_get_publish_span"
-        ) as mock_get_publish_span:
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
@@ -100,12 +89,8 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:
-                    decorated_publish = PublishDecorator(
-                        self.tracer, exchange
-                    ).decorate(mock_publish)
-                    self.loop.run_until_complete(
-                        decorated_publish(MESSAGE, ROUTING_KEY)
-                    )
+                    decorated_publish = PublishDecorator(self.tracer, exchange).decorate(mock_publish)
+                    self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
         mock_publish.assert_called_once()
         mock_get_publish_span.assert_called_once()
         mock_inject.assert_called_once()
@@ -137,27 +122,19 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
     def test_get_publish_span(self):
         exchange = Exchange(CHANNEL_8, EXCHANGE_NAME)
         tracer = mock.MagicMock()
-        PublishDecorator(tracer, exchange)._get_publish_span(
-            MESSAGE, ROUTING_KEY
-        )
+        PublishDecorator(tracer, exchange)._get_publish_span(MESSAGE, ROUTING_KEY)
         tracer.start_span.assert_called_once_with(
             f"{EXCHANGE_NAME},{ROUTING_KEY} send",
             kind=SpanKind.PRODUCER,
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_8, CHANNEL_8, EXCHANGE_NAME)
-        with mock.patch.object(
-            PublishDecorator, "_get_publish_span"
-        ) as mock_get_publish_span:
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             with mock.patch.object(Exchange, "publish") as mock_publish:
-                decorated_publish = PublishDecorator(
-                    self.tracer, exchange
-                ).decorate(mock_publish)
-                self.loop.run_until_complete(
-                    decorated_publish(MESSAGE, ROUTING_KEY)
-                )
+                decorated_publish = PublishDecorator(self.tracer, exchange).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
         mock_publish.assert_called_once()
         mock_get_publish_span.assert_called_once()
 
@@ -169,9 +146,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
 
     def _test_publish_works_with_not_recording_span(self, exchange_type):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
-        with mock.patch.object(
-            PublishDecorator, "_get_publish_span"
-        ) as mock_get_publish_span:
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
@@ -179,12 +154,8 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:
-                    decorated_publish = PublishDecorator(
-                        self.tracer, exchange
-                    ).decorate(mock_publish)
-                    self.loop.run_until_complete(
-                        decorated_publish(MESSAGE, ROUTING_KEY)
-                    )
+                    decorated_publish = PublishDecorator(self.tracer, exchange).decorate(mock_publish)
+                    self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
         mock_publish.assert_called_once()
         mock_get_publish_span.assert_called_once()
         mock_inject.assert_called_once()

@@ -25,22 +25,12 @@ def get_instrumentation_packages():
     for instrumentation in sorted(os.listdir(base_instrumentation_path)):
         if instrumentation in packages_to_exclude:
             continue
-        instrumentation_path = os.path.join(
-            base_instrumentation_path, instrumentation
-        )
-        if not os.path.isdir(
-            instrumentation_path
-        ) or not instrumentation.startswith(_prefix):
+        instrumentation_path = os.path.join(base_instrumentation_path, instrumentation)
+        if not os.path.isdir(instrumentation_path) or not instrumentation.startswith(_prefix):
             continue
 
-        src_dir = os.path.join(
-            instrumentation_path, "src", "opentelemetry", "instrumentation"
-        )
-        src_pkgs = [
-            f
-            for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f))
-        ]
+        src_dir = os.path.join(instrumentation_path, "src", "opentelemetry", "instrumentation")
+        src_pkgs = [f for f in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, f))]
         assert len(src_pkgs) == 1
         name = src_pkgs[0]
 
@@ -60,13 +50,9 @@ def get_instrumentation_packages():
 def main():
     dependencies = get_instrumentation_packages()
 
-    pyproject_toml_path = os.path.join(
-        root_path, "opentelemetry-contrib-instrumentations", "pyproject.toml"
-    )
+    pyproject_toml_path = os.path.join(root_path, "opentelemetry-contrib-instrumentations", "pyproject.toml")
 
-    deps = [
-        f"{pkg.strip()}=={version.strip()}" for pkg, version in dependencies
-    ]
+    deps = [f"{pkg.strip()}=={version.strip()}" for pkg, version in dependencies]
     with open(pyproject_toml_path, "rb") as file:
         pyproject_toml = tomli.load(file)
 

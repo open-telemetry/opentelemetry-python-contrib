@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-tornado`: reduce cardinality of span names and metrics attributes. This introduces a breaking change in the metrics attributes for the stable semantic convention by dropping the out of spec `url.query` and `url.path` attributes in favor of in-spec `http.route`.

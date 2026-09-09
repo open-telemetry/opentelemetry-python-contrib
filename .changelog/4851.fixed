@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-botocore`: don't emit error status on 3xx ClientError responses

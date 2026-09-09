@@ -42,9 +42,7 @@ def ask_about_weather(generate_content: callable) -> None:
             Content(
                 role="user",
                 parts=[
-                    Part.from_text(
-                        "Get weather details in New Delhi and San Francisco?"
-                    ),
+                    Part.from_text("Get weather details in New Delhi and San Francisco?"),
                 ],
             ),
         ],
@@ -62,9 +60,7 @@ def ask_about_weather_function_response(
             Content(
                 role="user",
                 parts=[
-                    Part.from_text(
-                        "Get weather details in New Delhi and San Francisco?"
-                    ),
+                    Part.from_text("Get weather details in New Delhi and San Francisco?"),
                 ],
             ),
             # Model requests two function calls
@@ -95,15 +91,11 @@ def ask_about_weather_function_response(
                 parts=[
                     Part.from_function_response(
                         name="get_current_weather",
-                        response={
-                            "content": '{"temperature": 35, "unit": "C"}'
-                        },
+                        response={"content": '{"temperature": 35, "unit": "C"}'},
                     ),
                     Part.from_function_response(
                         name="get_current_weather",
-                        response={
-                            "content": '{"temperature": 25, "unit": "C"}'
-                        },
+                        response={"content": '{"temperature": 25, "unit": "C"}'},
                     ),
                 ],
             ),

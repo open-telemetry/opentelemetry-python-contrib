@@ -47,16 +47,10 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
-        self.assertEqual(
-            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
-        )
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
-        self.assertEqual(
-            attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID
-        )
-        self.assertEqual(
-            attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME
-        )
+        self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
+        self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)
 
     @patch.dict(
         "os.environ",
@@ -86,16 +80,10 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         )
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
-        self.assertEqual(
-            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
-        )
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
-        self.assertEqual(
-            attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID
-        )
-        self.assertEqual(
-            attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME
-        )
+        self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
+        self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)
 
     @patch.dict(
         "os.environ",
@@ -120,16 +108,10 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         self.assertTrue("cloud.resource_id" not in attributes)
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
-        self.assertEqual(
-            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
-        )
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
-        self.assertEqual(
-            attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID
-        )
-        self.assertEqual(
-            attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME
-        )
+        self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
+        self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)
 
     @patch.dict(
         "os.environ",
@@ -154,16 +136,10 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
         self.assertTrue("cloud.resource_id" not in attributes)
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
-        self.assertEqual(
-            attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME
-        )
+        self.assertEqual(attributes["deployment.environment"], TEST_WEBSITE_SLOT_NAME)
         self.assertEqual(attributes["host.id"], TEST_WEBSITE_HOSTNAME)
-        self.assertEqual(
-            attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID
-        )
-        self.assertEqual(
-            attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME
-        )
+        self.assertEqual(attributes["service.instance.id"], TEST_WEBSITE_INSTANCE_ID)
+        self.assertEqual(attributes["azure.app.service.stamp"], TEST_WEBSITE_HOME_STAMPNAME)
 
     @patch.dict(
         "os.environ",

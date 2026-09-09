@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from logging import getLogger
-from typing import Collection
 
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -91,17 +91,12 @@ def get_dist_dependency_conflicts(
                 instrumentation_deps.append(req)  # type: ignore
             if req.marker.evaluate(instruments_any_marker):  # type: ignore
                 instrumentation_any_deps.append(req)  # type: ignore
-    return get_dependency_conflicts(
-        instrumentation_deps, instrumentation_any_deps
-    )  # type: ignore
+    return get_dependency_conflicts(instrumentation_deps, instrumentation_any_deps)  # type: ignore
 
 
 def get_dependency_conflicts(
-    deps: Collection[
-        str | Requirement
-    ],  # Dependencies all of which are required
-    deps_any: Collection[str | Requirement]
-    | None = None,  # Dependencies any of which are required
+    deps: Collection[str | Requirement],  # Dependencies all of which are required
+    deps_any: Collection[str | Requirement] | None = None,  # Dependencies any of which are required
 ) -> DependencyConflict | None:
     for dep in deps:
         if isinstance(dep, Requirement):

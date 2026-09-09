@@ -71,9 +71,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
 
         self.env_patch = patch.dict(
             "os.environ",
-            {
-                "OTEL_PYTHON_PYRAMID_EXCLUDED_URLS": "http://localhost/excluded_arg/123,excluded_noarg"
-            },
+            {"OTEL_PYTHON_PYRAMID_EXCLUDED_URLS": "http://localhost/excluded_arg/123,excluded_noarg"},
         )
         self.env_patch.start()
         self.exclude_patch = patch(
@@ -124,9 +122,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         set_global_response_propagator(TraceResponsePropagator())
 
         response = self.client.get("/hello/500")
-        self.assertTraceResponseHeaderMatchesSpan(
-            response.headers, self.memory_exporter.get_finished_spans()[0]
-        )
+        self.assertTraceResponseHeaderMatchesSpan(response.headers, self.memory_exporter.get_finished_spans()[0])
 
         set_global_response_propagator(orig)
 
@@ -181,16 +177,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+        self.assertEqual(span_list[0].status.status_code, trace.StatusCode.ERROR)
+        self.assertIn("HTTPInternalServerError", span_list[0].status.description)
         self.assertEqual(
-            span_list[0].status.status_code, trace.StatusCode.ERROR
-        )
-        self.assertIn(
-            "HTTPInternalServerError", span_list[0].status.description
-        )
-        self.assertEqual(
-            span_list[0]
-            .events[0]
-            .attributes[exception_attributes.EXCEPTION_TYPE],
+            span_list[0].events[0].attributes[exception_attributes.EXCEPTION_TYPE],
             "pyramid.httpexceptions.HTTPInternalServerError",
         )
 
@@ -212,9 +202,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
-        self.assertEqual(
-            span_list[0].status.status_code, trace.StatusCode.ERROR
-        )
+        self.assertEqual(span_list[0].status.status_code, trace.StatusCode.ERROR)
         self.assertEqual(span_list[0].status.description, "error message")
 
         expected_error_event_attrs = {
@@ -264,9 +252,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
 
         mock_logger.warning.called = False
 
-        tween_list = (
-            "opentelemetry.instrumentation.pyramid.trace_tween_factory"
-        )
+        tween_list = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
         config = Configurator(settings={"pyramid.tweens": tween_list})
         self._common_initialization(config)
 

@@ -30,70 +30,33 @@ settings.configure()
 source_dirs = []
 
 exp = "../exporter"
-exp_dirs = [
-    os.path.abspath("/".join([exp, f, "src"]))
-    for f in listdir(exp)
-    if isdir(join(exp, f))
-]
+exp_dirs = [os.path.abspath("/".join([exp, f, "src"])) for f in listdir(exp) if isdir(join(exp, f))]
 
 instr = "../instrumentation"
-instr_dirs = [
-    os.path.abspath("/".join([instr, f, "src"]))
-    for f in listdir(instr)
-    if isdir(join(instr, f))
-]
+instr_dirs = [os.path.abspath("/".join([instr, f, "src"])) for f in listdir(instr) if isdir(join(instr, f))]
 
 instr_genai = "../instrumentation-genai"
 instr_genai_dirs = [
-    os.path.abspath("/".join([instr_genai, f, "src"]))
-    for f in listdir(instr_genai)
-    if isdir(join(instr_genai, f))
+    os.path.abspath("/".join([instr_genai, f, "src"])) for f in listdir(instr_genai) if isdir(join(instr_genai, f))
 ]
 
 prop = "../propagator"
-prop_dirs = [
-    os.path.abspath("/".join([prop, f, "src"]))
-    for f in listdir(prop)
-    if isdir(join(prop, f))
-]
+prop_dirs = [os.path.abspath("/".join([prop, f, "src"])) for f in listdir(prop) if isdir(join(prop, f))]
 
 sdk_ext = "../sdk-extension"
-sdk_ext_dirs = [
-    os.path.abspath("/".join([sdk_ext, f, "src"]))
-    for f in listdir(sdk_ext)
-    if isdir(join(sdk_ext, f))
-]
+sdk_ext_dirs = [os.path.abspath("/".join([sdk_ext, f, "src"])) for f in listdir(sdk_ext) if isdir(join(sdk_ext, f))]
 
 resource = "../resource"
-resource_dirs = [
-    os.path.abspath("/".join([resource, f, "src"]))
-    for f in listdir(resource)
-    if isdir(join(resource, f))
-]
+resource_dirs = [os.path.abspath("/".join([resource, f, "src"])) for f in listdir(resource) if isdir(join(resource, f))]
 
 util = "../util"
-util_dirs = [
-    os.path.abspath("/".join([util, f, "src"]))
-    for f in listdir(util)
-    if isdir(join(util, f))
-]
+util_dirs = [os.path.abspath("/".join([util, f, "src"])) for f in listdir(util) if isdir(join(util, f))]
 
 opamp = "../opamp"
-opamp_dirs = [
-    os.path.abspath("/".join([opamp, f, "src"]))
-    for f in listdir(opamp)
-    if isdir(join(opamp, f))
-]
+opamp_dirs = [os.path.abspath("/".join([opamp, f, "src"])) for f in listdir(opamp) if isdir(join(opamp, f))]
 
 sys.path[:0] = (
-    exp_dirs
-    + instr_dirs
-    + instr_genai_dirs
-    + sdk_ext_dirs
-    + prop_dirs
-    + resource_dirs
-    + util_dirs
-    + opamp_dirs
+    exp_dirs + instr_dirs + instr_genai_dirs + sdk_ext_dirs + prop_dirs + resource_dirs + util_dirs + opamp_dirs
 )
 
 # -- Project information -----------------------------------------------------
@@ -175,12 +138,7 @@ mcfg = cfg["default"]
 
 
 def getlistcfg(strval):
-    return [
-        val.strip()
-        for line in strval.split("\n")
-        for val in line.split(",")
-        if val.strip()
-    ]
+    return [val.strip() for line in strval.split("\n") for val in line.split(",") if val.strip()]
 
 
 ignore_categories = [

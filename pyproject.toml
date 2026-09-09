@@ -29,15 +29,13 @@ dependencies = [
   "opentelemetry-instrumentation-confluent-kafka[instruments]",
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-django[instruments]",
-  "opentelemetry-instrumentation-elasticsearch[instruments]",
   "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
   "opentelemetry-instrumentation-grpc[instruments]",
-  "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-httpx[instruments-any]",
   "opentelemetry-instrumentation-jinja2[instruments]",
   "opentelemetry-instrumentation-kafka-python[instruments]",
-  "opentelemetry-instrumentation-kafka-python[instruments-any]",
   "opentelemetry-instrumentation-logging",
   "opentelemetry-instrumentation-mysql[instruments]",
   "opentelemetry-instrumentation-mysqlclient[instruments]",
@@ -54,6 +52,7 @@ dependencies = [
   "opentelemetry-instrumentation-requests[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-structlog[instruments]",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
@@ -73,7 +72,7 @@ dependencies = [
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
 package = false # https://docs.astral.sh/uv/reference/settings/#package
-required-version = ">=0.6.0"
+required-version = ">=0.12.1"
 
 # https://docs.astral.sh/uv/reference/settings/#sources
 [tool.uv.sources]
@@ -103,7 +102,6 @@ opentelemetry-instrumentation-click = { workspace = true }
 opentelemetry-instrumentation-confluent-kafka = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-django = { workspace = true }
-opentelemetry-instrumentation-elasticsearch = { workspace = true }
 opentelemetry-instrumentation-falcon = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-flask = { workspace = true }
@@ -126,6 +124,7 @@ opentelemetry-instrumentation-remoulade = { workspace = true }
 opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
+opentelemetry-instrumentation-structlog = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-threading = { workspace = true }
 opentelemetry-instrumentation-tornado = { workspace = true }
@@ -155,14 +154,16 @@ members = [
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
-line-length = 79
+line-length = 120
+force-exclude = true
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
+extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
 # pylint: https://github.com/astral-sh/ruff/issues/970
-select = [
+extend-select = [
   "I",   # isort
   "F",   # pyflakes
   "E",   # pycodestyle errors
@@ -173,13 +174,20 @@ select = [
   "A",   # flake8-builtins
   "TID", # flake8-tidy-imports
 ]
+# Ignore rules from the default ruleset that don't have auto-fixes available and need to be
+# manually resolved, plus E501 and RUF023 which are intentionally ignored.
 ignore = [
-  "E501", # line-too-long
+  "ASYNC251", "B008", "B010", "B017", "B018", "B020", "B023", "B039", "BLE001",
+  "C401", "C405", "C408", "C417", "DTZ003", "DTZ005", "DTZ006", "DTZ007",
+  "DTZ901", "E501", "FLY002", "G201", "ISC004", "LOG014", "LOG015", "PERF102",
+  "PERF402", "PIE794", "PIE796", "PLW0602", "PLW1508", "PT014", "PYI034",
+  "PYI036", "PYI063", "RUF009", "RUF012", "RUF013", "RUF015", "RUF023",
+  "RUF032", "S102", "S110", "SIM102", "SIM103", "SIM113", "SIM115", "SIM117",
+  "SIM118", "TRY002", "TRY004", "TRY201", "TRY401", "UP028", "UP031",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]
-"instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/*" = ["TID252"]
 
 [tool.ruff.lint.isort]
 detect-same-package = false # to not consider instrumentation packages as first-party
@@ -191,6 +199,9 @@ known-third-party = [
   "redis_opentracing",
   "opencensus",
 ]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
@@ -205,12 +216,10 @@ include = [
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
+  "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
+  "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
@@ -224,18 +233,11 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-threading/tests/**",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
@@ -249,6 +251,7 @@ issue_format = "[#{issue}](https://github.com/open-telemetry/opentelemetry-pytho
 wrap = true
 issue_pattern = "^(\\d+)"
 
+# NOTE: remember to update the changelog workflow if these types change 
 [[tool.towncrier.type]]
 directory = "added"
 name = "Added"

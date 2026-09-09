@@ -44,8 +44,7 @@ def run_agent() -> None:
     assistant = Agent(
         name="Travel Concierge",
         instructions=(
-            "You are a concise travel concierge. Use the weather tool when the"
-            " traveler asks about local conditions."
+            "You are a concise travel concierge. Use the weather tool when the traveler asks about local conditions."
         ),
         tools=[get_weather],
     )

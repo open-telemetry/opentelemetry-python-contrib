@@ -16,7 +16,9 @@ class TestRedactUrl(unittest.TestCase):
     def test_multiple_sensitive_query_params(self):
         """Test URL with multiple sensitive query parameters."""
         url = "https://admin:1234@example.com/secure?Signature=abc123&X-Goog-Signature=xyz789&sig=def456"
-        expected = "https://REDACTED:REDACTED@example.com/secure?Signature=REDACTED&X-Goog-Signature=REDACTED&sig=REDACTED"
+        expected = (
+            "https://REDACTED:REDACTED@example.com/secure?Signature=REDACTED&X-Goog-Signature=REDACTED&sig=REDACTED"
+        )
         self.assertEqual(redact_url(url), expected)
 
     def test_url_with_special_characters(self):
@@ -28,18 +30,14 @@ class TestRedactUrl(unittest.TestCase):
     def test_edge_cases(self):
         """Test unusual URL formats and corner cases."""
         # URL with fragment
-        url1 = (
-            "https://user:pass@api.example.com/data?Signature=secret#section"
-        )
+        url1 = "https://user:pass@api.example.com/data?Signature=secret#section"
         self.assertEqual(
             redact_url(url1),
             "https://REDACTED:REDACTED@api.example.com/data?Signature=REDACTED#section",
         )
 
         # URL with port number
-        url2 = (
-            "https://user:pass@api.example.com:8443/data?AWSAccessKeyId=secret"
-        )
+        url2 = "https://user:pass@api.example.com:8443/data?AWSAccessKeyId=secret"
         self.assertEqual(
             redact_url(url2),
             "https://REDACTED:REDACTED@api.example.com:8443/data?AWSAccessKeyId=REDACTED",

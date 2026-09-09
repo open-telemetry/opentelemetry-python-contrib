@@ -122,8 +122,7 @@ API
 ---
 """
 
-from collections.abc import Sequence
-from typing import Collection
+from collections.abc import Collection, Sequence
 
 import sqlalchemy
 from packaging.version import parse as parse_version
@@ -211,9 +210,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
         _w(
             "sqlalchemy",
@@ -276,9 +273,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
             )
-        if kwargs.get("engines") is not None and isinstance(
-            kwargs.get("engines"), Sequence
-        ):
+        if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), Sequence):
             return [
                 EngineTracer(
                     tracer,

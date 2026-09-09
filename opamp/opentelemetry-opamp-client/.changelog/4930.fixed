@@ -1,0 +1,1 @@
+Add `requests` to the `opentelemetry-opamp-client` dependencies, fixing a `ModuleNotFoundError` when importing `opentelemetry._opamp.client` in a fresh environment.

@@ -9,8 +9,9 @@ OpenTelemetry Base Instrumentor
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Collection
 from logging import getLogger
-from typing import Any, Collection
+from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
@@ -94,9 +95,7 @@ class BaseInstrumentor(ABC):
 
         # check if instrumentor has any missing or conflicting dependencies
         skip_dep_check = kwargs.pop("skip_dep_check", False)
-        raise_exception_on_conflict = kwargs.pop(
-            "raise_exception_on_conflict", False
-        )
+        raise_exception_on_conflict = kwargs.pop("raise_exception_on_conflict", False)
         if not skip_dep_check:
             conflict = self._check_dependency_conflicts()
             if conflict:
