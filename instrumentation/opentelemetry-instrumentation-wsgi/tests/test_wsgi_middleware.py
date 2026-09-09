@@ -1225,6 +1225,16 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         self.assertNotIn(_CUSTOM_REQUEST_HEADER, sampler.attributes)
         self.assertNotIn(_CUSTOM_REQUEST_HEADER, exporter.get_finished_spans()[0].attributes)
 
+    def test_custom_request_headers_skip_environ_without_configuration(self) -> None:
+        for configuration in ({}, {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: ""}):
+            with (
+                self.subTest(configuration=configuration),
+                mock.patch.dict("os.environ", configuration, clear=True),
+            ):
+                environ = mock.Mock(wraps=self.environ)
+                self.assertEqual(otel_wsgi.collect_custom_request_headers_attributes(environ), {})
+                environ.items.assert_not_called()
+
     @mock.patch.dict(
         "os.environ",
         {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},

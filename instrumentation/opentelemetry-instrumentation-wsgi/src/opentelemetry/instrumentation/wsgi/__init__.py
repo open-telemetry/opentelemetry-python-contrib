@@ -421,12 +421,16 @@ def _apply_user_agent_attributes(
         result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
 
-def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
+def collect_custom_request_headers_attributes(environ: WSGIEnvironment) -> dict[str, list[str]]:
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
     in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
     See also https://peps.python.org/pep-3333/
     """
+
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+    if not captured_headers:
+        return {}
 
     sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
     headers = {
@@ -437,7 +441,7 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
 
     return sanitize.sanitize_header_values(
         headers,
-        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
+        captured_headers,
         normalise_request_header_name,
     )
 
