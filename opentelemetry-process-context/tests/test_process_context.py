@@ -65,9 +65,7 @@ class TestPublishContext(unittest.TestCase):
             pass
 
     def test_publish_context_lifecycle(self):
-        resource = Resource(
-            {"service.name": "test", "version": 1, "pi": 3.14, "active": True}
-        )
+        resource = Resource({"service.name": "test", "version": 1, "pi": 3.14, "active": True})
         self.assertIsNone(publish_context(resource))
         self.assertIsNone(publish_context(resource))
         self.assertIsNone(publish_context(resource))
@@ -77,12 +75,8 @@ class TestPublishContext(unittest.TestCase):
 
     def test_publish_context_with_attributes(self):
         resource = Resource({"service.name": "test"})
-        self.assertIsNone(
-            publish_context(resource, {"deployment.environment": "prod"})
-        )
-        self.assertIsNone(
-            publish_context(resource, {"k": 1, "nested": {"a": 2}})
-        )
+        self.assertIsNone(publish_context(resource, {"deployment.environment": "prod"}))
+        self.assertIsNone(publish_context(resource, {"k": 1, "nested": {"a": 2}}))
         self.assertIsNone(publish_context(resource))
 
     def test_unpublish_before_publish_raises(self):
@@ -97,9 +91,7 @@ class TestPublishContext(unittest.TestCase):
         errors: list[BaseException] = []
 
         def worker(index: int) -> None:
-            resource = Resource(
-                {"service.name": f"svc-{index}", "version": index}
-            )
+            resource = Resource({"service.name": f"svc-{index}", "version": index})
             barrier.wait()
             try:
                 for _ in range(iterations):
@@ -108,10 +100,7 @@ class TestPublishContext(unittest.TestCase):
             except BaseException as exc:
                 errors.append(exc)
 
-        threads = [
-            threading.Thread(target=worker, args=(i,))
-            for i in range(thread_count)
-        ]
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(thread_count)]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -138,18 +127,14 @@ class TestPublishContext(unittest.TestCase):
         """A child that inherits the parent's region but never publishes must
         get NotPublished from unpublish (not a crash), and the parent stays
         usable."""
-        result = subprocess.run(
-            _script_cmd("fork_unpublish_without_publish.py"), check=False
-        )
+        result = subprocess.run(_script_cmd("fork_unpublish_without_publish.py"), check=False)
         self.assertEqual(
             result.returncode,
             0,
             "fork/unpublish-without-publish script did not exit cleanly",
         )
 
-    @unittest.skipUnless(
-        sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}"
-    )
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}")
     def test_cross_process_memory_region(self):
         """Spawn a child that publishes a fixed context and read/validate its memory region."""
         with subprocess.Popen(
@@ -177,9 +162,7 @@ class TestPublishContext(unittest.TestCase):
             self.assertIn(b"deployment.environment", header["payload"])
             self.assertIn(b"otel-test-env", header["payload"])
 
-    @unittest.skipUnless(
-        sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}"
-    )
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}")
     def test_mapping_present_in_parent_absent_in_child(self):
         """After a fork the mapping must be visible in the parent but stripped
         from the child (MADV_DONTFORK)."""
@@ -188,9 +171,7 @@ class TestPublishContext(unittest.TestCase):
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
         ) as proc:
-            parent_pid, child_pid = (
-                int(token) for token in proc.stdout.readline().split()
-            )
+            parent_pid, child_pid = (int(token) for token in proc.stdout.readline().split())
 
             # Parent: mapping present in /proc/maps and readable via /proc/mem.
             parent_addr = _find_otel_ctx_addr(parent_pid)
@@ -214,9 +195,7 @@ class TestPublishContext(unittest.TestCase):
                     mem.seek(parent_addr)
                     mem.read(HEADER_SIZE)
 
-    @unittest.skipUnless(
-        sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}"
-    )
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}")
     def test_update_in_place_keeps_stable_mapping(self):
         """An update reuses the same header mapping, advances the
         timestamp and swaps in the new payload."""
@@ -238,22 +217,16 @@ class TestPublishContext(unittest.TestCase):
             self.assertEqual(proc.stdout.readline(), "done\n")
 
             addr2 = _find_otel_ctx_addr(pid)
-            self.assertEqual(
-                addr2, addr1, "header mapping moved across update"
-            )
+            self.assertEqual(addr2, addr1, "header mapping moved across update")
             after = _read_header(pid, addr2)
 
             self.assertEqual(after["version"], 2)
             self.assertNotEqual(after["payload_ptr"], 0)
             self.assertGreater(before["timestamp_ns"], 0)
-            self.assertGreaterEqual(
-                after["timestamp_ns"], before["timestamp_ns"]
-            )
+            self.assertGreaterEqual(after["timestamp_ns"], before["timestamp_ns"])
             self.assertIn(b"otel-second", after["payload"])
 
-    @unittest.skipUnless(
-        sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}"
-    )
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}")
     def test_unpublish_removes_mapping(self):
         """Unpublishing removes the mapping, a later publish recreates it."""
         with subprocess.Popen(
