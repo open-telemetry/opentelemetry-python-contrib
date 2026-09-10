@@ -1,1 +1,1 @@
-`opentelemetry-sdk-extension-aws`: use the ECS metadata container name instead of the hostname for `container.name`
+`opentelemetry-sdk-extension-aws`: use the container name from the ECS metadata endpoint v4 for `container.name`; the deprecated v3 endpoint and v4 responses without a name keep using the hostname
