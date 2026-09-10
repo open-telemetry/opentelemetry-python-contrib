@@ -714,7 +714,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
         self.assertIn(DB_OPERATION, query_span.attributes)
-        self.assertEqual(query_span.attributes[DB_OPERATION], "SELECT :memory:")
+        self.assertEqual(query_span.attributes[DB_OPERATION], "SELECT")
         # Verify new conventions are NOT present
         self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
@@ -790,7 +790,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
         self.assertIn(DB_OPERATION_NAME, query_span.attributes)
-        self.assertEqual(query_span.attributes[DB_OPERATION_NAME], "SELECT :memory:")
+        self.assertEqual(query_span.attributes[DB_OPERATION_NAME], "SELECT")
         # Verify old conventions are NOT present
         self.assertNotIn(DB_STATEMENT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM, query_span.attributes)
