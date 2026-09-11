@@ -107,6 +107,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         original_send_callback = mock.AsyncMock()
         kafka_producer = mock.MagicMock()
         kafka_producer.client._otel_cluster_id = None
+        kafka_producer.client._otel_cluster_id_failure_time = None
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
@@ -154,6 +155,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         original_getone_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
         kafka_consumer._client._otel_cluster_id = None
+        kafka_consumer._client._otel_cluster_id_failure_time = None
 
         wrapped_getone = _wrap_getone(tracer, consume_hook)
         record = await wrapped_getone(original_getone_callback, kafka_consumer, self.args, self.kwargs)
@@ -212,6 +214,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
         kafka_consumer = mock.MagicMock()
         kafka_consumer._client._otel_cluster_id = None
+        kafka_consumer._client._otel_cluster_id_failure_time = None
         _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
@@ -328,6 +331,39 @@ class TestUtils(IsolatedAsyncioTestCase):
             "test-cluster-uuid",
         )
 
+    async def test_cluster_id_resolved_on_send_after_a_failed_start(self) -> None:
+        """A client that could not resolve at start() must still resolve later.
+
+        Resolution normally happens once in the start() wrapper. If the broker
+        was not reachable then, the id has to be recoverable from the send path,
+        or it stays missing for the whole life of the client.
+        """
+        tracer = mock.MagicMock()
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
+        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
+
+        producer = mock.MagicMock()
+        producer.client._bootstrap_servers = "broker1:9092"
+        producer.client._client_id = "test-client"
+        producer.client._wait_on_metadata = mock.AsyncMock()
+        # start() resolved nothing and left no failure stamp
+        producer.client._otel_cluster_id = None
+        producer.client._otel_cluster_id_failure_time = None
+        producer.client.get_random_node.return_value = 0
+        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="recovered-cluster"))
+        producer._key_serializer = None
+        producer._value_serializer = None
+        producer._partition.return_value = 0
+
+        wrapped_send = _wrap_send(tracer, None)
+        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
+
+        set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
+        self.assertEqual(set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID), "recovered-cluster")
+        self.assertEqual(producer.client._otel_cluster_id, "recovered-cluster")
+
     async def test_cluster_id_attribute_absent_when_not_resolved(self) -> None:
         """No cluster ID attribute is set when client metadata is not yet available."""
         tracer = mock.MagicMock()
@@ -341,6 +377,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         producer.client._client_id = "test-client"
         producer.client._wait_on_metadata = mock.AsyncMock()
         producer.client._otel_cluster_id = None
+        producer.client._otel_cluster_id_failure_time = None
         producer._key_serializer = None
         producer._value_serializer = None
         producer._partition.return_value = 0
@@ -361,6 +398,7 @@ class TestUtils(IsolatedAsyncioTestCase):
     ) -> None:
         client = mock.MagicMock()
         client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
         self.assertIsNone(_extract_cluster_id_from_client(client))
 
     def test_extract_cluster_id_from_client_returns_none_when_no_attr(

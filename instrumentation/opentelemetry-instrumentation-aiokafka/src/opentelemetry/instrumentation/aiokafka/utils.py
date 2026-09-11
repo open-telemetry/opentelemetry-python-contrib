@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import time
 from collections.abc import Awaitable, Callable, MutableSequence, Sequence
 from logging import getLogger
 from typing import (
@@ -89,6 +90,65 @@ def _extract_cluster_id_from_client(
 ) -> str | None:
     cluster_id: str | None = getattr(client, "_otel_cluster_id", None)
     return cluster_id if cluster_id else None
+
+
+_CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
+
+try:
+    from aiokafka.protocol.metadata import (
+        MetadataRequest_v5 as _MetadataRequestV5,
+    )
+except ImportError:
+    _MetadataRequestV5 = None
+
+
+async def _fetch_and_cache_cluster_id(
+    client: aiokafka.AIOKafkaClient,
+) -> None:
+    if getattr(client, "_otel_cluster_id", None):
+        return
+
+    failure_time: float | None = getattr(client, "_otel_cluster_id_failure_time", None)
+    if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
+        return
+
+    if _MetadataRequestV5 is None:
+        return
+
+    try:
+        node_id: int | None = cast(int | None, client.get_random_node())
+        if node_id is None:
+            await client.force_metadata_update()
+            node_id = cast(int | None, client.get_random_node())
+        if node_id is None:
+            return
+        response: object = await cast(Any, client).send(
+            node_id,
+            _MetadataRequestV5(topics=[], allow_auto_topic_creation=False),
+        )
+        cluster_id: str = getattr(response, "cluster_id", "") or ""
+        if cluster_id:
+            client._otel_cluster_id = cluster_id  # type: ignore[attr-defined]
+        else:
+            client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+    except Exception:  # pylint: disable=broad-except
+        client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+
+
+async def _resolve_cluster_id(client: aiokafka.AIOKafkaClient) -> str | None:
+    """Return the cached cluster id, resolving it first if it is still unknown.
+
+    Resolution normally happens once, when the client starts, so this is just an
+    attribute read. It retries only when that attempt came back empty -- a broker
+    not reachable yet, say -- and the retry is throttled by
+    ``_CLUSTER_ID_FAILURE_BACKOFF_SECS``, so a client that can never report an id
+    does not ask again for every record.
+    """
+    cluster_id = _extract_cluster_id_from_client(client)
+    if cluster_id:
+        return cluster_id
+    await _fetch_and_cache_cluster_id(client)
+    return _extract_cluster_id_from_client(client)
 
 
 def _extract_consumer_group(
@@ -416,7 +476,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
         client_id = _extract_client_id(instance.client)
         key = _deserialize_key(_extract_send_key(args, kwargs))
         partition = await _extract_send_partition(instance, args, kwargs)
-        cluster_id = _extract_cluster_id_from_client(instance.client)
+        cluster_id = await _resolve_cluster_id(instance.client)
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             _enrich_send_span(
@@ -507,7 +567,7 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
-            cluster_id = _extract_cluster_id_from_client(instance._client)
+            cluster_id = await _resolve_cluster_id(instance._client)
 
             extracted_context = propagate.extract(record.headers, getter=_aiokafka_getter)
             await _create_consumer_span(
@@ -551,7 +611,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
-            cluster_id = _extract_cluster_id_from_client(instance._client)
+            cluster_id = await _resolve_cluster_id(instance._client)
 
             span_name = _get_span_name(
                 "receive",

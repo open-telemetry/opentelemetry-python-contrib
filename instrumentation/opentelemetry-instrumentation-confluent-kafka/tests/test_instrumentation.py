@@ -29,7 +29,12 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.test.test_base import TestBase
 
-from .utils import MockConsumer, MockedMessage, MockedProducer
+from .utils import (
+    MockConsumer,
+    MockedMessage,
+    MockedProducer,
+    MockedProducerWithoutConfig,
+)
 
 
 class TestConfluentKafka(TestBase):
@@ -487,6 +492,47 @@ class TestConfluentKafka(TestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(span.attributes["messaging.kafka.cluster.id"], "test-cluster-abc")
 
+    def test_cluster_id_resolved_once_per_producer(self) -> None:
+        # The metadata call must not ride along on every span: it reaches the
+        # broker, which costs orders of magnitude more than produce() itself.
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        producer._mock_cluster_id = "test-cluster-abc"
+        producer = ConfluentKafkaInstrumentor().instrument_producer(producer)
+
+        for _ in range(3):
+            producer.produce(topic="topic-1", key="k", value="v")
+
+        self.assertEqual(producer.original_producer().list_topics_calls, 1)
+        for span in self.memory_exporter.get_finished_spans():
+            self.assertEqual(span.attributes["messaging.kafka.cluster.id"], "test-cluster-abc")
+
+    def test_cluster_id_resolved_once_when_producer_has_no_config(self) -> None:
+        # A real confluent_kafka.Producer has no `config`, so the per-bootstrap
+        # cache cannot be keyed. Resolution must still happen only once.
+        producer = MockedProducerWithoutConfig([], {"bootstrap.servers": "localhost:29092"})
+        producer._mock_cluster_id = "test-cluster-noconfig"
+        producer = ConfluentKafkaInstrumentor().instrument_producer(producer)
+
+        for _ in range(3):
+            producer.produce(topic="topic-1", key="k", value="v")
+
+        self.assertEqual(producer.original_producer().list_topics_calls, 1)
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes["messaging.kafka.cluster.id"], "test-cluster-noconfig")
+
+    def test_cluster_id_failure_is_not_retried_on_every_span(self) -> None:
+        # An unresolved id must be retried on a timer, not once per span.
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        # _mock_cluster_id stays None, so list_topics() yields no cluster id
+        producer = ConfluentKafkaInstrumentor().instrument_producer(producer)
+
+        for _ in range(3):
+            producer.produce(topic="topic-1", key="k", value="v")
+
+        self.assertEqual(producer.original_producer().list_topics_calls, 1)
+        for span in self.memory_exporter.get_finished_spans():
+            self.assertNotIn("messaging.kafka.cluster.id", span.attributes)
+
     def test_cluster_id_not_set_on_producer_span_when_unavailable(
         self,
     ) -> None:
@@ -563,7 +609,11 @@ class TestConfluentKafka(TestBase):
             process_span.attributes,
         )
 
-    def test_cluster_id_reflects_current_value(self) -> None:
+    def test_cluster_id_is_stable_for_the_life_of_a_client(self) -> None:
+        # Resolved once per client and then reused. A client stays connected to
+        # the cluster it first reached, so re-reading would only add a broker
+        # round trip to every span. Reaching a different cluster means a new
+        # client, which resolves its own id.
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
             _extract_cluster_id,
         )
@@ -573,9 +623,9 @@ class TestConfluentKafka(TestBase):
 
         self.assertEqual(_extract_cluster_id(producer), "cluster-before-migration")
 
-        # Simulate cluster migration at same bootstrap URL — new cluster ID must be visible.
         producer._mock_cluster_id = "cluster-after-migration"
-        self.assertEqual(_extract_cluster_id(producer), "cluster-after-migration")
+        self.assertEqual(_extract_cluster_id(producer), "cluster-before-migration")
+        self.assertEqual(producer.list_topics_calls, 1)
 
     def test_cluster_id_producer_uses_bootstrap_cache_after_first_call(
         self,

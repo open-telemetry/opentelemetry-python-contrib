@@ -74,6 +74,7 @@ class MockedProducer(Producer):
         self._queue = queue
         self.config = config
         self._mock_cluster_id: str | None = None
+        self.list_topics_calls = 0
         super().__init__(config)
 
     def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -95,4 +96,17 @@ class MockedProducer(Producer):
         return len(self._queue)
 
     def list_topics(self, topic=None, timeout=-1):
+        self.list_topics_calls += 1
         return MockClusterMetadata(cluster_id=self._mock_cluster_id)
+
+
+class MockedProducerWithoutConfig(MockedProducer):
+    """Mirrors a real ``confluent_kafka.Producer``, which exposes no ``config``.
+
+    The C type carries no ``config`` attribute, so nothing can key a cache on
+    the bootstrap servers for a manually instrumented producer.
+    """
+
+    def __init__(self, queue, config):
+        super().__init__(queue, config)
+        del self.config

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 from logging import getLogger
 from typing import Any
 
@@ -35,25 +36,89 @@ def _get_real_instance(instance: Any) -> Any:
     return getattr(instance, "_producer", None) or getattr(instance, "_consumer", None) or instance
 
 
+# list_topics() always issues a metadata request, so the timeout must be
+# positive; with timeout=0 it expires before the broker can answer and no
+# cluster id is ever returned.
+_CLUSTER_ID_METADATA_TIMEOUT_SECS = 1.0
+_CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
+
+# Shared by clients pointed at the same brokers. Populated by producers, which
+# are the only clients that may ask for metadata (see _extract_cluster_id).
 _cluster_id_by_bootstrap: dict[str, str] = {}
 
 
-def _extract_cluster_id(instance: Any, bootstrap_servers: str | None = None) -> str | None:
+def _remember(instance: Any, name: str, value: Any) -> None:
+    # The instrumentation wrappers are Python subclasses and hold attributes;
+    # confluent_kafka's own C types accept neither attributes nor weak
+    # references, so their per-instance cache is simply skipped.
+    try:
+        setattr(instance, name, value)
+    except AttributeError:
+        pass
+
+
+def _extract_cluster_id(
+    instance: Any,
+    bootstrap_servers: str | None = None,
+    topic: str | None = None,
+) -> str | None:
+    """Return the cluster id, asking the broker at most once per client.
+
+    A metadata round trip costs far more than the produce it would annotate, so
+    the result is cached on the client and shared with clients on the same
+    bootstrap address. ``instance`` is the instrumentation wrapper that holds
+    the cache; the metadata call goes to the client it wraps.
+    """
     if instance is None:
         return None
-    if hasattr(instance, "flush"):
-        if bootstrap_servers and bootstrap_servers in _cluster_id_by_bootstrap:
-            return _cluster_id_by_bootstrap[bootstrap_servers]
-        try:
-            cluster_metadata = instance.list_topics(timeout=0)
-            cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
-            if cluster_id and bootstrap_servers:
-                _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
-            return cluster_id
-        except Exception:  # pylint: disable=broad-except
-            return None
+
+    cluster_id: str | None = getattr(instance, "_otel_cluster_id", None)
+    if cluster_id:
+        return cluster_id
+
     if bootstrap_servers:
-        return _cluster_id_by_bootstrap.get(bootstrap_servers)
+        cluster_id = _cluster_id_by_bootstrap.get(bootstrap_servers)
+        if cluster_id:
+            _remember(instance, "_otel_cluster_id", cluster_id)
+            return cluster_id
+
+    client = _get_real_instance(instance)
+
+    # Producers only. Asking a consumer handle for metadata makes librdkafka
+    # create internal topic objects and background refresh tasks that outlive
+    # partition revocation, and those can be used after free during a rebalance
+    # (librdkafka #4214). A consumer therefore reuses whatever a producer on the
+    # same bootstrap address resolved, and reports nothing if there was none.
+    if getattr(client, "flush", None) is None:
+        return None
+
+    failure_time = getattr(instance, "_otel_cluster_id_failure_time", None)
+    if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
+        return None
+
+    list_topics = getattr(client, "list_topics", None)
+    if list_topics is None:
+        return None
+
+    try:
+        # Scoped to one topic when we know it: cheaper than describing every
+        # topic in the cluster.
+        if topic:
+            cluster_metadata = list_topics(topic=topic, timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
+        else:
+            cluster_metadata = list_topics(timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
+        cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
+    except Exception:  # pylint: disable=broad-except
+        cluster_id = None
+
+    if cluster_id:
+        _remember(instance, "_otel_cluster_id", cluster_id)
+        if bootstrap_servers:
+            _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
+        return cluster_id
+
+    # Retry on a timer rather than on the next span.
+    _remember(instance, "_otel_cluster_id_failure_time", time.monotonic())
     return None
 
 
@@ -210,7 +275,7 @@ def _enrich_span(
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
-    cluster_id = _extract_cluster_id(instance, bootstrap_servers)
+    cluster_id = _extract_cluster_id(instance, bootstrap_servers, topic)
     if cluster_id:
         span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
