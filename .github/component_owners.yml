@@ -28,6 +28,9 @@ components:
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
 
+  instrumentation/opentelemetry-instrumentation-valkey:
+    - herin049
+
   processor/opentelemetry-processor-baggage:
     - codeboten
 

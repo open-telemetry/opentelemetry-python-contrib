@@ -59,6 +59,7 @@ dependencies = [
   "opentelemetry-instrumentation-tortoiseorm[instruments]",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
+  "opentelemetry-instrumentation-valkey[instruments]",
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
@@ -131,6 +132,7 @@ opentelemetry-instrumentation-tornado = { workspace = true }
 opentelemetry-instrumentation-tortoiseorm = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
+opentelemetry-instrumentation-valkey = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
@@ -197,6 +199,7 @@ known-third-party = [
   "pytest",
   "redis",
   "redis_opentracing",
+  "valkey",
   "opencensus",
 ]
 
@@ -219,6 +222,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
+  "instrumentation/opentelemetry-instrumentation-valkey",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
@@ -238,6 +242,7 @@ exclude = [
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-valkey/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]

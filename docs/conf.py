@@ -109,6 +109,7 @@ intersphinx_mapping = {
     ),
     "redis": ("https://redis.readthedocs.io/en/latest/", None),
     "fsspec": ("https://filesystem-spec.readthedocs.io/en/latest/", None),
+    "valkey": ("https://valkey-py.readthedocs.io/en/latest/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky

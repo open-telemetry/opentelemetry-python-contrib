@@ -49,6 +49,7 @@ remoulade>=0.50.0 ; python_version < "3.12"
 sqlalchemy>=1.0
 starlette~=0.50
 structlog>=21.1
+valkey~=6.0
 tornado>=5.1.1
 tortoise-orm>=0.17.0
 wrapt~=2.1

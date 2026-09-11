@@ -63,6 +63,7 @@ libraries = [
     {"library": "tortoise-orm >= 0.17.0", "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.66b0.dev"},
     {"library": "pydantic >= 1.10.2", "instrumentation": "opentelemetry-instrumentation-tortoiseorm==0.66b0.dev"},
     {"library": "urllib3 >= 1.0.0, < 3.0.0", "instrumentation": "opentelemetry-instrumentation-urllib3==0.66b0.dev"},
+    {"library": "valkey ~= 6.0", "instrumentation": "opentelemetry-instrumentation-valkey==0.66b0.dev"},
 ]
 default_instrumentations = [
     "opentelemetry-instrumentation-asyncio==0.66b0.dev",
