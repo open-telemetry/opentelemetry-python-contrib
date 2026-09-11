@@ -471,6 +471,7 @@ Python SIG meeting, and the resulting decision is recorded in that issue.
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
 - Find or create a new [Issue](https://github.com/open-telemetry/opentelemetry-python-contrib/issues) describing the tool or framework to instrument and its use cases to support with OpenTelemetry.
+  - For a new instrumentation, do this before writing it, and read the [policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations) first. A new instrumentation is added to this repository only if the approvers and maintainers accept to maintain it themselves.
   - Be familiar with the [expectations from contributors](#expectations-from-contributors) that apply.
   - If you're a tool or framework maintainer, please consider using the OpenTelemetry API directly to support [native instrumentation](#guidelines-for-native-opentelemetry-instrumentation) instead of adding a new community instrumentation library.
 - Follow semantic conventions
@@ -549,6 +550,12 @@ Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/sp
 ## Expectations from contributors
 
 OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+
+This expectation is not a substitute for the commitment described in the
+[policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations).
+Continued support from the original contributor is asked for and appreciated,
+but the decision to accept a new instrumentation is never made on the
+assumption that it will be there.
 
 ### Use of AI coding assistants
 
