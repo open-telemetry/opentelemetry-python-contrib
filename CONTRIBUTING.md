@@ -376,9 +376,10 @@ describes how that decision is made and why it is made that way.
 Once an instrumentation is in this repository it has to be maintained for as
 long as it stays there, and maintaining it takes resources, mostly time. Every
 accepted instrumentation adds to that load and the load only grows, while the
-resources available to absorb it are limited. Maintaining an instrumentation can also take knowledge
-that is not available, since the approvers and maintainers may not be experts
-in the library that a given instrumentation instruments.
+resources available to absorb it are limited. Maintaining an instrumentation
+can also take knowledge that is not available, since the approvers and
+maintainers may not be experts in the library that a given instrumentation
+instruments.
 
 That load falls on the approvers and maintainers of this repository no matter
 who proposes the instrumentation. This scenario can happen: a contributor who
