@@ -325,8 +325,7 @@ class EngineTracer:
     def _operation_name(self, db_name, statement):
         """Returns the span name, ``<operation> <target>`` as per the semantic conventions."""
         parts = []
-        operation = self._operation(statement)
-        if operation:
+        if operation := self._operation(statement):
             parts.append(operation)
         if db_name:
             parts.append(db_name)
