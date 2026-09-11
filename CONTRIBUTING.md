@@ -368,30 +368,31 @@ The continuous integration overrides that environment variable with as per the c
 
 ## Policy for accepting new instrumentations
 
-Contributions are very appreciated. Every proposal to add a new instrumentation
-to this repository is considered on its own merits, and the outcome can be
-acceptance or rejection. This section describes how that decision is made and
-why it is made that way.
+Every proposal to add a new instrumentation to this repository is considered on
+its own merits, and the outcome can be acceptance or rejection. This section
+describes how that decision is made and why it is made that way.
 
 ### Why this policy exists
 
-Adding an instrumentation to this repository is not a one time event, it is a
-permanent, recurring cost:
+Consider what happens after an instrumentation is added to this repository:
 
-* It is a growing load on the approvers and maintainers of this repository.
+* Every instrumentation adds load to the approvers and maintainers of this
+  repository, and that load grows with every instrumentation that is added.
 * The approvers and maintainers are usually not experts in the library that a
   given instrumentation instruments.
 * Most of the packages in this repository are released in lockstep, so a single
   instrumentation that nobody can fix holds back or breaks the release of
   everything else.
+* A contributor who is not an approver or a maintainer of this repository
+  frequently proposes a new instrumentation, offers to maintain it, and does
+  maintain it for some time. Later that person stops contributing, for
+  perfectly legitimate reasons. The instrumentation does not stop existing when
+  that happens: the approvers and maintainers of this repository inherit it,
+  including the parts of it that they do not understand.
 
-The situation that motivates this policy happens often. A contributor who is
-not an approver or a maintainer of this repository proposes a new
-instrumentation, offers to maintain it, and does maintain it for some time.
-Later that person stops contributing, for perfectly legitimate reasons. The
-instrumentation does not stop existing when that happens: the approvers and
-maintainers of this repository inherit it, including the parts of it that they
-do not understand.
+Adding an instrumentation to this repository is therefore not a one time event.
+It is a permanent, recurring cost, and it is paid by the approvers and
+maintainers of this repository, not only by whoever adds the instrumentation.
 
 ### The policy
 
