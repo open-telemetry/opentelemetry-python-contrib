@@ -377,8 +377,8 @@ Consider what happens after an instrumentation is added to this repository:
 
 * Every instrumentation adds load to the approvers and maintainers of this
   repository, and that load grows with every instrumentation that is added.
-* The approvers and maintainers are usually not experts in the library that a
-  given instrumentation instruments.
+* The approvers and maintainers may not be experts in the library that a given
+  instrumentation instruments.
 * This scenario can happen: a contributor who is not an approver or a
   maintainer of this repository proposes a new instrumentation and maintains it
   for some time. Later that person stops contributing, for perfectly legitimate
