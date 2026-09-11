@@ -409,12 +409,6 @@ cannot be the reason the instrumentation is accepted. This repository has no
 way to enforce such an offer and no remedy once it ends, so a decision that
 depends on it is a decision made on something the repository does not control.
 
-This also means acceptance is treated as final. There is currently no policy
-for removing an instrumentation from this repository once it has been accepted,
-and writing one is a separate piece of work. Until such a policy exists, "we
-can always drop it later" is not an available answer, so the question has to be
-answered before the instrumentation is accepted, not after.
-
 ### What rejection means
 
 Rejecting an instrumentation `X` that instruments a library `Y` means only that
