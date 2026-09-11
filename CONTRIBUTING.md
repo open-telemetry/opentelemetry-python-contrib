@@ -381,11 +381,11 @@ Consider what happens after an instrumentation is added to this repository:
 * The approvers and maintainers are usually not experts in the library that a
   given instrumentation instruments.
 * This scenario can happen: a contributor who is not an approver or a
-  maintainer of this repository proposes a new instrumentation, offers to
-  maintain it, and does maintain it for some time. Later that person stops
-  contributing, for perfectly legitimate reasons. The instrumentation does not
-  stop existing when that happens, so the approvers and maintainers of this
-  repository inherit it, including the parts of it that they do not understand.
+  maintainer of this repository proposes a new instrumentation and maintains it
+  for some time. Later that person stops contributing, for perfectly legitimate
+  reasons. The instrumentation does not stop existing when that happens, so the
+  approvers and maintainers of this repository inherit it, including the parts
+  of it that they do not understand.
 
 Adding an instrumentation to this repository is therefore not a one time event.
 It is a permanent, recurring cost, and it is paid by the approvers and
@@ -400,13 +400,11 @@ instrumentation to this repository:
    maintain it themselves, for as long as it is in this repository**.
 2. The approvers and maintainers reject the instrumentation.
 
-There is no third outcome in which an instrumentation is accepted on the
-condition that the person who proposed it keeps maintaining it. An offer to
-maintain an instrumentation from someone outside the approvers and maintainers
-groups is welcome and appreciated, but it cannot be the reason the
-instrumentation is accepted. This repository has no way to enforce such an
-offer and no remedy once it ends, so a decision that depends on it is a
-decision made on something the repository does not control.
+There is no third outcome in which an instrumentation is accepted and somebody
+outside the approvers and maintainers groups is counted on to maintain it. This
+repository cannot enforce such an arrangement and has no remedy when it ends,
+so a decision that depends on it is a decision made on something this
+repository does not control.
 
 Once an instrumentation has been accepted, the responsibility for maintaining
 it lies with the approvers and maintainers of this repository alone. The person
