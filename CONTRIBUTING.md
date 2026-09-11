@@ -403,11 +403,16 @@ instrumentation to this repository:
 There is no third outcome in which an instrumentation is accepted on the
 condition that the person who proposed it keeps maintaining it. An offer to
 maintain an instrumentation from someone outside the approvers and maintainers
-groups is welcome and appreciated, and it is still expected (see
-[expectations from contributors](#expectations-from-contributors)), but it
-cannot be the reason the instrumentation is accepted. This repository has no
-way to enforce such an offer and no remedy once it ends, so a decision that
-depends on it is a decision made on something the repository does not control.
+groups is welcome and appreciated, but it cannot be the reason the
+instrumentation is accepted. This repository has no way to enforce such an
+offer and no remedy once it ends, so a decision that depends on it is a
+decision made on something the repository does not control.
+
+Once an instrumentation has been accepted, the responsibility for maintaining
+it lies with the approvers and maintainers of this repository alone. The person
+who proposed it carries no obligation towards it from that point on, and is
+welcome, but never required, to keep contributing to it and to any other part
+of this repository.
 
 ### What rejection means
 
@@ -542,13 +547,18 @@ Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/sp
 
 ## Expectations from contributors
 
-OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project.
 
-This expectation is not a substitute for the commitment described in the
+Contributors are welcome to stay involved with the instrumentations they
+contribute and with any other part of this repository, and that involvement is
+valuable. Some instrumentations pertain to libraries that the current members
+of the community are not so familiar with, so the expertise of the original
+contributing parties is appreciated whenever it is available.
+
+Staying involved is not a requirement, though. Once an instrumentation has been
+accepted into this repository, the responsibility for maintaining it lies with
+the approvers and maintainers of this repository alone. See the
 [policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations).
-Continued support from the original contributor is asked for and appreciated,
-but the decision to accept a new instrumentation is never made on the
-assumption that it will be there.
 
 ### Use of AI coding assistants
 
