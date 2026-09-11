@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-boto3sqs`: fix lazy processing span lifecycle
+`opentelemetry-instrumentation-boto3sqs`: start processing spans on first access and end spans of undeleted messages
