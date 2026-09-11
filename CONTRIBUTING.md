@@ -380,9 +380,6 @@ Consider what happens after an instrumentation is added to this repository:
   repository, and that load grows with every instrumentation that is added.
 * The approvers and maintainers are usually not experts in the library that a
   given instrumentation instruments.
-* Most of the packages in this repository are released in lockstep, so a single
-  instrumentation that nobody can fix holds back or breaks the release of
-  everything else.
 * This scenario can happen: a contributor who is not an approver or a
   maintainer of this repository proposes a new instrumentation, offers to
   maintain it, and does maintain it for some time. Later that person stops
