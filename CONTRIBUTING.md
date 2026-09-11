@@ -368,9 +368,10 @@ The continuous integration overrides that environment variable with as per the c
 
 ## Policy for accepting new instrumentations
 
-Contributions are very appreciated, but not every proposed instrumentation will
-be accepted into this repository. This section describes how that decision is
-made and why it is made that way.
+Contributions are very appreciated. Every proposal to add a new instrumentation
+to this repository is considered on its own merits, and the outcome can be
+acceptance or rejection. This section describes how that decision is made and
+why it is made that way.
 
 ### Why this policy exists
 
