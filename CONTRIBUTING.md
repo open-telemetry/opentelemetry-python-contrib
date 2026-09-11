@@ -44,7 +44,6 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
     - [Why this policy exists](#why-this-policy-exists)
     - [The policy](#the-policy)
     - [What rejection means](#what-rejection-means)
-    - [What the decision takes into account](#what-the-decision-takes-into-account)
     - [How to propose a new instrumentation](#how-to-propose-a-new-instrumentation)
   - [Guideline for instrumentations](#guideline-for-instrumentations)
     - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
@@ -393,8 +392,9 @@ maintainers of this repository, not only by whoever adds the instrumentation.
 
 ### The policy
 
-There are only two possible outcomes for a proposal to add a new
-instrumentation to this repository:
+The approvers and maintainers of this repository evaluate every proposed
+instrumentation and decide on it. There are only two possible outcomes for that
+decision:
 
 1. The approvers and maintainers accept the instrumentation **and accept to
    maintain it themselves, for as long as it is in this repository**.
@@ -424,33 +424,6 @@ instrumented, and it does not mean that `X` cannot exist:
   it, and it can still be published to PyPI and installed by users.
 * `X` can be proposed again later, for example once the situation that led to
   the rejection has changed.
-
-### What the decision takes into account
-
-Because accepting an instrumentation commits the approvers and maintainers to
-maintaining it themselves, the decision is made deliberately. Among the things
-taken into account are:
-
-* How widely the instrumented library is used, for example its PyPI download
-  numbers. Popularity by itself is not enough to get an instrumentation
-  accepted, but an instrumentation for a personal or rarely used project is
-  unlikely to be accepted.
-* How critical the instrumented library is to the users of this repository.
-* Whether at least one approver or maintainer is willing to be listed as a
-  component owner in [component_owners.yml](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/component_owners.yml)
-  for it and to review changes to it.
-* How closely the proposed instrumentation resembles the instrumentations
-  already in this repository. Consistency across instrumentations is what makes
-  it possible to review and fix one without being an expert in the library it
-  instruments, so "it looks like the other similar instrumentations" counts in
-  favor of a proposal.
-* The quality and the coverage of its tests, including tests against both the
-  minimum and the latest supported versions of the instrumented library. When
-  the approvers and maintainers cannot rely on their own expertise in the
-  instrumented library, they rely on the tests instead.
-
-The absence of native instrumentation in the instrumented library is not by
-itself a reason to reject a proposal.
 
 ### How to propose a new instrumentation
 
