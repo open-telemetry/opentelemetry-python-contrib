@@ -27,6 +27,11 @@ except ImportError as _import_error:
 
 _logger = getLogger(__name__)
 
+# The same content types opentelemetry-opamp-client's decode_remote_config
+# accepts. The policy schema does not prescribe a payload encoding; JSON is
+# the only one supported here.
+_JSON_CONTENT_TYPES = ("application/json", "text/json")
+
 
 class OpAMPPolicyCallbacks(OpAMPCallbacks):
     """OpAMP callbacks that apply remote config policy documents."""
@@ -67,9 +72,20 @@ class OpAMPPolicyCallbacks(OpAMPCallbacks):
             self._update_effective_config(client, [])
             return opamp_pb2.RemoteConfigStatuses_APPLIED, ""
 
-        body = config_map[self._config_map_key].body
+        config_file = config_map[self._config_map_key]
+        if config_file.content_type not in _JSON_CONTENT_TYPES:
+            _logger.warning(
+                "unsupported policy document content type %r, keeping previous policies",
+                config_file.content_type,
+            )
+            return (
+                opamp_pb2.RemoteConfigStatuses_FAILED,
+                f"unsupported policy document content type {config_file.content_type!r}, "
+                f"expected one of {list(_JSON_CONTENT_TYPES)}",
+            )
+
         try:
-            text = body.decode("utf-8")
+            text = config_file.body.decode("utf-8")
             result = parse_policy_document(text)
         except (ValueError, UnicodeDecodeError) as exc:
             _logger.warning("cannot parse remote config policy document, keeping previous policies: %s", exc)

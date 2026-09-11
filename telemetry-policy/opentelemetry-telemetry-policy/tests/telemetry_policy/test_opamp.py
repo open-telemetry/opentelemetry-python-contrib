@@ -59,10 +59,15 @@ def _policy_document(percentage: float, extra_policies: list[dict[str, Any]] | N
     return json.dumps({"policies": policies}).encode("utf-8")
 
 
-def _remote_config(body: bytes, config_hash: bytes = b"hash-1", key: str = "") -> opamp_pb2.AgentRemoteConfig:
+def _remote_config(
+    body: bytes,
+    config_hash: bytes = b"hash-1",
+    key: str = "",
+    content_type: str = "application/json",
+) -> opamp_pb2.AgentRemoteConfig:
     remote_config = opamp_pb2.AgentRemoteConfig(config_hash=config_hash)
     remote_config.config.config_map[key].body = body
-    remote_config.config.config_map[key].content_type = "application/json"
+    remote_config.config.config_map[key].content_type = content_type
     return remote_config
 
 
@@ -141,6 +146,49 @@ def test_unparsable_document_reports_failed_and_keeps_policies() -> None:
     assert status.status == opamp_pb2.RemoteConfigStatuses_FAILED
     assert status.last_remote_config_hash == b"hash-2"
     assert "cannot parse policy document" in status.error_message
+
+
+def test_unsupported_content_type_reports_failed_and_keeps_policies() -> None:
+    store = PolicyStore()
+    store.add_implementer(TraceSamplingPolicyImplementer())
+    callbacks = OpAMPPolicyCallbacks(store=store)
+    client = _client()
+    agent = _RecordingAgent()
+    callbacks.on_message(_as_agent(agent), client, MessageData(remote_config=_remote_config(_policy_document(5.0))))
+    agent.sent.clear()
+
+    callbacks.on_message(
+        _as_agent(agent),
+        client,
+        MessageData(
+            remote_config=_remote_config(
+                b"policies: []",
+                config_hash=b"hash-2",
+                content_type="application/yaml",
+            )
+        ),
+    )
+
+    assert _current_percentages(store) == [5.0]
+    status = _sent_status(agent)
+    assert status.status == opamp_pb2.RemoteConfigStatuses_FAILED
+    assert "unsupported policy document content type 'application/yaml'" in status.error_message
+
+
+def test_text_json_content_type_accepted() -> None:
+    store = PolicyStore()
+    store.add_implementer(TraceSamplingPolicyImplementer())
+    callbacks = OpAMPPolicyCallbacks(store=store)
+    agent = _RecordingAgent()
+
+    callbacks.on_message(
+        _as_agent(agent),
+        _client(),
+        MessageData(remote_config=_remote_config(_policy_document(5.0), content_type="text/json")),
+    )
+
+    assert _current_percentages(store) == [5.0]
+    assert _sent_status(agent).status == opamp_pb2.RemoteConfigStatuses_APPLIED
 
 
 def test_partially_applied_document_reports_failed_with_details() -> None:
