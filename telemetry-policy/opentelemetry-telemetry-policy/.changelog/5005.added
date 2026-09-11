@@ -1,0 +1,1 @@
+`opentelemetry-telemetry-policy`: initial release with trace sampling policies applied from a local file or an OpAMP server's remote config

@@ -110,6 +110,14 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
     opamp/**
 
+.. toctree::
+    :maxdepth: 2
+    :caption: Telemetry Policy
+    :name: Telemetry Policy
+    :glob:
+
+    telemetry-policy/**
+
 Indices and tables
 ------------------
 

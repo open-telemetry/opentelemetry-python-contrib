@@ -55,8 +55,23 @@ util_dirs = [os.path.abspath("/".join([util, f, "src"])) for f in listdir(util) 
 opamp = "../opamp"
 opamp_dirs = [os.path.abspath("/".join([opamp, f, "src"])) for f in listdir(opamp) if isdir(join(opamp, f))]
 
+telemetry_policy = "../telemetry-policy"
+telemetry_policy_dirs = [
+    os.path.abspath("/".join([telemetry_policy, f, "src"]))
+    for f in listdir(telemetry_policy)
+    if isdir(join(telemetry_policy, f))
+]
+
 sys.path[:0] = (
-    exp_dirs + instr_dirs + instr_genai_dirs + sdk_ext_dirs + prop_dirs + resource_dirs + util_dirs + opamp_dirs
+    exp_dirs
+    + instr_dirs
+    + instr_genai_dirs
+    + sdk_ext_dirs
+    + prop_dirs
+    + resource_dirs
+    + util_dirs
+    + opamp_dirs
+    + telemetry_policy_dirs
 )
 
 # -- Project information -----------------------------------------------------
