@@ -468,3 +468,138 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_extract_tool_call_part_from_response_function_tool_call():
+    processor = sp.GenAISemanticProcessor(metrics_enabled=False)
+
+    class DuckToolCall:
+        def __init__(self) -> None:
+            self.call_id = "call_abc123"
+            self.name = "calculate_route"
+            self.arguments = '{"start": "A", "end": "B"}'
+
+    duck_tc = DuckToolCall()
+    part = processor._extract_tool_call_part(duck_tc)
+    assert part == {
+        "type": "tool_call",
+        "id": "call_abc123",
+        "name": "calculate_route",
+        "arguments": '{"start": "A", "end": "B"}',
+    }
+
+    dict_tc = {
+        "call_id": "call_def456",
+        "name": "lookup_address",
+        "arguments": {"zip": "12345"},
+    }
+    part_dict = processor._extract_tool_call_part(dict_tc)
+    assert part_dict == {
+        "type": "tool_call",
+        "id": "call_def456",
+        "name": "lookup_address",
+        "arguments": {"zip": "12345"},
+    }
+
+    class FunctionObj:
+        def __init__(self) -> None:
+            self.id = "call_ghi789"
+            self.type = "function_call"
+            self.function = {"name": "search", "arguments": '{"q": "otel"}'}
+
+    part_fn = processor._extract_tool_call_part(FunctionObj())
+    assert part_fn == {
+        "type": "tool_call",
+        "id": "call_ghi789",
+        "name": "search",
+        "arguments": '{"q": "otel"}',
+    }
+
+
+def test_extract_tool_call_part_redaction_and_pydantic():
+    proc_no_sensitive = sp.GenAISemanticProcessor(include_sensitive_data=False, metrics_enabled=False)
+    tc = SimpleNamespace(call_id="call_1", name="foo", arguments="secret")
+    part_redacted = proc_no_sensitive._extract_tool_call_part(tc)
+    assert part_redacted == {
+        "type": "tool_call",
+        "id": "call_1",
+        "name": "foo",
+        "arguments": "readacted",
+    }
+
+    proc_sensitive = sp.GenAISemanticProcessor(include_sensitive_data=True, metrics_enabled=False)
+
+    class PydanticV2Mock:
+        def model_dump(self, **kwargs):
+            return {"key": "val"}
+
+    tc_pydantic = SimpleNamespace(call_id="call_2", name="bar", arguments=PydanticV2Mock())
+    part_pydantic = proc_sensitive._extract_tool_call_part(tc_pydantic)
+    assert part_pydantic == {
+        "type": "tool_call",
+        "id": "call_2",
+        "name": "bar",
+        "arguments": {"key": "val"},
+    }
+
+    assert proc_sensitive._extract_tool_call_part(None) is None
+    assert proc_sensitive._extract_tool_call_part("not a tool call") is None
+    assert proc_sensitive._extract_tool_call_part({"role": "user", "content": "hi"}) is None
+
+
+def test_normalize_output_messages_response_and_generation_tool_calls():
+    processor = sp.GenAISemanticProcessor(metrics_enabled=False)
+
+    class FakeTextOutput:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    class FakeOutputMessage:
+        def __init__(self, text: str) -> None:
+            self.content = [FakeTextOutput(text)]
+
+    class FakeResponse:
+        def __init__(self) -> None:
+            self.output_text = "Here is the result"
+            self.output = [
+                FakeOutputMessage("Here is the result"),
+                SimpleNamespace(
+                    call_id="call_tool_1",
+                    name="get_weather",
+                    arguments='{"city": "Madrid"}',
+                ),
+            ]
+
+    resp_span = ResponseSpanData(response=FakeResponse())
+    messages = processor._normalize_output_messages_to_role_parts(resp_span)
+    assert len(messages) == 1
+    assert messages[0]["role"] == "assistant"
+    assert messages[0]["parts"] == [
+        {"type": "text", "content": "Here is the result"},
+        {
+            "type": "tool_call",
+            "id": "call_tool_1",
+            "name": "get_weather",
+            "arguments": '{"city": "Madrid"}',
+        },
+    ]
+
+    gen_span = GenerationSpanData(
+        output=[
+            SimpleNamespace(
+                call_id="call_gen_1",
+                name="do_math",
+                arguments='{"expr": "1+1"}',
+            )
+        ]
+    )
+    gen_messages = processor._normalize_output_messages_to_role_parts(gen_span)
+    assert len(gen_messages) == 1
+    assert gen_messages[0]["parts"] == [
+        {
+            "type": "tool_call",
+            "id": "call_gen_1",
+            "name": "do_math",
+            "arguments": '{"expr": "1+1"}',
+        }
+    ]

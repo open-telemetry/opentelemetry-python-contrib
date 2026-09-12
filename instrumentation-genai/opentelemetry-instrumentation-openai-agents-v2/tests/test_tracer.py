@@ -28,7 +28,7 @@ from agents.tracing import (  # noqa: E402
     set_trace_processors,
     trace,
 )
-from openai.types.responses import FunctionTool  # noqa: E402
+from openai.types.responses import FunctionTool, ResponseFunctionToolCall  # noqa: E402
 
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
@@ -484,6 +484,156 @@ def test_response_span_records_response_attributes():
                     },
                     "required": ["location"],
                 },
+            }
+        ]
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_records_tool_call_in_output_messages():
+    instrumentor, exporter = _instrument_with_provider()
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-tool-1"
+            self.model = "gpt-4o"
+            self.output = [
+                ResponseFunctionToolCall(
+                    id="fc_0e75eae8ddb954c201698acde1e7948195bcd77e035521c1bc",
+                    call_id="call_Zo4kTaBuq5Xj8TVnWF6Ydswv",
+                    name="get_weather",
+                    arguments='{"city":"Barcelona"}',
+                    type="function_call",
+                    status="completed",
+                )
+            ]
+
+    try:
+        with trace("workflow"):
+            with response_span(response=_Response()):
+                pass
+
+        spans = exporter.get_finished_spans()
+        response = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) == GenAI.GenAiOperationNameValues.CHAT.value
+        )
+
+        assert GEN_AI_OUTPUT_MESSAGES in response.attributes
+        output_messages = json.loads(response.attributes[GEN_AI_OUTPUT_MESSAGES])
+        assert output_messages == [
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "tool_call",
+                        "id": "call_Zo4kTaBuq5Xj8TVnWF6Ydswv",
+                        "name": "get_weather",
+                        "arguments": '{"city":"Barcelona"}',
+                    }
+                ],
+            }
+        ]
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_records_tool_call_redacted_when_sensitive_disabled():
+    instrumentor, exporter = _instrument_with_provider(capture_message_content="no_content")
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-tool-redacted"
+            self.model = "gpt-4o"
+            self.output = [
+                ResponseFunctionToolCall(
+                    id="fc_1",
+                    call_id="call_1",
+                    name="get_secret",
+                    arguments='{"secret": "val"}',
+                    type="function_call",
+                    status="completed",
+                )
+            ]
+
+    try:
+        with trace("workflow"):
+            with response_span(response=_Response()):
+                pass
+
+        spans = exporter.get_finished_spans()
+        response = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) == GenAI.GenAiOperationNameValues.CHAT.value
+        )
+
+        assert GEN_AI_OUTPUT_MESSAGES not in response.attributes
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_agent_span_collects_response_tool_calls():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        provider = agents_tracing.get_trace_provider()
+
+        with trace("workflow") as workflow:
+            agent_span_obj = provider.create_span(
+                agents_tracing.AgentSpanData(name="weather_agent"),
+                parent=workflow,
+            )
+            agent_span_obj.start()
+
+            class _Response:
+                def __init__(self) -> None:
+                    self.id = "resp-agent-tool"
+                    self.model = "gpt-4o-mini"
+                    self.output = [
+                        ResponseFunctionToolCall(
+                            id="fc_2",
+                            call_id="call_weather_1",
+                            name="get_weather",
+                            arguments='{"city": "Tokyo"}',
+                            type="function_call",
+                            status="completed",
+                        )
+                    ]
+
+            resp_span_obj = provider.create_span(
+                agents_tracing.ResponseSpanData(response=_Response()),
+                parent=agent_span_obj,
+            )
+            resp_span_obj.start()
+            resp_span_obj.finish()
+
+            agent_span_obj.finish()
+
+        spans = exporter.get_finished_spans()
+        agent_span_rec = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        )
+
+        assert GEN_AI_OUTPUT_MESSAGES in agent_span_rec.attributes
+        completion = json.loads(agent_span_rec.attributes[GEN_AI_OUTPUT_MESSAGES])
+        assert completion == [
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "tool_call",
+                        "id": "call_weather_1",
+                        "name": "get_weather",
+                        "arguments": '{"city": "Tokyo"}',
+                    }
+                ],
             }
         ]
     finally:

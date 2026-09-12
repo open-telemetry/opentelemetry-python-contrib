@@ -56,6 +56,11 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
     TranscriptionSpanData = getattr(tracing_module, "TranscriptionSpanData", Any)  # type: ignore[assignment]
 
+try:
+    from openai.types.responses import ResponseFunctionToolCall
+except ImportError:  # pragma: no cover
+    ResponseFunctionToolCall = None  # type: ignore[assignment]
+
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -761,10 +766,90 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return normalized
 
+    def _extract_tool_call_part(self, item: Any) -> dict[str, Any] | None:
+        """Extract tool call part if item is ResponseFunctionToolCall or has tool call fields."""
+        if item is None:
+            return None
+
+        if isinstance(item, dict):
+            is_tool_call = item.get("type") in {"tool_call", "function_call"} or (
+                "name" in item and "arguments" in item and ("call_id" in item or "id" in item)
+            )
+            if is_tool_call:
+                call_id = item.get("call_id")
+                if call_id is None:
+                    call_id = item.get("id")
+                name = item.get("name")
+                arguments = item.get("arguments")
+                fn = item.get("function")
+                if isinstance(fn, dict):
+                    if name is None:
+                        name = fn.get("name")
+                    if arguments is None:
+                        arguments = fn.get("arguments")
+
+                if hasattr(arguments, "model_dump") and callable(arguments.model_dump):
+                    arguments = arguments.model_dump(mode="json", exclude_unset=True)
+                elif hasattr(arguments, "dict") and callable(arguments.dict):
+                    arguments = arguments.dict(exclude_unset=True)
+
+                return {
+                    "type": "tool_call",
+                    "id": call_id,
+                    "name": name,
+                    "arguments": "readacted" if not self.include_sensitive_data else arguments,
+                }
+            return None
+
+        is_rf_tool_call = (
+            ResponseFunctionToolCall is not None and isinstance(item, ResponseFunctionToolCall)
+        ) or getattr(item, "__class__", None).__name__ == "ResponseFunctionToolCall"
+        has_expected_attrs = hasattr(item, "name") and hasattr(item, "call_id") and hasattr(item, "arguments")
+        has_id = hasattr(item, "call_id") or hasattr(item, "id")
+        has_fn = hasattr(item, "function")
+        has_id_name_args = (
+            has_id
+            and ((hasattr(item, "name") and hasattr(item, "arguments")) or has_fn)
+            and getattr(item, "type", None) in {"tool_call", "function_call", "function"}
+        )
+
+        if is_rf_tool_call or has_expected_attrs or has_id_name_args:
+            call_id = getattr(item, "call_id", None)
+            if call_id is None:
+                call_id = getattr(item, "id", None)
+            name = getattr(item, "name", None)
+            arguments = getattr(item, "arguments", None)
+            fn = getattr(item, "function", None)
+            if fn is not None:
+                if isinstance(fn, dict):
+                    if name is None:
+                        name = fn.get("name")
+                    if arguments is None:
+                        arguments = fn.get("arguments")
+                else:
+                    if name is None:
+                        name = getattr(fn, "name", None)
+                    if arguments is None:
+                        arguments = getattr(fn, "arguments", None)
+
+            if hasattr(arguments, "model_dump") and callable(arguments.model_dump):
+                arguments = arguments.model_dump(mode="json", exclude_unset=True)
+            elif hasattr(arguments, "dict") and callable(arguments.dict):
+                arguments = arguments.dict(exclude_unset=True)
+
+            return {
+                "type": "tool_call",
+                "id": call_id,
+                "name": name,
+                "arguments": "readacted" if not self.include_sensitive_data else arguments,
+            }
+
+        return None
+
     def _normalize_output_messages_to_role_parts(self, span_data: Any) -> list[dict[str, Any]]:
         """Normalize output messages to enforced role+parts schema.
 
-        Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}],
+        Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}, ...],
                     optional "finish_reason": "..." }]
         """
         messages: list[dict[str, Any]] = []
@@ -774,21 +859,16 @@ class GenAISemanticProcessor(TracingProcessor):
         # Response span: prefer consolidated output_text
         response = getattr(span_data, "response", None)
         if response is not None:
-            # Collect text content
+            output = getattr(response, "output", None)
             output_text = getattr(response, "output_text", None)
-            if isinstance(output_text, str) and output_text:
-                parts.append(
-                    {
-                        "type": "text",
-                        "content": ("readacted" if not self.include_sensitive_data else output_text),
-                    }
-                )
-            else:
-                output = getattr(response, "output", None)
-                if isinstance(output, Sequence):
-                    for item in output:
-                        # ResponseOutputMessage may have a string representation
-                        txt = getattr(item, "content", None)
+            if isinstance(output, Sequence) and not isinstance(output, (str, bytes)):
+                has_text = False
+                for item in output:
+                    tool_part = self._extract_tool_call_part(item)
+                    if tool_part is not None:
+                        parts.append(tool_part)
+                    else:
+                        txt = getattr(item, "content", None) if not isinstance(item, dict) else item.get("content")
                         if isinstance(txt, str) and txt:
                             parts.append(
                                 {
@@ -796,6 +876,20 @@ class GenAISemanticProcessor(TracingProcessor):
                                     "content": ("readacted" if not self.include_sensitive_data else txt),
                                 }
                             )
+                            has_text = True
+                        elif isinstance(txt, Sequence) and not isinstance(txt, (str, bytes)):
+                            for block in txt:
+                                block_text = (
+                                    getattr(block, "text", None) if not isinstance(block, dict) else block.get("text")
+                                )
+                                if isinstance(block_text, str) and block_text:
+                                    parts.append(
+                                        {
+                                            "type": "text",
+                                            "content": ("readacted" if not self.include_sensitive_data else block_text),
+                                        }
+                                    )
+                                    has_text = True
                         else:
                             # Fallback: stringified
                             parts.append(
@@ -804,17 +898,37 @@ class GenAISemanticProcessor(TracingProcessor):
                                     "content": ("readacted" if not self.include_sensitive_data else str(item)),
                                 }
                             )
-                        # Capture finish_reason from parts when present
-                        fr = getattr(item, "finish_reason", None)
-                        if isinstance(fr, str) and not finish_reason:
-                            finish_reason = fr
+                            has_text = True
+                    # Capture finish_reason from parts when present
+                    fr = item.get("finish_reason") if isinstance(item, dict) else getattr(item, "finish_reason", None)
+                    if isinstance(fr, str) and not finish_reason:
+                        finish_reason = fr
+
+                if not has_text and isinstance(output_text, str) and output_text:
+                    parts.insert(
+                        0,
+                        {
+                            "type": "text",
+                            "content": ("readacted" if not self.include_sensitive_data else output_text),
+                        },
+                    )
+            elif isinstance(output_text, str) and output_text:
+                parts.append(
+                    {
+                        "type": "text",
+                        "content": ("readacted" if not self.include_sensitive_data else output_text),
+                    }
+                )
 
         # Generation span: use span_data.output
         if not parts:
             output = getattr(span_data, "output", None)
-            if isinstance(output, Sequence):
+            if isinstance(output, Sequence) and not isinstance(output, (str, bytes)):
                 for item in output:
-                    if isinstance(item, dict):
+                    tool_part = self._extract_tool_call_part(item)
+                    if tool_part is not None:
+                        parts.append(tool_part)
+                    elif isinstance(item, dict):
                         if item.get("type") == "text":
                             txt = item.get("content") or item.get("text")
                             if isinstance(txt, str) and txt:
@@ -831,6 +945,11 @@ class GenAISemanticProcessor(TracingProcessor):
                                     "content": ("readacted" if not self.include_sensitive_data else item["content"]),
                                 }
                             )
+                        elif "tool_calls" in item and isinstance(item.get("tool_calls"), (list, tuple)):
+                            for tc in item["tool_calls"]:
+                                tcp = self._extract_tool_call_part(tc)
+                                if tcp is not None:
+                                    parts.append(tcp)
                         else:
                             parts.append(
                                 {
