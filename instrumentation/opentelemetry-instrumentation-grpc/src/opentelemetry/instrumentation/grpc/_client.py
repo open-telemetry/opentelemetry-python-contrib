@@ -63,9 +63,8 @@ def _make_future_done_callback(span, rpc_info):
 
 
 def _safe_invoke(function: Callable, *args):
-    function_name = "<unknown>"
     try:
-        function_name = function.__name__
+        function_name = getattr(function, "__name__", "<unknown>")
         function(*args)
     except Exception as ex:  # pylint:disable=broad-except
         logger.error("Error when invoking function '%s'", function_name, exc_info=ex)
