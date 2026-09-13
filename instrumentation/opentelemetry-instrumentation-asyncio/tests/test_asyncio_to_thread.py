@@ -70,20 +70,19 @@ class TestAsyncioToThread(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        # only the lower bound is meaningful: it is what fails when the span
-        # does not cover the call, so the delta is kept loose on purpose
-        self.assertAlmostEqual(
+        # only a lower bound is asserted: it is what fails when the span does
+        # not cover the call, and an upper bound would be flaky on a busy CI
+        # host where the worker thread can be descheduled.
+        self.assertGreaterEqual(
             (span.end_time - span.start_time) / 10**9,
-            SLEEP_SECONDS,
-            delta=SLEEP_SECONDS * 0.9,
+            SLEEP_SECONDS * 0.9,
         )
 
         _, duration = self.get_created_and_duration_metrics()
         self.assertEqual(len(duration.data.data_points), 1)
-        self.assertAlmostEqual(
+        self.assertGreaterEqual(
             duration.data.data_points[0].sum,
-            SLEEP_SECONDS,
-            delta=SLEEP_SECONDS * 0.9,
+            SLEEP_SECONDS * 0.9,
         )
 
     def test_to_thread_exception(self):
@@ -135,9 +134,9 @@ class TestAsyncioToThread(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(len(span.events), 1)
-        self.assertEqual(span.events[0].name, "exception")
+        # cancellation is not an error, consistent with coroutines and futures
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
 
         created, duration = self.get_created_and_duration_metrics()
         for metric in (created, duration):

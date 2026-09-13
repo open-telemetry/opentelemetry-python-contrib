@@ -76,8 +76,9 @@ import asyncio
 import functools
 import sys
 from asyncio import futures
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from timeit import default_timer
+from typing import ParamSpec, TypeVar
 
 from wrapt import wrap_function_wrapper as _wrap
 
@@ -96,6 +97,9 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.status import Status, StatusCode
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 ASYNCIO_PREFIX = "asyncio"
 
@@ -214,20 +218,18 @@ class AsyncioInstrumentor(BaseInstrumentor):
             wrap_taskgroup_create_task,
         )
 
-    def trace_to_thread(self, func: callable):
+    def trace_to_thread(self, func: Callable[P, R]) -> Callable[P, R]:
         return self.wrap_to_thread_func(func)
 
-    def wrap_to_thread_func(self, func: callable):
+    def wrap_to_thread_func(self, func: Callable[P, R]) -> Callable[P, R]:
         """
         Wrap a function so that its execution in the worker thread is
         measured and, if enabled, traced.
         """
-        func_name = getattr(func, "__name__", None)
-        if func_name is None and isinstance(func, functools.partial):
-            func_name = func.func.__name__
+        func_name = _get_func_name(func)
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = default_timer()
             span = (
                 self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-" + func_name)
@@ -240,6 +242,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
                 result = func(*args, **kwargs)
                 attr["state"] = "finished"
                 return result
+            # Match trace_coroutine and trace_future: a cancellation is
+            # recorded as state="cancelled" but not as a span error.
+            except asyncio.CancelledError:
+                attr["state"] = "cancelled"
+                raise
             except BaseException as exc:
                 exception = exc
                 attr["state"] = determine_state(exc)
@@ -340,7 +347,14 @@ class AsyncioInstrumentor(BaseInstrumentor):
             span.end()
 
 
-def determine_state(exception: Exception) -> str:
+def _get_func_name(func: object) -> str | None:
+    func_name = getattr(func, "__name__", None)
+    if func_name is None and isinstance(func, functools.partial):
+        func_name = func.func.__name__
+    return func_name
+
+
+def determine_state(exception: BaseException) -> str:
     if isinstance(exception, asyncio.CancelledError):
         return "cancelled"
     if isinstance(exception, asyncio.TimeoutError):
