@@ -49,21 +49,19 @@ packages_to_exclude = [
     # by manually adding it to their environment.
     # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
     "opentelemetry-instrumentation-aws-lambda",
-    # Google GenAI instrumentation is currently excluded because it is still in early
-    # development. This filter will get removed once it is further along in its
-    # development lifecycle and ready to be included by default.
-    "opentelemetry-instrumentation-google-genai",
     # OpenAI Agents instrumentation is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-openai-agents-v2",
+    # Valkey instrumentation is currently a PyPI boilerplate package.
+    # Include it in the bootstrap once its implementation is available.
+    "opentelemetry-instrumentation-valkey",
 ]
 
 # Static version specifiers for instrumentations that are released independently
 independent_packages = {
     "opentelemetry-instrumentation-openai-v2": "",
     "opentelemetry-instrumentation-vertexai": ">=2.0b0",
-    "opentelemetry-instrumentation-google-genai": "",
 }
 
 
