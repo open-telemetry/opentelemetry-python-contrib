@@ -13,6 +13,7 @@ on:
         - opentelemetry-instrumentation-openai-v2
         - opentelemetry-instrumentation-openai-agents-v2
         - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-valkey
         - opentelemetry-util-genai
         description: 'Package to be released'
         required: true
