@@ -238,11 +238,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     @classmethod
     def _end_processing_span_state(cls, state: _ProcessingSpanState) -> None:
-        if state.ended:
-            return
         active_span = _active_processing_span.get()
         if active_span is not None and active_span.state is state:
             cls._deactivate_processing_span()
+        if state.ended:
+            return
         state.ended = True
         with cls._received_messages_spans_lock:
             if cls.received_messages_spans.get(state.receipt_handle) is state:
