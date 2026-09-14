@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Container, Mapping, MutableMapping
+from collections.abc import Container, Mapping, MutableMapping, Sequence
 from enum import Enum
+from typing import Any
 from urllib.parse import urlparse
 
 from packaging import version as package_version
@@ -15,6 +16,7 @@ from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
@@ -176,6 +178,10 @@ OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 # Legacy/default schema version when schema_url was first introduced
 _LEGACY_SCHEMA_VERSION = "1.11.0"
+
+# Legacy query parameter blob. This attribute predates the database semantic
+# conventions and has no semconv module to import a name from.
+_DB_STATEMENT_PARAMETERS = "db.statement.parameters"
 
 
 class _OpenTelemetryStabilitySignalType(Enum):
@@ -579,6 +585,35 @@ def _set_db_statement(
         result[DB_STATEMENT] = statement
     if _report_new(sem_conv_opt_in_mode):
         result[DB_QUERY_TEXT] = statement
+
+
+def _set_db_query_parameters(
+    result: MutableMapping[str, AttributeValue],
+    parameters: Sequence[Any] | Mapping[str, Any] | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+    is_batch: bool = False,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        result[_DB_STATEMENT_PARAMETERS] = str(parameters)
+    # db.query.parameter.<key> is only defined in the new (stable) database
+    # semantic conventions, and it SHOULD NOT be captured on batch operations.
+    if not _report_new(sem_conv_opt_in_mode) or is_batch or not parameters:
+        return
+    # Named parameters are keyed by their name; positional parameters use their
+    # 0-based index, both matching the placeholders in db.query.text. A string
+    # or bytes value is a single scalar parameter, not a sequence of parameters.
+    if isinstance(parameters, Mapping):
+        items = parameters.items()
+    elif isinstance(parameters, (str, bytes, bytearray)):
+        return
+    elif isinstance(parameters, Sequence):
+        items = enumerate(parameters)
+    else:
+        return
+    for key, value in items:
+        # Assign directly instead of using set_string_attribute so that falsy
+        # values (empty string, 0, False, None) are still captured.
+        result[f"{DB_QUERY_PARAMETER_TEMPLATE}.{key}"] = str(value)
 
 
 def _set_db_user(
