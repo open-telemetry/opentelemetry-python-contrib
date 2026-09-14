@@ -1,0 +1,2 @@
+`opentelemetry-instrumentation-wsgi`: redact sensitive query parameter
+values in `http.target` and `url.query`
