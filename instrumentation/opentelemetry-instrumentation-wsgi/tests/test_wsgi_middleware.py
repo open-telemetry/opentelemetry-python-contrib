@@ -1094,6 +1094,42 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
     @mock.patch.dict(
         "os.environ",
         {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,My-Secret-Header",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header",
+        },
+    )
+    def test_request_attributes_capture_custom_headers_only_when_enabled(self) -> None:
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                "HTTP_UNCAPTURED_HEADER": "Uncaptured Value",
+            }
+        )
+        for mode in (_StabilityMode.DEFAULT, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP):
+            with self.subTest(mode=mode):
+                environ = mock.MagicMock(wraps=self.environ)
+                environ.__getitem__.side_effect = self.environ.__getitem__
+                attributes = otel_wsgi.collect_request_attributes(environ, mode)
+                self.assertFalse(any(key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.") for key in attributes))
+                environ.items.assert_not_called()
+
+                attributes = otel_wsgi.collect_request_attributes(self.environ, mode, capture_custom_headers=True)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    {
+                        _CUSTOM_REQUEST_HEADER: ["Test Value 1"],
+                        f"{HTTP_REQUEST_HEADER_TEMPLATE}.my_secret_header": ["[REDACTED]"],
+                    },
+                )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
         },

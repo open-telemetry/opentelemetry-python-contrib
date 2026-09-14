@@ -284,6 +284,7 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
@@ -331,11 +332,16 @@ wsgi_getter = WSGIGetter()
 def collect_request_attributes(
     environ: WSGIEnvironment,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-):
+    *,
+    capture_custom_headers: bool = False,
+) -> dict[str, AttributeValue]:
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
+
+    Set capture_custom_headers to include configured, sanitized request headers
+    when creating a SERVER span. Existing callers omit these headers by default.
     """
-    result: dict[str, str | None] = {}
+    result: dict[str, AttributeValue] = {}
     _set_http_method(
         result,
         environ.get("REQUEST_METHOD", ""),
@@ -399,11 +405,14 @@ def collect_request_attributes(
     if flavor:
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
+    if capture_custom_headers and trace.get_current_span() is trace.INVALID_SPAN:
+        result.update(collect_custom_request_headers_attributes(environ))
+
     return result
 
 
 def _apply_user_agent_attributes(
-    result: dict[str, str | None],
+    result: dict[str, AttributeValue],
     environ: WSGIEnvironment,
     sem_conv_opt_in_mode: _StabilityMode,
 ):
@@ -490,7 +499,7 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _Stabilit
 
 
 def _parse_duration_attrs(
-    req_attrs: dict[str, str | None],
+    req_attrs: dict[str, AttributeValue],
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     return _filter_semconv_duration_attrs(
@@ -505,7 +514,7 @@ def add_response_attributes(
     span: trace.Span,
     start_response_status: str,
     response_headers: list[tuple[str, str]],
-    duration_attrs: dict[str, str | None] | None = None,
+    duration_attrs: dict[str, AttributeValue] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
@@ -624,7 +633,7 @@ class OpenTelemetryMiddleware:
         span: trace.Span,
         start_response: StartResponse,
         response_hook: Callable[[str, list[tuple[str, str]]], None] | None,
-        duration_attrs: dict[str, str | None],
+        duration_attrs: dict[str, AttributeValue],
         sem_conv_opt_in_mode: _StabilityMode,
     ):
         @functools.wraps(start_response)
@@ -660,14 +669,15 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        req_attrs = collect_request_attributes(environ, self._sem_conv_opt_in_mode)
+        req_attrs = collect_request_attributes(
+            environ,
+            self._sem_conv_opt_in_mode,
+            capture_custom_headers=True,
+        )
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
             self._sem_conv_opt_in_mode,
         )
-
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            req_attrs.update(collect_custom_request_headers_attributes(environ))
 
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
