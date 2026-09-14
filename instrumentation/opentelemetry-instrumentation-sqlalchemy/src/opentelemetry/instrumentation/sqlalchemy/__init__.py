@@ -42,6 +42,25 @@ Usage
 Configuration
 -------------
 
+Connection pool metrics
+***********************
+By default, connection pool usage is reported as the deprecated
+``db.client.connections.usage`` metric (attributes ``pool.name``, ``state``).
+
+Set ``OTEL_SEMCONV_STABILITY_OPT_IN`` to opt into the current metric:
+
+::
+
+    export OTEL_SEMCONV_STABILITY_OPT_IN=database
+
+* ``database``: emit ``db.client.connection.count`` with
+  ``db.client.connection.pool.name`` and ``db.client.connection.state``
+* ``database/dup``: emit both the deprecated and current metrics
+
+Unset (default) keeps the deprecated metric only. See the
+`database semantic convention migration guide
+<https://opentelemetry.io/docs/specs/semconv/non-normative/db-migration/>`_.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
@@ -133,6 +152,8 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
@@ -145,6 +166,9 @@ from opentelemetry.instrumentation.sqlalchemy.package import _instruments
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    create_db_client_connection_count,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace import get_tracer
 
@@ -202,11 +226,24 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             schema_url=schema_url,
         )
 
-        connections_usage = meter.create_up_down_counter(
-            name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
-            unit="connections",
-            description="The number of connections that are currently in state described by the state attribute.",
+        # Emit the deprecated `db.client.connections.usage` metric, the stable
+        # `db.client.connection.count` metric, or both, depending on the
+        # database semantic convention opt-in mode (OTEL_SEMCONV_STABILITY_OPT_IN).
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
         )
+
+        connections_usage = None
+        if _report_old(sem_conv_opt_in_mode):
+            connections_usage = meter.create_up_down_counter(
+                name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
+                unit="connections",
+                description="The number of connections that are currently in state described by the state attribute.",
+            )
+
+        connection_count = None
+        if _report_new(sem_conv_opt_in_mode):
+            connection_count = create_db_client_connection_count(meter)
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
@@ -221,6 +258,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_count=connection_count,
             ),
         )
         _w(
@@ -232,6 +270,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_count=connection_count,
             ),
         )
         # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
@@ -245,6 +284,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
+                    connection_count=connection_count,
                 ),
             )
         _w(
@@ -262,6 +302,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
+                    connection_count=connection_count,
                 ),
             )
         if kwargs.get("engine") is not None:
@@ -272,6 +313,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
+                connection_count=connection_count,
             )
         if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), Sequence):
             return [
@@ -282,6 +324,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                     kwargs.get("enable_attribute_commenter", False),
+                    connection_count=connection_count,
                 )
                 for engine in kwargs.get("engines")
             ]
