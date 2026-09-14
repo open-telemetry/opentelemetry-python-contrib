@@ -9,6 +9,7 @@ from opentelemetry.instrumentation.grpc import GrpcAioInstrumentorClient
 from opentelemetry.test.test_base import TestBase
 
 from ._aio_client import simple_method
+from ._hooks import RecordingHook, set_span_attribute
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
 
@@ -27,53 +28,6 @@ def request_hook_with_exception(_span, _request):
 
 def response_hook_with_exception(_span, _response):
     raise Exception()  # pylint: disable=broad-exception-raised
-
-
-class CallableRequestHook:
-    """Callable object without __name__ attribute."""
-
-    def __init__(self):
-        self.invoked = False
-        self.span = None
-        self.request = None
-
-    def __call__(self, span, request):
-        self.invoked = True
-        self.span = span
-        self.request = request
-        span.set_attribute("callable_request_invoked", True)
-
-
-class CallableResponseHook:
-    """Callable object without __name__ attribute."""
-
-    def __init__(self):
-        self.invoked = False
-        self.span = None
-        self.response = None
-
-    def __call__(self, span, response):
-        self.invoked = True
-        self.span = span
-        self.response = response
-        span.set_attribute("callable_response_invoked", True)
-
-
-class CallableHookWithException:
-    """Callable object that raises an exception."""
-
-    def __call__(self, _span, _arg):
-        raise RuntimeError("Hook exception")  # pylint: disable=broad-exception-raised
-
-
-def _partial_request_hook_impl(attr_name, span, request):
-    """Helper for partial hook."""
-    span.set_attribute(attr_name, request.request_data)
-
-
-def _partial_response_hook_impl(attr_name, span, response):
-    """Helper for partial hook."""
-    span.set_attribute(attr_name, response)
 
 
 class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
@@ -143,8 +97,8 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
     async def test_callable_object_hooks(self):
         """Test that callable objects without __name__ are invoked."""
         instrumentor = GrpcAioInstrumentorClient()
-        request_hook_obj = CallableRequestHook()
-        response_hook_obj = CallableResponseHook()
+        request_hook_obj = RecordingHook("callable_request_invoked")
+        response_hook_obj = RecordingHook("callable_response_invoked")
 
         try:
             instrumentor.instrument(
@@ -164,8 +118,8 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
             self.assertEqual(len(spans), 1)
             span = spans[0]
 
-            self.assertTrue(request_hook_obj.invoked)
-            self.assertTrue(response_hook_obj.invoked)
+            self.assertEqual(request_hook_obj.calls, 1)
+            self.assertEqual(response_hook_obj.calls, 1)
 
             self.assertIn("callable_request_invoked", span.attributes)
             self.assertTrue(span.attributes["callable_request_invoked"])
@@ -178,10 +132,14 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
         """Test that functools.partial hooks without __name__ are invoked."""
         instrumentor = GrpcAioInstrumentorClient()
         request_hook_partial = partial(
-            _partial_request_hook_impl, "partial_request_data"
+            set_span_attribute,
+            "partial_request_data",
+            lambda request: request.request_data,
         )
         response_hook_partial = partial(
-            _partial_response_hook_impl, "partial_response_data"
+            set_span_attribute,
+            "partial_response_data",
+            lambda response: response,
         )
 
         try:
@@ -212,8 +170,8 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
     async def test_callable_hook_with_exception(self):
         """Test that callable objects that raise exceptions are still invoked once."""
         instrumentor = GrpcAioInstrumentorClient()
-        request_hook_obj = CallableHookWithException()
-        response_hook_obj = CallableHookWithException()
+        request_hook_obj = RecordingHook(raises=True)
+        response_hook_obj = RecordingHook(raises=True)
 
         try:
             instrumentor.instrument(
@@ -226,7 +184,8 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
             )
             stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
 
-            response = await simple_method(stub)
+            with self.assertLogs("opentelemetry.instrumentation.grpc._client", level="ERROR") as logs:
+                response = await simple_method(stub)
             assert response.response_data == "data"
 
             spans = self.memory_exporter.get_finished_spans()
@@ -234,5 +193,9 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
             span = spans[0]
 
             self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+            self.assertEqual(request_hook_obj.calls, 1)
+            self.assertEqual(response_hook_obj.calls, 1)
+            self.assertEqual(len(logs.records), 2)
+            self.assertTrue(all("<unknown>" in output for output in logs.output))
         finally:
             instrumentor.uninstrument()
