@@ -7,11 +7,13 @@ import logging
 import logging.config
 import threading
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextvars import ContextVar
+from functools import lru_cache
 from time import time_ns
 
 from opentelemetry._logs import (
+    Logger,
     LoggerProvider,
     LogRecord,
     NoOpLogger,
@@ -130,11 +132,32 @@ class LoggingHandler(logging.Handler):
         level: int = logging.NOTSET,
         logger_provider: LoggerProvider | None = None,
         log_code_attributes: bool = False,
+        scope_attributes: Mapping[str, AnyValue] | None = None,
     ) -> None:
         super().__init__(level=level)
         self._logger_provider = logger_provider or get_logger_provider()
-
         self._log_code_attributes = log_code_attributes
+        self._scope_attributes = scope_attributes
+        self._thread_local = threading.local()
+
+    def _get_logger(self, name: str) -> Logger:
+        # One lru_cache per thread avoids lock contention
+        cached_get_logger: Callable[[str], Logger] | None = getattr(self._thread_local, "cached_get_logger", None)
+        if cached_get_logger is None:
+            logger_provider = self._logger_provider
+            scope_attributes = self._scope_attributes
+
+            @lru_cache(maxsize=128)
+            def _cached_get_logger(logger_name: str) -> Logger:
+                return get_logger(
+                    logger_name,
+                    logger_provider=logger_provider,
+                    attributes=scope_attributes,
+                )
+
+            cached_get_logger = _cached_get_logger
+            self._thread_local.cached_get_logger = cached_get_logger
+        return cached_get_logger(name)
 
     def _get_attributes(self, record: logging.LogRecord) -> tuple[dict[str, AnyValue], str | None]:
         attributes = {k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS}
@@ -217,7 +240,7 @@ class LoggingHandler(logging.Handler):
             return
         token = self._is_emitting.set(True)
         try:
-            logger = get_logger(record.name, logger_provider=self._logger_provider)
+            logger = self._get_logger(record.name)
             if not isinstance(logger, NoOpLogger):
                 logger.emit(self._translate(record))
         finally:
