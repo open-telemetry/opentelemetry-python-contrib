@@ -18,7 +18,11 @@ _prefix = "opentelemetry-instrumentation-"
 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base_instrumentation_path = os.path.join(root_path, "instrumentation")
 
-packages_to_exclude = []
+packages_to_exclude = [
+    # Valkey instrumentation is currently a PyPI boilerplate package.
+    # Include it in the metapackage once its implementation is available.
+    "opentelemetry-instrumentation-valkey",
+]
 
 
 def get_instrumentation_packages():

@@ -53,6 +53,9 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-openai-agents-v2",
+    # Valkey instrumentation is currently a PyPI boilerplate package.
+    # Include it in the bootstrap once its implementation is available.
+    "opentelemetry-instrumentation-valkey",
 ]
 
 # Static version specifiers for instrumentations that are released independently
