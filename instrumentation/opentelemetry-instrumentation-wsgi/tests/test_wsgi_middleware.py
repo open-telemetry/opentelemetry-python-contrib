@@ -3,14 +3,18 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 import sys
 import unittest
 import wsgiref.util as wsgiref_util
+from collections.abc import Sequence
 from unittest import mock
 from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.context import Context
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -26,6 +30,7 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -45,6 +50,7 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
@@ -73,6 +79,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
+from opentelemetry.util.types import Attributes, AttributeValue
 
 
 class Response:
@@ -1036,6 +1043,41 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
             self.assertEqual(parent_span.context.span_id, span_list[0].parent.span_id)
 
 
+_CUSTOM_REQUEST_HEADER = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+class _RequestHeaderSampler(Sampler):
+    attributes: dict[str, AttributeValue]
+    kind: trace_api.SpanKind | None
+    required_value: str | None
+
+    def __init__(self, required_value: str | None = None) -> None:
+        self.attributes = {}
+        self.kind = None
+        self.required_value = required_value
+
+    def should_sample(
+        self,
+        parent_context: Context | None,
+        trace_id: int,
+        name: str,
+        kind: trace_api.SpanKind | None = None,
+        attributes: Attributes = None,
+        links: Sequence[trace_api.Link] | None = None,
+        trace_state: trace_api.TraceState | None = None,
+    ) -> SamplingResult:
+        # Snapshot now so attributes added after span creation cannot hide a regression.
+        self.attributes = dict(attributes or {})
+        self.kind = kind
+        decision = Decision.RECORD_AND_SAMPLE
+        if self.required_value is not None and self.attributes.get(_CUSTOM_REQUEST_HEADER) != [self.required_value]:
+            decision = Decision.DROP
+        return SamplingResult(decision, attributes=self.attributes, trace_state=trace_state)
+
+    def get_description(self) -> str:
+        return "Request header sampler"
+
+
 class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
     def setUp(self):
         super().setUp()
@@ -1048,6 +1090,42 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
                 self.assertEqual(value, b"*")
             except StopIteration:
                 break
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,My-Secret-Header",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header",
+        },
+    )
+    def test_request_attributes_capture_custom_headers_only_when_enabled(self) -> None:
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                "HTTP_UNCAPTURED_HEADER": "Uncaptured Value",
+            }
+        )
+        for mode in (_StabilityMode.DEFAULT, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP):
+            with self.subTest(mode=mode):
+                environ = mock.MagicMock(wraps=self.environ)
+                environ.__getitem__.side_effect = self.environ.__getitem__
+                attributes = otel_wsgi.collect_request_attributes(environ, mode)
+                self.assertFalse(any(key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.") for key in attributes))
+                environ.items.assert_not_called()
+
+                attributes = otel_wsgi.collect_request_attributes(self.environ, mode, capture_custom_headers=True)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    {
+                        _CUSTOM_REQUEST_HEADER: ["Test Value 1"],
+                        f"{HTTP_REQUEST_HEADER_TEMPLATE}.my_secret_header": ["[REDACTED]"],
+                    },
+                )
 
     @mock.patch.dict(
         "os.environ",
@@ -1081,7 +1159,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
         },
     )
-    def test_custom_request_headers_added_in_server_span(self):
+    def test_custom_request_headers_added_in_server_span(self) -> None:
         self.environ.update(
             {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
@@ -1089,12 +1167,9 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
                 "HTTP_REGEX_TEST_HEADER_1": "Regex Test Value 1",
                 "HTTP_REGEX_TEST_HEADER_2": "RegexTestValue2,RegexTestValue3",
                 "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                "HTTP_UNCAPTURED_HEADER": "Uncaptured Value",
             }
         )
-        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
-        response = app(self.environ, self.start_response)
-        self.iterate_response(response)
-        span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
             "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
@@ -1102,29 +1177,116 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
-        self.assertSpanHasAttributes(span, expected)
+        for remote_parent in (False, True):
+            with self.subTest(remote_parent=remote_parent):
+                if remote_parent:
+                    self.environ["HTTP_TRACEPARENT"] = "00-11111111111111111111111111111111-2222222222222222-01"
+                sampler = _RequestHeaderSampler()
+                tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+                self.addCleanup(tracer_provider.shutdown)
+                app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+                response = app(self.environ, self.start_response)
+                self.iterate_response(response)
+                self.assertEqual(sampler.kind, trace_api.SpanKind.SERVER)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in sampler.attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    {key: list(value) for key, value in expected.items()},
+                )
+                spans = exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].kind, trace_api.SpanKind.SERVER)
+                if remote_parent:
+                    self.assertEqual(spans[0].parent.span_id, 0x2222222222222222)
+                    self.assertTrue(spans[0].parent.is_remote)
+                else:
+                    self.assertIsNone(spans[0].parent)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in spans[0].attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    expected,
+                )
+                metrics = self.get_sorted_metrics(SCOPE)
+                self.assertTrue(metrics)
+                for metric in metrics:
+                    for point in metric.data.data_points:
+                        self.assertTrue(set(expected).isdisjoint(point.attributes))
 
     @mock.patch.dict(
         "os.environ",
         {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
     )
-    def test_custom_request_headers_not_added_in_internal_span(self):
+    def test_custom_request_headers_not_added_in_internal_span(self) -> None:
         self.environ.update(
             {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
             }
         )
 
-        with self.tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER):
-            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        sampler = _RequestHeaderSampler()
+        tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        with self.tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER) as parent_span:
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
-            span = self.memory_exporter.get_finished_spans()[0]
+            span = exporter.get_finished_spans()[0]
+            self.assertEqual(sampler.kind, trace_api.SpanKind.INTERNAL)
+            self.assertEqual(span.kind, trace_api.SpanKind.INTERNAL)
+            self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
             }
             for key, _ in not_expected.items():
+                self.assertNotIn(key, sampler.attributes)
                 self.assertNotIn(key, span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: ""},
+    )
+    def test_custom_request_headers_not_captured_without_configuration(self) -> None:
+        self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = "Test Value 1"
+        sampler = _RequestHeaderSampler()
+        tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+        self.iterate_response(app(self.environ, self.start_response))
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER, sampler.attributes)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER, exporter.get_finished_spans()[0].attributes)
+
+    def test_custom_request_headers_skip_environ_without_configuration(self) -> None:
+        for configuration in ({}, {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: ""}):
+            with (
+                self.subTest(configuration=configuration),
+                mock.patch.dict("os.environ", configuration, clear=True),
+            ):
+                environ = mock.Mock(wraps=self.environ)
+                self.assertEqual(otel_wsgi.collect_custom_request_headers_attributes(environ), {})
+                environ.items.assert_not_called()
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
+    )
+    def test_custom_request_headers_control_sampling(self) -> None:
+        for value, expected_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = value
+                sampler = _RequestHeaderSampler(required_value="sample")
+                tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+                self.addCleanup(tracer_provider.shutdown)
+                app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+                self.iterate_response(app(self.environ, self.start_response))
+                self.assertEqual(len(exporter.get_finished_spans()), expected_count)
+                self.assertEqual(self.status, "200 OK")
+                self.assertIsNone(self.exc_info)
 
     @mock.patch.dict(
         "os.environ",
