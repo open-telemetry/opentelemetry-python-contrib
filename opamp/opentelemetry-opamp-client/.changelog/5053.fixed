@@ -1,0 +1,1 @@
+`opentelemetry-opamp-client`: do not enable heartbeats after initial connection failure
