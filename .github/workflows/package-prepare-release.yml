@@ -10,6 +10,7 @@ on:
         - opentelemetry-resource-detector-azure
         - opentelemetry-resourcedetector-gcp
         - opentelemetry-sdk-extension-aws
+        - opentelemetry-instrumentation-valkey
         - opentelemetry-util-genai
         description: 'Package to be released'
         required: true

@@ -23,6 +23,7 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
+> - opentelemetry-instrumentation-valkey
 > - opentelemetry-util-genai
 >
 > These libraries are also excluded from the general release.
@@ -98,6 +99,7 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-valkey
 > - opentelemetry-util-genai
 >
 > These libraries are also excluded from the general patch release.
