@@ -7,6 +7,7 @@ dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
+  "opentelemetry-process-context",
   "opentelemetry-instrumentation",
   "opentelemetry-distro",
   "opentelemetry-test-utils",
@@ -81,6 +82,7 @@ opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-pyt
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
 opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
 opentelemetry-exporter-otlp = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "exporter/opentelemetry-exporter-otlp" }
+opentelemetry-process-context = { workspace = true }
 opentelemetry-instrumentation = { workspace = true }
 opentelemetry-distro = { workspace = true }
 opentelemetry-exporter-prometheus-remote-write = { workspace = true }
@@ -147,6 +149,7 @@ members = [
   "exporter/*",
   "opentelemetry-instrumentation",
   "opentelemetry-distro",
+  "opentelemetry-process-context",
   "propagator/*",
   "util/*",
 ]
@@ -226,6 +229,7 @@ include = [
   "opamp/opentelemetry-opamp-client",
   "sdk-extension/opentelemetry-sdk-extension-aws/src/opentelemetry/sdk/extension/aws/trace",
   "opentelemetry-instrumentation/src/opentelemetry/instrumentation/_labeler",
+  "opentelemetry-process-context",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.
@@ -240,6 +244,7 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
+  "opentelemetry-process-context/tests/**/*.py",
 ]
 
 [tool.towncrier]
