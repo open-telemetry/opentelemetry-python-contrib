@@ -22,6 +22,9 @@ components:
   instrumentation/opentelemetry-instrumentation-pymssql:
     - guillaumep
 
+  instrumentation/opentelemetry-instrumentation-oracledb:
+    - herin049
+
   instrumentation/opentelemetry-instrumentation-urllib:
     - shalevr
 
