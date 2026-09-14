@@ -1,11 +1,14 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
+import inspect
 import types
 from collections.abc import Callable
 from logging import getLogger
 from time import time
 from timeit import default_timer
+from typing import Any
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
@@ -44,6 +47,11 @@ from opentelemetry.instrumentation.wsgi import (
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_TARGET,
+)
+from opentelemetry.semconv.attributes.code_attributes import (
+    CODE_FILE_PATH,
+    CODE_FUNCTION_NAME,
+    CODE_LINE_NUMBER,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.trace import Span, SpanKind, use_span
@@ -102,6 +110,56 @@ _logger = getLogger(__name__)
 
 def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
+
+
+def _collect_code_attributes(
+    view_func: Callable[..., Any],
+) -> dict[str, str | int]:
+    """Best-effort extraction of ``code.*`` span attributes from a view.
+
+    Handles plain view functions, class-based views (``View.as_view()``),
+    ``functools.partial`` wrappers and decorated views. Returns an empty
+    dict when nothing can be extracted.
+    """
+    attributes: dict[str, str | int] = {}
+    try:
+        target: Any = view_func
+        while isinstance(target, functools.partial):
+            target = target.func
+        # View.as_view() returns a wrapper exposing the original class
+        target = getattr(target, "view_class", target)
+        # follow decorator chains (functools.wraps sets __wrapped__)
+        target = inspect.unwrap(target)
+        if not (inspect.isroutine(target) or inspect.isclass(target)):
+            # callable instances: report the class implementing __call__
+            target = type(target)
+
+        qual_name = getattr(target, "__qualname__", None)
+        if qual_name:
+            module_name = getattr(target, "__module__", None)
+            if module_name:
+                attributes[CODE_FUNCTION_NAME] = f"{module_name}.{qual_name}"
+            else:
+                attributes[CODE_FUNCTION_NAME] = qual_name
+
+        code = getattr(target, "__code__", None)
+        if code is not None:
+            attributes[CODE_FILE_PATH] = code.co_filename
+            attributes[CODE_LINE_NUMBER] = code.co_firstlineno
+        else:
+            # classes have no __code__; the source file is still cheap to
+            # resolve while the line number would require parsing the source
+            try:
+                attributes[CODE_FILE_PATH] = inspect.getfile(target)
+            except (TypeError, OSError):
+                pass
+    except Exception:  # pylint: disable=broad-exception-caught
+        _logger.debug(
+            "Failed to collect code attributes for view %r",
+            view_func,
+            exc_info=True,
+        )
+    return attributes
 
 
 class _DjangoMiddleware:
@@ -267,6 +325,11 @@ class _DjangoMiddleware:
 
         if self._environ_activation_key in request.META.keys() and self._environ_span_key in request.META.keys():
             span = request.META[self._environ_span_key]
+
+            if span.is_recording():
+                code_attributes = _collect_code_attributes(view_func)
+                if code_attributes:
+                    span.set_attributes(code_attributes)
 
             match = getattr(request, "resolver_match", None)
             if match:
