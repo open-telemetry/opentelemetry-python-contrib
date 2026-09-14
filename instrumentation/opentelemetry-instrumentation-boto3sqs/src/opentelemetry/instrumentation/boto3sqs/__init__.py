@@ -111,7 +111,7 @@ boto3sqs_setter = Boto3SQSSetter()
 class Boto3SQSInstrumentor(BaseInstrumentor):
     # Only accessed processing spans are registered here. Values are weak so a
     # receive result owns the state for its messages rather than this registry.
-    received_messages_spans: WeakValueDictionary[str, _ProcessingSpanState] = WeakValueDictionary()
+    received_messages_spans: WeakValueDictionary[str, Any] = WeakValueDictionary()
     _received_messages_spans_lock = RLock()
 
     class ContextableList(list):
