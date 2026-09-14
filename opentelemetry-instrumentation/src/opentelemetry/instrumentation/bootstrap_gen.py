@@ -33,6 +33,8 @@ libraries = [
     {"library": "grpcio >= 1.42.0", "instrumentation": "opentelemetry-instrumentation-grpc==0.66b0.dev"},
     {"library": "httpx >= 0.18.0", "instrumentation": "opentelemetry-instrumentation-httpx==0.66b0.dev"},
     {"library": "httpx2 >= 2.0.0", "instrumentation": "opentelemetry-instrumentation-httpx==0.66b0.dev"},
+    {"library": "ibmmq >= 2.0, < 3.0", "instrumentation": "opentelemetry-instrumentation-ibmmq==0.66b0.dev"},
+    {"library": "pymqi >= 1.12, < 2.0", "instrumentation": "opentelemetry-instrumentation-ibmmq==0.66b0.dev"},
     {"library": "jinja2 >= 2.7, < 4.0", "instrumentation": "opentelemetry-instrumentation-jinja2==0.66b0.dev"},
     {
         "library": "kafka-python >= 2.0, < 4.0",
