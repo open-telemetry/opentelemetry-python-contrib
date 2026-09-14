@@ -20,8 +20,11 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from starlette.applications import Starlette
 from starlette.background import BackgroundTask
-from starlette.routing import BaseRoute, Match
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.routing import BaseRoute, Match, Route
 from starlette.types import Receive, Scope, Send
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
@@ -1483,6 +1486,248 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(parent_span.context.span_id, span_list[3].context.span_id)
 
 
+class TestUnwrapMiddleware(unittest.TestCase):
+    def test_unwrap_fastapi_app(self):
+        app = fastapi.FastAPI()
+        app.app = "should not be returned"
+        self.assertIs(otel_fastapi._unwrap_middleware(app), app)
+
+    def test_unwrap_starlette_app(self):
+        app = Starlette()
+        app.app = "should not be returned"
+        self.assertIs(otel_fastapi._unwrap_middleware(app), app)
+
+    def test_unwrap_single_middleware(self):
+        inner_app = fastapi.FastAPI()
+        wrapped = CORSMiddleware(inner_app, allow_origins=["*"])
+        self.assertIs(otel_fastapi._unwrap_middleware(wrapped), inner_app)
+
+    def test_unwrap_multiple_middlewares(self):
+        inner_app = fastapi.FastAPI()
+        wrapped = CORSMiddleware(GZipMiddleware(inner_app), allow_origins=["*"])
+        self.assertIs(otel_fastapi._unwrap_middleware(wrapped), inner_app)
+
+    def test_unwrap_custom_middleware(self):
+        inner_app = fastapi.FastAPI()
+
+        class CustomWrapper:
+            def __init__(self, app):
+                self.app = app
+
+        wrapped = CustomWrapper(inner_app)
+        self.assertIs(otel_fastapi._unwrap_middleware(wrapped), inner_app)
+
+    def test_unwrap_non_fastapi_app(self):
+        async def plain_asgi(scope, receive, send):
+            pass
+
+        self.assertIsNone(otel_fastapi._unwrap_middleware(plain_asgi))
+
+        class PlainApp:
+            pass
+
+        self.assertIsNone(otel_fastapi._unwrap_middleware(PlainApp()))
+
+    def test_unwrap_cyclic_reference(self):
+        class Cyclic:
+            pass
+
+        c1 = Cyclic()
+        c2 = Cyclic()
+        c1.app = c2
+        c2.app = c1
+        self.assertIsNone(otel_fastapi._unwrap_middleware(c1))
+
+        self_cyclic = Cyclic()
+        self_cyclic.app = self_cyclic
+        self.assertIsNone(otel_fastapi._unwrap_middleware(self_cyclic))
+
+    def test_unwrap_none(self):
+        self.assertIsNone(otel_fastapi._unwrap_middleware(None))
+
+    def test_unwrap_max_depth_exceeded(self):
+        class Node:
+            def __init__(self, app=None):
+                self.app = app
+
+        inner_app = fastapi.FastAPI()
+        curr = inner_app
+        for _ in range(60):
+            curr = Node(curr)
+
+        # default max_depth is 50, so 60 layers should return None
+        self.assertIsNone(otel_fastapi._unwrap_middleware(curr))
+
+
+class TestMiddlewareWrappedApplication(TestBase):
+    def test_instrumentation_with_cors_middleware(self):
+        fastapi_app = fastapi.FastAPI()
+
+        @fastapi_app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        wrapped_app = CORSMiddleware(fastapi_app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        client = TestClient(wrapped_app)
+
+        try:
+            resp = client.get("/foobar", headers={"Origin": "https://example.com"})
+            self.assertEqual(200, resp.status_code)
+            self.assertEqual(resp.headers.get("access-control-allow-origin"), "*")
+
+            span_list = self.memory_exporter.get_finished_spans()
+            self.assertGreaterEqual(len(span_list), 1)
+
+            server_spans = [span for span in span_list if span.kind == trace.SpanKind.SERVER]
+            self.assertEqual(len(server_spans), 1)
+            server_span = server_spans[0]
+            self.assertEqual(server_span.name, "GET /foobar")
+            self.assertEqual(server_span.attributes.get(HTTP_ROUTE), "/foobar")
+        finally:
+            with self.disable_logging():
+                otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+    def test_instrumentation_with_chained_middleware(self):
+        fastapi_app = fastapi.FastAPI()
+
+        @fastapi_app.get("/chained")
+        async def _():
+            return {"message": "hello chained"}
+
+        wrapped_app = CORSMiddleware(GZipMiddleware(fastapi_app), allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        client = TestClient(wrapped_app)
+
+        try:
+            resp = client.get("/chained")
+            self.assertEqual(200, resp.status_code)
+
+            span_list = self.memory_exporter.get_finished_spans()
+            server_spans = [span for span in span_list if span.kind == trace.SpanKind.SERVER]
+            self.assertEqual(len(server_spans), 1)
+            self.assertEqual(server_spans[0].name, "GET /chained")
+            self.assertEqual(server_spans[0].attributes.get(HTTP_ROUTE), "/chained")
+        finally:
+            with self.disable_logging():
+                otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+    def test_uninstrument_app_wrapped_cleans_up(self):
+        fastapi_app = fastapi.FastAPI()
+
+        @fastapi_app.get("/test-uninstrument")
+        async def _():
+            return {"message": "uninstrumented"}
+
+        wrapped_app = CORSMiddleware(fastapi_app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        self.assertTrue(getattr(fastapi_app, "_is_instrumented_by_opentelemetry", False))
+
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+        self.assertFalse(getattr(fastapi_app, "_is_instrumented_by_opentelemetry", True))
+
+        self.memory_exporter.clear()
+        client = TestClient(wrapped_app)
+        resp = client.get("/test-uninstrument")
+        self.assertEqual(200, resp.status_code)
+        # No spans should be recorded after uninstrumenting
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+    def test_non_fastapi_app_logs_warning_and_noops(self):
+        async def dummy_asgi_app(scope, receive, send):
+            pass
+
+        with self.assertLogs(otel_fastapi._logger, level="WARNING") as cm:
+            otel_fastapi.FastAPIInstrumentor().instrument_app(dummy_asgi_app)
+        self.assertTrue(any("Skipping FastAPI instrumentation" in msg for msg in cm.output))
+
+        with self.assertLogs(otel_fastapi._logger, level="WARNING") as cm:
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(dummy_asgi_app)
+        self.assertTrue(any("Skipping FastAPI uninstrumentation" in msg for msg in cm.output))
+
+    def test_already_instrumented_wrapped_app_logs_warning(self):
+        fastapi_app = fastapi.FastAPI()
+        wrapped_app = CORSMiddleware(fastapi_app, allow_origins=["*"])
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        try:
+            with self.assertLogs(otel_fastapi._logger, level="WARNING") as cm:
+                otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+            self.assertTrue(any("already instrumented" in msg for msg in cm.output))
+        finally:
+            with self.disable_logging():
+                otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+    def test_wrapped_app_with_path_parameters(self):
+        fastapi_app = fastapi.FastAPI()
+
+        @fastapi_app.get("/items/{item_id}")
+        async def _(item_id: int):
+            return {"item_id": item_id}
+
+        wrapped_app = CORSMiddleware(fastapi_app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        client = TestClient(wrapped_app)
+
+        try:
+            resp = client.get("/items/42")
+            self.assertEqual(200, resp.status_code)
+
+            span_list = self.memory_exporter.get_finished_spans()
+            server_spans = [span for span in span_list if span.kind == trace.SpanKind.SERVER]
+            self.assertEqual(len(server_spans), 1)
+            self.assertEqual(server_spans[0].name, "GET /items/{item_id}")
+            self.assertEqual(server_spans[0].attributes.get(HTTP_ROUTE), "/items/{item_id}")
+        finally:
+            with self.disable_logging():
+                otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+    def test_starlette_app_wrapped_with_cors_middleware(self):
+        async def homepage(request):
+            return PlainTextResponse("starlette hello")
+
+        starlette_app = Starlette(routes=[Route("/starlette", homepage)])
+        wrapped_app = CORSMiddleware(starlette_app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped_app)
+        client = TestClient(wrapped_app)
+
+        try:
+            resp = client.get("/starlette", headers={"Origin": "https://example.com"})
+            self.assertEqual(200, resp.status_code)
+            self.assertEqual(resp.headers.get("access-control-allow-origin"), "*")
+
+            span_list = self.memory_exporter.get_finished_spans()
+            server_spans = [span for span in span_list if span.kind == trace.SpanKind.SERVER]
+            self.assertEqual(len(server_spans), 1)
+            self.assertEqual(server_spans[0].name, "GET /starlette")
+            self.assertEqual(server_spans[0].attributes.get(HTTP_ROUTE), "/starlette")
+        finally:
+            with self.disable_logging():
+                otel_fastapi.FastAPIInstrumentor().uninstrument_app(wrapped_app)
+
+    def test_get_route_details_without_app_in_scope(self):
+        scope = {"type": "http", "method": "GET"}
+        self.assertIsNone(otel_fastapi._get_route_details(scope))
+
+        span_name, attributes = otel_fastapi._get_default_span_details(scope)
+        self.assertEqual(span_name, "GET")
+        self.assertEqual(attributes, {})
+
+    def test_get_route_details_with_wrapped_app_in_scope(self):
+        fastapi_app = fastapi.FastAPI()
+
+        @fastapi_app.get("/scoped")
+        async def _():
+            return {"message": "scoped"}
+
+        wrapped_app = CORSMiddleware(fastapi_app, allow_origins=["*"])
+        scope = {"type": "http", "method": "GET", "path": "/scoped", "app": wrapped_app}
+        route = otel_fastapi._get_route_details(scope)
+        self.assertEqual(route, "/scoped")
+
+
 class TestFastAPIGarbageCollection(unittest.TestCase):
     def test_fastapi_app_is_collected_after_instrument(self):
         app = fastapi.FastAPI()
@@ -1491,6 +1736,18 @@ class TestFastAPIGarbageCollection(unittest.TestCase):
         del app
         _gc.collect()
         self.assertIsNone(app_ref())
+
+    def test_wrapped_fastapi_app_is_collected_after_instrument(self):
+        app = fastapi.FastAPI()
+        wrapped = CORSMiddleware(app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(wrapped)
+        app_ref = _weakref.ref(app)
+        wrapped_ref = _weakref.ref(wrapped)
+        del app
+        del wrapped
+        _gc.collect()
+        self.assertIsNone(app_ref())
+        self.assertIsNone(wrapped_ref())
 
 
 @patch.dict(
