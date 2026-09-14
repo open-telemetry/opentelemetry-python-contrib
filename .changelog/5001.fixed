@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: stop `unpatch_handler_class` raising `AttributeError` on a subclass of a patched handler
