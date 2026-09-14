@@ -179,7 +179,8 @@ class TestSqlalchemyConnectionCountOptIn(TestBase):
                 return metric
         return None
 
-    def _make_engine(self, pool_name="pool_test_name"):
+    @staticmethod
+    def _make_engine(pool_name="pool_test_name"):
         return sqlalchemy.create_engine(
             "sqlite:///:memory:",
             pool_size=5,
