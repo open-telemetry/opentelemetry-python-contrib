@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiokafka`, `opentelemetry-instrumentation-confluent-kafka`, `opentelemetry-instrumentation-kafka-python`: emit `messaging.kafka.cluster.id` on producer and consumer spans

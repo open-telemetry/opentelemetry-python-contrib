@@ -1,7 +1,10 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from logging import getLogger
+from typing import Any
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
@@ -22,6 +25,36 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
+
+# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
+# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
+_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
+
+
+def _get_real_instance(instance: Any) -> Any:
+    return getattr(instance, "_producer", None) or getattr(instance, "_consumer", None) or instance
+
+
+_cluster_id_by_bootstrap: dict[str, str] = {}
+
+
+def _extract_cluster_id(instance: Any, bootstrap_servers: str | None = None) -> str | None:
+    if instance is None:
+        return None
+    if hasattr(instance, "flush"):
+        if bootstrap_servers and bootstrap_servers in _cluster_id_by_bootstrap:
+            return _cluster_id_by_bootstrap[bootstrap_servers]
+        try:
+            cluster_metadata = instance.list_topics(timeout=0)
+            cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
+            if cluster_id and bootstrap_servers:
+                _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
+            return cluster_id
+        except Exception:  # pylint: disable=broad-except
+            return None
+    if bootstrap_servers:
+        return _cluster_id_by_bootstrap.get(bootstrap_servers)
+    return None
 
 
 class KafkaPropertiesExtractor:
@@ -128,8 +161,6 @@ def _get_links_from_records(records):
 
 
 def _set_bootstrap_servers_attributes(span, bootstrap_servers):
-    """Populate server.address and server.port from a bootstrap.servers
-    string (e.g. ``host1:9092,host2:9092``)."""
     if not bootstrap_servers:
         return
 
@@ -156,6 +187,7 @@ def _enrich_span(
     offset: int | None = None,
     operation: MessagingOperationTypeValues | None = None,
     bootstrap_servers: str | None = None,
+    instance: Any | None = None,
 ):
     if not span.is_recording():
         return
@@ -177,6 +209,10 @@ def _enrich_span(
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
+
+    cluster_id = _extract_cluster_id(instance, bootstrap_servers)
+    if cluster_id:
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
