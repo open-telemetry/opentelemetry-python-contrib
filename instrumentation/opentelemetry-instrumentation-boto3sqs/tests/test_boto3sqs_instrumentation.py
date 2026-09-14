@@ -4,6 +4,7 @@
 # pylint: disable=no-name-in-module
 
 from contextlib import contextmanager
+from contextvars import copy_context
 from typing import Any
 from unittest import TestCase, mock
 
@@ -15,6 +16,7 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSGetter,
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
+    _active_processing_span,
 )
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import (
@@ -411,65 +413,137 @@ class TestBoto3SQSInstrumentation(TestBase):
         receive_span = self._get_only_span()
         self.memory_exporter.clear()
 
-        response["Messages"][0]
-        first_processing_span = Boto3SQSInstrumentor.received_messages_spans[
-            "receipt-1"
-        ]
+        _ = response["Messages"][0]
+        first_processing_span = Boto3SQSInstrumentor.received_messages_spans["receipt-1"].span
         self.assertGreater(first_processing_span.start_time, receive_span.end_time)
         self.assertEqual([], self.get_finished_spans())
 
-        response["Messages"][1]
-        second_processing_span = Boto3SQSInstrumentor.received_messages_spans[
-            "receipt-2"
-        ]
-        self.assertNotIn(
-            "receipt-1", Boto3SQSInstrumentor.received_messages_spans
-        )
-        self.assertGreaterEqual(
-            second_processing_span.start_time, first_processing_span.end_time
-        )
+        _ = response["Messages"][1]
+        second_processing_span = Boto3SQSInstrumentor.received_messages_spans["receipt-2"].span
+        self.assertNotIn("receipt-1", Boto3SQSInstrumentor.received_messages_spans)
+        self.assertGreaterEqual(second_processing_span.start_time, first_processing_span.end_time)
 
         with self._mocked_endpoint({}):
-            self._client.delete_message(
-                QueueUrl=self._queue_url, ReceiptHandle="receipt-2"
-            )
+            self._client.delete_message(QueueUrl=self._queue_url, ReceiptHandle="receipt-2")
 
         self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
         self.assertEqual(2, len(self.get_finished_spans()))
 
+    def test_repeated_access_does_not_create_duplicate_processing_span(self):
+        messages = [
+            self._make_message("1", "hello 1", "receipt-1"),
+            self._make_message("2", "hello 2", "receipt-2"),
+        ]
+
+        with self._mocked_endpoint({"Messages": messages}):
+            response = self._client.receive_message(QueueUrl=self._queue_url)
+
+        self._get_only_span()
+        self.memory_exporter.clear()
+
+        _ = response["Messages"][0]
+        _ = response["Messages"][1]
+        _ = response["Messages"][0]
+
+        with self._mocked_endpoint({}):
+            self._client.delete_message(QueueUrl=self._queue_url, ReceiptHandle="receipt-2")
+
+        process_spans = [span for span in self.get_finished_spans() if span.name.endswith(" process")]
+        self.assertEqual(2, len(process_spans))
+        self.assertEqual(
+            {"1", "2"},
+            {span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID] for span in process_spans},
+        )
+        self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
+
+    def test_processing_spans_are_isolated_between_contexts(self):
+        message_a = self._make_message("a", "hello a", "receipt-a")
+        with self._mocked_endpoint({"Messages": [message_a]}):
+            response_a = self._client.receive_message(QueueUrl=self._queue_url)
+        receive_span_a = self._get_only_span()
+        self.memory_exporter.clear()
+
+        message_b = self._make_message("b", "hello b", "receipt-b")
+        with self._mocked_endpoint({"Messages": [message_b]}):
+            response_b = self._client.receive_message(QueueUrl=self._queue_url)
+        receive_span_b = self._get_only_span()
+        self.memory_exporter.clear()
+
+        context_a = copy_context()
+        context_b = copy_context()
+
+        def access_message(response):
+            _ = response["Messages"][0]
+
+        context_a.run(access_message, response_a)
+        context_b.run(access_message, response_b)
+
+        self.assertIn("receipt-a", Boto3SQSInstrumentor.received_messages_spans)
+        self.assertIn("receipt-b", Boto3SQSInstrumentor.received_messages_spans)
+
+        def delete_message(receipt_handle):
+            with self._mocked_endpoint({}):
+                self._client.delete_message(QueueUrl=self._queue_url, ReceiptHandle=receipt_handle)
+
+        context_a.run(delete_message, "receipt-a")
+        context_b.run(delete_message, "receipt-b")
+
+        process_spans = [span for span in self.get_finished_spans() if span.name.endswith(" process")]
+        self.assertEqual(2, len(process_spans))
+        spans_by_message_id = {
+            span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID]: span for span in process_spans
+        }
+        self.assertEqual(
+            receive_span_a.get_span_context().trace_id,
+            spans_by_message_id["a"].get_span_context().trace_id,
+        )
+        self.assertEqual(
+            receive_span_a.get_span_context().span_id,
+            spans_by_message_id["a"].parent.span_id,
+        )
+        self.assertEqual(
+            receive_span_b.get_span_context().trace_id,
+            spans_by_message_id["b"].get_span_context().trace_id,
+        )
+        self.assertEqual(
+            receive_span_b.get_span_context().span_id,
+            spans_by_message_id["b"].parent.span_id,
+        )
+        self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
+
     def test_unread_redeliveries_do_not_retain_message_metadata(self):
+        unread_receipt = "receipt-2-0"
         for round_number in range(10):
             messages = [
-                self._make_message(
-                    "1", "hello 1", f"receipt-1-{round_number}"
-                ),
-                self._make_message(
-                    "2", "hello 2", f"receipt-2-{round_number}"
-                ),
+                self._make_message("1", "hello 1", f"receipt-1-{round_number}"),
+                self._make_message("2", "hello 2", f"receipt-2-{round_number}"),
             ]
             with self._mocked_endpoint({"Messages": messages}):
                 response = self._client.receive_message(QueueUrl=self._queue_url)
 
             self.assertEqual(2, len(response["Messages"]))
-            self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
-            self.assertFalse(
-                hasattr(Boto3SQSInstrumentor, "pending_message_metadata")
-            )
+            if round_number == 0:
+                _ = response["Messages"][0]
+                self.assertIn("receipt-1-0", Boto3SQSInstrumentor.received_messages_spans)
+            else:
+                self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
+            self.assertFalse(hasattr(Boto3SQSInstrumentor, "pending_message_metadata"))
+            self.assertNotIn(unread_receipt, Boto3SQSInstrumentor.received_messages_spans)
 
         message = self._make_message("3", "hello 3", "receipt-3")
         with self._mocked_endpoint({"Messages": [message]}):
             response = self._client.receive_message(QueueUrl=self._queue_url)
 
-        response["Messages"][0]
+        _ = response["Messages"][0]
         with self._mocked_endpoint({}):
-            self._client.delete_message(
-                QueueUrl=self._queue_url, ReceiptHandle="receipt-3"
-            )
+            self._client.delete_message(QueueUrl=self._queue_url, ReceiptHandle="receipt-3")
 
-        process_spans = [
-            span for span in self.get_finished_spans() if span.name.endswith(" process")
-        ]
-        self.assertEqual(1, len(process_spans))
+        process_spans = [span for span in self.get_finished_spans() if span.name.endswith(" process")]
+        self.assertEqual(2, len(process_spans))
+        self.assertEqual(
+            {"1", "3"},
+            {span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID] for span in process_spans},
+        )
         self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
 
     def test_uninstrument_cleans_active_processing_state(self):
@@ -477,15 +551,18 @@ class TestBoto3SQSInstrumentation(TestBase):
         with self._mocked_endpoint({"Messages": [message]}):
             response = self._client.receive_message(QueueUrl=self._queue_url)
 
-        response["Messages"][0]
+        _ = response["Messages"][0]
         self.assertIn("receipt-1", Boto3SQSInstrumentor.received_messages_spans)
 
         Boto3SQSInstrumentor().uninstrument()
 
         self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
-        self.assertIsNone(Boto3SQSInstrumentor.current_span_related_to_token)
-        self.assertIsNone(Boto3SQSInstrumentor.current_receipt_handle)
-        self.assertIsNone(Boto3SQSInstrumentor.current_context_token)
+        self.assertIsNone(_active_processing_span.get())
+
+        self.memory_exporter.clear()
+        _ = response["Messages"][0]
+        self.assertEqual([], self.get_finished_spans())
+        self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
 
     def test_uninstrument(self):
         mock_response = {
