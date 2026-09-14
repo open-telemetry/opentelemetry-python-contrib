@@ -134,6 +134,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     """
 
     _old_factory = None
+    _our_factory = None
     _log_hook = None
     _logging_handler = None
 
@@ -164,6 +165,13 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
+
+            # We may be stranded in the middle of a factory chain that
+            # `_uninstrument` could not unlink. `old_factory` is a closure
+            # variable, so the chain still works, but we must stop mutating
+            # records once we are no longer the installed factory.
+            if LoggingInstrumentor._our_factory is not record_factory:
+                return record
 
             if not inject_context and not callable(LoggingInstrumentor._log_hook):
                 return record
@@ -202,6 +210,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             return record
 
+        LoggingInstrumentor._our_factory = record_factory
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -231,18 +240,28 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 "log_handler_level",
                 _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
             )
-            logger_provider = get_logger_provider()
-            handler = _setup_logging_handler(
-                logger_provider=logger_provider,
+            LoggingInstrumentor._logging_handler = _setup_logging_handler(
+                logger_provider=get_logger_provider(),
                 log_code_attributes=log_code_attributes,
                 level=handler_level,
             )
-            LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
-        if LoggingInstrumentor._old_factory:
+        # `logging.setLogRecordFactory` is a single global slot that callers
+        # chain by closing over whatever factory preceded them. Restoring
+        # `_old_factory` unconditionally would therefore unlink every factory
+        # installed after ours, so only restore while we are still the head of
+        # the chain. A node cannot be removed from the middle without the
+        # cooperation of the factory that wrapped it, so otherwise we leave the
+        # chain intact and let ours turn itself into a pass-through -- clearing
+        # `_our_factory` below is what disables it.
+        if (
+            LoggingInstrumentor._our_factory is not None
+            and logging.getLogRecordFactory() is LoggingInstrumentor._our_factory
+        ):
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._our_factory = None
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
