@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import requests
 
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb as opamp_pb2
 from opentelemetry._opamp.transport.base import base_headers
 from opentelemetry._opamp.transport.exceptions import OpAMPException
 from opentelemetry._opamp.transport.requests import RequestsTransport
@@ -28,7 +28,7 @@ def test_can_instantiate_requests_transport_with_own_session():
 
 def test_can_send():
     transport = RequestsTransport()
-    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    serialized_message = opamp_pb2.ServerToAgent().to_binary()
     response_mock = mock.Mock(content=serialized_message)
     headers = {"foo": "bar"}
     expected_headers = {**base_headers, **headers}
@@ -57,7 +57,7 @@ def test_can_send():
 
 def test_send_tls_certificate_mapped_to_verify():
     transport = RequestsTransport()
-    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    serialized_message = opamp_pb2.ServerToAgent().to_binary()
     response_mock = mock.Mock(content=serialized_message)
     data = b""
     with mock.patch.object(transport, "session") as session_mock:
@@ -84,7 +84,7 @@ def test_send_tls_certificate_mapped_to_verify():
 
 def test_send_mtls():
     transport = RequestsTransport()
-    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    serialized_message = opamp_pb2.ServerToAgent().to_binary()
     response_mock = mock.Mock(content=serialized_message)
     data = b""
     with mock.patch.object(transport, "session") as session_mock:
@@ -113,7 +113,7 @@ def test_send_mtls():
 
 def test_send_mtls_no_client_key():
     transport = RequestsTransport()
-    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    serialized_message = opamp_pb2.ServerToAgent().to_binary()
     response_mock = mock.Mock(content=serialized_message)
     data = b""
     with mock.patch.object(transport, "session") as session_mock:

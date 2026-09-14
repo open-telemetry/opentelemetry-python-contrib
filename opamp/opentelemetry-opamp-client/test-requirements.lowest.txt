@@ -34,10 +34,12 @@ pluggy==1.6.0
     #   pytest
 propcache==0.2.1
     # via yarl
-protobuf==5.29.5
+protobuf-py==0.3.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   opentelemetry-opamp-client
+protobuf-py-ext==0.3.0 ; (platform_machine == 'arm64' and platform_python_implementation == 'CPython' and sys_platform == 'darwin') or (platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or (platform_machine == 'x86_64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or (platform_machine == 'AMD64' and platform_python_implementation == 'CPython' and sys_platform == 'win32') or (platform_machine == 'ARM64' and platform_python_implementation == 'CPython' and sys_platform == 'win32')
+    # via protobuf-py
 pytest==7.4.4
     # via
     #   -c dev-requirements.txt
@@ -53,6 +55,7 @@ requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   opentelemetry-opamp-client
 setuptools==16.0
     # via opentelemetry-api
 tomli==1.1.0

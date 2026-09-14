@@ -7,7 +7,7 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb
 
 if TYPE_CHECKING:
     from opentelemetry._opamp.agent import OpAMPAgent
@@ -23,12 +23,12 @@ class MessageData:
     object reaches the callback.
     """
 
-    remote_config: opamp_pb2.AgentRemoteConfig | None = None
+    remote_config: opamp_pb.AgentRemoteConfig | None = None
 
     @classmethod
-    def from_server_message(cls, message: opamp_pb2.ServerToAgent) -> MessageData:
+    def from_server_message(cls, message: opamp_pb.ServerToAgent) -> MessageData:
         return cls(
-            remote_config=message.remote_config if message.HasField("remote_config") else None,
+            remote_config=message.remote_config,
         )
 
 
@@ -61,7 +61,7 @@ class OpAMPCallbacks(ABC):
         self,
         agent: OpAMPAgent,
         client: OpAMPClient,
-        error_response: opamp_pb2.ServerErrorResponse,
+        error_response: opamp_pb.ServerErrorResponse,
     ) -> None:
         """Called when the Server reports an error in response to a
         previously sent request. Useful for logging purposes. The Agent

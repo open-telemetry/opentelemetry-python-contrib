@@ -120,15 +120,15 @@ nitpicky = True
 nitpick_ignore = [
     (
         "py:class",
-        "opamp_pb2.RemoteConfigStatus",
+        "opentelemetry._opamp.proto.opamp_pb.RemoteConfigStatus",
     ),
     (
         "py:class",
-        "opamp_pb2.EffectiveConfig",
+        "opentelemetry._opamp.proto.opamp_pb.EffectiveConfig",
     ),
     (
         "py:class",
-        "opamp_pb2.AgentRemoteConfig",
+        "opentelemetry._opamp.proto.opamp_pb.AgentRemoteConfig",
     ),
 ]
 
