@@ -232,7 +232,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = default_timer()
             span = (
-                self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-" + func_name)
+                self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-{func_name}")
                 if func_name in self._to_thread_name_to_trace
                 else None
             )
