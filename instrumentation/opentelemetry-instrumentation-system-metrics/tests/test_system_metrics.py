@@ -96,7 +96,7 @@ class TestSystemMetrics(TestBase):
             "system.swap.utilization",
             "system.disk.io",
             "system.disk.operations",
-            "system.disk.time",
+            "system.disk.operation.time",
             "system.network.dropped_packets",
             "system.network.packets",
             "system.network.errors",
@@ -483,7 +483,7 @@ class TestSystemMetrics(TestBase):
         self._test_metrics("system.disk.operations", expected)
 
     @mock.patch("psutil.disk_io_counters")
-    def test_system_disk_time(self, mock_disk_io_counters):
+    def test_system_disk_operation_time(self, mock_disk_io_counters):
         DiskIO = namedtuple(
             "DiskIO",
             [
@@ -526,7 +526,7 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"device": "sdb", "direction": "read"}, 13 / 1000),
             _SystemMetricsResult({"device": "sdb", "direction": "write"}, 14 / 1000),
         ]
-        self._test_metrics("system.disk.time", expected)
+        self._test_metrics("system.disk.operation.time", expected)
 
     @mock.patch("psutil.net_io_counters")
     def test_system_network_dropped_packets(self, mock_net_io_counters):
