@@ -42,6 +42,25 @@ Usage
 Configuration
 -------------
 
+Connection pool metrics
+***********************
+By default, connection pool usage is reported as the deprecated
+``db.client.connections.usage`` metric (attributes ``pool.name``, ``state``).
+
+Set ``OTEL_SEMCONV_STABILITY_OPT_IN`` to opt into the current metric:
+
+::
+
+    export OTEL_SEMCONV_STABILITY_OPT_IN=database
+
+* ``database``: emit ``db.client.connection.count`` with
+  ``db.client.connection.pool.name`` and ``db.client.connection.state``
+* ``database/dup``: emit both the deprecated and current metrics
+
+Unset (default) keeps the deprecated metric only. See the
+`database semantic convention migration guide
+<https://opentelemetry.io/docs/specs/semconv/non-normative/db-migration/>`_.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
