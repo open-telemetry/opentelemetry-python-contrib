@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import functools
 import logging
 
@@ -21,24 +22,40 @@ from opentelemetry.trace.status import Status, StatusCode
 logger = logging.getLogger(__name__)
 
 
-def _unary_done_callback(span, code, details, response_hook):
-    def callback(call):
-        try:
-            span.set_attribute(
-                RPC_GRPC_STATUS_CODE,
-                code.value[0],
-            )
-            if code != grpc.StatusCode.OK:
-                span.set_status(
-                    Status(
-                        status_code=StatusCode.ERROR,
-                        description=details,
-                    )
-                )
-            response_hook(span, details)
+# asyncio holds only a weak reference to a running task, so keep a strong one
+# until the span has been ended.
+_pending_span_ends = set()
 
-        finally:
-            span.end()
+
+def _unary_done_callback(span, response_hook):
+    def callback(call):
+        async def end_span():
+            try:
+                # code() and details() are coroutines and a done callback cannot
+                # await, so they are resolved here rather than in the caller. The
+                # call is already done by the time this runs, so neither waits.
+                code = await call.code()
+                details = await call.details()
+
+                span.set_attribute(
+                    RPC_GRPC_STATUS_CODE,
+                    code.value[0],
+                )
+                if code != grpc.StatusCode.OK:
+                    span.set_status(
+                        Status(
+                            status_code=StatusCode.ERROR,
+                            description=details,
+                        )
+                    )
+                response_hook(span, details)
+
+            finally:
+                span.end()
+
+        task = asyncio.ensure_future(end_span())
+        _pending_span_ends.add(task)
+        task.add_done_callback(_pending_span_ends.discard)
 
     return callback
 
@@ -96,21 +113,21 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
         try:
             call = await continuation()
 
-            # code and details are both coroutines that need to be await-ed,
-            # the callbacks added with add_done_callback do not allow async
-            # code so we need to get the code and details here then pass them
-            # to the callback.
-            code = await call.code()
-            details = await call.details()
-
-            callback = _unary_done_callback(span, code, details, self._call_response_hook)
+            # The span is finished from the done callback rather than here.
+            # Awaiting call.code() at this point would block until the RPC
+            # terminates: grpc.aio resolves the status future only on
+            # termination, so a call that fails inside UnaryUnaryCall._invoke --
+            # unencodable metadata, an unserializable request -- never dispatches
+            # and never resolves it, and the await never returns. It would also
+            # stall any interceptor further out in the chain, which expects a
+            # call object back straight away.
+            callback = _unary_done_callback(span, self._call_response_hook)
             try:
                 call.add_done_callback(callback)
             except NotImplementedError:
                 # Some grpc.aio interceptors (e.g. interceptors that await the
                 # call object) wrap the call in a type that does not implement
-                # add_done_callback.  In that case call the callback immediately
-                # since code and details are already known.
+                # add_done_callback.  In that case run the callback directly.
                 callback(call)
 
             return call
