@@ -75,7 +75,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
@@ -640,7 +640,12 @@ def _set_messaging_operation(
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.MESSAGING_OPERATION, operation)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, messaging_attributes.MESSAGING_OPERATION_TYPE, operation)
+        new_operation = (
+            messaging_attributes.MessagingOperationTypeValues.SEND.value
+            if operation == MessagingOperationValues.PUBLISH.value
+            else operation
+        )
+        set_string_attribute(result, messaging_attributes.MESSAGING_OPERATION_TYPE, new_operation)
 
 
 def _set_messaging_temp_destination(

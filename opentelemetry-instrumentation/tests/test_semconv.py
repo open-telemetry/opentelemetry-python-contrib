@@ -774,17 +774,29 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
 
 class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
-    def _assert_attribute_mapping(self, setter, input_value, expected_value, old_key, new_key, expected_type):
+    def _assert_attribute_mapping(
+        self,
+        setter,
+        input_value,
+        expected_old_value,
+        expected_new_value,
+        old_key,
+        new_key,
+        expected_type,
+    ):
         cases = (
-            (_StabilityMode.DEFAULT, (old_key,)),
-            (_StabilityMode.MESSAGING, (new_key,)),
-            (_StabilityMode.MESSAGING_DUP, (old_key, new_key)),
+            (_StabilityMode.DEFAULT, {old_key: expected_old_value}),
+            (_StabilityMode.MESSAGING, {new_key: expected_new_value}),
+            (
+                _StabilityMode.MESSAGING_DUP,
+                {old_key: expected_old_value, new_key: expected_new_value},
+            ),
         )
-        for mode, expected_keys in cases:
+        for mode, expected_attributes in cases:
             with self.subTest(mode=mode):
                 result = {}
                 setter(result, input_value, sem_conv_opt_in_mode=mode)
-                self.assertEqual(result, {key: expected_value for key in expected_keys})
+                self.assertEqual(result, expected_attributes)
                 for value in result.values():
                     self.assertIs(type(value), expected_type)
 
@@ -805,14 +817,22 @@ class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
         )
         for setter, value, old_key, new_key in mappings:
             with self.subTest(setter=setter.__name__):
-                self._assert_attribute_mapping(setter, value, value, old_key, new_key, str)
+                self._assert_attribute_mapping(
+                    setter,
+                    value,
+                    value,
+                    value,
+                    old_key,
+                    new_key,
+                    str,
+                )
 
     def test_operation_mapping(self):
-        old_operation = MessagingOperationValues.RECEIVE.value
-        new_operation = messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
-        self.assertEqual(old_operation, new_operation)
+        old_operation = MessagingOperationValues.PUBLISH.value
+        new_operation = messaging_attributes.MessagingOperationTypeValues.SEND.value
         self._assert_attribute_mapping(
             _set_messaging_operation,
+            old_operation,
             old_operation,
             new_operation,
             SpanAttributes.MESSAGING_OPERATION,
@@ -823,6 +843,7 @@ class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
     def test_temporary_destination_mapping_preserves_false(self):
         self._assert_attribute_mapping(
             _set_messaging_temp_destination,
+            False,
             False,
             False,
             SpanAttributes.MESSAGING_TEMP_DESTINATION,
