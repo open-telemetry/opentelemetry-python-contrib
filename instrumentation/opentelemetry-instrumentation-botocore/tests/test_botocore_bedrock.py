@@ -14,12 +14,23 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock import (
+    _BedrockRuntimeExtension,
+    _is_embedding_model,
+)
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
+from opentelemetry.instrumentation.botocore.extensions.types import (
+    _AwsSdkCallContext,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
+)
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_OPERATION_NAME,
+    GEN_AI_REQUEST_MODEL,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -2949,3 +2960,79 @@ def get_anthropic_tool_config():
             },
         }
     ]
+
+
+_EMBEDDING_BODY = {"inputText": "embed me"}
+_COHERE_EMBEDDING_BODY = {"texts": ["embed me"], "input_type": "search_document"}
+
+
+@pytest.mark.parametrize(
+    ("model_id", "body", "expected_operation_name"),
+    [
+        ("cohere.embed-v4:0", _COHERE_EMBEDDING_BODY, "embeddings"),
+        ("cohere.embed-english-v3", _COHERE_EMBEDDING_BODY, "embeddings"),
+        ("amazon.titan-embed-text-v2:0", _EMBEDDING_BODY, "embeddings"),
+        ("amazon.titan-embed-image-v1", _EMBEDDING_BODY, "embeddings"),
+        ("us.amazon.titan-embed-text-v2:0", _EMBEDDING_BODY, "embeddings"),
+        (
+            "arn:aws:bedrock:us-east-1::foundation-model/cohere.embed-v4:0",
+            _COHERE_EMBEDDING_BODY,
+            "embeddings",
+        ),
+        # Generative models keep the operation names they had before.
+        (
+            "amazon.titan-text-lite-v1",
+            {"inputText": "hi", "textGenerationConfig": {"temperature": 0.5}},
+            "text_completion",
+        ),
+        (
+            "anthropic.claude-3-5-sonnet-20240620-v1:0",
+            {"messages": [{"role": "user", "content": "hi"}], "max_tokens": 10},
+            "chat",
+        ),
+        ("cohere.command-r-v1:0", {"message": "hi"}, "chat"),
+    ],
+)
+def test_invoke_model_operation_name_by_model(bedrock_runtime_client, model_id, body, expected_operation_name):
+    """InvokeModel labels embedding models as embeddings, on spans and metrics.
+
+    Both extract_attributes and _extract_metrics_attributes assign the
+    operation name independently, so both are asserted: labelling only the
+    span would leave gen_ai.client.operation.duration and
+    gen_ai.client.token.usage reporting a generative operation.
+    """
+    call_context = _AwsSdkCallContext(
+        bedrock_runtime_client,
+        (
+            "InvokeModel",
+            {
+                "modelId": model_id,
+                "body": json.dumps(body),
+            },
+        ),
+    )
+    extension = _BedrockRuntimeExtension(call_context)
+
+    span_attributes = {}
+    extension.extract_attributes(span_attributes)
+    assert span_attributes[GEN_AI_OPERATION_NAME] == expected_operation_name
+    assert span_attributes[GEN_AI_REQUEST_MODEL] == model_id
+
+    metric_attributes = extension._extract_metrics_attributes()
+    assert metric_attributes[GEN_AI_OPERATION_NAME] == expected_operation_name
+
+
+@pytest.mark.parametrize(
+    ("model_id", "expected"),
+    [
+        ("cohere.embed-v4:0", True),
+        ("amazon.titan-embed-text-v2:0", True),
+        ("twelvelabs.marengo-embed-2-7-v1:0", True),
+        ("COHERE.EMBED-V4:0", True),
+        ("amazon.titan-text-lite-v1", False),
+        ("anthropic.claude-3-5-sonnet-20240620-v1:0", False),
+        ("", False),
+    ],
+)
+def test_is_embedding_model(model_id, expected):
+    assert _is_embedding_model(model_id) is expected

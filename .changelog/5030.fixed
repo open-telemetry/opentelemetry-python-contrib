@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-botocore`: label Bedrock embedding calls as `embeddings`

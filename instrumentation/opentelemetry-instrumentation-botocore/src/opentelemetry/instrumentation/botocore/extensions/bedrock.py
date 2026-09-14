@@ -100,6 +100,18 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 _MODEL_ID_KEY: str = "modelId"
 
 
+def _is_embedding_model(model_id: str) -> bool:
+    """Report whether a Bedrock model id names an embedding model.
+
+    An ``InvokeModel`` request carries nothing that distinguishes an embedding
+    model from a generative one, so the model id is the only signal available.
+    Every embedding family Bedrock offers spells "embed" in its id
+    (``amazon.titan-embed-*``, ``cohere.embed-*``, ``twelvelabs.*-embed-*``),
+    and the check tolerates the region and ARN prefixes an id may carry.
+    """
+    return "embed" in model_id.lower()
+
+
 class _BedrockRuntimeExtension(_AwsSdkExtension):
     """
     This class is an extension for <a
@@ -147,8 +159,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         attributes[GEN_AI_REQUEST_MODEL] = model_id
 
+        if _is_embedding_model(model_id):
+            attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.EMBEDDINGS.value
         # titan in invoke model is a text completion one
-        if "body" in self._call_context.params and "amazon.titan" in model_id:
+        elif "body" in self._call_context.params and "amazon.titan" in model_id:
             attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.TEXT_COMPLETION.value
         else:
             attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.CHAT.value
@@ -164,7 +178,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if model_id:
             attributes[GEN_AI_REQUEST_MODEL] = model_id
-            attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.CHAT.value
+            if _is_embedding_model(model_id):
+                attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.EMBEDDINGS.value
+            else:
+                attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.CHAT.value
 
             # Converse / ConverseStream
             if inference_config := self._call_context.params.get("inferenceConfig"):
@@ -196,7 +213,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 try:
                     request_body = json.loads(body)
 
-                    if "amazon.titan" in model_id:
+                    if _is_embedding_model(model_id):
+                        # An embedding request carries no generation
+                        # configuration to extract, and its operation name is
+                        # already set above.
+                        pass
+                    elif "amazon.titan" in model_id:
                         # titan interface is a text completion one
                         attributes[GEN_AI_OPERATION_NAME] = GenAiOperationNameValues.TEXT_COMPLETION.value
                         self._extract_titan_attributes(attributes, request_body)
