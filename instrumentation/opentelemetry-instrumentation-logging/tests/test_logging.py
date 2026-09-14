@@ -245,6 +245,81 @@ class TestLoggingInstrumentor(TestBase):
         logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_uninstrument_after_set_logging_format_allows_further_logging(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        # Save existing handlers to restore after test
+        orig_handlers = list(root_logger.handlers)
+
+        try:
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            logger = logging.getLogger("test_uninstrument_logging")
+            with self.caplog.at_level(level=logging.INFO):
+                logger.info("while instrumented")
+                self.assertEqual(len(self.caplog.records), 1)
+                self.assertTrue(hasattr(self.caplog.records[0], "otelTraceID"))
+
+            LoggingInstrumentor().uninstrument()
+
+            # Logging after uninstrument should succeed without KeyError / ValueError on formatting
+            with self.caplog.at_level(level=logging.INFO):
+                logger.info("after uninstrument")
+                self.assertEqual(len(self.caplog.records), 2)
+                # Ensure the new log record does not have otelTraceID and formats cleanly
+                after_record = self.caplog.records[1]
+                self.assertFalse(hasattr(after_record, "otelTraceID"))
+                # Format with all active root handlers should not raise
+                for h in root_logger.handlers:
+                    if h.formatter:
+                        formatted = h.format(after_record)
+                        self.assertIn("after uninstrument", formatted)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+
+    def test_uninstrument_removes_only_handlers_added_by_basicconfig(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+
+        custom_handler = logging.StreamHandler()
+        custom_formatter = logging.Formatter("CUSTOM: %(message)s")
+        custom_handler.setFormatter(custom_formatter)
+
+        try:
+            # Start from a handler-less root so that basicConfig actually runs
+            # (it only adds a handler when the root logger has no handlers).
+            root_logger.handlers = []
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+
+            # basicConfig ran: it added a StreamHandler and set the root level.
+            basic_config_handlers = [h for h in root_logger.handlers if not isinstance(h, LoggingHandler)]
+            self.assertEqual(len(basic_config_handlers), 1)
+            self.assertEqual(root_logger.level, logging.INFO)
+
+            # A handler the application adds while instrumented must survive
+            # uninstrument (regression: uninstrument used to drop it).
+            root_logger.addHandler(custom_handler)
+
+            LoggingInstrumentor().uninstrument()
+
+            self.assertNotIn(basic_config_handlers[0], root_logger.handlers)
+            self.assertIn(custom_handler, root_logger.handlers)
+            self.assertEqual(custom_handler.formatter, custom_formatter)
+            self.assertEqual(root_logger.level, orig_level)
+
+            record = root_logger.makeRecord("test", logging.INFO, "test.py", 1, "restored message", (), None)
+            formatted = custom_handler.format(record)
+            self.assertEqual(formatted, "CUSTOM: restored message")
+        finally:
+            LoggingInstrumentor().uninstrument()
+            if custom_handler in root_logger.handlers:
+                root_logger.removeHandler(custom_handler)
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
     @mock.patch("logging.basicConfig")
     def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
