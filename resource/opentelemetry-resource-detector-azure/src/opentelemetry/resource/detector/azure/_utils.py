@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 from os import environ
-from typing import Optional
 
 from ._constants import (
     _AKS_ARM_NAMESPACE_ID,
@@ -28,7 +27,7 @@ def _can_ignore_vm_detect() -> bool:
     return _is_on_aks() or _is_on_app_service() or _is_on_functions()
 
 
-def _get_azure_resource_uri() -> Optional[str]:
+def _get_azure_resource_uri() -> str | None:
     website_site_name = environ.get(_WEBSITE_SITE_NAME)
     website_resource_group = environ.get(_WEBSITE_RESOURCE_GROUP)
     website_owner_name = environ.get(_WEBSITE_OWNER_NAME)

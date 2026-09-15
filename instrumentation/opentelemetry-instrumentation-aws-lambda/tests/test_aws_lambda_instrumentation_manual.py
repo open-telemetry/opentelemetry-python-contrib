@@ -5,9 +5,10 @@
 
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module, reload
-from typing import Any, Callable, Dict
+from typing import Any
 from unittest import mock
 
 from opentelemetry import propagate
@@ -220,7 +221,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         class TestCase:
             name: str
             custom_extractor: Callable[[Any], None]
-            context: Dict
+            context: dict
             expected_traceid: int
             expected_parentid: int
             xray_traceid: str

@@ -135,7 +135,8 @@ API
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from collections.abc import Callable, Collection
+from typing import TYPE_CHECKING, Any
 
 import redis
 from wrapt import wrap_function_wrapper
@@ -171,7 +172,7 @@ from opentelemetry.trace import (
 )
 
 if TYPE_CHECKING:
-    from typing import Awaitable
+    from collections.abc import Awaitable
 
     import redis.asyncio.client
     import redis.asyncio.cluster

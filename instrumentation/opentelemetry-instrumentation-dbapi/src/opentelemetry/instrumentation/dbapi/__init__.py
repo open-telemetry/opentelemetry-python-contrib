@@ -163,8 +163,8 @@ import logging
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generic, TypeVar
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
 

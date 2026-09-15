@@ -7,9 +7,9 @@ import logging
 import logging.config
 import threading
 import traceback
+from collections.abc import Callable
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -60,7 +60,7 @@ def _setup_logging_handler(
     return handler
 
 
-def _overwrite_logging_config_fns(handler: "LoggingHandler") -> None:
+def _overwrite_logging_config_fns(handler: LoggingHandler) -> None:
     root = logging.getLogger()
 
     def wrapper(config_fn: Callable) -> Callable:

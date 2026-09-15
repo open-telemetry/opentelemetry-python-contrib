@@ -11,7 +11,6 @@ from subprocess import (
     SubprocessError,
     check_call,
 )
-from typing import Optional
 
 from packaging.requirements import Requirement
 
@@ -122,8 +121,8 @@ def _run_install(default_instrumentations, libraries):
 
 
 def run(
-    default_instrumentations: Optional[list] = None,
-    libraries: Optional[list] = None,
+    default_instrumentations: list | None = None,
+    libraries: list | None = None,
 ) -> None:
     action_install = "install"
     action_requirements = "requirements"

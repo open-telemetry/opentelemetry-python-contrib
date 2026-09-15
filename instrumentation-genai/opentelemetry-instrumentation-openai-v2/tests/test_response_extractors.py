@@ -265,8 +265,8 @@ def test_set_invocation_response_attributes_populates_usage_and_metadata(
     assert invocation.response_id == "resp_123"
     assert invocation.input_tokens == 11
     assert invocation.output_tokens == 7
-    assert getattr(invocation, "cache_read_input_tokens") == 3
-    assert getattr(invocation, "cache_creation_input_tokens") == 5
+    assert invocation.cache_read_input_tokens == 3
+    assert invocation.cache_creation_input_tokens == 5
     assert invocation.attributes == {
         OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: "scale",
     }

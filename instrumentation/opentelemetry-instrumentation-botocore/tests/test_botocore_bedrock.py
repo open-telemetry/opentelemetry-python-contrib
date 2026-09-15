@@ -1957,10 +1957,7 @@ def test_invoke_model_no_content(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
-    if model_family == "anthropic.claude":
-        choice_message = {"role": "assistant"}
-        finish_reason = "max_tokens"
-    elif model_family == "amazon.nova":
+    if model_family in ("anthropic.claude", "amazon.nova"):
         choice_message = {"role": "assistant"}
         finish_reason = "max_tokens"
     elif model_family == "amazon.titan":
@@ -1972,10 +1969,7 @@ def test_invoke_model_no_content(
     elif model_family == "cohere.command":
         choice_message = {}
         finish_reason = "MAX_TOKENS"
-    elif model_family == "meta.llama":
-        choice_message = {}
-        finish_reason = "length"
-    elif model_family == "mistral.mistral":
+    elif model_family in ("meta.llama", "mistral.mistral"):
         choice_message = {}
         finish_reason = "length"
     else:

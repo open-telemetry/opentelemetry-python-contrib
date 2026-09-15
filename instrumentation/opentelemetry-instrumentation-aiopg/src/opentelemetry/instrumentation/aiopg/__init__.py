@@ -70,7 +70,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 from opentelemetry.instrumentation.aiopg import wrappers
 from opentelemetry.instrumentation.aiopg.package import _instruments

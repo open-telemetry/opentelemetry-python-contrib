@@ -14,8 +14,6 @@
 
 """Handwritten stubs for fsspec usage in opentelemetry-util-genai"""
 
-from __future__ import annotations
-
 import io
 from typing import Any, Literal
 

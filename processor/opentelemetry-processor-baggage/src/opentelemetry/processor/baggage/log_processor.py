@@ -1,13 +1,13 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
 from opentelemetry.sdk._logs import LogRecordProcessor, ReadWriteLogRecord
 
-BaggageKeyPredicate = Union[BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]]
+BaggageKeyPredicate = BaggageKeyPredicateT | Sequence[BaggageKeyPredicateT]
 
 
 class BaggageLogProcessor(LogRecordProcessor):

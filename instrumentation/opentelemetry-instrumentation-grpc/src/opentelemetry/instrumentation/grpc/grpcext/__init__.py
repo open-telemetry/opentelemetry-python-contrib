@@ -105,8 +105,8 @@ def intercept_channel(channel, *interceptors):
 
 
 __all__ = (
-    "UnaryClientInterceptor",
     "StreamClientInfo",
     "StreamClientInterceptor",
+    "UnaryClientInterceptor",
     "intercept_channel",
 )

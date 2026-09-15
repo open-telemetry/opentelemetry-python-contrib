@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 # pylint: disable=no-name-in-module
 from opentelemetry.context import Context
@@ -38,9 +38,9 @@ class _FallbackSampler(Sampler):  # pyright: ignore[reportUnusedClass]
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         sampling_result = self.__rate_limiting_sampler.should_sample(
             parent_context,
             trace_id,

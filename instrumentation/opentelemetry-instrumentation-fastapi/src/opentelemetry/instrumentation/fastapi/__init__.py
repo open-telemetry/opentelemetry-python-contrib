@@ -184,8 +184,8 @@ from __future__ import annotations
 import functools
 import logging
 import types
-from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Collection, Literal
+from collections.abc import Collection, Iterator, Sequence
+from typing import TYPE_CHECKING, Literal
 from weakref import WeakSet as _WeakSet
 
 import fastapi

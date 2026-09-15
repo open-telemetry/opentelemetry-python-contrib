@@ -28,7 +28,7 @@ API
 # pylint: disable=no-value-for-parameter
 
 import logging
-from typing import Collection
+from collections.abc import Collection
 
 import pymemcache
 from wrapt import wrap_function_wrapper as _wrap

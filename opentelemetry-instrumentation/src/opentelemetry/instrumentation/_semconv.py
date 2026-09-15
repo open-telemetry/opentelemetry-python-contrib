@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Container, Mapping, MutableMapping
 from enum import Enum
-from typing import Container, Mapping, MutableMapping
 from urllib.parse import urlparse
 
 from packaging import version as package_version

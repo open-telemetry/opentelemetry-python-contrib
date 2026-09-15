@@ -9,8 +9,9 @@ OpenTelemetry Base Instrumentor
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Collection
 from logging import getLogger
-from typing import Any, Collection
+from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,

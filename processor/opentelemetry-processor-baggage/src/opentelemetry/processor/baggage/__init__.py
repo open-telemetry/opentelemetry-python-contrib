@@ -8,7 +8,7 @@ from .version import __version__
 
 __all__ = [
     "ALLOW_ALL_BAGGAGE_KEYS",
-    "BaggageSpanProcessor",
     "BaggageLogProcessor",
+    "BaggageSpanProcessor",
     "__version__",
 ]

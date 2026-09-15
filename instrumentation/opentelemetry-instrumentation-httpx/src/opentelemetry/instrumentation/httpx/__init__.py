@@ -1048,7 +1048,7 @@ class _AsyncOpenTelemetryTransportBase:
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
