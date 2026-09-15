@@ -265,7 +265,10 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             return await func(*args, **kwargs)
 
         exception = None
-        name = args[0].split()[0]
+        # A statement that is empty or whitespace-only has no tokens; must not
+        # raise IndexError. Fall back to an empty operation name instead.
+        tokens = args[0].split()
+        name = tokens[0] if tokens else ""
 
         with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
