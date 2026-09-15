@@ -47,26 +47,19 @@ Usage
 
     basic_consume_loop(consumer, ["my-topic"])
 
-The ``_instrument()`` method accepts the following keyword args:
+The _instrument method accepts the following keyword args:
+  tracer_provider (TracerProvider) - an optional tracer provider
 
-- **tracer_provider** (TracerProvider) - an optional tracer provider
-- **instrument_producer** (Callable) - a function with extra user-defined logic to be performed before sending the message
+  instrument_producer (Callable) - a function with extra user-defined logic to be performed before sending the message
+    this function signature is:
 
-  Function signature:
+  def instrument_producer(producer: Producer, tracer_provider=None)
 
-  .. code:: python
+    instrument_consumer (Callable) - a function with extra user-defined logic to be performed after consuming a message
+        this function signature is:
 
-      def instrument_producer(producer: Producer, tracer_provider=None): ...
-
-- **instrument_consumer** (Callable) - a function with extra user-defined logic to be performed after consuming a message
-
-  Function signature:
-
-  .. code:: python
-
-      def instrument_consumer(consumer: Consumer, tracer_provider=None): ...
-
-For example:
+  def instrument_consumer(consumer: Consumer, tracer_provider=None)
+    for example:
 
 .. code:: python
 
@@ -351,25 +344,28 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
-        topic = kwargs.get("topic")
-        if not topic:
-            topic = args[0]
+        topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+
+        headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+        if headers is None:
+            headers = []
+            kwargs["headers"] = headers
+
+        partition = KafkaPropertiesExtractor.extract_produce_partition(args, kwargs)
 
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
-            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
-            if headers is None:
-                headers = []
-                kwargs["headers"] = headers
-
-            topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=trace.SpanKind.PRODUCER,
+        ) as span:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationTypeValues.PUBLISH,
+                partition=partition,
+                operation=MessagingOperationTypeValues.SEND,
                 bootstrap_servers=bootstrap_servers,
-            )  # Publish
+            )
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
@@ -381,19 +377,32 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
+        ######
+        # Notes on Spans Surrounding Poll
+        # we don't wrap the poll operation in a span because there's no context to extract yet
+        # creating a span here would create a new span for each poll call
+        # if more work is done in poll() function, such as in the DeserializingConsumer,
+        # that is hard to trace for the same reason
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around poll should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        #####
         record = func(*args, **kwargs)
+
+        # create a new span for the message
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, [record])
-                _enrich_span(
-                    instance._current_consume_span,
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            _create_new_consume_span(instance, tracer, [record])
+            _enrich_span(
+                instance._current_consume_span,
+                record.topic(),
+                partition=record.partition(),
+                offset=record.offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return record
@@ -403,17 +412,31 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
+        ######
+        # Notes on Spans Surrounding Consume
+        # since consume can return multiple records, we _could_ wrap the call in a span
+        # and then create a new span for each record
+        # however, this span is awkward because there is no obvious trace to assign to it
+        # before the messages are returned, and afterwards it's can't be modified
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around consume should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        ######
         records = func(*args, **kwargs)
+
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, records)
-                _enrich_span(
-                    instance._current_consume_span,
-                    records[0].topic(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            _create_new_consume_span(instance, tracer, records)
+            _enrich_span(
+                instance._current_consume_span,
+                records[0].topic(),
+                partition=records[0].partition(),
+                offset=records[0].offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return records
