@@ -174,7 +174,7 @@ def test_agent_does_not_enable_scheduler_when_initial_retry_is_interrupted():
     first_attempt = threading.Event()
     client_mock = mock.Mock()
 
-    def fail_connection(_payload):
+    def fail_connection(_payload: object) -> None:
         first_attempt.set()
         raise RuntimeError("connection failed")
 
