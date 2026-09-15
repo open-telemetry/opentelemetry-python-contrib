@@ -235,9 +235,10 @@ class TestTortoiseORMInstrumentor(TestBase):
         self._async_call(run())
 
         spans = self.memory_exporter.get_finished_spans()
-        empty_named = [s for s in spans if s.name == ""]
         # One span per raw statement; no operation token survives, so the
-        # span name is empty rather than the call raising.
-        self.assertEqual(len(empty_named), 2)
-        for span in empty_named:
+        # span name falls back to the database name (":memory:" for sqlite)
+        # rather than the call raising.
+        fallback_named = [s for s in spans if s.name == ":memory:"]
+        self.assertEqual(len(fallback_named), 2)
+        for span in fallback_named:
             self.assertEqual(span.kind, trace.SpanKind.CLIENT)
