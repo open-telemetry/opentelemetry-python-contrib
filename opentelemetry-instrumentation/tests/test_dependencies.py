@@ -3,7 +3,7 @@
 
 # pylint: disable=protected-access
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from packaging.requirements import Requirement
@@ -38,7 +38,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
+            'This instrumentation only instruments "this-package-does-not-exist", but no installed version was found, so nothing can be instrumented.',
         )
 
     def test_get_dependency_conflicts_not_installed(self):
@@ -47,7 +47,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
+            'This instrumentation only instruments "this-package-does-not-exist", but no installed version was found, so nothing can be instrumented.',
         )
 
     def test_get_dependency_conflicts_mismatched_version(self):
@@ -56,7 +56,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            f'DependencyConflict: requested: "pytest == 5000" but found: "pytest {pytest.__version__}"',
+            f'This instrumentation only instruments "pytest == 5000", but currently installed version ("pytest {pytest.__version__}") falls outside of that range, so nothing can be instrumented.',
         )
 
     def test_get_dist_dependency_conflicts(self):
@@ -78,7 +78,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "test-pkg~=1.0; extra == "instruments"" but found: "None"',
+            'This instrumentation only instruments "test-pkg~=1.0; extra == "instruments"", but no installed version was found, so nothing can be instrumented.',
         )
 
     def test_get_dist_dependency_conflicts_requires_none(self):
@@ -152,7 +152,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            '''DependencyConflict: requested any of the following: "['foo~=1.0; extra == "instruments-any"', 'bar~=1.0; extra == "instruments-any"']" but found: "[]"''',
+            """This instrumentation requires any of "foo~=1.0; extra == "instruments-any", bar~=1.0; extra == "instruments-any"", but none are installed, so nothing can be instrumented.""",
         )
 
     # Tests when both "and" and "either" dependencies are specified and both pass.
@@ -225,7 +225,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "foo~=1.0; extra == "instruments"" but found: "None"',
+            'This instrumentation only instruments "foo~=1.0; extra == "instruments"", but no installed version was found, so nothing can be instrumented.',
         )
 
     # Tests when both "and" and "either" dependencies are specified but the "either" dependencies fail to resolve.
@@ -264,7 +264,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            '''DependencyConflict: requested any of the following: "['bar~=2.0; extra == "instruments-any"', 'baz~=3.0; extra == "instruments-any"']" but found: "[]"''',
+            """This instrumentation requires any of "bar~=2.0; extra == "instruments-any", baz~=3.0; extra == "instruments-any"", but none are installed, so nothing can be instrumented.""",
         )
 
     def test_dependency_conflict_format_message_required_version_mismatch(self):
@@ -291,7 +291,7 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(conflict.is_version_conflict)
         self.assertEqual(
             conflict.format_message("Psycopg2Instrumentor"),
-            "Psycopg2Instrumentor instruments any of \"['psycopg2>=2.7.3.1', 'psycopg2-binary>=2.7.3.1']\", but currently installed version(s) (\"['psycopg2 2.6.0']\") fall outside of that range, so nothing can be instrumented.",
+            'Psycopg2Instrumentor instruments any of "psycopg2>=2.7.3.1, psycopg2-binary>=2.7.3.1", but currently installed version(s) ("psycopg2 2.6.0") fall outside of that range, so nothing can be instrumented.',
         )
 
     def test_dependency_conflict_format_message_required_any_none_installed(self):
@@ -302,5 +302,27 @@ class TestDependencyConflicts(TestBase):
         self.assertFalse(conflict.is_version_conflict)
         self.assertEqual(
             conflict.format_message("KafkaInstrumentor"),
-            "KafkaInstrumentor requires any of \"['kafka-python>=2.0,<3.0', 'kafka-python-ng>=2.0,<3.0']\", but none are installed, so nothing can be instrumented.",
+            'KafkaInstrumentor requires any of "kafka-python>=2.0,<3.0, kafka-python-ng>=2.0,<3.0", but none are installed, so nothing can be instrumented.',
         )
+
+    def test_dependency_conflict_format_message_without_instrumentor_name(self):
+        conflict = DependencyConflict("google-genai>=1.32.0,<3", "google-genai 1.31.0")
+        self.assertEqual(conflict.format_message(), str(conflict))
+        self.assertEqual(
+            str(conflict),
+            'This instrumentation only instruments "google-genai>=1.32.0,<3", but currently installed version ("google-genai 1.31.0") falls outside of that range, so nothing can be instrumented.',
+        )
+
+    def test_dependency_conflict_log_version_conflict_logs_error(self):
+        conflict = DependencyConflict("google-genai>=1.32.0,<3", "google-genai 1.31.0")
+        mock_logger = Mock()
+        conflict.log(mock_logger, "GoogleGenAIInstrumentor")
+        mock_logger.error.assert_called_once_with(conflict.format_message("GoogleGenAIInstrumentor"))
+        mock_logger.debug.assert_not_called()
+
+    def test_dependency_conflict_log_not_installed_logs_debug(self):
+        conflict = DependencyConflict("google-genai>=1.32.0,<3", None)
+        mock_logger = Mock()
+        conflict.log(mock_logger, "GoogleGenAIInstrumentor")
+        mock_logger.debug.assert_called_once_with(conflict.format_message("GoogleGenAIInstrumentor"))
+        mock_logger.error.assert_not_called()

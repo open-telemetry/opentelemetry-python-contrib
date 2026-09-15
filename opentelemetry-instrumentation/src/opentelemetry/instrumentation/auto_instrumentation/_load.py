@@ -8,7 +8,6 @@ from logging import getLogger
 from os import environ
 
 from opentelemetry.instrumentation.dependencies import (
-    DependencyConflict,
     DependencyConflictError,
     get_dist_dependency_conflicts,
 )
@@ -68,13 +67,6 @@ def _load_distro() -> BaseDistro:
     return DefaultDistro()
 
 
-def _log_conflict(entry_point_name: str, conflict: DependencyConflict) -> None:
-    if conflict.is_version_conflict:
-        _logger.error(conflict.format_message(entry_point_name))
-    else:
-        _logger.debug(conflict.format_message(entry_point_name))
-
-
 def _load_instrumentors(distro):
     package_to_exclude = environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, [])
     entry_point_finder = _EntryPointDistFinder()
@@ -98,7 +90,7 @@ def _load_instrumentors(distro):
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                _log_conflict(entry_point.name, conflict)
+                conflict.log(_logger, entry_point.name)
                 continue
 
             # tell instrumentation to not run dep checks again as we already did it above
@@ -109,7 +101,7 @@ def _load_instrumentors(distro):
             # returning a DependencyConflict. Keeping this error handling in case custom
             # distro and instrumentor behavior raises a DependencyConflictError later.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
-            _log_conflict(entry_point.name, exc.conflict)
+            exc.conflict.log(_logger, entry_point.name)
             continue
         except ModuleNotFoundError as exc:
             # ModuleNotFoundError is raised when the library is not installed
