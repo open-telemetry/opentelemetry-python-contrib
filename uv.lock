@@ -68,7 +68,7 @@ members = [
     "opentelemetry-instrumentation-tortoiseorm",
     "opentelemetry-instrumentation-urllib",
     "opentelemetry-instrumentation-urllib3",
-    "opentelemetry-instrumentation-valkey",
+    "opentelemetry-instrumentation-valkey-py",
     "opentelemetry-instrumentation-vertexai",
     "opentelemetry-instrumentation-wsgi",
     "opentelemetry-propagator-aws-xray",
@@ -3918,8 +3918,8 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-valkey"
-source = { editable = "instrumentation/opentelemetry-instrumentation-valkey" }
+name = "opentelemetry-instrumentation-valkey-py"
+source = { editable = "instrumentation/opentelemetry-instrumentation-valkey-py" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },

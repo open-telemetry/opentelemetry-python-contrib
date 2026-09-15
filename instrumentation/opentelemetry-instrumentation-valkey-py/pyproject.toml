@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-valkey"
+name = "opentelemetry-instrumentation-valkey-py"
 dynamic = ["version"]
 description = "OpenTelemetry Valkey instrumentation"
 license = "Apache-2.0"
@@ -36,7 +36,7 @@ instruments = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-valkey"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-valkey-py"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
