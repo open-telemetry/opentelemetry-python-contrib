@@ -7,7 +7,7 @@ OpenTelemetry Resource detectors for Azure
    :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
 
 This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`_ for the following Azure resources:
- * `Azure Kubernetes Service <https://azure.microsoft.com/en-us/products/kubernetes-service>`_
+ * `Azure Kubernetes Service <https://learn.microsoft.com/azure/aks/>`_
  * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>`_
  * `Azure Virtual Machines <https://azure.microsoft.com/en-us/products/virtual-machines>`_
  * `Azure Functions (Experimental) <https://azure.microsoft.com/en-us/products/functions>`_
