@@ -84,12 +84,13 @@ def _extract_cluster_id(
 
     client = _get_real_instance(instance)
 
-    # Producers only: a metadata request on a consumer handle makes librdkafka
-    # hold an internal topic object and keep refreshing it for the life of the
-    # client (librdkafka #4214, still open). A consumer therefore reuses what a
-    # producer on the same bootstrap address resolved, and reports nothing
-    # otherwise.
-    if getattr(client, "flush", None) is None:
+    # Naming a topic the client is not already connected to makes librdkafka hold
+    # a handle for it and keep refreshing it for the life of the client (librdkafka
+    # #4214, still open). The topic passed here is one the client already holds --
+    # the one being produced to, or the one a record just arrived from -- so the
+    # request adds no handle. A consumer with no topic in hand asks for nothing
+    # rather than falling back to a whole-cluster query.
+    if topic is None and getattr(client, "flush", None) is None:
         return None
 
     failure_time = getattr(instance, "_otel_cluster_id_failure_time", None)

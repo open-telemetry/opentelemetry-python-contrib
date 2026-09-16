@@ -579,6 +579,57 @@ class TestConfluentKafka(TestBase):
             "test-cluster-xyz",
         )
 
+    def test_consumer_only_resolves_cluster_id_from_its_own_topic(self) -> None:
+        # A consumer-only process has no producer to seed the cache. It may still
+        # ask about a topic it is already consuming: that topic's handle exists
+        # because of the subscription, so the query adds none (librdkafka #4214).
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        _cluster_id_by_bootstrap.clear()
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, []), MockedMessage("topic-1", 0, 1, [])],
+            {"bootstrap.servers": "localhost:29092", "group.id": "g"},
+        )
+        consumer._mock_cluster_id = "test-cluster-consumer-own"
+        self.memory_exporter.clear()
+        consumer = ConfluentKafkaInstrumentor().instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+        consumer.poll()  # end the in-flight process span
+
+        process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
+        self.assertEqual(
+            process_span.attributes["messaging.kafka.cluster.id"],
+            "test-cluster-consumer-own",
+        )
+
+    def test_consumer_only_names_its_topic_and_asks_once(self) -> None:
+        # The topic argument is what keeps this safe: a no-arg or foreign-topic
+        # query would make librdkafka retain a handle. And it must ask once per
+        # client -- list_topics blocks the poll loop.
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        _cluster_id_by_bootstrap.clear()
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        raw = MockConsumer(
+            [MockedMessage("topic-1", 0, i, []) for i in range(6)],
+            {"bootstrap.servers": "localhost:29092", "group.id": "g"},
+        )
+        raw._mock_cluster_id = "test-cluster-once"
+        consumer = ConfluentKafkaInstrumentor().instrument_consumer(raw)
+        for _ in range(6):
+            consumer.poll()
+
+        self.assertEqual(raw.list_topics_calls, 1)
+        self.assertEqual(raw.list_topics_topics, ["topic-1"])
+
     def test_cluster_id_set_on_consumer_without_config_when_bootstrap_supplied(
         self,
     ) -> None:
@@ -653,9 +704,11 @@ class TestConfluentKafka(TestBase):
             "legacy-host:9092",
         )
 
-    def test_cluster_id_not_set_on_consumer_span_when_cache_empty(
+    def test_cluster_id_not_set_on_consumer_span_when_broker_reports_none(
         self,
     ) -> None:
+        # The consumer asks about its own topic and the broker reports no cluster
+        # id, so nothing is attached.
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
             _cluster_id_by_bootstrap,
         )

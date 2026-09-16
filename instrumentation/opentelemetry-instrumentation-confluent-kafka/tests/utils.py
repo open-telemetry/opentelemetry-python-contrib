@@ -17,6 +17,8 @@ class MockConsumer(Consumer):
         self._queue = queue
         self.config = config
         self._mock_cluster_id: str | None = None
+        self.list_topics_calls = 0
+        self.list_topics_topics: list = []
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -30,6 +32,8 @@ class MockConsumer(Consumer):
         return None
 
     def list_topics(self, topic=None, timeout=-1):
+        self.list_topics_calls += 1
+        self.list_topics_topics.append(topic)
         return MockClusterMetadata(cluster_id=self._mock_cluster_id)
 
 
