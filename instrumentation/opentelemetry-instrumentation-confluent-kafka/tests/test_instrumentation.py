@@ -31,6 +31,7 @@ from opentelemetry.test.test_base import TestBase
 
 from .utils import (
     MockConsumer,
+    MockConsumerWithoutConfig,
     MockedMessage,
     MockedProducer,
     MockedProducerWithoutConfig,
@@ -576,6 +577,80 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(
             process_span.attributes["messaging.kafka.cluster.id"],
             "test-cluster-xyz",
+        )
+
+    def test_cluster_id_set_on_consumer_without_config_when_bootstrap_supplied(
+        self,
+    ) -> None:
+        # A real confluent_kafka.Consumer exposes no `config`, so the bootstrap
+        # address has to be supplied to reach the cache a producer filled.
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        _cluster_id_by_bootstrap["localhost:29092"] = "test-cluster-supplied"
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        consumer = MockConsumerWithoutConfig(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {"bootstrap.servers": "localhost:29092", "group.id": "g"},
+        )
+        self.memory_exporter.clear()
+        consumer = ConfluentKafkaInstrumentor().instrument_consumer(consumer, bootstrap_servers="localhost:29092")
+        consumer.poll()
+        consumer.poll()  # end the in-flight process span
+
+        process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
+        self.assertEqual(
+            process_span.attributes["messaging.kafka.cluster.id"],
+            "test-cluster-supplied",
+        )
+
+    def test_manual_producer_seeds_cache_for_manual_consumer(self) -> None:
+        # End to end on the manual path, with no cache priming: neither a real
+        # Producer nor a real Consumer exposes `config`, so both must be given
+        # the address -- the producer to seed the cache, the consumer to read it.
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        _cluster_id_by_bootstrap.clear()
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducerWithoutConfig([], {"bootstrap.servers": "localhost:29092"})
+        producer._mock_cluster_id = "test-cluster-seeded"
+        producer = instrumentation.instrument_producer(producer, bootstrap_servers="localhost:29092")
+        producer.produce(topic="topic-1", key="k", value="v")
+
+        consumer = MockConsumerWithoutConfig(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {"bootstrap.servers": "localhost:29092", "group.id": "g"},
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer, bootstrap_servers="localhost:29092")
+        consumer.poll()
+        consumer.poll()  # end the in-flight process span
+
+        process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
+        self.assertEqual(
+            process_span.attributes["messaging.kafka.cluster.id"],
+            "test-cluster-seeded",
+        )
+
+    def test_bootstrap_servers_falls_back_to_metadata_broker_list(self) -> None:
+        # librdkafka's legacy alias for bootstrap.servers; a client configured
+        # this way must still key the cache.
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            KafkaPropertiesExtractor,
+        )
+
+        class _Client:
+            config = {"metadata.broker.list": "legacy-host:9092"}
+
+        self.assertEqual(
+            KafkaPropertiesExtractor.extract_bootstrap_servers(_Client()),
+            "legacy-host:9092",
         )
 
     def test_cluster_id_not_set_on_consumer_span_when_cache_empty(

@@ -56,7 +56,7 @@ The ``_instrument()`` method accepts the following keyword args:
 
   .. code:: python
 
-      def instrument_producer(producer: Producer, tracer_provider=None): ...
+      def instrument_producer(producer: Producer, tracer_provider=None, bootstrap_servers=None): ...
 
 - **instrument_consumer** (Callable) - a function with extra user-defined logic to be performed after consuming a message
 
@@ -64,7 +64,7 @@ The ``_instrument()`` method accepts the following keyword args:
 
   .. code:: python
 
-      def instrument_consumer(consumer: Consumer, tracer_provider=None): ...
+      def instrument_consumer(consumer: Consumer, tracer_provider=None, bootstrap_servers=None): ...
 
 For example:
 
@@ -139,6 +139,18 @@ def _capture_config(args, kwargs):
     return None
 
 
+def _proxied_config(client, bootstrap_servers: str | None):
+    """Config for a proxy: the client's own, else just the supplied address.
+
+    Only the bootstrap address is read back from this, and a manually
+    instrumented client is a C type that carries no config of its own.
+    """
+    config = getattr(client, "config", None)
+    if config is not None:
+        return config
+    return {"bootstrap.servers": bootstrap_servers} if bootstrap_servers else None
+
+
 class AutoInstrumentedProducer(Producer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -169,13 +181,14 @@ class AutoInstrumentedConsumer(Consumer):
 
 
 class ProxiedProducer(Producer):
-    def __init__(self, producer: Producer, tracer: Tracer):
+    def __init__(self, producer: Producer, tracer: Tracer, bootstrap_servers: str | None = None):
         self._producer = producer
         self._tracer = tracer
         # Surface the wrapped producer's config (if any) so that
         # KafkaPropertiesExtractor.extract_bootstrap_servers can read it
-        # through this proxy.
-        self.config = getattr(producer, "config", None)
+        # through this proxy. A real confluent_kafka.Producer exposes none, so
+        # fall back to the address the caller supplied.
+        self.config = _proxied_config(producer, bootstrap_servers)
 
     def flush(self, timeout=-1):
         return self._producer.flush(timeout)
@@ -198,13 +211,13 @@ class ProxiedProducer(Producer):
 
 
 class ProxiedConsumer(Consumer):
-    def __init__(self, consumer: Consumer, tracer: Tracer):
+    def __init__(self, consumer: Consumer, tracer: Tracer, bootstrap_servers: str | None = None):
         self._consumer = consumer
         self._tracer = tracer
         self._current_consume_span = None
         self._current_context_token = None
         # See ProxiedProducer.__init__ for rationale.
-        self.config = getattr(consumer, "config", None)
+        self.config = _proxied_config(consumer, bootstrap_servers)
 
     def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(self._consumer.close, self, args, kwargs)
@@ -246,7 +259,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     """
 
     @staticmethod
-    def instrument_producer(producer: Producer, tracer_provider=None) -> ProxiedProducer:
+    def instrument_producer(
+        producer: Producer, tracer_provider=None, bootstrap_servers: str | None = None
+    ) -> ProxiedProducer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -254,12 +269,14 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        manual_producer = ProxiedProducer(producer, tracer)
+        manual_producer = ProxiedProducer(producer, tracer, bootstrap_servers)
 
         return manual_producer
 
     @staticmethod
-    def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
+    def instrument_consumer(
+        consumer: Consumer, tracer_provider=None, bootstrap_servers: str | None = None
+    ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -267,7 +284,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        manual_consumer = ProxiedConsumer(consumer, tracer)
+        manual_consumer = ProxiedConsumer(consumer, tracer, bootstrap_servers)
 
         return manual_consumer
 

@@ -84,11 +84,11 @@ def _extract_cluster_id(
 
     client = _get_real_instance(instance)
 
-    # Producers only. Asking a consumer handle for metadata makes librdkafka
-    # create internal topic objects and background refresh tasks that outlive
-    # partition revocation, and those can be used after free during a rebalance
-    # (librdkafka #4214). A consumer therefore reuses whatever a producer on the
-    # same bootstrap address resolved, and reports nothing if there was none.
+    # Producers only: a metadata request on a consumer handle makes librdkafka
+    # hold an internal topic object and keep refreshing it for the life of the
+    # client (librdkafka #4214, still open). A consumer therefore reuses what a
+    # producer on the same bootstrap address resolved, and reports nothing
+    # otherwise.
     if getattr(client, "flush", None) is None:
         return None
 
@@ -128,9 +128,11 @@ class KafkaPropertiesExtractor:
         config = getattr(instance, "config", None)
         if not isinstance(config, dict):
             return None
-        # confluent-kafka uses the dotted key "bootstrap.servers"; also accept
-        # the python-style "bootstrap_servers" for robustness.
-        servers = config.get("bootstrap.servers") or config.get("bootstrap_servers")
+        # "metadata.broker.list" is librdkafka's legacy alias for
+        # "bootstrap.servers"; "bootstrap_servers" is accepted for robustness.
+        servers = (
+            config.get("bootstrap.servers") or config.get("metadata.broker.list") or config.get("bootstrap_servers")
+        )
         if isinstance(servers, (list, tuple)):
             servers = ",".join(str(s) for s in servers)
         return servers
