@@ -315,6 +315,7 @@ class TestDependencyConflicts(TestBase):
 
     def test_dependency_conflict_log_version_conflict_logs_error(self):
         conflict = DependencyConflict("google-genai>=1.32.0,<3", "google-genai 1.31.0")
+        self.assertTrue(conflict.is_version_conflict)
         mock_logger = Mock()
         conflict.log(mock_logger, "GoogleGenAIInstrumentor")
         mock_logger.error.assert_called_once_with(conflict.format_message("GoogleGenAIInstrumentor"))
@@ -322,6 +323,7 @@ class TestDependencyConflicts(TestBase):
 
     def test_dependency_conflict_log_not_installed_logs_debug(self):
         conflict = DependencyConflict("google-genai>=1.32.0,<3", None)
+        self.assertFalse(conflict.is_version_conflict)
         mock_logger = Mock()
         conflict.log(mock_logger, "GoogleGenAIInstrumentor")
         mock_logger.debug.assert_called_once_with(conflict.format_message("GoogleGenAIInstrumentor"))

@@ -14,7 +14,7 @@ from opentelemetry.util._importlib_metadata import (
     version,
 )
 
-logger = getLogger(__name__)
+_logger = getLogger(__name__)
 
 
 def _format_deps(deps: Collection[str]) -> str:
@@ -143,7 +143,7 @@ def get_dependency_conflicts(
             try:
                 req = Requirement(dep)
             except InvalidRequirement as exc:
-                logger.warning(
+                _logger.warning(
                     'error parsing dependency, reporting as a conflict: "%s" - %s',
                     dep,
                     exc,
@@ -180,7 +180,7 @@ def _get_dependency_conflicts_any(
             try:
                 req = Requirement(dep)
             except InvalidRequirement as exc:
-                logger.warning(
+                _logger.warning(
                     'error parsing dependency, reporting as a conflict: "%s" - %s',
                     dep,
                     exc,
