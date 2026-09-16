@@ -319,8 +319,11 @@ class EngineTracer:
         # use cases and uses the SQL statement in span name correctly as per the spec.
         # For some very special cases it might not record the correct statement if the SQL
         # dialect is too weird but in any case it shouldn't break anything.
-        # Strip leading comments so we get the operation name.
-        return self._leading_comment_remover.sub("", statement).split()[0]
+        # Strip leading comments so we get the operation name. A statement that
+        # is truthy but has no tokens left (comment-only or whitespace-only) must
+        # not raise IndexError; there is no operation in that case.
+        tokens = self._leading_comment_remover.sub("", statement).split()
+        return tokens[0] if tokens else None
 
     def _operation_name(self, db_name, statement):
         """Returns the span name, ``<operation> <target>`` as per the semantic conventions."""
