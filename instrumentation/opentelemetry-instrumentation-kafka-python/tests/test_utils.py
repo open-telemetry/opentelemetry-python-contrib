@@ -81,6 +81,7 @@ class TestUtils(TestCase):
             extract_bootstrap_servers,
         )
 
+    # pylint: disable=too-many-locals
     def wrap_send_helper(
         self,
         inject: mock.MagicMock,

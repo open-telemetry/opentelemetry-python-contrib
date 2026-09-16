@@ -57,6 +57,48 @@ def _remember(instance: Any, name: str, value: Any) -> None:
         pass
 
 
+def _read_cluster_id_from_broker(instance: Any, topic: str | None) -> str | None:
+    """Ask the broker, or not at all if this client must not ask.
+
+    Naming a topic the client is not already connected to makes librdkafka hold a
+    handle for it and keep refreshing it for the life of the client (librdkafka
+    #4214, still open). The topic passed here is one the client already holds --
+    the one being produced to, or the one a record just arrived from -- so the
+    request adds no handle. A consumer with no topic in hand asks for nothing
+    rather than falling back to a whole-cluster query.
+    """
+    client = _get_real_instance(instance)
+    if topic is None and getattr(client, "flush", None) is None:
+        return None
+
+    failure_time = getattr(instance, "_otel_cluster_id_failure_time", None)
+    if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
+        return None
+
+    list_topics = getattr(client, "list_topics", None)
+    if list_topics is None:
+        return None
+
+    try:
+        # Scoped to one topic when we know it: cheaper than describing every
+        # topic in the cluster.
+        if topic:
+            cluster_metadata = list_topics(topic=topic, timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
+        else:
+            cluster_metadata = list_topics(timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
+        cluster_id: str | None = getattr(cluster_metadata, "cluster_id", None) or None
+    except Exception:  # pylint: disable=broad-except
+        cluster_id = None
+
+    if cluster_id:
+        return cluster_id
+
+    # Retry on a timer rather than on the next span. Stamped only after an actual
+    # attempt, so a client that never asks does not push its own window forward.
+    _remember(instance, "_otel_cluster_id_failure_time", time.monotonic())
+    return None
+
+
 def _extract_cluster_id(
     instance: Any,
     bootstrap_servers: str | None = None,
@@ -82,44 +124,13 @@ def _extract_cluster_id(
             _remember(instance, "_otel_cluster_id", cluster_id)
             return cluster_id
 
-    client = _get_real_instance(instance)
-
-    # Naming a topic the client is not already connected to makes librdkafka hold
-    # a handle for it and keep refreshing it for the life of the client (librdkafka
-    # #4214, still open). The topic passed here is one the client already holds --
-    # the one being produced to, or the one a record just arrived from -- so the
-    # request adds no handle. A consumer with no topic in hand asks for nothing
-    # rather than falling back to a whole-cluster query.
-    if topic is None and getattr(client, "flush", None) is None:
-        return None
-
-    failure_time = getattr(instance, "_otel_cluster_id_failure_time", None)
-    if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
-        return None
-
-    list_topics = getattr(client, "list_topics", None)
-    if list_topics is None:
-        return None
-
-    try:
-        # Scoped to one topic when we know it: cheaper than describing every
-        # topic in the cluster.
-        if topic:
-            cluster_metadata = list_topics(topic=topic, timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
-        else:
-            cluster_metadata = list_topics(timeout=_CLUSTER_ID_METADATA_TIMEOUT_SECS)
-        cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
-    except Exception:  # pylint: disable=broad-except
-        cluster_id = None
-
+    cluster_id = _read_cluster_id_from_broker(instance, topic)
     if cluster_id:
         _remember(instance, "_otel_cluster_id", cluster_id)
         if bootstrap_servers:
             _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
         return cluster_id
 
-    # Retry on a timer rather than on the next span.
-    _remember(instance, "_otel_cluster_id_failure_time", time.monotonic())
     return None
 
 

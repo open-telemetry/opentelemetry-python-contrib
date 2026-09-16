@@ -501,7 +501,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         await producer.start()
         await producer.stop()
 
-        self.assertEqual(producer.client._otel_cluster_id, "test-cluster-start")
+        self.assertEqual(producer.client._otel_cluster_id, "test-cluster-start")  # pylint: disable=no-member
 
     async def test_start_consumer_wrapper_fetches_cluster_id(self) -> None:
         """_start_consumer_wrapper calls _fetch_and_cache_cluster_id after start."""
@@ -514,4 +514,4 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         await consumer.start()
         await consumer.stop()
 
-        self.assertEqual(consumer._client._otel_cluster_id, "test-cluster-start")
+        self.assertEqual(consumer._client._otel_cluster_id, "test-cluster-start")  # pylint: disable=no-member
