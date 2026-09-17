@@ -3,8 +3,8 @@ OpenTelemetry Valkey Instrumentation
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-valkey.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-valkey/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-valkey-py.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-valkey-py/
 
 This library allows tracing requests made by the Valkey library.
 
@@ -13,7 +13,7 @@ Installation
 
 ::
 
-    pip install opentelemetry-instrumentation-valkey
+    pip install opentelemetry-instrumentation-valkey-py
 
 References
 ----------

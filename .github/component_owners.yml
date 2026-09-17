@@ -28,7 +28,7 @@ components:
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
 
-  instrumentation/opentelemetry-instrumentation-valkey:
+  instrumentation/opentelemetry-instrumentation-valkey-py:
     - herin049
 
   processor/opentelemetry-processor-baggage:

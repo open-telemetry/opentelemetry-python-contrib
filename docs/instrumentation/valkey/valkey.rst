@@ -1,4 +1,4 @@
-.. include:: ../../../instrumentation/opentelemetry-instrumentation-valkey/README.rst
+.. include:: ../../../instrumentation/opentelemetry-instrumentation-valkey-py/README.rst
     :end-before: References
 
 .. automodule:: opentelemetry.instrumentation.valkey
