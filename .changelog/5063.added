@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-sqlalchemy`: add opt-in `db.client.connection.count` metric via `OTEL_SEMCONV_STABILITY_OPT_IN`

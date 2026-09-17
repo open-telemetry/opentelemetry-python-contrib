@@ -1,30 +1,23 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest import mock
-
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
-from opentelemetry.instrumentation._semconv import (
-    OTEL_SEMCONV_STABILITY_OPT_IN,
-    _OpenTelemetrySemanticConventionStability,
-)
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
-CONNECTIONS_USAGE = "db.client.connections.usage"
 CONNECTION_COUNT = "db.client.connection.count"
+CONNECTIONS_USAGE = "db.client.connections.usage"
+POOL_NAME = "db.client.connection.pool.name"
+STATE = "db.client.connection.state"
 
 
 class TestSqlalchemyMetricsInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
-        # Reset the cached opt-in mode so leakage from other test modules
-        # cannot flip this suite out of the default (deprecated-metric) mode.
-        _OpenTelemetrySemanticConventionStability._initialized = False
         SQLAlchemyInstrumentor().instrument(
             tracer_provider=self.tracer_provider,
         )
@@ -36,16 +29,17 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
         metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
+        self.assertEqual(metrics[0].name, CONNECTION_COUNT)
         self.assert_metric_expected(
             metrics[0],
             [
                 self.create_number_data_point(
                     value=idle,
-                    attributes={"pool.name": pool_name, "state": "idle"},
+                    attributes={POOL_NAME: pool_name, STATE: "idle"},
                 ),
                 self.create_number_data_point(
                     value=used,
-                    attributes={"pool.name": pool_name, "state": "used"},
+                    attributes={POOL_NAME: pool_name, STATE: "used"},
                 ),
             ],
         )
@@ -141,7 +135,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
-    def test_default_mode_does_not_emit_stable_metric(self):
+    def test_deprecated_usage_metric_not_emitted(self):
         engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             poolclass=QueuePool,
@@ -151,106 +145,5 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         with engine.connect():
             metric_names = {m.name for m in self.get_sorted_metrics(SCOPE)}
 
-        self.assertIn(CONNECTIONS_USAGE, metric_names)
-        self.assertNotIn(CONNECTION_COUNT, metric_names)
-
-
-class TestSqlalchemyConnectionCountOptIn(TestBase):
-    """Covers the OTEL_SEMCONV_STABILITY_OPT_IN migration from the deprecated
-    ``db.client.connections.usage`` metric to the stable
-    ``db.client.connection.count`` metric."""
-
-    def tearDown(self):
-        super().tearDown()
-        SQLAlchemyInstrumentor().uninstrument()
-        # Leave the shared opt-in cache clean for the next test module.
-        _OpenTelemetrySemanticConventionStability._initialized = False
-
-    def _instrument_with_opt_in(self):
-        _OpenTelemetrySemanticConventionStability._initialized = False
-        _OpenTelemetrySemanticConventionStability._initialize()
-        SQLAlchemyInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-        )
-
-    def _metric_by_name(self, name):
-        for metric in self.get_sorted_metrics(SCOPE):
-            if metric.name == name:
-                return metric
-        return None
-
-    @staticmethod
-    def _make_engine(pool_name="pool_test_name"):
-        return sqlalchemy.create_engine(
-            "sqlite:///:memory:",
-            pool_size=5,
-            poolclass=QueuePool,
-            pool_logging_name=pool_name,
-        )
-
-    def _assert_connection_count(self, pool_name, idle, used):
-        count = self._metric_by_name(CONNECTION_COUNT)
-        self.assert_metric_expected(
-            count,
-            [
-                self.create_number_data_point(
-                    value=idle,
-                    attributes={
-                        "db.client.connection.pool.name": pool_name,
-                        "db.client.connection.state": "idle",
-                    },
-                ),
-                self.create_number_data_point(
-                    value=used,
-                    attributes={
-                        "db.client.connection.pool.name": pool_name,
-                        "db.client.connection.state": "used",
-                    },
-                ),
-            ],
-        )
-
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
-    def test_stable_only(self):
-        self._instrument_with_opt_in()
-        pool_name = "pool_test_name"
-        engine = self._make_engine(pool_name)
-
-        with engine.connect():
-            metric_names = {m.name for m in self.get_sorted_metrics(SCOPE)}
-            self.assertIn(CONNECTION_COUNT, metric_names)
-            self.assertNotIn(CONNECTIONS_USAGE, metric_names)
-            self._assert_connection_count(pool_name, idle=0, used=1)
-
-        self._assert_connection_count(pool_name, idle=1, used=0)
-
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"})
-    def test_dup_emits_both(self):
-        self._instrument_with_opt_in()
-        pool_name = "pool_test_name"
-        engine = self._make_engine(pool_name)
-
-        with engine.connect():
-            self._assert_connection_count(pool_name, idle=0, used=1)
-
-        metric_names = {m.name for m in self.get_sorted_metrics(SCOPE)}
         self.assertIn(CONNECTION_COUNT, metric_names)
-        self.assertIn(CONNECTIONS_USAGE, metric_names)
-
-        # Deprecated metric keeps its original attribute keys.
-        usage = self._metric_by_name(CONNECTIONS_USAGE)
-        self.assert_metric_expected(
-            usage,
-            [
-                self.create_number_data_point(
-                    value=1,
-                    attributes={"pool.name": pool_name, "state": "idle"},
-                ),
-                self.create_number_data_point(
-                    value=0,
-                    attributes={"pool.name": pool_name, "state": "used"},
-                ),
-            ],
-        )
-
-        self._assert_connection_count(pool_name, idle=1, used=0)
+        self.assertNotIn(CONNECTIONS_USAGE, metric_names)

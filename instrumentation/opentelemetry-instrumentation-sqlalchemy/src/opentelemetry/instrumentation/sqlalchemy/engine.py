@@ -111,11 +111,10 @@ def _normalize_vendor(vendor):
 
 def _wrap_create_async_engine(
     tracer,
-    connections_usage,
+    connection_count,
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
-    connection_count=None,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -129,11 +128,10 @@ def _wrap_create_async_engine(
         EngineTracer(
             tracer,
             engine.sync_engine,
-            connections_usage,
+            connection_count,
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
-            connection_count=connection_count,
         )
         return engine
 
@@ -142,11 +140,10 @@ def _wrap_create_async_engine(
 
 def _wrap_create_engine(
     tracer,
-    connections_usage,
+    connection_count,
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
-    connection_count=None,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -159,11 +156,10 @@ def _wrap_create_engine(
         EngineTracer(
             tracer,
             engine,
-            connections_usage,
+            connection_count,
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
-            connection_count=connection_count,
         )
         return engine
 
@@ -210,11 +206,10 @@ class EngineTracer:
         self,
         tracer,
         engine,
-        connections_usage,
+        connection_count,
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
-        connection_count=None,
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -230,7 +225,6 @@ class EngineTracer:
         )
 
         self.tracer = tracer
-        self.connections_usage = connections_usage
         self.connection_count = connection_count
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
@@ -248,34 +242,22 @@ class EngineTracer:
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
     def _add_idle_to_connection_usage(self, value):
-        self._add_connection_usage(DbClientConnectionStateValues.IDLE.value, value)
+        self._add_connection_count(DbClientConnectionStateValues.IDLE.value, value)
 
     def _add_used_to_connection_usage(self, value):
-        self._add_connection_usage(DbClientConnectionStateValues.USED.value, value)
+        self._add_connection_count(DbClientConnectionStateValues.USED.value, value)
 
-    def _add_connection_usage(self, state, value):
+    def _add_connection_count(self, state, value):
         if not is_instrumentation_enabled():
             return
 
-        # Deprecated `db.client.connections.usage` metric.
-        if self.connections_usage is not None:
-            self.connections_usage.add(
-                value,
-                attributes={
-                    **self._engine_attrs,
-                    "state": state,
-                },
-            )
-
-        # Stable `db.client.connection.count` metric.
-        if self.connection_count is not None:
-            self.connection_count.add(
-                value,
-                attributes={
-                    DB_CLIENT_CONNECTION_POOL_NAME: self._engine_attrs["pool.name"],
-                    DB_CLIENT_CONNECTION_STATE: state,
-                },
-            )
+        self.connection_count.add(
+            value,
+            attributes={
+                DB_CLIENT_CONNECTION_POOL_NAME: self._engine_attrs["pool.name"],
+                DB_CLIENT_CONNECTION_STATE: state,
+            },
+        )
 
     def _pool_connect(self, _dbapi_connection, _connection_record):
         self._add_idle_to_connection_usage(1)
