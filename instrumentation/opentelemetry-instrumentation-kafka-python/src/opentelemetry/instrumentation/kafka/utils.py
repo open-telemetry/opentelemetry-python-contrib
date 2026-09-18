@@ -9,6 +9,7 @@ from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
@@ -94,7 +95,7 @@ def _enrich_span(
     partition: int | None,
 ):
     if span.is_recording():
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
+        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
         if partition is not None:
             span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
