@@ -152,7 +152,6 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-30", 1, 3, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-10 process",
                 "attributes": {
@@ -162,9 +161,9 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-10",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-20 process",
                 "attributes": {
@@ -174,9 +173,9 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-20",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 4,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-30 process",
                 "attributes": {
@@ -186,6 +185,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-30",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 3,
                 },
             },
         ]
@@ -219,7 +219,6 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-2", 0, 1, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-1 process",
                 "attributes": {
@@ -227,9 +226,10 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-2 process",
                 "attributes": {
@@ -237,9 +237,10 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-3 process",
                 "attributes": {
@@ -247,6 +248,8 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 3,
                 },
             },
         ]
@@ -349,7 +352,6 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-a", 0, 0, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-a process",
                 "attributes": {
@@ -359,6 +361,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-a",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-a.0.0",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
         ]
@@ -432,6 +435,45 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._assert_span_count(span_list, 1)
         self._assert_topic(span_list[0], "topic-1")
+
+    def test_poll_no_message(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = []
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_producer_with_partition(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        message_queue = []
+
+        producer = MockedProducer(
+            message_queue,
+            {
+                "bootstrap.servers": "localhost:29092",
+            },
+        )
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", partition=1, key="key-1", value="value-1")
+        msg = producer.poll()
+        self.assertIsNotNone(msg)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION],
+            1,
+        )
 
     def test_producer_sets_bootstrap_servers_attributes(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
