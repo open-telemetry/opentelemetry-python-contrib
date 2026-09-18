@@ -40,6 +40,11 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
   - [Running Tests Locally](#running-tests-locally)
     - [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
   - [Style Guide](#style-guide)
+  - [Policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations)
+    - [Why this policy exists](#why-this-policy-exists)
+    - [The policy](#the-policy)
+    - [What rejection means](#what-rejection-means)
+    - [How to propose a new instrumentation](#how-to-propose-a-new-instrumentation)
   - [Guideline for instrumentations](#guideline-for-instrumentations)
     - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
   - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
@@ -360,11 +365,85 @@ The continuous integration overrides that environment variable with as per the c
   extension](http://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#google-vs-numpy)
   extension in [Sphinx](http://www.sphinx-doc.org/en/master/index.html).
 
+## Policy for accepting new instrumentations
+
+Every proposal to add a new instrumentation to this repository is considered on
+its own merits, and the outcome can be acceptance or rejection. This section
+describes how that decision is made and why it is made that way.
+
+### Why this policy exists
+
+Once an instrumentation is in this repository it has to be maintained for as
+long as it stays there, and maintaining it takes resources, mostly time. Every
+accepted instrumentation adds to that load and the load only grows, while the
+resources available to absorb it are limited. Maintaining an instrumentation
+can also take knowledge that is not available, since the approvers and
+maintainers may not be experts in the library that a given instrumentation
+instruments.
+
+That load falls on the approvers and maintainers of this repository no matter
+who proposes the instrumentation. This scenario can happen: a contributor who
+is not an approver or a maintainer of this repository proposes a new
+instrumentation and maintains it for some time. Later that person stops
+contributing, for perfectly legitimate reasons. The instrumentation does not
+stop existing when that happens, so the approvers and maintainers of this
+repository inherit it, including the parts of it that they do not understand.
+
+A policy is needed because of that: accepting an instrumentation commits
+resources that this repository may not have, so acceptance cannot be the
+default answer to every proposal.
+
+### The policy
+
+The approvers and maintainers of this repository evaluate every proposed
+instrumentation and decide on it. There are only two possible outcomes for that
+decision:
+
+1. The approvers and maintainers accept the instrumentation **and accept to
+   maintain it themselves, for as long as it is in this repository**.
+2. The approvers and maintainers reject the instrumentation.
+
+There is no third outcome in which an instrumentation is accepted and somebody
+outside the approvers and maintainers groups is counted on to maintain it. This
+repository cannot enforce such an arrangement and has no remedy when it ends,
+so a decision that depends on it is a decision made on something this
+repository does not control.
+
+Once an instrumentation has been accepted, the responsibility for maintaining
+it lies with the approvers and maintainers of this repository alone. The person
+who proposed it carries no obligation towards it from that point on, and is
+welcome, but never required, to keep contributing to it and to any other part
+of this repository.
+
+### What rejection means
+
+Rejecting an instrumentation `X` that instruments a library `Y` means only that
+`X` will not live **in this repository**. It does not mean that `Y` cannot be
+instrumented, and it does not mean that `X` cannot exist:
+
+* `Y` can be instrumented natively, by `Y` itself, which is the preferred
+  option. See [guidelines for native OpenTelemetry instrumentation](#guidelines-for-native-opentelemetry-instrumentation).
+* `X` can live in any other repository, owned by whoever is willing to maintain
+  it, and it can still be published to PyPI and installed by users.
+* `X` can be proposed again later, for example once the situation that led to
+  the rejection has changed.
+
+### How to propose a new instrumentation
+
+Open an [issue](https://github.com/open-telemetry/opentelemetry-python-contrib/issues)
+describing the library to instrument and the use cases to support, **before**
+writing the instrumentation. Proposing first avoids the situation where a
+complete instrumentation is written and then rejected.
+
+The proposal is discussed by the approvers and maintainers, usually in the
+Python SIG meeting, and the resulting decision is recorded in that issue.
+
 ## Guideline for instrumentations
 
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
 - Find or create a new [Issue](https://github.com/open-telemetry/opentelemetry-python-contrib/issues) describing the tool or framework to instrument and its use cases to support with OpenTelemetry.
+  - For a new instrumentation, do this before writing it, and read the [policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations) first. A new instrumentation is added to this repository only if the approvers and maintainers accept to maintain it themselves.
   - Be familiar with the [expectations from contributors](#expectations-from-contributors) that apply.
   - If you're a tool or framework maintainer, please consider using the OpenTelemetry API directly to support [native instrumentation](#guidelines-for-native-opentelemetry-instrumentation) instead of adding a new community instrumentation library.
 - Follow semantic conventions
@@ -442,7 +521,18 @@ Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/sp
 
 ## Expectations from contributors
 
-OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project.
+
+Contributors are welcome to stay involved with the instrumentations they
+contribute and with any other part of this repository, and that involvement is
+valuable. Some instrumentations pertain to libraries that the current members
+of the community are not so familiar with, so the expertise of the original
+contributing parties is appreciated whenever it is available.
+
+Staying involved is not a requirement, though. Once an instrumentation has been
+accepted into this repository, the responsibility for maintaining it lies with
+the approvers and maintainers of this repository alone. See the
+[policy for accepting new instrumentations](#policy-for-accepting-new-instrumentations).
 
 ### Use of AI coding assistants
 
