@@ -264,7 +264,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(  # pylint: disable=too-many-locals
-        app: fastapi.FastAPI,
+        app: ASGIApp,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
@@ -279,7 +279,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         """Instrument an uninstrumented FastAPI application.
 
         Args:
-            app: The fastapi ASGI application callable to forward requests to.
+            app: The ASGI application (or FastAPI/Starlette application potentially wrapped in middleware) to instrument.
             server_request_hook: Optional callback which is called with the server span and ASGI
                           scope object for every incoming request.
             client_request_hook: Optional callback which is called with the internal span, and ASGI
@@ -296,10 +296,18 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
             exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
-        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
-            app._is_instrumented_by_opentelemetry = False  # pyright: ignore[reportAttributeAccessIssue]
+        target_app = _unwrap_middleware(app)
+        if target_app is None or not hasattr(target_app, "build_middleware_stack"):
+            _logger.warning(
+                "Skipping FastAPI instrumentation: could not find underlying FastAPI or Starlette application on %s",
+                type(app).__name__,
+            )
+            return
 
-        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
+        if not hasattr(target_app, "_is_instrumented_by_opentelemetry"):
+            target_app._is_instrumented_by_opentelemetry = False  # pyright: ignore[reportAttributeAccessIssue]
+
+        if not getattr(target_app, "_is_instrumented_by_opentelemetry", False):
             # initialize semantic conventions opt-in if needed
             _OpenTelemetrySemanticConventionStability._initialize()
             sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -320,7 +328,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 meter_provider,
                 schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
-            original_build_middleware_stack = app.build_middleware_stack
+            original_build_middleware_stack = target_app.build_middleware_stack
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
                 # Define an additional middleware for exception handling
@@ -414,13 +422,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     app=otel_middleware,
                 )
 
-            app._original_build_middleware_stack = (  # pyright: ignore[reportAttributeAccessIssue]
+            target_app._original_build_middleware_stack = (  # pyright: ignore[reportAttributeAccessIssue]
                 original_build_middleware_stack
             )
-            app.build_middleware_stack = types.MethodType(
-                functools.wraps(app.build_middleware_stack)(build_middleware_stack),
-                app,
+            target_app.build_middleware_stack = types.MethodType(
+                functools.wraps(target_app.build_middleware_stack)(build_middleware_stack),
+                target_app,
             )
+            if getattr(target_app, "middleware_stack", None) is not None:
+                target_app.middleware_stack = target_app.build_middleware_stack()
 
             if not hasattr(BackgroundTask, "_otel_original_call"):
                 original_background_task_call = BackgroundTask.__call__
@@ -435,30 +445,52 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
                 BackgroundTask.__call__ = traced_call
 
-            app._is_instrumented_by_opentelemetry = True  # pyright: ignore[reportAttributeAccessIssue]
-            if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
-                _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
+            target_app._is_instrumented_by_opentelemetry = True  # pyright: ignore[reportAttributeAccessIssue]
+            if app is not target_app:
+                try:
+                    setattr(app, "_is_instrumented_by_opentelemetry", True)
+                except (AttributeError, TypeError):
+                    pass
+            if target_app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
+                _InstrumentedFastAPI._instrumented_fastapi_apps.add(target_app)
         else:
             _logger.warning("Attempting to instrument FastAPI app while already instrumented")
 
     @staticmethod
-    def uninstrument_app(app: fastapi.FastAPI) -> None:
-        original_build_middleware_stack = getattr(app, "_original_build_middleware_stack", None)
+    def uninstrument_app(app: ASGIApp) -> None:
+        """Uninstrument an ASGI application (FastAPI or Starlette, including those wrapped in middleware)."""
+        target_app = _unwrap_middleware(app)
+        if target_app is None:
+            _logger.warning(
+                "Skipping FastAPI uninstrumentation: could not find underlying FastAPI or Starlette application on %s",
+                type(app).__name__,
+            )
+            return
+
+        original_build_middleware_stack = getattr(target_app, "_original_build_middleware_stack", None)
         if original_build_middleware_stack:
-            app.build_middleware_stack = original_build_middleware_stack
-            del app._original_build_middleware_stack  # pyright: ignore[reportAttributeAccessIssue]
-        app.middleware_stack = app.build_middleware_stack()
+            target_app.build_middleware_stack = original_build_middleware_stack
+            del target_app._original_build_middleware_stack  # pyright: ignore[reportAttributeAccessIssue]
+        if hasattr(target_app, "build_middleware_stack"):
+            target_app.middleware_stack = target_app.build_middleware_stack()
 
         if hasattr(BackgroundTask, "_otel_original_call"):
             BackgroundTask.__call__ = BackgroundTask._otel_original_call  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
             del BackgroundTask._otel_original_call  # pyright: ignore[reportAttributeAccessIssue]
 
-        app._is_instrumented_by_opentelemetry = False  # pyright: ignore[reportAttributeAccessIssue]
+        target_app._is_instrumented_by_opentelemetry = False  # pyright: ignore[reportAttributeAccessIssue]
+        if app is not target_app and hasattr(app, "_is_instrumented_by_opentelemetry"):
+            try:
+                setattr(app, "_is_instrumented_by_opentelemetry", False)
+            except (AttributeError, TypeError):
+                pass
 
         # Remove the app from the set of instrumented apps to avoid calling uninstrument twice
         # if the instrumentation is later disabled or such
         # Use discard to avoid KeyError if already GC'ed
-        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(app)
+        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(target_app)
+        if app is not target_app:
+            _InstrumentedFastAPI._instrumented_fastapi_apps.discard(app)
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -481,7 +513,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _instrument_kwargs: _InstrumentKwargs = {}
 
     # Track instrumented app instances using weak references to avoid GC leaks
-    _instrumented_fastapi_apps: _WeakSet[fastapi.FastAPI] = _WeakSet()
+    _instrumented_fastapi_apps: _WeakSet[ASGIApp] = _WeakSet()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -529,10 +561,16 @@ def _get_route_details(scope: Scope) -> str | None:
     Returns:
         A string containing the route or None
     """
-    app: fastapi.FastAPI = scope["app"]
+    app: ASGIApp | None = scope.get("app")
+    if app is None:
+        return None
+    target_app = _unwrap_middleware(app) if not hasattr(app, "routes") else app
+    routes = getattr(target_app, "routes", None)
+    if routes is None:
+        return None
     route: str | None = None
 
-    for starlette_route in _flatten_routes(app.routes):
+    for starlette_route in _flatten_routes(routes):
         match, _ = (
             Route.matches(starlette_route, scope)
             if isinstance(starlette_route, Route)
@@ -574,3 +612,38 @@ def _get_default_span_details(scope: Scope) -> tuple[str, dict[str, str]]:
     else:  # fallback
         span_name = method
     return span_name, attributes
+
+
+def _unwrap_middleware(
+    app: ASGIApp | None,
+    max_depth: int = 50,
+) -> fastapi.FastAPI | Starlette | None:
+    """Unwraps the middleware stack to find the underlying FastAPI or Starlette app.
+
+    Args:
+        app: The ASGI application potentially wrapped in middleware.
+        max_depth: Maximum number of middleware layers to traverse.
+
+    Returns:
+        The unwrapped FastAPI or Starlette application, or None if not found.
+    """
+    curr: object = app
+    visited: set[int] = set()
+    depth = 0
+
+    while curr is not None and depth < max_depth:
+        if isinstance(curr, (fastapi.FastAPI, Starlette)):
+            return curr
+
+        curr_id = id(curr)
+        if curr_id in visited:
+            break
+        visited.add(curr_id)
+
+        try:
+            curr = getattr(curr, "app", None)
+        except Exception:
+            break
+        depth += 1
+
+    return None
