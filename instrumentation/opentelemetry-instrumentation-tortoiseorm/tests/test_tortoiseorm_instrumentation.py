@@ -221,3 +221,24 @@ class TestTortoiseORMInstrumentor(TestBase):
         self._async_call(run())
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_span_name_empty_or_whitespace_statement(self):
+        """Regression: an empty or whitespace-only raw statement has no tokens
+        after split(); _do_execute must not raise IndexError."""
+
+        async def run():
+            await self._init_tortoise()
+            conn = Tortoise.get_connection("default")
+            await conn.execute_query("   ")
+            await conn.execute_script("")
+
+        self._async_call(run())
+
+        spans = self.memory_exporter.get_finished_spans()
+        # One span per raw statement; no operation token survives, so the
+        # span name falls back to the database name (":memory:" for sqlite)
+        # rather than the call raising.
+        fallback_named = [s for s in spans if s.name == ":memory:"]
+        self.assertEqual(len(fallback_named), 2)
+        for span in fallback_named:
+            self.assertEqual(span.kind, trace.SpanKind.CLIENT)
