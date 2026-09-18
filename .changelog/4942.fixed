@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-psycopg2`: avoid `IndexError` in `get_operation_name` for comment-only or whitespace-only statements
