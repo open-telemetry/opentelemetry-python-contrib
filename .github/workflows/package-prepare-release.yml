@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - id: verify
         name: Verify prerequisites
@@ -98,14 +99,23 @@ jobs:
       pull-requests: write # required for creating pull requests
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # zizmor: ignore[artipacked] Credentials are required by the branch pushes below.
+          persist-credentials: true
 
       - name: Set environment variables
+        env:
+          CHANGELOG_OUTPUT: ${{ needs.prereqs.outputs.changelog }}
+          PACKAGE_NAME_OUTPUT: ${{ github.event.inputs.package }}
+          RELEASE_BRANCH_NAME_OUTPUT: ${{ needs.prereqs.outputs.release_branch_name }}
+          VERSION_FILE_OUTPUT: ${{ needs.prereqs.outputs.version_file }}
+          VERSION_OUTPUT: ${{ needs.prereqs.outputs.version }}
         run: |
-          echo "RELEASE_BRANCH_NAME=${{ needs.prereqs.outputs.release_branch_name }}" >> $GITHUB_ENV
-          echo "VERSION=${{ needs.prereqs.outputs.version }}" >> $GITHUB_ENV
-          echo "CHANGELOG=${{ needs.prereqs.outputs.changelog }}" >> $GITHUB_ENV
-          echo "VERSION_FILE=${{ needs.prereqs.outputs.version_file }}" >> $GITHUB_ENV
-          echo "PACKAGE_NAME=${{ github.event.inputs.package }}" >> $GITHUB_ENV
+          echo "RELEASE_BRANCH_NAME=$RELEASE_BRANCH_NAME_OUTPUT" >> $GITHUB_ENV
+          echo "VERSION=$VERSION_OUTPUT" >> $GITHUB_ENV
+          echo "CHANGELOG=$CHANGELOG_OUTPUT" >> $GITHUB_ENV
+          echo "VERSION_FILE=$VERSION_FILE_OUTPUT" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=$PACKAGE_NAME_OUTPUT" >> $GITHUB_ENV
 
       - name: Create package release branch
         run: |
@@ -139,6 +149,7 @@ jobs:
         with:
           client-id: ${{ vars.OTELBOT_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+          permission-pull-requests: write
 
       - name: Create pull request against the release branch
         env:
@@ -163,14 +174,23 @@ jobs:
       pull-requests: write # required for creating pull requests
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # zizmor: ignore[artipacked] Credentials are required by the branch push below.
+          persist-credentials: true
 
       - name: Set environment variables
+        env:
+          CHANGELOG_OUTPUT: ${{ needs.prereqs.outputs.changelog }}
+          NEXT_VERSION_OUTPUT: ${{ needs.prereqs.outputs.next_version }}
+          PACKAGE_NAME_OUTPUT: ${{ github.event.inputs.package }}
+          VERSION_FILE_OUTPUT: ${{ needs.prereqs.outputs.version_file }}
+          VERSION_OUTPUT: ${{ needs.prereqs.outputs.version }}
         run: |
-          echo "PACKAGE_NAME=${{ github.event.inputs.package }}" >> $GITHUB_ENV
-          echo "VERSION=${{ needs.prereqs.outputs.version }}" >> $GITHUB_ENV
-          echo "VERSION_FILE=${{ needs.prereqs.outputs.version_file }}" >> $GITHUB_ENV
-          echo "NEXT_VERSION=${{ needs.prereqs.outputs.next_version }}" >> $GITHUB_ENV
-          echo "CHANGELOG=${{ needs.prereqs.outputs.changelog }}" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=$PACKAGE_NAME_OUTPUT" >> $GITHUB_ENV
+          echo "VERSION=$VERSION_OUTPUT" >> $GITHUB_ENV
+          echo "VERSION_FILE=$VERSION_FILE_OUTPUT" >> $GITHUB_ENV
+          echo "NEXT_VERSION=$NEXT_VERSION_OUTPUT" >> $GITHUB_ENV
+          echo "CHANGELOG=$CHANGELOG_OUTPUT" >> $GITHUB_ENV
 
       - name: Update version
         run: |
@@ -200,6 +220,7 @@ jobs:
         with:
           client-id: ${{ vars.OTELBOT_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+          permission-pull-requests: write
 
       - name: Create pull request against main
         env:
