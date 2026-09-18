@@ -103,6 +103,7 @@ intersphinx_mapping = {
     "aiohttp": ("https://docs.aiohttp.org/en/stable/", None),
     "wrapt": ("https://wrapt.readthedocs.io/en/latest/", None),
     "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
+    "oracledb": ("https://python-oracledb.readthedocs.io/en/latest/", None),
     "opentelemetry": (
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
