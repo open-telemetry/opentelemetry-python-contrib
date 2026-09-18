@@ -12,6 +12,7 @@ from typing import Any
 from unittest import mock
 
 from opentelemetry import propagate
+from opentelemetry._logs import NoOpLoggerProvider
 from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
@@ -130,6 +131,19 @@ MOCK_W3C_TRACE_STATE_VALUE = "test_value"
 
 MOCK_W3C_BAGGAGE_KEY = "baggage_key"
 MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
+
+
+class _FakeClock:
+    """Stands in for the `time` module so tests control the flush deadline."""
+
+    def __init__(self):
+        self._now = 0.0
+
+    def time(self):
+        return self._now
+
+    def advance(self, seconds):
+        self._now += seconds
 
 
 def mock_execute_lambda(event=None, context=None):
@@ -638,6 +652,93 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans is not None
         self.assertEqual(len(spans), 0)
+
+    def test_no_op_logger_provider(self):
+        logger_provider = NoOpLoggerProvider()
+        AwsLambdaInstrumentor().instrument(logger_provider=logger_provider)
+
+        with self.assertLogs(level=logging.WARNING) as warning:
+            mock_execute_lambda()
+
+        self.assertIn(
+            "LoggerProvider was missing `force_flush` method",
+            "\n".join(warning.output),
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans is not None
+        self.assertEqual(len(spans), 1)
+
+    @staticmethod
+    def _execute_lambda_on_fake_clock(elapsed_seconds=0.0, **instrument_kwargs):
+        """Run the handler with the tracer flush consuming `elapsed_seconds`."""
+        clock = _FakeClock()
+        tracer_provider = mock.MagicMock()
+        tracer_provider.force_flush.side_effect = lambda timeout: clock.advance(elapsed_seconds)
+        AwsLambdaInstrumentor().instrument(tracer_provider=tracer_provider, **instrument_kwargs)
+
+        with mock.patch("opentelemetry.instrumentation.aws_lambda.time", clock):
+            mock_execute_lambda()
+
+    def test_logger_provider_force_flush_called(self):
+        logger_provider = mock.Mock()
+
+        self._execute_lambda_on_fake_clock(logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_called_once_with(30000)
+
+    def test_logger_provider_force_flush_uses_flush_timeout_environment_variable(self):
+        logger_provider = mock.Mock()
+        with mock.patch.dict(
+            "os.environ",
+            {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
+        ):
+            self._execute_lambda_on_fake_clock(logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_called_once_with(1000)
+
+    def test_logger_provider_force_flush_uses_remaining_flush_timeout(self):
+        logger_provider = mock.Mock()
+        with mock.patch.dict(
+            "os.environ",
+            {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
+        ):
+            self._execute_lambda_on_fake_clock(0.4, logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_called_once_with(600.0)
+
+    def test_logger_provider_not_flushed_when_flush_timeout_exhausted(self):
+        logger_provider = mock.Mock()
+        with mock.patch.dict(
+            "os.environ",
+            {OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT: "1000"},
+        ):
+            self._execute_lambda_on_fake_clock(2.0, logger_provider=logger_provider)
+
+        logger_provider.force_flush.assert_not_called()
+
+    def test_global_logger_provider_force_flush_called(self):
+        logger_provider = mock.Mock()
+        with mock.patch(
+            "opentelemetry.instrumentation.aws_lambda.get_logger_provider",
+            return_value=logger_provider,
+        ):
+            self._execute_lambda_on_fake_clock()
+
+        logger_provider.force_flush.assert_called_once_with(30000)
+
+    def test_logger_provider_force_flush_failure_does_not_break_handler(self):
+        logger_provider = mock.Mock()
+        logger_provider.force_flush.side_effect = Exception("flush failed")
+        AwsLambdaInstrumentor().instrument(logger_provider=logger_provider)
+
+        with self.assertLogs(level=logging.ERROR) as error:
+            mock_execute_lambda()
+
+        self.assertIn("LoggerProvider failed to flush logs", "\n".join(error.output))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
 
     def test_load_entry_point(self):
         self.assertIs(
