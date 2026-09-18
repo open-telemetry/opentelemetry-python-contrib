@@ -205,14 +205,14 @@ class OpAMPAgent:
                         logger.debug("Stop signaled, abandoning job %r", job.payload)
                         break
 
-            if message is not None:
-                self._process_message(message)
-
             try:
-                if job.callback is not None:
-                    job.callback()
-            except Exception as exc:
-                logging.warning("Callback for job failed: %s", exc)
+                if message is not None:
+                    self._process_message(message)
+                    try:
+                        if job.callback is not None:
+                            job.callback()
+                    except Exception as exc:
+                        logging.warning("Callback for job failed: %s", exc)
             finally:
                 self._queue.task_done()
 
