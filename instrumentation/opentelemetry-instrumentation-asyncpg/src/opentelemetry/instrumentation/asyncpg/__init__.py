@@ -130,7 +130,7 @@ def _hydrate_span_from_args(
         _set_net_transport(
             span_attributes,
             NetTransportValues.OTHER.value,
-            NetworkTransportValues.PIPE.value,
+            NetworkTransportValues.UNIX.value,
             semconv_opt_in_mode,
         )
 
