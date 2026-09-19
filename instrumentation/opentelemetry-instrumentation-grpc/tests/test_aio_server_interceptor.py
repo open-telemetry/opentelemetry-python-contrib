@@ -630,6 +630,78 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_uncaught_exception_recorded_once(self):
+        """Check that an uncaught exception is recorded exactly once on the span."""
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+        failure_message = "unexpected failure"
+
+        class ExceptionServicer(GRPCTestServerServicer):
+            async def SimpleMethod(self, request, context):
+                raise ValueError(failure_message)
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+
+            with testcase.assertRaises(grpc.RpcError) as cm:
+                await channel.unary_unary(rpc_call)(msg)
+
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.UNKNOWN)
+
+        await run_with_test_server(
+            request,
+            servicer=ExceptionServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+        self.assertEqual(exception_events[0].attributes["exception.type"], "ValueError")
+        self.assertEqual(exception_events[0].attributes["exception.message"], failure_message)
+
+    async def test_uncaught_exception_streaming_recorded_once(self):
+        """Check that an uncaught exception in streaming is recorded exactly once on the span."""
+        rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+        failure_message = "unexpected streaming failure"
+
+        class ExceptionServicer(GRPCTestServerServicer):
+            async def ServerStreamingMethod(self, request, context):
+                raise RuntimeError(failure_message)
+                yield  # pylint: disable=unreachable
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+
+            with testcase.assertRaises(grpc.RpcError) as cm:
+                async for _ in channel.unary_stream(rpc_call)(msg):
+                    pass
+
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.UNKNOWN)
+
+        await run_with_test_server(
+            request,
+            servicer=ExceptionServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+        self.assertEqual(exception_events[0].attributes["exception.type"], "RuntimeError")
+        self.assertEqual(exception_events[0].attributes["exception.message"], failure_message)
+
     async def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
 
