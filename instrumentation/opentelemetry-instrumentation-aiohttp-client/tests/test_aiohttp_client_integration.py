@@ -1525,6 +1525,22 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         self.assertEqual(1, patched_get_meter.call_count)
 
+    def test_instrument_creates_one_tracer_for_all_sessions(self):
+        AioHttpClientInstrumentor().uninstrument()
+
+        async def open_and_close_sessions(count: int):
+            for _ in range(count):
+                await aiohttp.ClientSession().close()
+
+        with mock.patch(
+            "opentelemetry.instrumentation.aiohttp_client.get_tracer",
+            wraps=aiohttp_client.get_tracer,
+        ) as patched_get_tracer:
+            AioHttpClientInstrumentor().instrument()
+            asyncio.run(open_and_close_sessions(5))
+
+        self.assertEqual(1, patched_get_tracer.call_count)
+
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
     def test_loading_instrumentor(self):

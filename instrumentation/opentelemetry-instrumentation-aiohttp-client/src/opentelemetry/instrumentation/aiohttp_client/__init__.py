@@ -242,7 +242,7 @@ from opentelemetry.semconv.metrics import (
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
-from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
+from opentelemetry.trace import Span, SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
@@ -321,6 +321,18 @@ def _set_http_status_code_attribute(
     )
 
 
+def _create_tracer(
+    tracer_provider: TracerProvider | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> Tracer:
+    return get_tracer(
+        __name__,
+        __version__,
+        tracer_provider,
+        schema_url=_get_schema_url(sem_conv_opt_in_mode),
+    )
+
+
 def _create_duration_histograms(
     meter_provider: MeterProvider | None,
     sem_conv_opt_in_mode: _StabilityMode,
@@ -354,10 +366,10 @@ def _create_duration_histograms(
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 def _create_trace_config(
+    tracer: Tracer,
     url_filter: UrlFilterT = None,
     request_hook: RequestHookT = None,
     response_hook: ResponseHookT = None,
-    tracer_provider: TracerProvider | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     captured_request_headers: list[str] | None = None,
     captured_response_headers: list[str] | None = None,
@@ -365,15 +377,6 @@ def _create_trace_config(
     duration_histogram_old: Histogram | None = None,
     duration_histogram_new: Histogram | None = None,
 ) -> aiohttp.TraceConfig:
-    schema_url = _get_schema_url(sem_conv_opt_in_mode)
-
-    tracer = get_tracer(
-        __name__,
-        __version__,
-        tracer_provider,
-        schema_url=schema_url,
-    )
-
     excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
@@ -624,10 +627,10 @@ def create_trace_config(
     # around this issue.
     duration_histogram_old, duration_histogram_new = _create_duration_histograms(meter_provider, sem_conv_opt_in_mode)
     return _create_trace_config(
+        _create_tracer(tracer_provider, sem_conv_opt_in_mode),
         url_filter=url_filter,
         request_hook=request_hook,
         response_hook=response_hook,
-        tracer_provider=tracer_provider,
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         captured_request_headers=captured_request_headers,
         captured_response_headers=captured_response_headers,
@@ -657,9 +660,11 @@ def _instrument(
 
     trace_configs = trace_configs or ()
 
-    # The instruments are created once here rather than per session: a meter is
-    # retained by its provider for the lifetime of the process, so building one
-    # in instrumented_init would accumulate one per ClientSession.
+    # The tracer and the instruments are created once here rather than per session: a
+    # meter is retained by its provider for the lifetime of the process, so building one
+    # in instrumented_init would accumulate one per ClientSession. This matches how
+    # requests and httpx resolve their providers at instrument() time.
+    tracer = _create_tracer(tracer_provider, sem_conv_opt_in_mode)
     duration_histogram_old, duration_histogram_new = _create_duration_histograms(meter_provider, sem_conv_opt_in_mode)
 
     # pylint:disable=unused-argument
@@ -673,10 +678,10 @@ def _instrument(
         client_trace_configs.extend(trace_configs)
 
         trace_config = _create_trace_config(
+            tracer,
             url_filter=url_filter,
             request_hook=request_hook,
             response_hook=response_hook,
-            tracer_provider=tracer_provider,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             captured_request_headers=captured_request_headers,
             captured_response_headers=captured_response_headers,
