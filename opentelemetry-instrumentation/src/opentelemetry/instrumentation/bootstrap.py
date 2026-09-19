@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+import copy
 import logging
 import sys
 from subprocess import (
@@ -151,6 +152,12 @@ def run(
                        be piped and appended to a requirements.txt file.
         """,
     )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        help="packages to exclude from installation",
+        type=lambda s: set(item.strip() for item in s.split(",") if item.strip()),
+    )
     args = parser.parse_args()
 
     if libraries is None:
@@ -159,8 +166,21 @@ def run(
     if default_instrumentations is None:
         default_instrumentations = gen_default_instrumentations
 
+    _packages_to_exclude = args.exclude or set()
+    filtered_libraries = copy.copy(libraries)
+    filtered_instrumentations = copy.copy(default_instrumentations)
+
+    for library in libraries:
+        if library["library"].split(" ")[0] in _packages_to_exclude:
+            filtered_libraries.remove(library)
+
+    for instrumentation in default_instrumentations:
+        for excluded_package in _packages_to_exclude:
+            if excluded_package in instrumentation:
+                filtered_instrumentations.remove(instrumentation)
+
     cmd = {
         action_install: _run_install,
         action_requirements: _run_requirements,
     }[args.action]
-    cmd(default_instrumentations, libraries)
+    cmd(filtered_instrumentations, filtered_libraries)
