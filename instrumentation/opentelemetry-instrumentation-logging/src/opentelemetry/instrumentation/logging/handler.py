@@ -116,6 +116,16 @@ _RESERVED_ATTRS = frozenset(
     )
 )
 
+# Attributes the LoggingInstrumentor injects onto the stdlib LogRecord when
+# trace context injection is enabled; see the module docstring of
+# opentelemetry.instrumentation.logging.
+_TRACE_CONTEXT_ATTRS = (
+    "otelSpanID",
+    "otelTraceID",
+    "otelTraceSampled",
+    "otelServiceName",
+)
+
 
 class LoggingHandler(logging.Handler):
     """A handler class which writes logging records, in OTLP format, to
@@ -138,6 +148,14 @@ class LoggingHandler(logging.Handler):
 
     def _get_attributes(self, record: logging.LogRecord) -> tuple[dict[str, AnyValue], str | None]:
         attributes = {k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS}
+
+        # The LoggingInstrumentor injects the trace context onto every stdlib
+        # LogRecord so formatters can render it. Formatters still need it there,
+        # but the emitted LogRecord already carries the same context in its
+        # first-class trace_id, span_id and trace_flags fields, and the service
+        # name in the resource, so keeping the copies here only duplicates them.
+        for _injected in _TRACE_CONTEXT_ATTRS:
+            attributes.pop(_injected, None)
 
         # Promote otel.event.name (stable) or event.name (deprecated) to the
         # first-class LogRecord.event_name field instead of leaving it as a
