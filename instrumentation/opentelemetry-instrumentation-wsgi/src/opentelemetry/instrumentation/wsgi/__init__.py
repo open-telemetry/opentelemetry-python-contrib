@@ -284,7 +284,6 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
@@ -334,14 +333,14 @@ def collect_request_attributes(
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     *,
     capture_custom_headers: bool = False,
-) -> dict[str, AttributeValue]:
+):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
 
     Set capture_custom_headers to include configured, sanitized request headers
     when creating a SERVER span. Existing callers omit these headers by default.
     """
-    result: dict[str, AttributeValue] = {}
+    result: dict[str, str | None] = {}
     _set_http_method(
         result,
         environ.get("REQUEST_METHOD", ""),
@@ -412,7 +411,7 @@ def collect_request_attributes(
 
 
 def _apply_user_agent_attributes(
-    result: dict[str, AttributeValue],
+    result: dict[str, str | None],
     environ: WSGIEnvironment,
     sem_conv_opt_in_mode: _StabilityMode,
 ):
@@ -499,7 +498,7 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _Stabilit
 
 
 def _parse_duration_attrs(
-    req_attrs: dict[str, AttributeValue],
+    req_attrs: dict[str, str | None],
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     return _filter_semconv_duration_attrs(
@@ -514,7 +513,7 @@ def add_response_attributes(
     span: trace.Span,
     start_response_status: str,
     response_headers: list[tuple[str, str]],
-    duration_attrs: dict[str, AttributeValue] | None = None,
+    duration_attrs: dict[str, str | None] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
@@ -633,7 +632,7 @@ class OpenTelemetryMiddleware:
         span: trace.Span,
         start_response: StartResponse,
         response_hook: Callable[[str, list[tuple[str, str]]], None] | None,
-        duration_attrs: dict[str, AttributeValue],
+        duration_attrs: dict[str, str | None],
         sem_conv_opt_in_mode: _StabilityMode,
     ):
         @functools.wraps(start_response)
