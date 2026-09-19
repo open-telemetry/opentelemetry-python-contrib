@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from opentelemetry._logs import NoOpLoggerProvider, SeverityNumber
 from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
-from opentelemetry.instrumentation.logging import _get_log_level
+from opentelemetry.instrumentation.logging import LoggingInstrumentor, _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
     LoggingHandler,
     _setup_logging_handler,
@@ -560,6 +560,94 @@ class TestLoggingHandler(unittest.TestCase):
             22,
             f"Should have 22 dropped attributes, got {record.dropped_attributes}",
         )
+
+    # --- trace context duplication tests (issue #5071) ---
+
+    def test_injected_trace_context_not_duplicated_in_attributes(self):
+        """The injected otel* attributes stay off the emitted LogRecord.
+
+        The context is already carried by the first-class trace_id, span_id and
+        trace_flags fields, so exporting the copies duplicates it.
+        """
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            tracer = trace.TracerProvider().get_tracer(__name__)
+            with self.assertLogs(level=logging.WARNING):
+                with tracer.start_as_current_span("test"):
+                    logger.warning("Warning message")
+
+            record = processor.get_log_record(0)
+            for name in (
+                "otelSpanID",
+                "otelTraceID",
+                "otelTraceSampled",
+                "otelServiceName",
+            ):
+                self.assertNotIn(name, record.log_record.attributes)
+        finally:
+            logger.removeHandler(handler)
+            LoggingInstrumentor().uninstrument()
+
+    def test_first_class_trace_context_still_populated(self):
+        """Dropping the copies must not affect the fields that replace them."""
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            tracer = trace.TracerProvider().get_tracer(__name__)
+            with self.assertLogs(level=logging.WARNING):
+                with tracer.start_as_current_span("test") as span:
+                    logger.warning("Warning message")
+                    span_context = span.get_span_context()
+
+            record = processor.get_log_record(0)
+            self.assertEqual(record.log_record.trace_id, span_context.trace_id)
+            self.assertEqual(record.log_record.span_id, span_context.span_id)
+        finally:
+            logger.removeHandler(handler)
+            LoggingInstrumentor().uninstrument()
+
+    def test_injected_attributes_remain_on_the_stdlib_record(self):
+        """Formatters keep reading them; only the exported copy is dropped."""
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        seen = {}
+
+        class CaptureHandler(logging.Handler):
+            def emit(self, record):
+                seen.update(vars(record))
+
+        logger = logging.getLogger("test-issue-5071")
+        logger.propagate = False
+        logger.setLevel(logging.WARNING)
+        capture = CaptureHandler()
+        logger.addHandler(capture)
+        try:
+            tracer = trace.TracerProvider().get_tracer(__name__)
+            with tracer.start_as_current_span("test"):
+                logger.warning("Warning message")
+
+            for name in ("otelSpanID", "otelTraceID", "otelTraceSampled"):
+                self.assertIn(name, seen)
+        finally:
+            logger.removeHandler(capture)
+            LoggingInstrumentor().uninstrument()
+
+    def test_unrelated_extra_attributes_unaffected(self):
+        """Only the four injected names are dropped, nothing else."""
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            tracer = trace.TracerProvider().get_tracer(__name__)
+            with self.assertLogs(level=logging.WARNING):
+                with tracer.start_as_current_span("test"):
+                    logger.warning("Warning message", extra={"http.status_code": 200})
+
+            record = processor.get_log_record(0)
+            self.assertEqual(record.log_record.attributes["http.status_code"], 200)
+            self.assertNotIn("otelSpanID", record.log_record.attributes)
+        finally:
+            logger.removeHandler(handler)
+            LoggingInstrumentor().uninstrument()
 
     # --- event_name promotion tests (issue #4743) ---
 
