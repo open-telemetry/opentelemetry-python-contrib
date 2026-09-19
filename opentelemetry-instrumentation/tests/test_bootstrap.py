@@ -102,3 +102,54 @@ class TestBootstrap(TestCase):
             any_order=True,
         )
         self.mock_pip_check.assert_called_once()
+
+    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "wsgi"])
+    def test_can_exclude_library_and_instrumentation(self):
+        fake_libraries = [
+            {"library": "wsgi", "instrumentation": "opentelemetry-instrumentation-wsgi"},
+            {"library": "flask", "instrumentation": "opentelemetry-instrumentation-flask"},
+        ]
+
+        fake_default_instrumentations = [
+            "opentelemetry-instrumentation-wsgi",
+            "opentelemetry-instrumentation-fastapi",
+        ]
+
+        with (
+            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", fake_libraries),
+            patch(
+                "opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", fake_default_instrumentations
+            ),
+            patch(
+                "opentelemetry.instrumentation.bootstrap._find_installed_libraries",
+                return_value=["opentelemetry-instrumentation-flask", "opentelemetry-instrumentation-fastapi"],
+            ),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(
+            fake_out.getvalue().strip(), "opentelemetry-instrumentation-flask\nopentelemetry-instrumentation-fastapi"
+        )
+
+    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "does-not-exist"])
+    def test_run_with_unmatched_exclude_is_noop(self):
+        libraries = [
+            {"library": "flask", "instrumentation": "opentelemetry-instrumentation-flask"},
+        ]
+        default_instrumentations = ["opentelemetry-instrumentation-fastapi"]
+
+        with (
+            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", libraries),
+            patch("opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", default_instrumentations),
+            patch(
+                "opentelemetry.instrumentation.bootstrap._find_installed_libraries",
+                return_value=["opentelemetry-instrumentation-flask", "opentelemetry-instrumentation-fastapi"],
+            ),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(
+            fake_out.getvalue().strip(), "opentelemetry-instrumentation-flask\nopentelemetry-instrumentation-fastapi"
+        )
