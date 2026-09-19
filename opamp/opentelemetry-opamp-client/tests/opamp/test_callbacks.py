@@ -4,7 +4,7 @@
 from unittest import mock
 
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb as opamp_pb2
 
 
 def test_subclass_override_subset():

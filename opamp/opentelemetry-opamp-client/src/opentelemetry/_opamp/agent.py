@@ -13,7 +13,7 @@ from typing import Any
 
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb
 
 logger = logging.getLogger(__name__)
 
@@ -216,8 +216,8 @@ class OpAMPAgent:
             finally:
                 self._queue.task_done()
 
-    def _process_message(self, message: opamp_pb2.ServerToAgent) -> None:
-        if message.HasField("error_response"):
+    def _process_message(self, message: opamp_pb.ServerToAgent) -> None:
+        if message.error_response is not None:
             _safe_invoke(
                 self._callbacks.on_error,
                 self,
@@ -226,7 +226,7 @@ class OpAMPAgent:
             )
             return
 
-        if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
+        if message.flags & opamp_pb.ServerToAgentFlags.ServerToAgentFlags_ReportFullState:
             logger.debug("Server requested full state report")
             payload = self._client.build_full_state_message()
             self.send(payload)

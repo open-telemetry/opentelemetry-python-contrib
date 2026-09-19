@@ -10,7 +10,7 @@ from typing import Any, Final
 from uuid_utils import uuid7
 
 from opentelemetry._opamp import messages
-from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.proto import opamp_pb
 from opentelemetry._opamp.transport.base import HttpTransport
 from opentelemetry._opamp.transport.requests import RequestsTransport
 from opentelemetry._opamp.version import __version__
@@ -32,11 +32,11 @@ _OPAMP_HTTP_HEADERS = {
 }
 
 _DEFAULT_CAPABILITIES: Final = (
-    opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
-    | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsHeartbeat
-    | opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
-    | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsRemoteConfig
-    | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsEffectiveConfig
+    opamp_pb.AgentCapabilities.AgentCapabilities_ReportsStatus
+    | opamp_pb.AgentCapabilities.AgentCapabilities_ReportsHeartbeat
+    | opamp_pb.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
+    | opamp_pb.AgentCapabilities.AgentCapabilities_ReportsRemoteConfig
+    | opamp_pb.AgentCapabilities.AgentCapabilities_ReportsEffectiveConfig
 )
 
 
@@ -62,7 +62,7 @@ class OpAMPClient:
     ):
         # ReportsStatus is required by the OpAMP specification:
         # https://opentelemetry.io/docs/specs/opamp/#agenttoservercapabilities
-        if not capabilities & (opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus):
+        if not capabilities & (opamp_pb.AgentCapabilities.AgentCapabilities_ReportsStatus):
             raise ValueError("OpAMP capabilities must include ReportsStatus")
 
         self._capabilities = capabilities
@@ -82,8 +82,8 @@ class OpAMPClient:
         )
         self._sequence_num: int = 0
         self._instance_uid: bytes = uuid7().bytes
-        self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
-        self._effective_config: opamp_pb2.EffectiveConfig | None = None
+        self._remote_config_status: opamp_pb.RemoteConfigStatus | None = None
+        self._effective_config: opamp_pb.EffectiveConfig | None = None
 
     def build_agent_disconnect_message(self) -> bytes:
         message = messages.build_agent_disconnect_message(
@@ -107,7 +107,7 @@ class OpAMPClient:
         self,
         effective_config: Mapping[str, Any],
         content_type: str,
-    ) -> opamp_pb2.EffectiveConfig:
+    ) -> opamp_pb.EffectiveConfig:
         self._effective_config = messages.build_effective_config_message(
             config=effective_config, content_type=content_type
         )
@@ -116,9 +116,9 @@ class OpAMPClient:
     def update_remote_config_status(
         self,
         remote_config_hash: bytes,
-        status: opamp_pb2.RemoteConfigStatuses.ValueType,
+        status: opamp_pb.RemoteConfigStatuses,
         error_message: str = "",
-    ) -> opamp_pb2.RemoteConfigStatus | None:
+    ) -> opamp_pb.RemoteConfigStatus | None:
         status_changed = (
             not self._remote_config_status
             or self._remote_config_status.last_remote_config_hash != remote_config_hash
@@ -140,7 +140,7 @@ class OpAMPClient:
 
         return None
 
-    def build_remote_config_status_response_message(self, remote_config_status: opamp_pb2.RemoteConfigStatus) -> bytes:
+    def build_remote_config_status_response_message(self, remote_config_status: opamp_pb.RemoteConfigStatus) -> bytes:
         message = messages.build_remote_config_status_response_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
@@ -181,7 +181,7 @@ class OpAMPClient:
 
     @staticmethod
     def decode_remote_config(
-        remote_config: opamp_pb2.AgentRemoteConfig,
+        remote_config: opamp_pb.AgentRemoteConfig,
     ) -> Generator[tuple[str, Mapping[str, AnyValue]]]:
         for config_file, config in messages.decode_remote_config(remote_config):
             yield config_file, config
