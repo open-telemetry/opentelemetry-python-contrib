@@ -11,6 +11,7 @@ from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
 from opentelemetry.instrumentation.logging import LoggingInstrumentor, _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
+    _TRACE_CONTEXT_ATTRS,
     LoggingHandler,
     _setup_logging_handler,
 )
@@ -569,7 +570,7 @@ class TestLoggingHandler(unittest.TestCase):
         The context is already carried by the first-class trace_id, span_id and
         trace_flags fields, so exporting the copies duplicates it.
         """
-        LoggingInstrumentor().instrument(inject_trace_context=True)
+        LoggingInstrumentor().instrument(inject_trace_context=True, enable_log_auto_instrumentation=False)
         processor, logger, handler = set_up_test_logging(logging.WARNING)
         try:
             tracer = trace.TracerProvider().get_tracer(__name__)
@@ -578,12 +579,7 @@ class TestLoggingHandler(unittest.TestCase):
                     logger.warning("Warning message")
 
             record = processor.get_log_record(0)
-            for name in (
-                "otelSpanID",
-                "otelTraceID",
-                "otelTraceSampled",
-                "otelServiceName",
-            ):
+            for name in _TRACE_CONTEXT_ATTRS:
                 self.assertNotIn(name, record.log_record.attributes)
         finally:
             logger.removeHandler(handler)
@@ -591,7 +587,7 @@ class TestLoggingHandler(unittest.TestCase):
 
     def test_first_class_trace_context_still_populated(self):
         """Dropping the copies must not affect the fields that replace them."""
-        LoggingInstrumentor().instrument(inject_trace_context=True)
+        LoggingInstrumentor().instrument(inject_trace_context=True, enable_log_auto_instrumentation=False)
         processor, logger, handler = set_up_test_logging(logging.WARNING)
         try:
             tracer = trace.TracerProvider().get_tracer(__name__)
@@ -609,7 +605,7 @@ class TestLoggingHandler(unittest.TestCase):
 
     def test_injected_attributes_remain_on_the_stdlib_record(self):
         """Formatters keep reading them; only the exported copy is dropped."""
-        LoggingInstrumentor().instrument(inject_trace_context=True)
+        LoggingInstrumentor().instrument(inject_trace_context=True, enable_log_auto_instrumentation=False)
         seen = {}
 
         class CaptureHandler(logging.Handler):
@@ -623,18 +619,29 @@ class TestLoggingHandler(unittest.TestCase):
         logger.addHandler(capture)
         try:
             tracer = trace.TracerProvider().get_tracer(__name__)
-            with tracer.start_as_current_span("test"):
+            with tracer.start_as_current_span("test") as span:
                 logger.warning("Warning message")
+                span_context = span.get_span_context()
 
-            for name in ("otelSpanID", "otelTraceID", "otelTraceSampled"):
+            for name in _TRACE_CONTEXT_ATTRS:
                 self.assertIn(name, seen)
+
+            # Present is not enough: the values have to be the active span's, or
+            # a formatter would render placeholder context and look correct.
+            self.assertEqual(seen["otelSpanID"], format(span_context.span_id, "016x"))
+            self.assertEqual(seen["otelTraceID"], format(span_context.trace_id, "032x"))
+            self.assertEqual(seen["otelTraceSampled"], span_context.trace_flags.sampled)
+            # This tracer provider carries no resource, so the instrumentor records
+            # an empty service name -- the same expectation test_logging.py holds
+            # for a provider without one.
+            self.assertEqual(seen["otelServiceName"], "")
         finally:
             logger.removeHandler(capture)
             LoggingInstrumentor().uninstrument()
 
     def test_unrelated_extra_attributes_unaffected(self):
         """Only the four injected names are dropped, nothing else."""
-        LoggingInstrumentor().instrument(inject_trace_context=True)
+        LoggingInstrumentor().instrument(inject_trace_context=True, enable_log_auto_instrumentation=False)
         processor, logger, handler = set_up_test_logging(logging.WARNING)
         try:
             tracer = trace.TracerProvider().get_tracer(__name__)
@@ -644,7 +651,8 @@ class TestLoggingHandler(unittest.TestCase):
 
             record = processor.get_log_record(0)
             self.assertEqual(record.log_record.attributes["http.status_code"], 200)
-            self.assertNotIn("otelSpanID", record.log_record.attributes)
+            for name in _TRACE_CONTEXT_ATTRS:
+                self.assertNotIn(name, record.log_record.attributes)
         finally:
             logger.removeHandler(handler)
             LoggingInstrumentor().uninstrument()
