@@ -604,13 +604,16 @@ def _set_db_operation(
 
 def _set_db_redis_database_index(
     result: MutableMapping[str, AttributeValue],
-    database_index: int,
+    database_index: int | None,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
+    if database_index is None:
+        return
+
     if _report_old(sem_conv_opt_in_mode):
-        if database_index is not None:
-            result[DB_REDIS_DATABASE_INDEX] = int(database_index)
-    # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
+        result[DB_REDIS_DATABASE_INDEX] = int(database_index)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_NAMESPACE, str(database_index))
 
 
 def _set_net_transport(
