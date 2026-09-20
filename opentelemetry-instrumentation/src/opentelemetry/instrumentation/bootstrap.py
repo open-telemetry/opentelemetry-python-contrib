@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
-import copy
 import logging
 import sys
 from subprocess import (
@@ -167,20 +166,21 @@ def run(
         default_instrumentations = gen_default_instrumentations
 
     _packages_to_exclude = args.exclude or set()
-    filtered_libraries = copy.copy(libraries)
-    filtered_instrumentations = copy.copy(default_instrumentations)
 
-    for library in libraries:
-        if library["library"].split(" ")[0] in _packages_to_exclude:
-            filtered_libraries.remove(library)
+    filtered_libraries = [
+        library
+        for library in libraries
+        if not any(excluded_package in library["instrumentation"] for excluded_package in _packages_to_exclude)
+    ]
 
-    for instrumentation in default_instrumentations:
-        for excluded_package in _packages_to_exclude:
-            if excluded_package in instrumentation:
-                filtered_instrumentations.remove(instrumentation)
+    filtered_default_instrumentations = [
+        instrumentation
+        for instrumentation in default_instrumentations
+        if not any(excluded_package in instrumentation for excluded_package in _packages_to_exclude)
+    ]
 
     cmd = {
         action_install: _run_install,
         action_requirements: _run_requirements,
     }[args.action]
-    cmd(filtered_instrumentations, filtered_libraries)
+    cmd(filtered_default_instrumentations, filtered_libraries)
