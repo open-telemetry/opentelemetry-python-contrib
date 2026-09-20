@@ -159,3 +159,51 @@ class TestBootstrap(TestCase):
         self.assertEqual(
             fake_out.getvalue().strip(), "opentelemetry-instrumentation-flask\nopentelemetry-instrumentation-fastapi"
         )
+
+    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "system_metrics"])
+    def test_exclude_normalizes(self):
+        default_instrumentations = ["opentelemetry-instrumentation-system-metrics"]
+
+        def fake_is_installed(lib):
+            return lib in {"system-metrics"}
+
+        with (
+            patch(
+                "opentelemetry.instrumentation.bootstrap.gen_default_instrumentations",
+                default_instrumentations,
+            ),
+            patch(
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=fake_is_installed,
+            ),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(fake_out.getvalue().strip(), "")
+
+    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "urllib"])
+    def test_exclude_does_not_match_similar_package_names(self):
+        libraries = [
+            {"library": "urllib", "instrumentation": "opentelemetry-instrumentation-urllib"},
+            {"library": "urllib3", "instrumentation": "opentelemetry-instrumentation-urllib3"},
+        ]
+
+        def fake_is_installed(lib):
+            return lib in {"urllib", "urllib3"}
+
+        with (
+            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", libraries),
+            patch("opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", []),
+            patch(
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=fake_is_installed,
+            ),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(
+            fake_out.getvalue().strip(),
+            "opentelemetry-instrumentation-urllib3",
+        )
