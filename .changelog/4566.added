@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-starlette`: Add missing configuration params from ASGI Middleware
