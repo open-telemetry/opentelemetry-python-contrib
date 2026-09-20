@@ -66,9 +66,7 @@ class TestProbabilisticSampler(TestCase):
         for rate in (1.0, 0.0):
             with self.subTest(rate=rate):
                 sampler = ProbabilisticSampler(rate)
-                result = sampler.should_sample(
-                    None, _TRACE_IDS[0], "span", attributes=attributes
-                )
+                result = sampler.should_sample(None, _TRACE_IDS[0], "span", attributes=attributes)
                 self.assertEqual(
                     dict(result.attributes),
                     {
@@ -80,9 +78,7 @@ class TestProbabilisticSampler(TestCase):
 
     def test_get_description(self):
         sampler = ProbabilisticSampler(0.5)
-        self.assertEqual(
-            sampler.get_description(), "ProbabilisticSampler{0.5}"
-        )
+        self.assertEqual(sampler.get_description(), "ProbabilisticSampler{0.5}")
 
     def test_rate_property(self):
         sampler = ProbabilisticSampler(0.5)
@@ -96,9 +92,7 @@ class TestProbabilisticSampler(TestCase):
         sampler.update(1.0)
 
         self.assertEqual(sampler.rate, 1.0)
-        self.assertEqual(
-            sampler.get_description(), "ProbabilisticSampler{1.0}"
-        )
+        self.assertEqual(sampler.get_description(), "ProbabilisticSampler{1.0}")
         result = sampler.should_sample(None, _TRACE_IDS[0], "span")
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
 
@@ -139,10 +133,7 @@ class TestRateLimitingSampler(TestCase):
         clock.advance(0.5)
         sampled = 0
         for _ in range(10):
-            if (
-                sampler.should_sample(None, _TRACE_IDS[0], "span").decision
-                == Decision.RECORD_AND_SAMPLE
-            ):
+            if sampler.should_sample(None, _TRACE_IDS[0], "span").decision == Decision.RECORD_AND_SAMPLE:
                 sampled += 1
         self.assertEqual(sampled, 5)
 
@@ -165,15 +156,11 @@ class TestRateLimitingSampler(TestCase):
             "sampler.param": 1,
         }
 
-        result = sampler.should_sample(
-            None, _TRACE_IDS[0], "span", attributes=attributes
-        )
+        result = sampler.should_sample(None, _TRACE_IDS[0], "span", attributes=attributes)
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
         self.assertEqual(dict(result.attributes), expected_attributes)
 
-        result = sampler.should_sample(
-            None, _TRACE_IDS[0], "span", attributes=attributes
-        )
+        result = sampler.should_sample(None, _TRACE_IDS[0], "span", attributes=attributes)
         self.assertEqual(result.decision, Decision.DROP)
         self.assertEqual(dict(result.attributes), expected_attributes)
 
@@ -218,10 +205,7 @@ class TestRateLimitingSampler(TestCase):
 
         sampled = 0
         for _ in range(10):
-            if (
-                sampler.should_sample(None, _TRACE_IDS[0], "span").decision
-                == Decision.RECORD_AND_SAMPLE
-            ):
+            if sampler.should_sample(None, _TRACE_IDS[0], "span").decision == Decision.RECORD_AND_SAMPLE:
                 sampled += 1
         self.assertEqual(sampled, 5)
 
@@ -270,9 +254,7 @@ class TestGuaranteedThroughputSampler(TestCase):
         sampler = GuaranteedThroughputSampler(0.0, 2.0, clock=clock)
         attributes = {"foo": "bar"}
 
-        result = sampler.should_sample(
-            None, _TRACE_IDS[0], "op", attributes=attributes
-        )
+        result = sampler.should_sample(None, _TRACE_IDS[0], "op", attributes=attributes)
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
         self.assertEqual(
             dict(result.attributes),
@@ -302,10 +284,7 @@ class TestGuaranteedThroughputSampler(TestCase):
         sampler.update(0.0, 3.0)
         sampled = 0
         for _ in range(5):
-            if (
-                sampler.should_sample(None, _TRACE_IDS[0], "op").decision
-                == Decision.RECORD_AND_SAMPLE
-            ):
+            if sampler.should_sample(None, _TRACE_IDS[0], "op").decision == Decision.RECORD_AND_SAMPLE:
                 sampled += 1
         self.assertEqual(sampled, 3)
 

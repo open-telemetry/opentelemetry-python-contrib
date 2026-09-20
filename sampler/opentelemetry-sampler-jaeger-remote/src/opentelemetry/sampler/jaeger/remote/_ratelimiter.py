@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from threading import Lock
-from typing import Callable
 
 
 class RateLimiter:
@@ -45,9 +45,7 @@ class RateLimiter:
             self._balance -= cost
             return True
 
-    def update(
-        self, credits_per_second: float, max_balance: float | None = None
-    ) -> None:
+    def update(self, credits_per_second: float, max_balance: float | None = None) -> None:
         """Reconfigure the rate/capacity in place.
 
         The current balance is rescaled proportionally to the new
@@ -63,9 +61,7 @@ class RateLimiter:
 
         with self._lock:
             self._refill_locked()
-            self._balance = min(
-                max_balance * self._balance / self._max_balance, max_balance
-            )
+            self._balance = min(max_balance * self._balance / self._max_balance, max_balance)
             self._credits_per_second = credits_per_second
             self._max_balance = max_balance
 

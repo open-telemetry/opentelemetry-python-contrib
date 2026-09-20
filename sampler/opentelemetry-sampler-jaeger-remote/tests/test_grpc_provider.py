@@ -29,12 +29,8 @@ from opentelemetry.sampler.jaeger.remote.proto.sampling_pb2 import (  # pylint: 
 _ENDPOINT = "localhost:14250"
 
 _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._grpc_provider.time.sleep"
-_MONOTONIC_TARGET = (
-    "opentelemetry.sampler.jaeger.remote._grpc_provider.time.monotonic"
-)
-_RANDOM_TARGET = (
-    "opentelemetry.sampler.jaeger.remote._grpc_provider.random.uniform"
-)
+_MONOTONIC_TARGET = "opentelemetry.sampler.jaeger.remote._grpc_provider.time.monotonic"
+_RANDOM_TARGET = "opentelemetry.sampler.jaeger.remote._grpc_provider.random.uniform"
 
 
 class _FakeRpcError(grpc.RpcError):
@@ -57,14 +53,10 @@ class TestConstructor(TestCase):
         self.assertEqual(provider._timeout, _DEFAULT_TIMEOUT)
 
     def test_explicit_timeout_and_headers(self):
-        provider = GrpcSamplingStrategyProvider(
-            _ENDPOINT, headers={"Authorization": "Bearer secret"}, timeout=2.5
-        )
+        provider = GrpcSamplingStrategyProvider(_ENDPOINT, headers={"Authorization": "Bearer secret"}, timeout=2.5)
         self.addCleanup(provider.close)
         self.assertEqual(provider._timeout, 2.5)
-        self.assertEqual(
-            provider._metadata, (("authorization", "Bearer secret"),)
-        )
+        self.assertEqual(provider._metadata, (("authorization", "Bearer secret"),))
 
 
 class TestGetSamplingStrategy(TestCase):
@@ -77,18 +69,14 @@ class TestGetSamplingStrategy(TestCase):
             "probabilistic": (
                 SamplingStrategyResponse(
                     strategyType=SamplingStrategyType.PROBABILISTIC,
-                    probabilisticSampling=ProbabilisticSamplingStrategy(
-                        samplingRate=0.5
-                    ),
+                    probabilisticSampling=ProbabilisticSamplingStrategy(samplingRate=0.5),
                 ),
                 ProbabilisticStrategy(sampling_rate=0.5),
             ),
             "rate_limiting": (
                 SamplingStrategyResponse(
                     strategyType=SamplingStrategyType.RATE_LIMITING,
-                    rateLimitingSampling=RateLimitingSamplingStrategy(
-                        maxTracesPerSecond=5
-                    ),
+                    rateLimitingSampling=RateLimitingSamplingStrategy(maxTracesPerSecond=5),
                 ),
                 RateLimitingStrategy(max_traces_per_second=5),
             ),
@@ -101,9 +89,7 @@ class TestGetSamplingStrategy(TestCase):
                         perOperationStrategies=[
                             OperationSamplingStrategy(
                                 operation="op-a",
-                                probabilisticSampling=ProbabilisticSamplingStrategy(
-                                    samplingRate=0.75
-                                ),
+                                probabilisticSampling=ProbabilisticSamplingStrategy(samplingRate=0.75),
                             )
                         ],
                     )
@@ -111,11 +97,7 @@ class TestGetSamplingStrategy(TestCase):
                 PerOperationStrategy(
                     default_sampling_probability=0.1,
                     default_lower_bound_traces_per_second=1.0,
-                    operation_strategies=(
-                        OperationStrategy(
-                            operation="op-a", sampling_rate=0.75
-                        ),
-                    ),
+                    operation_strategies=(OperationStrategy(operation="op-a", sampling_rate=0.75),),
                     default_upper_bound_traces_per_second=10.0,
                 ),
             ),
@@ -127,17 +109,13 @@ class TestGetSamplingStrategy(TestCase):
                     "GetSamplingStrategy",
                     return_value=response,
                 ):
-                    strategy = self.provider.get_sampling_strategy(
-                        "my-service"
-                    )
+                    strategy = self.provider.get_sampling_strategy("my-service")
                 self.assertEqual(strategy, expected)
 
     @patch(_SLEEP_TARGET)
     def test_non_retryable_error_skips_sleep(self, mock_sleep):
         error = _FakeRpcError(grpc.StatusCode.INVALID_ARGUMENT)
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", side_effect=error
-        ):
+        with patch.object(self.provider._stub, "GetSamplingStrategy", side_effect=error):
             with self.assertRaises(RuntimeError):
                 self.provider.get_sampling_strategy("my-service")
 
@@ -145,11 +123,7 @@ class TestGetSamplingStrategy(TestCase):
 
     @patch(_SLEEP_TARGET)
     def test_retries_then_succeeds(self, mock_sleep):
-        response = SamplingStrategyResponse(
-            probabilisticSampling=ProbabilisticSamplingStrategy(
-                samplingRate=0.5
-            )
-        )
+        response = SamplingStrategyResponse(probabilisticSampling=ProbabilisticSamplingStrategy(samplingRate=0.5))
         side_effects = [_FakeRpcError(grpc.StatusCode.UNAVAILABLE), response]
         with patch.object(
             self.provider._stub,
@@ -163,12 +137,8 @@ class TestGetSamplingStrategy(TestCase):
 
     @patch(_SLEEP_TARGET)
     def test_retries_exhausted_raises(self, mock_sleep):
-        errors = [_FakeRpcError(grpc.StatusCode.UNAVAILABLE)] * (
-            _MAX_RETRIES + 1
-        )
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", side_effect=errors
-        ):
+        errors = [_FakeRpcError(grpc.StatusCode.UNAVAILABLE)] * (_MAX_RETRIES + 1)
+        with patch.object(self.provider._stub, "GetSamplingStrategy", side_effect=errors):
             with self.assertRaises(RuntimeError):
                 self.provider.get_sampling_strategy("my-service")
 
@@ -178,11 +148,7 @@ class TestGetSamplingStrategy(TestCase):
     @patch(_MONOTONIC_TARGET)
     def test_retry_uses_remaining_deadline(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 0, 3]
-        response = SamplingStrategyResponse(
-            probabilisticSampling=ProbabilisticSamplingStrategy(
-                samplingRate=0.5
-            )
-        )
+        response = SamplingStrategyResponse(probabilisticSampling=ProbabilisticSamplingStrategy(samplingRate=0.5))
         side_effects = [_FakeRpcError(grpc.StatusCode.UNAVAILABLE), response]
         with patch.object(
             self.provider._stub,
@@ -192,26 +158,18 @@ class TestGetSamplingStrategy(TestCase):
             strategy = self.provider.get_sampling_strategy("my-service")
 
         self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
-        self.assertEqual(
-            mock_get_strategy.call_args_list[0].kwargs["timeout"], 10
-        )
-        self.assertEqual(
-            mock_get_strategy.call_args_list[1].kwargs["timeout"], 7
-        )
+        self.assertEqual(mock_get_strategy.call_args_list[0].kwargs["timeout"], 10)
+        self.assertEqual(mock_get_strategy.call_args_list[1].kwargs["timeout"], 7)
         mock_sleep.assert_called_once()
 
     @patch(_RANDOM_TARGET)
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_raises_before_sleep_exceeds_deadline(
-        self, mock_monotonic, mock_sleep, mock_uniform
-    ):
+    def test_raises_before_sleep_exceeds_deadline(self, mock_monotonic, mock_sleep, mock_uniform):
         mock_uniform.return_value = 1.0
         mock_monotonic.side_effect = [0, 0, 9.5]
         error = _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", side_effect=[error]
-        ) as mock_get_strategy:
+        with patch.object(self.provider._stub, "GetSamplingStrategy", side_effect=[error]) as mock_get_strategy:
             with self.assertRaises(RuntimeError) as ctx:
                 self.provider.get_sampling_strategy("my-service")
 
@@ -224,9 +182,7 @@ class TestGetSamplingStrategy(TestCase):
     def test_deadline_exceeded_raises_early(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 15]
         error = _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", side_effect=[error]
-        ) as mock_get_strategy:
+        with patch.object(self.provider._stub, "GetSamplingStrategy", side_effect=[error]) as mock_get_strategy:
             with self.assertRaises(RuntimeError) as ctx:
                 self.provider.get_sampling_strategy("my-service")
 

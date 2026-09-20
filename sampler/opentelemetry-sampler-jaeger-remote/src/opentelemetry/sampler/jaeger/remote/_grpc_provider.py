@@ -6,7 +6,7 @@ from __future__ import annotations
 import itertools
 import random
 import time
-from typing import Mapping
+from collections.abc import Mapping
 
 import grpc
 
@@ -62,18 +62,13 @@ def _decode_sampling_strategy(
             default_sampling_probability=operation_sampling.defaultSamplingProbability,
             default_lower_bound_traces_per_second=operation_sampling.defaultLowerBoundTracesPerSecond,
             operation_strategies=tuple(
-                _decode_operation_strategy(strategy)
-                for strategy in operation_sampling.perOperationStrategies
+                _decode_operation_strategy(strategy) for strategy in operation_sampling.perOperationStrategies
             ),
             default_upper_bound_traces_per_second=operation_sampling.defaultUpperBoundTracesPerSecond,
         )
     if response.strategyType == SamplingStrategyType.RATE_LIMITING:
-        return RateLimitingStrategy(
-            max_traces_per_second=response.rateLimitingSampling.maxTracesPerSecond
-        )
-    return ProbabilisticStrategy(
-        sampling_rate=response.probabilisticSampling.samplingRate
-    )
+        return RateLimitingStrategy(max_traces_per_second=response.rateLimitingSampling.maxTracesPerSecond)
+    return ProbabilisticStrategy(sampling_rate=response.probabilisticSampling.samplingRate)
 
 
 class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
@@ -92,11 +87,7 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
     ) -> None:
         self._endpoint = endpoint
         self._timeout = timeout if timeout is not None else _DEFAULT_TIMEOUT
-        self._metadata = (
-            tuple((key.lower(), value) for key, value in headers.items())
-            if headers
-            else ()
-        )
+        self._metadata = tuple((key.lower(), value) for key, value in headers.items()) if headers else ()
         self._channel = grpc.insecure_channel(endpoint)
         self._stub = SamplingManagerStub(self._channel)
 
@@ -119,8 +110,7 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
                     or deadline < time.monotonic() + backoff
                 ):
                     raise RuntimeError(
-                        f"Jaeger gRPC sampling endpoint {self._endpoint} "
-                        f"returned {error.code()}: {error.details()}"
+                        f"Jaeger gRPC sampling endpoint {self._endpoint} returned {error.code()}: {error.details()}"
                     ) from error
                 time.sleep(backoff)
                 continue

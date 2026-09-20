@@ -39,24 +39,17 @@ _NON_RETRYABLE_STATUSES = tuple(
     sorted(
         status.value
         for status in http.HTTPStatus
-        if status not in (http.HTTPStatus.OK, http.HTTPStatus.CONTINUE)
-        and status.value not in _RETRYABLE_STATUSES
+        if status not in (http.HTTPStatus.OK, http.HTTPStatus.CONTINUE) and status.value not in _RETRYABLE_STATUSES
     )
 )
 
 _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.time.sleep"
-_MONOTONIC_TARGET = (
-    "opentelemetry.sampler.jaeger.remote._http_provider.time.monotonic"
-)
-_RANDOM_TARGET = (
-    "opentelemetry.sampler.jaeger.remote._http_provider.random.uniform"
-)
+_MONOTONIC_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.time.monotonic"
+_RANDOM_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.random.uniform"
 
 
 def _register(*responses, match_querystring=False):
-    Entry.register(
-        Entry.GET, _ENDPOINT, *responses, match_querystring=match_querystring
-    )
+    Entry.register(Entry.GET, _ENDPOINT, *responses, match_querystring=match_querystring)
 
 
 def _make_connection_error(
@@ -64,9 +57,7 @@ def _make_connection_error(
 ) -> Exception:
     """Build a constructible instance of a urllib3 connection error type."""
     if error_type is urllib3.exceptions.MaxRetryError:
-        return error_type(
-            None, _ENDPOINT, reason=Exception("connection broken")
-        )
+        return error_type(None, _ENDPOINT, reason=Exception("connection broken"))
     if error_type is getattr(urllib3.exceptions, "NameResolutionError", None):
         return error_type("mock", None, socket.gaierror("connection broken"))
     if error_type is urllib3.exceptions.NewConnectionError:
@@ -91,21 +82,15 @@ class TestConstructor(_MocketTestCase):
         self.assertEqual(provider._timeout, _DEFAULT_TIMEOUT)
 
     def test_explicit_timeout_and_headers(self):
-        provider = HttpSamplingStrategyProvider(
-            _ENDPOINT, headers={"Authorization": "Bearer secret"}, timeout=2.5
-        )
+        provider = HttpSamplingStrategyProvider(_ENDPOINT, headers={"Authorization": "Bearer secret"}, timeout=2.5)
         self.assertEqual(provider._timeout, 2.5)
-        self.assertEqual(
-            provider._pool.headers, {"Authorization": "Bearer secret"}
-        )
+        self.assertEqual(provider._pool.headers, {"Authorization": "Bearer secret"})
 
 
 class TestGetSamplingStrategy(_MocketTestCase):
     def test_sends_service_param_and_headers(self):
         _register(Entry.response_cls(body=_PROBABILISTIC_BODY, status=200))
-        provider = HttpSamplingStrategyProvider(
-            _ENDPOINT, headers={"X-Test": "yes"}
-        )
+        provider = HttpSamplingStrategyProvider(_ENDPOINT, headers={"X-Test": "yes"})
 
         provider.get_sampling_strategy("my-service")
 
@@ -139,9 +124,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
                             "perOperationStrategies": [
                                 {
                                     "operation": "op-a",
-                                    "probabilisticSampling": {
-                                        "samplingRate": 0.75
-                                    },
+                                    "probabilisticSampling": {"samplingRate": 0.75},
                                 }
                             ],
                         }
@@ -150,11 +133,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
                 PerOperationStrategy(
                     default_sampling_probability=0.1,
                     default_lower_bound_traces_per_second=1.0,
-                    operation_strategies=(
-                        OperationStrategy(
-                            operation="op-a", sampling_rate=0.75
-                        ),
-                    ),
+                    operation_strategies=(OperationStrategy(operation="op-a", sampling_rate=0.75),),
                     default_upper_bound_traces_per_second=10.0,
                 ),
             ),
@@ -196,16 +175,12 @@ class TestGetSamplingStrategy(_MocketTestCase):
 
                 strategy = provider.get_sampling_strategy("my-service")
 
-                self.assertEqual(
-                    strategy, ProbabilisticStrategy(sampling_rate=0.5)
-                )
+                self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
                 mock_sleep.assert_called_once()
 
     @patch(_SLEEP_TARGET)
     def test_retries_exhausted_raises(self, mock_sleep):
-        _register(
-            *(Entry.response_cls(status=503) for _ in range(_MAX_RETRIES + 1))
-        )
+        _register(*(Entry.response_cls(status=503) for _ in range(_MAX_RETRIES + 1)))
         provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
         with self.assertRaises(RuntimeError):
@@ -227,19 +202,12 @@ class TestGetSamplingStrategy(_MocketTestCase):
 
                 strategy = provider.get_sampling_strategy("my-service")
 
-                self.assertEqual(
-                    strategy, ProbabilisticStrategy(sampling_rate=0.5)
-                )
+                self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
                 mock_sleep.assert_called_once()
 
     @patch(_SLEEP_TARGET)
     def test_transport_errors_exhausted_raises(self, mock_sleep):
-        _register(
-            *(
-                urllib3.exceptions.ProtocolError("connection broken")
-                for _ in range(_MAX_RETRIES + 1)
-            )
-        )
+        _register(*(urllib3.exceptions.ProtocolError("connection broken") for _ in range(_MAX_RETRIES + 1)))
         provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
         with self.assertRaises(RuntimeError):
@@ -256,9 +224,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
             urllib3.exceptions.ProtocolError("connection broken"),
             SimpleNamespace(status=200, data=_PROBABILISTIC_BODY.encode()),
         ]
-        with patch.object(
-            provider._pool, "request", side_effect=responses
-        ) as mock_request:
+        with patch.object(provider._pool, "request", side_effect=responses) as mock_request:
             strategy = provider.get_sampling_strategy("my-service")
 
         self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
@@ -269,16 +235,12 @@ class TestGetSamplingStrategy(_MocketTestCase):
     @patch(_RANDOM_TARGET)
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_raises_before_sleep_exceeds_deadline(
-        self, mock_monotonic, mock_sleep, mock_uniform
-    ):
+    def test_raises_before_sleep_exceeds_deadline(self, mock_monotonic, mock_sleep, mock_uniform):
         mock_uniform.return_value = 1.0
         mock_monotonic.side_effect = [0, 0, 9.5]
         provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
         error = urllib3.exceptions.ProtocolError("connection broken")
-        with patch.object(
-            provider._pool, "request", side_effect=[error]
-        ) as mock_request:
+        with patch.object(provider._pool, "request", side_effect=[error]) as mock_request:
             with self.assertRaises(RuntimeError) as ctx:
                 provider.get_sampling_strategy("my-service")
 
@@ -292,9 +254,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
         mock_monotonic.side_effect = [0, 0, 15]
         provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
         error = urllib3.exceptions.ProtocolError("connection broken")
-        with patch.object(
-            provider._pool, "request", side_effect=[error]
-        ) as mock_request:
+        with patch.object(provider._pool, "request", side_effect=[error]) as mock_request:
             with self.assertRaises(RuntimeError) as ctx:
                 provider.get_sampling_strategy("my-service")
 

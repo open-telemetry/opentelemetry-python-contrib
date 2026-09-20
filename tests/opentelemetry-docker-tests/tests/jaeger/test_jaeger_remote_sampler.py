@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -20,9 +21,7 @@ from opentelemetry.sdk.trace.sampling import Sampler
 
 _HTTP_ENDPOINT = "http://localhost:5778/sampling"
 _GRPC_ENDPOINT = "localhost:14250"
-_STRATEGIES_FILE = (
-    Path(__file__).parent / "resources" / "sampling_strategies.json"
-)
+_STRATEGIES_FILE = Path(__file__).parent / "resources" / "sampling_strategies.json"
 _ORIGINAL_STRATEGIES_FILE_CONTENT = _STRATEGIES_FILE.read_bytes()
 
 _POLLING_INTERVAL = 1.0
@@ -38,20 +37,19 @@ _STRATEGIES: dict[str, tuple[dict[str, Any], Callable[[Sampler], bool]]] = {
     ),
     "ratelimiting": (
         {"type": "ratelimiting", "param": 3},
-        lambda s: isinstance(s, RateLimitingSampler)
-        and s.max_traces_per_second == 3,
+        lambda s: isinstance(s, RateLimitingSampler) and s.max_traces_per_second == 3,
     ),
     "per_operation": (
         {
             "type": "probabilistic",
             "param": 0.1,
-            "operation_strategies": [
-                {"operation": "op1", "type": "probabilistic", "param": 1.0}
-            ],
+            "operation_strategies": [{"operation": "op1", "type": "probabilistic", "param": 1.0}],
         },
-        lambda s: isinstance(s, PerOperationSampler)
-        # pylint: disable-next=protected-access
-        and s._operation_samplers["op1"]._probabilistic.rate == 1.0,
+        lambda s: (
+            isinstance(s, PerOperationSampler)
+            # pylint: disable-next=protected-access
+            and s._operation_samplers["op1"]._probabilistic.rate == 1.0
+        ),
     ),
 }
 
@@ -124,8 +122,10 @@ def test_refresh(protocol, strategy_name, strategies_file, sampler):
     )
     instance = sampler(protocol, service_name)
     _wait_until(
-        lambda: isinstance(instance._sampler, ProbabilisticSampler)
-        and instance._sampler.rate == _BASELINE_STRATEGY["param"]
+        lambda: (
+            isinstance(instance._sampler, ProbabilisticSampler)
+            and instance._sampler.rate == _BASELINE_STRATEGY["param"]
+        )
     )
 
     strategies_file.write(

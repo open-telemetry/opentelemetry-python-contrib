@@ -7,7 +7,7 @@ import http
 import itertools
 import random
 import time
-from typing import Mapping
+from collections.abc import Mapping
 
 import urllib3
 
@@ -37,11 +37,7 @@ _RETRYABLE_CONNECTION_ERRORS: tuple[type[Exception], ...] = (
     urllib3.exceptions.MaxRetryError,
     urllib3.exceptions.ProtocolError,
     # NameResolutionError was added in urllib3 2.0
-    *(
-        (urllib3.exceptions.NameResolutionError,)
-        if hasattr(urllib3.exceptions, "NameResolutionError")
-        else ()
-    ),
+    *((urllib3.exceptions.NameResolutionError,) if hasattr(urllib3.exceptions, "NameResolutionError") else ()),
 )
 
 
@@ -51,9 +47,7 @@ def _decode_operation_strategy(
     sampling_rate = 0.0
     if strategy.probabilisticSampling is not None:
         sampling_rate = strategy.probabilisticSampling.samplingRate or 0.0
-    return OperationStrategy(
-        operation=strategy.operation or "", sampling_rate=sampling_rate
-    )
+    return OperationStrategy(operation=strategy.operation or "", sampling_rate=sampling_rate)
 
 
 def _decode_sampling_strategy(
@@ -62,31 +56,19 @@ def _decode_sampling_strategy(
     if response.operationSampling is not None:
         operation_sampling = response.operationSampling
         return PerOperationStrategy(
-            default_sampling_probability=operation_sampling.defaultSamplingProbability
-            or 0.0,
-            default_lower_bound_traces_per_second=operation_sampling.defaultLowerBoundTracesPerSecond
-            or 0.0,
+            default_sampling_probability=operation_sampling.defaultSamplingProbability or 0.0,
+            default_lower_bound_traces_per_second=operation_sampling.defaultLowerBoundTracesPerSecond or 0.0,
             operation_strategies=tuple(
-                _decode_operation_strategy(strategy)
-                for strategy in operation_sampling.perOperationStrategies
+                _decode_operation_strategy(strategy) for strategy in operation_sampling.perOperationStrategies
             ),
-            default_upper_bound_traces_per_second=operation_sampling.defaultUpperBoundTracesPerSecond
-            or 0.0,
+            default_upper_bound_traces_per_second=operation_sampling.defaultUpperBoundTracesPerSecond or 0.0,
         )
     if response.strategyType == SamplingStrategyType.RATE_LIMITING:
         rate_limiting = response.rateLimitingSampling
-        max_traces_per_second = (
-            rate_limiting.maxTracesPerSecond
-            if rate_limiting is not None
-            else 0
-        )
-        return RateLimitingStrategy(
-            max_traces_per_second=max_traces_per_second or 0
-        )
+        max_traces_per_second = rate_limiting.maxTracesPerSecond if rate_limiting is not None else 0
+        return RateLimitingStrategy(max_traces_per_second=max_traces_per_second or 0)
     probabilistic = response.probabilisticSampling
-    sampling_rate = (
-        probabilistic.samplingRate if probabilistic is not None else 0.0
-    )
+    sampling_rate = probabilistic.samplingRate if probabilistic is not None else 0.0
     return ProbabilisticStrategy(sampling_rate=sampling_rate or 0.0)
 
 
@@ -125,28 +107,17 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
                     timeout=max(deadline - time.monotonic(), 0),
                 )
             except _RETRYABLE_CONNECTION_ERRORS as error:
-                if (
-                    attempt >= _MAX_RETRIES
-                    or deadline < time.monotonic() + backoff
-                ):
-                    raise RuntimeError(
-                        f"Jaeger sampling endpoint {self._endpoint} failed: "
-                        f"{error}"
-                    ) from error
+                if attempt >= _MAX_RETRIES or deadline < time.monotonic() + backoff:
+                    raise RuntimeError(f"Jaeger sampling endpoint {self._endpoint} failed: {error}") from error
             else:
                 if response.status == http.HTTPStatus.OK:
-                    return _decode_sampling_strategy(
-                        SamplingStrategyResponse.from_json(response.data)
-                    )
+                    return _decode_sampling_strategy(SamplingStrategyResponse.from_json(response.data))
                 if (
                     response.status not in _RETRYABLE_STATUSES
                     or attempt >= _MAX_RETRIES
                     or deadline < time.monotonic() + backoff
                 ):
-                    raise RuntimeError(
-                        f"Jaeger sampling endpoint {self._endpoint} "
-                        f"returned status {response.status}"
-                    )
+                    raise RuntimeError(f"Jaeger sampling endpoint {self._endpoint} returned status {response.status}")
             time.sleep(backoff)
 
     def close(self) -> None:

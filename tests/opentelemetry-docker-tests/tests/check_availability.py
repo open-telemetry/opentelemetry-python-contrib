@@ -28,9 +28,7 @@ POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
 POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
-JAEGER_SAMPLING_ENDPOINT = os.getenv(
-    "JAEGER_SAMPLING_ENDPOINT", "http://localhost:5778/sampling"
-)
+JAEGER_SAMPLING_ENDPOINT = os.getenv("JAEGER_SAMPLING_ENDPOINT", "http://localhost:5778/sampling")
 MSSQL_DB_NAME = os.getenv("MSSQL_DB_NAME", "opentelemetry-tests")
 MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))

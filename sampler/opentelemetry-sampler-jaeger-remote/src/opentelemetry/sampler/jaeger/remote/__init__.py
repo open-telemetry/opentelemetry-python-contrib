@@ -6,7 +6,8 @@ from __future__ import annotations
 import logging
 import threading
 import weakref
-from typing import Literal, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Literal
 
 from opentelemetry.context import Context
 from opentelemetry.sampler.jaeger.remote._provider import (
@@ -48,12 +49,9 @@ def _create_provider(
                 )
             except ImportError as error:
                 raise ImportError(
-                    "protocol='http' requires the 'http' extra: "
-                    "pip install opentelemetry-sampler-jaeger-remote[http]"
+                    "protocol='http' requires the 'http' extra: pip install opentelemetry-sampler-jaeger-remote[http]"
                 ) from error
-            return HttpSamplingStrategyProvider(
-                endpoint, headers=headers, timeout=timeout
-            )
+            return HttpSamplingStrategyProvider(endpoint, headers=headers, timeout=timeout)
         case "grpc":
             try:
                 # pylint: disable-next=import-outside-toplevel
@@ -62,12 +60,9 @@ def _create_provider(
                 )
             except ImportError as error:
                 raise ImportError(
-                    "protocol='grpc' requires the 'grpc' extra: "
-                    "pip install opentelemetry-sampler-jaeger-remote[grpc]"
+                    "protocol='grpc' requires the 'grpc' extra: pip install opentelemetry-sampler-jaeger-remote[grpc]"
                 ) from error
-            return GrpcSamplingStrategyProvider(
-                endpoint, headers=headers, timeout=timeout
-            )
+            return GrpcSamplingStrategyProvider(endpoint, headers=headers, timeout=timeout)
         case _:
             raise ValueError(f"Unsupported protocol: {protocol!r}")
 
@@ -94,8 +89,7 @@ def _build_or_update_sampler(
             operation_strategies=operation_strategies,
         ):
             per_operation_strategies = tuple(
-                (operation.operation, operation.sampling_rate)
-                for operation in operation_strategies
+                (operation.operation, operation.sampling_rate) for operation in operation_strategies
             )
             if isinstance(current, PerOperationSampler):
                 current.update(
@@ -218,9 +212,7 @@ class JaegerRemoteSampler(Sampler):
         try:
             strategy = provider.get_sampling_strategy(self._service_name)
             with self._lock:
-                self._sampler = _build_or_update_sampler(
-                    self._sampler, strategy, self._max_operations
-                )
+                self._sampler = _build_or_update_sampler(self._sampler, strategy, self._max_operations)
         except Exception as error:  # pylint: disable=broad-except
             _logger.error(
                 "Failed to update Jaeger sampling strategy for service %r: %s",

@@ -31,9 +31,7 @@ class PerOperationStrategy:
     default_upper_bound_traces_per_second: float = 0.0
 
 
-SamplingStrategy = (
-    ProbabilisticStrategy | RateLimitingStrategy | PerOperationStrategy
-)
+SamplingStrategy = ProbabilisticStrategy | RateLimitingStrategy | PerOperationStrategy
 
 
 class SamplingStrategyProvider(ABC):

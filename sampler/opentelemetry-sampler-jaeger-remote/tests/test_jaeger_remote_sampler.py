@@ -54,16 +54,12 @@ class TestCreateProvider(TestCase):
     def test_http_constructs_real_provider(self):
         provider = _create_provider("http", _ENDPOINT, None, None)
         self.addCleanup(provider.close)
-        self.assertEqual(
-            provider.__class__.__name__, "HttpSamplingStrategyProvider"
-        )
+        self.assertEqual(provider.__class__.__name__, "HttpSamplingStrategyProvider")
 
     def test_grpc_constructs_real_provider(self):
         provider = _create_provider("grpc", "localhost:14250", None, None)
         self.addCleanup(provider.close)
-        self.assertEqual(
-            provider.__class__.__name__, "GrpcSamplingStrategyProvider"
-        )
+        self.assertEqual(provider.__class__.__name__, "GrpcSamplingStrategyProvider")
 
     def test_http_missing_extra_raises(self):
         with patch.dict(
@@ -125,9 +121,7 @@ class TestJaegerRemoteSampler(TestCase):
         provider.block_event = threading.Event()
         initial_sampler = RateLimitingSampler(3)
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, initial_sampler=initial_sampler
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, initial_sampler=initial_sampler)
         self.addCleanup(sampler.close)
 
         self.assertIs(sampler._sampler, initial_sampler)
@@ -136,9 +130,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_background_thread_fetches_immediately(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
 
         # pylint: disable-next=consider-using-with
@@ -150,9 +142,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_close_stops_thread_and_provider(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
 
@@ -164,9 +154,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_close_is_idempotent(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
 
@@ -176,9 +164,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_del_after_close_does_not_raise(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
 
@@ -191,9 +177,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_deleting_sampler_stops_thread(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
 
@@ -211,9 +195,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_reuses_sampler_on_same_strategy_type(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
@@ -230,9 +212,7 @@ class TestJaegerRemoteSampler(TestCase):
     def test_replaces_sampler_on_type_change(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
@@ -253,15 +233,11 @@ class TestJaegerRemoteSampler(TestCase):
             PerOperationStrategy(
                 default_sampling_probability=0.1,
                 default_lower_bound_traces_per_second=0.0,
-                operation_strategies=(
-                    OperationStrategy(operation="op-a", sampling_rate=1.0),
-                ),
+                operation_strategies=(OperationStrategy(operation="op-a", sampling_rate=1.0),),
             )
         )
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
@@ -273,17 +249,13 @@ class TestJaegerRemoteSampler(TestCase):
     def test_fetch_failure_keeps_previous_sampler(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=0.5))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
         # pylint: disable-next=consider-using-with
         self.assertTrue(provider.fetched.acquire(timeout=2))
         previous_sampler = sampler._sampler
 
-        with patch.object(
-            provider, "get_sampling_strategy", side_effect=RuntimeError
-        ):
+        with patch.object(provider, "get_sampling_strategy", side_effect=RuntimeError):
             sampler._update_sampler(provider)
 
         self.assertIs(sampler._sampler, previous_sampler)
@@ -291,8 +263,6 @@ class TestJaegerRemoteSampler(TestCase):
     def test_get_description(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=1.0))
         with patch(_PATCH_TARGET, return_value=provider):
-            sampler = JaegerRemoteSampler(
-                _ENDPOINT, _SERVICE_NAME, polling_interval=3600
-            )
+            sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=3600)
         self.addCleanup(sampler.close)
         self.assertIn("JaegerRemoteSampler{", sampler.get_description())

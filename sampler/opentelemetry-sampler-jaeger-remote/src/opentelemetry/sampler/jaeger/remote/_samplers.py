@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import time
-from typing import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 from opentelemetry.context import Context
 from opentelemetry.sampler.jaeger.remote._ratelimiter import RateLimiter
@@ -121,9 +121,7 @@ class RateLimitingSampler(Sampler):
     def update(self, max_traces_per_second: float) -> None:
         """Reconfigure the rate in place."""
         self._max_traces_per_second = max_traces_per_second
-        self._rate_limiter.update(
-            max_traces_per_second, max(max_traces_per_second, 1.0)
-        )
+        self._rate_limiter.update(max_traces_per_second, max(max_traces_per_second, 1.0))
 
     def should_sample(
         self,
@@ -135,11 +133,7 @@ class RateLimitingSampler(Sampler):
         links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
     ) -> SamplingResult:
-        decision = (
-            Decision.RECORD_AND_SAMPLE
-            if self._rate_limiter.try_spend(1.0)
-            else Decision.DROP
-        )
+        decision = Decision.RECORD_AND_SAMPLE if self._rate_limiter.try_spend(1.0) else Decision.DROP
         return _sampler_result(
             decision,
             attributes,
@@ -174,9 +168,7 @@ class GuaranteedThroughputSampler(Sampler):
     def _make_rate_limiter(self, lower_bound: float) -> RateLimiter | None:
         if lower_bound <= 0:
             return None
-        return RateLimiter(
-            lower_bound, max(lower_bound, 1.0), clock=self._clock
-        )
+        return RateLimiter(lower_bound, max(lower_bound, 1.0), clock=self._clock)
 
     def update(self, rate: float, lower_bound: float) -> None:
         """Reconfigure the rate/lower bound in place."""
@@ -209,11 +201,7 @@ class GuaranteedThroughputSampler(Sampler):
             trace_state=trace_state,
         )
         # Always spend a lower bound credit
-        spent = (
-            self._rate_limiter.try_spend(1.0)
-            if self._rate_limiter is not None
-            else False
-        )
+        spent = self._rate_limiter.try_spend(1.0) if self._rate_limiter is not None else False
         if result.decision != Decision.DROP:
             return result
         decision = Decision.RECORD_AND_SAMPLE if spent else Decision.DROP
@@ -255,9 +243,7 @@ class PerOperationSampler(Sampler):
         self._clock = clock
         self._max_operations = max_operations
         self._default_sampling_probability = default_sampling_probability
-        self._default_lower_bound_traces_per_second = (
-            default_lower_bound_traces_per_second
-        )
+        self._default_lower_bound_traces_per_second = default_lower_bound_traces_per_second
         self._default_sampler = GuaranteedThroughputSampler(
             default_sampling_probability,
             default_lower_bound_traces_per_second,
@@ -286,12 +272,8 @@ class PerOperationSampler(Sampler):
         `max_operations`.
         """
         self._default_sampling_probability = default_sampling_probability
-        self._default_lower_bound_traces_per_second = (
-            default_lower_bound_traces_per_second
-        )
-        self._default_sampler.update(
-            default_sampling_probability, default_lower_bound_traces_per_second
-        )
+        self._default_lower_bound_traces_per_second = default_lower_bound_traces_per_second
+        self._default_sampler.update(default_sampling_probability, default_lower_bound_traces_per_second)
 
         updated_samplers: dict[str, GuaranteedThroughputSampler] = {}
         for operation, rate in per_operation_strategies:
@@ -340,8 +322,7 @@ class PerOperationSampler(Sampler):
 
     def get_description(self) -> str:
         per_operation = ", ".join(
-            f"{operation}: {sampler.get_description()}"
-            for operation, sampler in self._operation_samplers.items()
+            f"{operation}: {sampler.get_description()}" for operation, sampler in self._operation_samplers.items()
         )
         return (
             f"PerOperationSampler{{default={self._default_sampler.get_description()}, "
