@@ -18,6 +18,8 @@ Installation
 References
 ----------
 
-* `OpenTelemetry Valkey Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/valkey/valkey.html>`_
+.. TODO: Update Valkey Instrumentation link once docs are published.
+
+* `OpenTelemetry Valkey Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
