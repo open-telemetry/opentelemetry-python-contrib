@@ -1498,7 +1498,7 @@ jobs:
         run: tox -e py310-test-instrumentation-urllib3-1 -- -ra
 
   py310-test-instrumentation-valkey-py-oldest:
-    name: instrumentation-valkey-py-oldest
+    name: instrumentation-valkey-py-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1528,7 +1528,7 @@ jobs:
         run: tox -e py310-test-instrumentation-valkey-py-oldest -- -ra
 
   py310-test-instrumentation-valkey-py-latest:
-    name: instrumentation-valkey-py-latest
+    name: instrumentation-valkey-py-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
