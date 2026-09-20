@@ -132,7 +132,7 @@ class TestBootstrap(TestCase):
             bootstrap.run()
 
         self.assertEqual(
-            fake_out.getvalue().strip(), "opentelemetry-instrumentation-flask\nopentelemetry-instrumentation-fastapi"
+            fake_out.getvalue().strip(), "opentelemetry-instrumentation-fastapi\nopentelemetry-instrumentation-flask"
         )
 
     @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "does-not-exist"])
@@ -157,7 +157,7 @@ class TestBootstrap(TestCase):
             bootstrap.run()
 
         self.assertEqual(
-            fake_out.getvalue().strip(), "opentelemetry-instrumentation-flask\nopentelemetry-instrumentation-fastapi"
+            fake_out.getvalue().strip(), "opentelemetry-instrumentation-fastapi\nopentelemetry-instrumentation-flask"
         )
 
     @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "system_metrics"])
