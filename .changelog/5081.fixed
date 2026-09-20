@@ -1,0 +1,2 @@
+`opentelemetry-instrumentation-asgi`: record the HTTP server response size per request instead of on the shared middleware instance, so a response without a `Content-Length` header no longer reports an earlier request's size
+([#5081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5081))
