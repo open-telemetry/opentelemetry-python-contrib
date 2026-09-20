@@ -170,7 +170,9 @@ def run(
         return re.sub(r"[-_.\s]+", "-", name.strip().lower())
 
     def _is_excluded(name: str, excluded_packages: set[str]) -> bool:
-        return _normalize_package_name(name) in excluded_packages
+        normalized_name = _normalize_package_name(Requirement(name).name)
+        instrumentor_name = normalized_name.removeprefix("opentelemetry-instrumentation-")
+        return normalized_name in excluded_packages or instrumentor_name in excluded_packages
 
     _normalized_packages_to_exclude = {_normalize_package_name(package) for package in (args.exclude or set())}
 
