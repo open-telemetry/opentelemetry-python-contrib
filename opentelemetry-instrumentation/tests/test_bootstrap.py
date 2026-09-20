@@ -115,14 +115,17 @@ class TestBootstrap(TestCase):
             "opentelemetry-instrumentation-fastapi",
         ]
 
+        def fake_is_installed(lib):
+            return lib in {"flask", "fastapi"}
+
         with (
             patch("opentelemetry.instrumentation.bootstrap.gen_libraries", fake_libraries),
             patch(
                 "opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", fake_default_instrumentations
             ),
             patch(
-                "opentelemetry.instrumentation.bootstrap._find_installed_libraries",
-                return_value=["opentelemetry-instrumentation-flask", "opentelemetry-instrumentation-fastapi"],
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=fake_is_installed,
             ),
             patch("sys.stdout", new=StringIO()) as fake_out,
         ):
@@ -139,12 +142,15 @@ class TestBootstrap(TestCase):
         ]
         default_instrumentations = ["opentelemetry-instrumentation-fastapi"]
 
+        def fake_is_installed(lib):
+            return lib in {"flask", "fastapi"}
+
         with (
             patch("opentelemetry.instrumentation.bootstrap.gen_libraries", libraries),
             patch("opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", default_instrumentations),
             patch(
-                "opentelemetry.instrumentation.bootstrap._find_installed_libraries",
-                return_value=["opentelemetry-instrumentation-flask", "opentelemetry-instrumentation-fastapi"],
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=fake_is_installed,
             ),
             patch("sys.stdout", new=StringIO()) as fake_out,
         ):
