@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import re
 import sys
 from subprocess import (
     PIPE,
@@ -155,7 +156,7 @@ def run(
         "-e",
         "--exclude",
         help="packages to exclude from installation",
-        type=lambda s: set(item.strip() for item in s.split(",") if item.strip()),
+        type=lambda s: set(item.strip().lower() for item in s.split(",") if item.strip()),
     )
     args = parser.parse_args()
 
@@ -165,18 +166,27 @@ def run(
     if default_instrumentations is None:
         default_instrumentations = gen_default_instrumentations
 
-    _packages_to_exclude = args.exclude or set()
+    def _normalize_package_name(name: str) -> str:
+        return re.sub(r"[-_.\s]+", "-", name.strip().lower())
+
+    def _is_excluded(name: str, excluded_packages: set[str]) -> bool:
+        return _normalize_package_name(name) in excluded_packages
+
+    _normalized_packages_to_exclude = {_normalize_package_name(package) for package in (args.exclude or set())}
 
     filtered_libraries = [
         library
         for library in libraries
-        if not any(excluded_package in library["instrumentation"] for excluded_package in _packages_to_exclude)
+        if not (
+            _is_excluded(library["library"], _normalized_packages_to_exclude)
+            or _is_excluded(library["instrumentation"], _normalized_packages_to_exclude)
+        )
     ]
 
     filtered_default_instrumentations = [
         instrumentation
         for instrumentation in default_instrumentations
-        if not any(excluded_package in instrumentation for excluded_package in _packages_to_exclude)
+        if not _is_excluded(instrumentation, _normalized_packages_to_exclude)
     ]
 
     cmd = {
