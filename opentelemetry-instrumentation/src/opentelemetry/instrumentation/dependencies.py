@@ -58,16 +58,16 @@ class DependencyConflict:
         self.found_any = found_any
 
     @property
-    def is_version_conflict(self) -> bool:
+    def _is_version_conflict(self) -> bool:
         """False when the dependency is not installed at all, rather than installed at an incompatible version."""
         return bool(self.found or self.found_any)
 
-    def log(self, logger: Logger, instrumentor_name: str) -> None:
+    def _log(self, logger: Logger, instrumentor_name: str) -> None:
         """Log as an error for a version conflict, at debug level when the dependency is not installed."""
-        log = logger.error if self.is_version_conflict else logger.debug
-        log(self.format_message(instrumentor_name))
+        log = logger.error if self._is_version_conflict else logger.debug
+        log(self._format_message(instrumentor_name))
 
-    def format_message(self, instrumentor_name: str | None = None) -> str:
+    def _format_message(self, instrumentor_name: str | None = None) -> str:
         subject = instrumentor_name or "This instrumentation"
         if self.required:
             if self.found:
@@ -94,7 +94,7 @@ class DependencyConflict:
         return f"{subject} has an unknown dependency conflict, so nothing can be instrumented."
 
     def __str__(self):
-        return self.format_message()
+        return self._format_message()
 
 
 class DependencyConflictError(Exception):

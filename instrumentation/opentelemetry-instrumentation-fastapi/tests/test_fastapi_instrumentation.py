@@ -1200,7 +1200,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     @staticmethod
     def _instrumentation_failed_to_load_call(dependency_conflict):
-        return call(dependency_conflict.format_message("fastapi"))
+        return call(dependency_conflict._format_message("fastapi"))
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_fastapi_installed(self, mock_logger):

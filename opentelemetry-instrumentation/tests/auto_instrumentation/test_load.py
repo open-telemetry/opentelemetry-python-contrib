@@ -160,7 +160,7 @@ class TestLoad(TestCase):
 
     @staticmethod
     def _instrumentation_failed_to_load_call(entry_point, dependency_conflict):
-        return call(dependency_conflict.format_message(entry_point))
+        return call(dependency_conflict._format_message(entry_point))
 
     @patch.dict(
         "os.environ",
