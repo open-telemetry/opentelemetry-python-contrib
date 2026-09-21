@@ -42,12 +42,13 @@ Usage
 Configuration
 -------------
 
-Connection pool metrics
+Database client metrics
 ***********************
 Connection pool usage is reported as the ``db.client.connection.count``
 metric, with the ``db.client.connection.pool.name`` and
-``db.client.connection.state`` (``idle``/``used``) attributes. This replaces
-the deprecated ``db.client.connections.usage`` metric.
+``db.client.connection.state`` (``idle``/``used``) attributes. See the
+`database semantic conventions
+<https://opentelemetry.io/docs/specs/semconv/database/>`_ for more information.
 
 SQLCommenter
 ************
