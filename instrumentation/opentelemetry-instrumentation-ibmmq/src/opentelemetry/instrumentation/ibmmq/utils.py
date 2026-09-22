@@ -224,31 +224,23 @@ def make_connect_wrapper(cmqc: Any) -> CallableWrapper:
     return wrapper
 
 
-def make_put1_wrapper(tracer: Tracer) -> CallableWrapper:
+def _make_produce_wrapper(
+    tracer: Tracer,
+    resolve: Callable[[Any, tuple, dict], tuple[str | None, str | None]],
+    reread_name: bool,
+) -> CallableWrapper:
+    """Shared body for make_put1_wrapper and make_queue_put_wrapper.
+
+    They differ only in how the destination and qmid are found, and in
+    whether the destination can still be unknown after the call returns
+    (put1's destination always comes from its own argument, so it never
+    needs the post-call re-read that Queue.put does).
+    """
+
     def wrapper(wrapped: Callable, instance: Any, args: tuple, kwargs: dict) -> Any:
         if not is_instrumentation_enabled():
             return wrapped(*args, **kwargs)
-        destination = _put1_destination(args, kwargs)
-        qmid = getattr(instance, "_otel_qmid", None)
-        span = tracer.start_span(
-            name=_span_name(destination, "publish"),
-            kind=SpanKind.PRODUCER,
-        )
-        if span.is_recording():
-            _enrich_span(span, destination, "publish", qmid)
-        with trace.use_span(span, end_on_exit=True):
-            return wrapped(*args, **kwargs)
-
-    return wrapper
-
-
-def make_queue_put_wrapper(tracer: Tracer) -> CallableWrapper:
-    def wrapper(wrapped: Callable, instance: Any, args: tuple, kwargs: dict) -> Any:
-        if not is_instrumentation_enabled():
-            return wrapped(*args, **kwargs)
-        destination = _queue_name(instance)
-        qmgr = _queue_manager(instance)
-        qmid = getattr(qmgr, "_otel_qmid", None)
+        destination, qmid = resolve(instance, args, kwargs)
         span = tracer.start_span(
             name=_span_name(destination, "publish"),
             kind=SpanKind.PRODUCER,
@@ -257,13 +249,28 @@ def make_queue_put_wrapper(tracer: Tracer) -> CallableWrapper:
             _enrich_span(span, destination, "publish", qmid)
         with trace.use_span(span, end_on_exit=True):
             result = wrapped(*args, **kwargs)
-            if destination is None:
+            if reread_name and destination is None:
                 # The queue may have just been opened lazily inside this
                 # call; the name is unreadable before that.
                 _name_after_open(span, instance, "publish")
             return result
 
     return wrapper
+
+
+def make_put1_wrapper(tracer: Tracer) -> CallableWrapper:
+    def resolve(instance: Any, args: tuple, kwargs: dict) -> tuple[str | None, str | None]:
+        return _put1_destination(args, kwargs), getattr(instance, "_otel_qmid", None)
+
+    return _make_produce_wrapper(tracer, resolve, reread_name=False)
+
+
+def make_queue_put_wrapper(tracer: Tracer) -> CallableWrapper:
+    def resolve(instance: Any, args: tuple, kwargs: dict) -> tuple[str | None, str | None]:
+        qmgr = _queue_manager(instance)
+        return _queue_name(instance), getattr(qmgr, "_otel_qmid", None)
+
+    return _make_produce_wrapper(tracer, resolve, reread_name=True)
 
 
 def make_queue_get_wrapper(tracer: Tracer, cmqc: Any) -> CallableWrapper:
