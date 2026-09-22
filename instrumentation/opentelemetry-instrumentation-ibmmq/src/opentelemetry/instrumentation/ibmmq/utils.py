@@ -67,10 +67,7 @@ def _resolve_qmid(qmgr: Any, attribute: int) -> str | None:
     have it delegate to connect_with_options). Never call this per message.
     """
     try:
-        raw = qmgr.inquire(attribute)
-        if isinstance(raw, bytes):
-            raw = raw.decode(errors="replace")
-        return raw.strip() or None
+        return _clean_name(qmgr.inquire(attribute))
     except Exception as exc:  # pylint: disable=broad-except
         # A failed QMID inquire must never break the application's MQ call.
         _LOG.debug("failed to resolve IBM MQ queue manager id: %s", exc)
