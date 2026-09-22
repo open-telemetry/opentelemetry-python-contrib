@@ -14,12 +14,12 @@ from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
 
-# messaging.ibmmq.queue_manager.id is not a ratified semantic convention yet.
+# ibm.mq.queue_manager.id is not a ratified semantic convention yet.
 # Gate it behind this env var, default off, same as the Java/.NET agents do
 # for the identical attribute.
 _EXPERIMENTAL_ENV_VAR = "OTEL_PYTHON_IBMMQ_EXPERIMENTAL_SPAN_ATTRIBUTES"
-_ATTR_QMID = "messaging.ibmmq.queue_manager.id"
-_ATTR_BROWSE = "messaging.ibmmq.browse"
+_ATTR_QMID = "ibm.mq.queue_manager.id"
+_ATTR_BROWSE = "ibm.mq.browse"
 
 # Read once at instrument() time, never per span.
 _experimental_attributes_enabled = False
@@ -138,7 +138,7 @@ def _put1_destination(args: tuple, kwargs: dict) -> str | None:
 
 
 def _find_gmo(args: tuple, kwargs: dict) -> Any:
-    """Find the MQGMO among Queue.get's call arguments.
+    """Find the MQGMO among the arguments to a Queue.get call.
 
     A browse is a GMO option bit on the same get() call, not a separate
     class, so duck type on the one attribute (Options) that identifies a
@@ -187,7 +187,7 @@ def _enrich_span(
 ) -> None:
     # MessagingSystemValues is a closed enum with no IBM MQ member, so a
     # literal string is intentional here.
-    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "ibmmq")
+    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "ibm.mq")
     span.set_attribute(messaging_attributes.MESSAGING_OPERATION, operation)
     if destination is not None:
         span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, destination)

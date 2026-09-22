@@ -76,7 +76,7 @@ class TestUtils(TestBase):
         span = spans[0]
         self.assertEqual(span.name, "DEV.QUEUE.1 publish")
         self.assertEqual(span.kind, SpanKind.PRODUCER)
-        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "ibmmq")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "ibm.mq")
         self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION], "publish")
         self.assertEqual(
             span.attributes[messaging_attributes.MESSAGING_DESTINATION_NAME],

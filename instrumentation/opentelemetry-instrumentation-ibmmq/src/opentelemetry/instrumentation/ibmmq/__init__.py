@@ -27,9 +27,9 @@ async MQCB API.
 
 Two extra attributes are available but off by default, because neither is a
 ratified OpenTelemetry semantic convention yet:
-``messaging.ibmmq.queue_manager.id``, the identifier IBM MQ assigns to a
+``ibm.mq.queue_manager.id``, the identifier IBM MQ assigns to a
 queue manager and which is unique across every queue manager anywhere, and
-``messaging.ibmmq.browse``, which marks a get that only browsed a message
+``ibm.mq.browse``, which marks a get that only browsed a message
 instead of consuming it. Set the environment variable
 ``OTEL_PYTHON_IBMMQ_EXPERIMENTAL_SPAN_ATTRIBUTES`` to ``true`` or ``1`` to
 enable both:
