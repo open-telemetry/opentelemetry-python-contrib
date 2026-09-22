@@ -8,13 +8,11 @@ from __future__ import annotations
 import sys
 import unittest
 import wsgiref.util as wsgiref_util
-from collections.abc import Sequence
 from unittest import mock
 from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
-from opentelemetry.context import Context
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -30,7 +28,6 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -70,6 +67,7 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
@@ -79,7 +77,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
-from opentelemetry.util.types import Attributes, AttributeValue
 
 
 class Response:
@@ -1046,38 +1043,6 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
 _CUSTOM_REQUEST_HEADER = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
 
 
-class _RequestHeaderSampler(Sampler):
-    attributes: dict[str, AttributeValue]
-    kind: trace_api.SpanKind | None
-    required_value: str | None
-
-    def __init__(self, required_value: str | None = None) -> None:
-        self.attributes = {}
-        self.kind = None
-        self.required_value = required_value
-
-    def should_sample(
-        self,
-        parent_context: Context | None,
-        trace_id: int,
-        name: str,
-        kind: trace_api.SpanKind | None = None,
-        attributes: Attributes = None,
-        links: Sequence[trace_api.Link] | None = None,
-        trace_state: trace_api.TraceState | None = None,
-    ) -> SamplingResult:
-        # Snapshot now so attributes added after span creation cannot hide a regression.
-        self.attributes = dict(attributes or {})
-        self.kind = kind
-        decision = Decision.RECORD_AND_SAMPLE
-        if self.required_value is not None and self.attributes.get(_CUSTOM_REQUEST_HEADER) != [self.required_value]:
-            decision = Decision.DROP
-        return SamplingResult(decision, attributes=self.attributes, trace_state=trace_state)
-
-    def get_description(self) -> str:
-        return "Request header sampler"
-
-
 class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
     def setUp(self):
         super().setUp()
@@ -1181,7 +1146,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             with self.subTest(remote_parent=remote_parent):
                 if remote_parent:
                     self.environ["HTTP_TRACEPARENT"] = "00-11111111111111111111111111111111-2222222222222222-01"
-                sampler = _RequestHeaderSampler()
+                sampler = CapturingSampler()
                 tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
                 self.addCleanup(tracer_provider.shutdown)
                 app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
@@ -1229,7 +1194,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             }
         )
 
-        sampler = _RequestHeaderSampler()
+        sampler = CapturingSampler()
         tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
         self.addCleanup(tracer_provider.shutdown)
         with self.tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER) as parent_span:
@@ -1253,7 +1218,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
     )
     def test_custom_request_headers_not_captured_without_configuration(self) -> None:
         self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = "Test Value 1"
-        sampler = _RequestHeaderSampler()
+        sampler = CapturingSampler()
         tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
         self.addCleanup(tracer_provider.shutdown)
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
@@ -1279,7 +1244,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         for value, expected_count in (("sample", 1), ("drop", 0)):
             with self.subTest(value=value):
                 self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = value
-                sampler = _RequestHeaderSampler(required_value="sample")
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER: ["sample"]})
                 tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
                 self.addCleanup(tracer_provider.shutdown)
                 app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
