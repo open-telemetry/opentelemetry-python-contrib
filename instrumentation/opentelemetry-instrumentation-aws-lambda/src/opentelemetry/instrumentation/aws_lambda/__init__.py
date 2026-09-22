@@ -105,6 +105,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
 from opentelemetry.trace import (
+    Span,
     SpanKind,
     TracerProvider,
     get_tracer,
@@ -324,6 +325,8 @@ def _instrument(
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
+    request_hook: Callable[[Span, Any, Any], None] = None,
+    response_hook: Callable[[Span, Any, Any, Any], None] = None,
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
@@ -368,6 +371,9 @@ def _instrument(
                 exception = None
                 result = None
 
+                if request_hook:
+                    request_hook(span, lambda_event, lambda_context)
+
                 try:
                     if event_type is _LambdaEventType.SQS:
                         result = _run_sqs_handler(tracer, lambda_event, call_wrapped, args, kwargs)
@@ -384,6 +390,9 @@ def _instrument(
                         HTTP_STATUS_CODE,
                         result.get("statusCode"),
                     )
+
+                if response_hook:
+                    response_hook(span, lambda_event, lambda_context, result)
         finally:
             if token:
                 context_api.detach(token)
@@ -445,6 +454,12 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     Event as input and extracts an OTel Context from it. By default,
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
+                `request_hook`: a callable invoked with the server span and
+                    the Lambda `event` and `context` right after the span
+                    is started, before the handler runs.
+                `response_hook`: a callable invoked with the server span, the
+                    Lambda `event` and `context`, and the handler
+                    `result` after the handler returns, before the span ends.
         """
 
         # Don't try if we are not running on AWS Lambda
@@ -487,6 +502,8 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             event_context_extractor=kwargs.get("event_context_extractor", _default_event_context_extractor),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
+            request_hook=kwargs.get("request_hook"),
+            response_hook=kwargs.get("response_hook"),
         )
 
     def _uninstrument(self, **kwargs):
