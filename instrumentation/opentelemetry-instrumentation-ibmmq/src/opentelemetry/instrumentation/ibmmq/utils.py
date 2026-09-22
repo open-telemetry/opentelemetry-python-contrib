@@ -14,12 +14,12 @@ from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
 
-# ibm.mq.queue_manager.id is not a ratified semantic convention yet.
+# messaging.ibmmq.queue_manager.id is not a ratified semantic convention yet.
 # Gate it behind this env var, default off, same as the Java/.NET agents do
 # for the identical attribute.
 _EXPERIMENTAL_ENV_VAR = "OTEL_PYTHON_IBMMQ_EXPERIMENTAL_SPAN_ATTRIBUTES"
-_ATTR_QMID = "ibm.mq.queue_manager.id"
-_ATTR_BROWSE = "ibm.mq.browse"
+_ATTR_QMID = "messaging.ibmmq.queue_manager.id"
+_ATTR_BROWSE = "messaging.ibmmq.browse"
 
 # Read once at instrument() time, never per span.
 _experimental_attributes_enabled = False
@@ -184,7 +184,7 @@ def _enrich_span(
 ) -> None:
     # MessagingSystemValues is a closed enum with no IBM MQ member, so a
     # literal string is intentional here.
-    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "ibm.mq")
+    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "ibmmq")
     span.set_attribute(messaging_attributes.MESSAGING_OPERATION, operation)
     if destination is not None:
         span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
