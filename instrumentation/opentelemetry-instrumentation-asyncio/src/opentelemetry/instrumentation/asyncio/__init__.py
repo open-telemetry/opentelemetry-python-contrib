@@ -311,13 +311,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     def trace_future(self, future):
         """
-        Register a done callback on a Future that records its duration and,
-        if enabled, emits a span once the Future completes.
+        Record a Future's duration and, if enabled, emit a span when it completes.
 
-        The span is created in the done callback, using the time and context
-        captured here as its start time and parent, so a Future that never
-        completes does not leave an unended span behind.
-        If already instrumented, skip re-wrapping.
+        The span is created in the done callback with the start time and context
+        captured here, so a Future that never completes leaves no unended span.
         """
         if _is_instrumented(future):
             return future
