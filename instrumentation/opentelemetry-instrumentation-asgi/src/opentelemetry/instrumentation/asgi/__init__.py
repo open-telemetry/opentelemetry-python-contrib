@@ -677,7 +677,6 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = failsafe(server_request_hook)
         self.client_request_hook = failsafe(client_request_hook)
         self.client_response_hook = failsafe(client_response_hook)
-        self.content_length_header = None
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
         # Environment variables as constructor parameters
