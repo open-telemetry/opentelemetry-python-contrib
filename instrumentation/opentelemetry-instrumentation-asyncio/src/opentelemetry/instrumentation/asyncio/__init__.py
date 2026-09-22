@@ -76,7 +76,7 @@ import asyncio
 import functools
 import sys
 from asyncio import futures
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterable
 from timeit import default_timer
 from typing import ParamSpec, TypeVar
 
@@ -169,8 +169,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
                 # Check if it's a coroutine or future and wrap it
                 if asyncio.iscoroutine(first_arg) or futures.isfuture(first_arg):
                     args = (self.trace_item(first_arg),) + args[1:]
-                # Check if it's a list and wrap each item
-                elif isinstance(first_arg, list):
+                # wait/as_completed accept any iterable of awaitables (set,
+                # tuple, generator, ...) and materialize it themselves, so
+                # replacing it with a list of wrapped items is safe.
+                elif isinstance(first_arg, Iterable) and not isinstance(first_arg, (str, bytes)):
                     args = ([self.trace_item(item) for item in first_arg],) + args[1:]
             return method(*args, **kwargs)
 
