@@ -77,11 +77,13 @@ import functools
 import sys
 from asyncio import futures
 from collections.abc import Callable, Collection
+from time import time_ns
 from timeit import default_timer
 from typing import ParamSpec, TypeVar
 
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry import context as context_api
 from opentelemetry.instrumentation.asyncio.instrumentation_state import (
     _is_instrumented,
 )
@@ -309,20 +311,38 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     def trace_future(self, future):
         """
-        Wrap a Future's done callback. If already instrumented, skip re-wrapping.
+        Register a done callback on a Future that records its duration and,
+        if enabled, emits a span once the Future completes.
+
+        The span is created in the done callback, using the time and context
+        captured here as its start time and parent, so a Future that never
+        completes does not leave an unended span behind.
+        If already instrumented, skip re-wrapping.
         """
         if _is_instrumented(future):
             return future
 
         start = default_timer()
-        span = self._tracer.start_span(f"{ASYNCIO_PREFIX} future") if self._future_active_enabled else None
+        start_time = time_ns()
+        parent_context = context_api.get_current()
 
         def callback(f):
+            cancelled = f.cancelled()
+            exception = None if cancelled else f.exception()
             attr = {
                 "type": "future",
-                "state": ("cancelled" if f.cancelled() else determine_state(f.exception())),
+                "state": "cancelled" if cancelled else determine_state(exception),
             }
-            self.record_process(start, attr, span, None if f.cancelled() else f.exception())
+            span = (
+                self._tracer.start_span(
+                    f"{ASYNCIO_PREFIX} future",
+                    context=parent_context,
+                    start_time=start_time,
+                )
+                if self._future_active_enabled
+                else None
+            )
+            self.record_process(start, attr, span, exception)
 
         future.add_done_callback(callback)
         return future
@@ -354,7 +374,7 @@ def _get_func_name(func: object) -> str | None:
     return func_name
 
 
-def determine_state(exception: BaseException) -> str:
+def determine_state(exception: BaseException | None) -> str:
     if isinstance(exception, asyncio.CancelledError):
         return "cancelled"
     if isinstance(exception, asyncio.TimeoutError):
