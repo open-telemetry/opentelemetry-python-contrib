@@ -215,7 +215,11 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
         params = getattr(instance, "_params", None)
-        name = args[0] if args[0] else getattr(params, "database", "postgresql")
+        query = args[0] if args else kwargs.get("query", kwargs.get("command"))
+        parameters = args[1:]
+        if not parameters and "args" in kwargs:
+            parameters = (kwargs["args"],)
+        name = query if query else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -226,8 +230,8 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         # Hydrate attributes before span creation to enable filtering
         span_attributes = _hydrate_span_from_args(
             instance,
-            args[0],
-            args[1:] if self.capture_parameters else None,
+            query,
+            parameters if self.capture_parameters else None,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 

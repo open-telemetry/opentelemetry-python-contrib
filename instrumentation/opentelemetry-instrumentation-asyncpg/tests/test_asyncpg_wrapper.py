@@ -383,6 +383,74 @@ class TestAsyncPGSemconvMigration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
         self.assertEqual(span.attributes[DB_STATEMENT], "SELECT 1")
 
+    def test_keyword_query(self) -> None:
+        method_cases = (
+            ("execute", {"query": "SELECT 42"}, "SELECT 1"),
+            ("fetch", {"query": "SELECT 42"}, [(42,)]),
+            ("fetchval", {"query": "SELECT 42"}, 42),
+            ("fetchrow", {"query": "SELECT 42"}, (42,)),
+            ("executemany", {"command": "SELECT $1", "args": [(42,)]}, None),
+        )
+        for semconv_mode, statement_attribute in (
+            ("", DB_STATEMENT),
+            ("database", DB_QUERY_TEXT),
+        ):
+            for method_name, kwargs, expected_result in method_cases:
+                with self.subTest(mode=semconv_mode, method=method_name), use_semconv_opt_in(semconv_mode):
+                    self.memory_exporter.clear()
+                    conn = self._make_execute_conn()
+                    conn._protocol.query = mock.AsyncMock(return_value="SELECT 1")
+                    conn._execute = mock.AsyncMock(return_value=[(42,)])
+                    conn._executemany = mock.AsyncMock(return_value=None)
+                    AsyncPGInstrumentor().instrument(tracer_provider=self.tracer_provider)
+                    try:
+                        method = getattr(Connection, method_name).__get__(conn, Connection)  # pylint: disable=no-value-for-parameter
+                        self.assertEqual(asyncio.run(method(**kwargs, timeout=5)), expected_result)
+                    finally:
+                        AsyncPGInstrumentor().uninstrument()
+
+                    spans = self.memory_exporter.get_finished_spans()
+                    self.assertEqual(len(spans), 1)
+                    self.assertEqual(spans[0].name, "SELECT")
+                    self.assertEqual(
+                        spans[0].attributes[statement_attribute], kwargs.get("query", kwargs.get("command"))
+                    )
+
+    def test_keyword_query_error(self) -> None:
+        conn = self._make_execute_conn()
+        error = RuntimeError("db error")
+        conn._protocol.query = mock.AsyncMock(side_effect=error)
+        AsyncPGInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        execute = Connection.execute.__get__(conn, Connection)  # pylint: disable=no-value-for-parameter
+
+        with self.assertRaises(RuntimeError) as raised:
+            asyncio.run(execute(query="SELECT 1"))
+
+        self.assertIs(raised.exception, error)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertFalse(spans[0].status.is_ok)
+
+    def test_keyword_executemany_capture_parameters(self) -> None:
+        conn = self._make_execute_conn()
+        conn._executemany = mock.AsyncMock(return_value=None)
+        AsyncPGInstrumentor(capture_parameters=True).instrument(tracer_provider=self.tracer_provider)
+        executemany = Connection.executemany.__get__(conn, Connection)  # pylint: disable=no-value-for-parameter
+        asyncio.run(executemany(command="SELECT $1", args=[(42,)], timeout=5))
+
+        conn._executemany.assert_awaited_once_with("SELECT $1", [(42,)], 5)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1")
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "([(42,)],)")
+
+    def test_missing_query_raises_type_error(self) -> None:
+        conn = self._make_execute_conn()
+        AsyncPGInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        execute = Connection.execute.__get__(conn, Connection)  # pylint: disable=no-value-for-parameter
+        with self.assertRaises(TypeError):
+            asyncio.run(execute())  # pylint: disable=no-value-for-parameter
+
     def test_span_database_only_new_semconv(self):
         with use_semconv_opt_in("database"):
             conn = self._make_execute_conn()
