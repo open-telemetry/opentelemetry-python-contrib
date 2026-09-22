@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import importlib
@@ -91,6 +93,16 @@ def _make_mock_connection(
     return connection
 
 
+class _MockAsyncConnection(MagicMock):
+    callfunc = oracledb.AsyncConnection.callfunc
+    callproc = oracledb.AsyncConnection.callproc
+    execute = oracledb.AsyncConnection.execute
+    executemany = oracledb.AsyncConnection.executemany
+    fetchall = oracledb.AsyncConnection.fetchall
+    fetchmany = oracledb.AsyncConnection.fetchmany
+    fetchone = oracledb.AsyncConnection.fetchone
+
+
 def _make_mock_async_connection(
     *,
     db_name: str = "orcl",
@@ -104,12 +116,16 @@ def _make_mock_async_connection(
     cursor.execute = AsyncMock()
     cursor.executemany = AsyncMock()
     cursor.callproc = AsyncMock()
+    cursor.callfunc = AsyncMock()
+    cursor.fetchall = AsyncMock()
+    cursor.fetchmany = AsyncMock()
+    cursor.fetchone = AsyncMock()
     cursor.__enter__.return_value = cursor
     cursor.__exit__.return_value = None
     cursor.__aenter__ = AsyncMock(return_value=cursor)
     cursor.__aexit__ = AsyncMock(return_value=None)
 
-    connection = MagicMock()
+    connection = _MockAsyncConnection()
     connection.db_name = db_name
     connection.db_unique_name = db_unique_name
     connection.db_domain = db_domain
@@ -584,6 +600,7 @@ class TestOracleDBInstrumentorAsync(
                 "INSERT",
             ),
             ("callproc", "my_proc", ([1, 2],), "my_proc"),
+            ("callfunc", "my_func", (int, [1]), "my_func"),
         ]
         for module in (oracledb, oracledb_connection_module):
             for method, statement, extra_args, span_name in method_cases:
@@ -819,13 +836,18 @@ class TestOracleDBInstrumentorAsync(
             await pool.release(instrumented)
 
     async def test_async_errors_are_recorded_and_reraised_unmodified(self):
-        for method in ("execute", "executemany", "callproc"):
+        method_cases = [
+            ("execute", ()),
+            ("executemany", ([(1,)],)),
+            ("callproc", ()),
+            ("callfunc", (int,)),
+        ]
+        for method, extra_args in method_cases:
             with self.subTest(method=method):
                 self.memory_exporter.clear()
                 connection = _make_mock_async_connection()
                 error = oracledb.DatabaseError("database error")
                 getattr(connection.cursor.return_value, method).side_effect = error
-                extra_args = ([(1,)],) if method == "executemany" else ()
                 with (
                     patch.object(
                         oracledb,
@@ -844,6 +866,106 @@ class TestOracleDBInstrumentorAsync(
                             "SELECT 1 FROM dual",
                             *extra_args,
                         )
+
+                self.assertIs(raised.exception, error)
+                span = self.memory_exporter.get_finished_spans()[0]
+                self.assertIs(
+                    span.status.status_code,
+                    trace_api.StatusCode.ERROR,
+                )
+                self.assertTrue(any(event.name == "exception" for event in span.events))
+
+    @patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "database"},
+    )
+    async def test_async_connection_shortcuts_emit_spans(self):
+        shortcut_cases = [
+            ("execute", ("SELECT id FROM users",), "SELECT", None),
+            (
+                "executemany",
+                ("INSERT INTO t VALUES (:1)", [(1,), (2,)]),
+                "INSERT",
+                None,
+            ),
+            ("fetchall", ("SELECT id FROM users",), "SELECT", "fetchall"),
+            ("fetchmany", ("SELECT id FROM users", None, 5), "SELECT", "fetchmany"),
+            ("fetchone", ("SELECT id FROM users",), "SELECT", "fetchone"),
+            ("callproc", ("my_proc", [1, 2]), "my_proc", "callproc"),
+            ("callfunc", ("my_func", int, [1]), "my_func", "callfunc"),
+        ]
+        for method, args, span_name, result_method in shortcut_cases:
+            with self.subTest(method=method):
+                self.memory_exporter.clear()
+                connection = _make_mock_async_connection()
+                cursor = connection.cursor.return_value
+                expected_result = getattr(cursor, result_method).return_value if result_method else None
+                with (
+                    patch.object(
+                        oracledb,
+                        "connect_async",
+                        MagicMock(return_value=connection),
+                    ),
+                    self._instrumented(),
+                ):
+                    instrumented = await oracledb.connect_async(
+                        user="scott",
+                        password="tiger",
+                        dsn="localhost/freepdb1",
+                    )
+                    result = await getattr(instrumented, method)(*args)
+
+                self.assertIs(result, expected_result)
+                cursor.__exit__.assert_called_once()
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                span = spans[0]
+                self.assertEqual(span.name, span_name)
+                self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+                self.assertEqual(
+                    span.attributes[DB_SYSTEM_NAME],
+                    _DATABASE_SYSTEM_NAME,
+                )
+                self.assertIsInstance(span.attributes[DB_SYSTEM_NAME], str)
+                self.assertEqual(span.attributes[DB_QUERY_TEXT], args[0])
+                self.assertIsInstance(span.attributes[DB_QUERY_TEXT], str)
+
+    async def test_async_connection_shortcut_errors_are_recorded(
+        self,
+    ):
+        shortcut_cases = [
+            ("execute", ("SELECT 1 FROM dual",), "execute"),
+            ("executemany", ("INSERT INTO t VALUES (:1)", [(1,)]), "executemany"),
+            ("fetchall", ("SELECT 1 FROM dual",), "execute"),
+            ("fetchmany", ("SELECT 1 FROM dual", None, 5), "execute"),
+            ("fetchone", ("SELECT 1 FROM dual",), "execute"),
+            ("callproc", ("my_proc",), "callproc"),
+            ("callfunc", ("my_func", int), "callfunc"),
+        ]
+        for method, args, failing_cursor_method in shortcut_cases:
+            with self.subTest(method=method):
+                self.memory_exporter.clear()
+                connection = _make_mock_async_connection()
+                error = oracledb.DatabaseError("database error")
+                getattr(
+                    connection.cursor.return_value,
+                    failing_cursor_method,
+                ).side_effect = error
+                with (
+                    patch.object(
+                        oracledb,
+                        "connect_async",
+                        MagicMock(return_value=connection),
+                    ),
+                    self._instrumented(),
+                ):
+                    instrumented = await oracledb.connect_async(
+                        user="scott",
+                        password="tiger",
+                        dsn="localhost/freepdb1",
+                    )
+                    with self.assertRaises(oracledb.DatabaseError) as raised:
+                        await getattr(instrumented, method)(*args)
 
                 self.assertIs(raised.exception, error)
                 span = self.memory_exporter.get_finished_spans()[0]

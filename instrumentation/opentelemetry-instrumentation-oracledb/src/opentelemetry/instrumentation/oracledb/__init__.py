@@ -189,6 +189,11 @@ class _AsyncTracedCursorProxy(_BaseObjectProxy):
             self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
         )
 
+    async def callfunc(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._self_cursor_tracer.traced_execution_async(
+            self.__wrapped__, self.__wrapped__.callfunc, *args, **kwargs
+        )
+
 
 # pylint: disable-next=abstract-method
 class _AsyncTracedConnectionProxy(_BaseObjectProxy):
@@ -227,6 +232,30 @@ class _AsyncTracedConnectionProxy(_BaseObjectProxy):
             cursor,
             self._self_db_api_integration,
         )
+
+    def _call_with_traced_cursor(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
+        return getattr(self.__wrapped__.__class__, method_name)(self, *args, **kwargs)
+
+    async def callfunc(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("callfunc", *args, **kwargs)
+
+    async def callproc(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("callproc", *args, **kwargs)
+
+    async def execute(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("execute", *args, **kwargs)
+
+    async def executemany(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("executemany", *args, **kwargs)
+
+    async def fetchall(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("fetchall", *args, **kwargs)
+
+    async def fetchmany(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("fetchmany", *args, **kwargs)
+
+    async def fetchone(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._call_with_traced_cursor("fetchone", *args, **kwargs)
 
 
 # pylint: disable-next=too-many-positional-arguments
