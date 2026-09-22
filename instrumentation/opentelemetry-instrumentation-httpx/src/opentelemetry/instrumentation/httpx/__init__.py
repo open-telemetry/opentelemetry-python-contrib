@@ -689,21 +689,20 @@ def _apply_request_client_attributes_to_span(
         # TODO: Support opt-in for url.scheme in new semconv
         _set_http_scheme(metric_attributes, url.scheme, semconv)
 
-    if _report_new(semconv):
-        if url.host:
+    if url.host:
+        _set_http_host_client(metric_attributes, url.host, semconv)
+        _set_http_net_peer_name_client(metric_attributes, url.host, semconv)
+        if _report_new(semconv):
             # http semconv transition: http.host -> server.address
             _set_http_host_client(span_attributes, url.host, semconv)
-            # Add metric labels
-            _set_http_host_client(metric_attributes, url.host, semconv)
-            _set_http_net_peer_name_client(metric_attributes, url.host, semconv)
             # http semconv transition: net.sock.peer.addr -> network.peer.address
             span_attributes[NETWORK_PEER_ADDRESS] = url.host
-        if url.port:
+    if url.port:
+        _set_http_peer_port_client(metric_attributes, url.port, semconv)
+        if _report_new(semconv):
             # http semconv transition: net.sock.peer.port -> network.peer.port
             _set_http_peer_port_client(span_attributes, url.port, semconv)
             span_attributes[NETWORK_PEER_PORT] = url.port
-            # Add metric labels
-            _set_http_peer_port_client(metric_attributes, url.port, semconv)
 
 
 def _apply_response_client_attributes_to_span(
@@ -770,7 +769,7 @@ def _apply_response_client_attributes_to_metrics(
         sem_conv_opt_in_mode=semconv,
     )
 
-    if http_version and _report_new(semconv):
+    if http_version:
         _set_http_network_protocol_version(
             metric_attributes,
             http_version.replace("HTTP/", ""),
