@@ -341,7 +341,11 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
-            return self._leading_comment_remover.sub("", statement).split()[0] if statement else ""
+            # A statement that is truthy but has no tokens after leading-comment
+            # or whitespace stripping (e.g. a comment-only Composed) must not
+            # raise IndexError; return an empty operation name instead.
+            tokens = self._leading_comment_remover.sub("", statement).split()
+            return tokens[0] if tokens else ""
         return super().get_operation_name(cursor, args)
 
     def get_statement(self, cursor: CursorT, args: list[Any]) -> str:

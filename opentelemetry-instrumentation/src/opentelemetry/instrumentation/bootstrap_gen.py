@@ -7,7 +7,7 @@
 libraries = [
     {"library": "openai >= 1.26.0", "instrumentation": "opentelemetry-instrumentation-openai-v2"},
     {"library": "google-cloud-aiplatform >= 1.64", "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0"},
-    {"library": "aio_pika >= 7.2.0, < 10.0.0", "instrumentation": "opentelemetry-instrumentation-aio-pika==0.66b0.dev"},
+    {"library": "aio_pika >= 7.2.0, < 11.0.0", "instrumentation": "opentelemetry-instrumentation-aio-pika==0.66b0.dev"},
     {"library": "aiohttp ~= 3.0", "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.66b0.dev"},
     {"library": "aiohttp ~= 3.0", "instrumentation": "opentelemetry-instrumentation-aiohttp-server==0.66b0.dev"},
     {"library": "aiokafka >= 0.8, < 1.0", "instrumentation": "opentelemetry-instrumentation-aiokafka==0.66b0.dev"},
