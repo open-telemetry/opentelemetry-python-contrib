@@ -102,7 +102,10 @@ class TestIbmMqInstrumentation(TestBase):
             self.assertNotIn((qmgr_cls, "cb"), wrapped_pairs)
             self.assertNotIn((queue_cls, "cb"), wrapped_pairs)
             self.assertNotIn((qmgr_cls, "connect_tcp_client"), wrapped_pairs)
-            self.assertEqual(len(wrapped_pairs), 5)
+            # Other installed clients (a real pymqi) are wrapped by the same
+            # instrument() call, so count only this module's own targets.
+            own_pairs = {pair for pair in wrapped_pairs if pair[0] in (qmgr_cls, queue_cls)}
+            self.assertEqual(len(own_pairs), 5)
 
     # -- 3: ibmmq present, also wraps Queue.cb and QueueManager.cb -----------
 
@@ -119,7 +122,10 @@ class TestIbmMqInstrumentation(TestBase):
             self.assertIn((qmgr_cls, "cb"), wrapped_pairs)
             self.assertIn((queue_cls, "cb"), wrapped_pairs)
             self.assertNotIn((qmgr_cls, "connect_tcp_client"), wrapped_pairs)
-            self.assertEqual(len(wrapped_pairs), 7)
+            # Other installed clients (a real pymqi) are wrapped by the same
+            # instrument() call, so count only this module's own targets.
+            own_pairs = {pair for pair in wrapped_pairs if pair[0] in (qmgr_cls, queue_cls)}
+            self.assertEqual(len(own_pairs), 7)
 
     # -- 4: instrumentation_dependencies() resolution order -----------------
 
