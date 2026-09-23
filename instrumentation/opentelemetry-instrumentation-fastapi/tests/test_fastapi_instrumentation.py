@@ -375,6 +375,42 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         finally:
             self._instrumentor.uninstrument_app(app)
 
+    def test_included_router_nested_prefix_metric_target(self):
+        """
+        Regression test: http.target on the http.server.duration metric must
+        reflect every include_router(prefix=...) level, not just the
+        innermost route's own path template.
+        """
+        app = fastapi.FastAPI()
+        bar_router = fastapi.APIRouter()
+
+        @bar_router.put("/{bar_id}")
+        async def _update_bar(bar_id: str):
+            return {"id": bar_id}
+
+        foo_router = fastapi.APIRouter()
+        foo_router.include_router(bar_router, prefix="/bar")
+        app.include_router(foo_router, prefix="/api/foo")
+
+        self._instrumentor.instrument_app(app)
+        try:
+            client = TestClient(app)
+            resp = client.put("/api/foo/bar/abc123")
+            self.assertEqual(200, resp.status_code)
+
+            metrics = self.get_sorted_metrics(SCOPE)
+            duration_metrics = [
+                metric for metric in metrics if metric.name in ("http.server.duration", "http.server.request.duration")
+            ]
+            self.assertTrue(duration_metrics)
+            for metric in duration_metrics:
+                for point in metric.data.data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        target = point.attributes.get("http.target") or point.attributes.get("url.path")
+                        self.assertEqual("/api/foo/bar/{bar_id}", target)
+        finally:
+            self._instrumentor.uninstrument_app(app)
+
     def test_custom_route_preserves_templated_path(self):
         class CustomPathRoute(BaseRoute):
             path = "/widgets/{widget_id}"
