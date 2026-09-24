@@ -85,6 +85,11 @@ class OpAMPClient:
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
         self._effective_config: opamp_pb2.EffectiveConfig | None = None
 
+    def update_instance_uid(self, instance_uid: bytes) -> None:
+        if len(instance_uid) != 16:
+            raise ValueError(f"instance_uid must be 16 bytes, got {len(instance_uid)}")
+        self._instance_uid = instance_uid
+
     def build_agent_disconnect_message(self) -> bytes:
         message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,

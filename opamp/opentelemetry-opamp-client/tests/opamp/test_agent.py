@@ -310,6 +310,38 @@ def test_report_full_state_flag_triggers_full_state_send():
     client_mock.build_full_state_message.assert_called()
 
 
+def test_agent_identification_updates_instance_uid():
+    client_mock = mock.Mock()
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=_NoOpCallbacks())
+
+    new_uid = b"\x01" * 16
+    agent._process_message(
+        opamp_pb2.ServerToAgent(agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid))
+    )
+
+    client_mock.update_instance_uid.assert_called_once_with(new_uid)
+
+
+def test_invalid_agent_identification_is_ignored(caplog):
+    client_mock = mock.Mock()
+    client_mock.update_instance_uid.side_effect = ValueError("instance_uid must be 16 bytes, got 8")
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=cb)
+
+    agent._process_message(
+        opamp_pb2.ServerToAgent(agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=b"\x01" * 8))
+    )
+
+    assert caplog.record_tuples == [
+        (
+            "opentelemetry._opamp.agent",
+            logging.WARNING,
+            "Ignoring agent_identification: instance_uid must be 16 bytes, got 8",
+        )
+    ]
+    cb.on_message.assert_called_once()
+
+
 def test_safe_invoke_logs_error(caplog):
     caplog.set_level(logging.ERROR, logger="opentelemetry._opamp.agent")
 

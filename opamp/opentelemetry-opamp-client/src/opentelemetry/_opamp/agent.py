@@ -226,6 +226,12 @@ class OpAMPAgent:
             )
             return
 
+        if message.HasField("agent_identification"):
+            try:
+                self._client.update_instance_uid(message.agent_identification.new_instance_uid)
+            except ValueError as exc:
+                logger.warning("Ignoring agent_identification: %s", exc)
+
         if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
             logger.debug("Server requested full state report")
             payload = self._client.build_full_state_message()
