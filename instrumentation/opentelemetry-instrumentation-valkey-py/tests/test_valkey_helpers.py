@@ -4,6 +4,7 @@
 """Unit tests for the helper modules backing the Valkey instrumentation."""
 
 from types import SimpleNamespace
+from unittest import mock
 
 import fakeredis
 import valkey
@@ -18,6 +19,7 @@ from opentelemetry.instrumentation.valkey.utils import (
     _get_connection_attributes,
     _get_error_attributes,
     _get_error_status_code,
+    _get_network_peer_attributes,
     _get_span_name,
     _get_stored_procedure_name,
 )
@@ -25,7 +27,6 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_BATCH_SIZE,
     DB_OPERATION_NAME,
-    DB_QUERY_TEXT,
     DB_RESPONSE_STATUS_CODE,
     DB_STORED_PROCEDURE_NAME,
     DB_SYSTEM_NAME,
@@ -123,16 +124,15 @@ class TestValkeyUtil(TestBase):
         cases = [
             (
                 "required fields only",
-                ("GET", None, None, None),
+                ("GET", None, None),
                 {DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "GET"},
             ),
             (
                 "with optional fields",
-                ("PIPELINE", "GET ?", "abc123", 2),
+                ("PIPELINE", "abc123", 2),
                 {
                     DB_SYSTEM_NAME: "valkey",
                     DB_OPERATION_NAME: "PIPELINE",
-                    DB_QUERY_TEXT: "GET ?",
                     DB_STORED_PROCEDURE_NAME: "abc123",
                     DB_OPERATION_BATCH_SIZE: 2,
                 },
@@ -154,8 +154,6 @@ class TestValkeyUtil(TestBase):
                     DB_NAMESPACE: "0",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -173,6 +171,45 @@ class TestValkeyUtil(TestBase):
         for name, instance, expected in cases:
             with self.subTest(name):
                 self.assertEqual(_get_connection_attributes(instance), expected)
+
+    def test_get_network_peer_attributes(self):
+        def sync_connection(peername=None, error=None):
+            sock = mock.Mock(spec=["getpeername"])
+            sock.getpeername.side_effect = error
+            sock.getpeername.return_value = peername
+            return SimpleNamespace(_sock=sock)
+
+        def async_connection(peername):
+            writer = mock.Mock(spec=["get_extra_info"])
+            writer.get_extra_info.return_value = peername
+            return SimpleNamespace(_sock=None, _writer=writer)
+
+        cases = [
+            (
+                "sync ipv4",
+                sync_connection(("10.1.2.80", 6379)),
+                {NETWORK_PEER_ADDRESS: "10.1.2.80", NETWORK_PEER_PORT: 6379},
+            ),
+            (
+                "sync ipv6",
+                sync_connection(("::1", 6379, 0, 0)),
+                {NETWORK_PEER_ADDRESS: "::1", NETWORK_PEER_PORT: 6379},
+            ),
+            (
+                "async ipv4",
+                async_connection(("10.1.2.80", 6379)),
+                {NETWORK_PEER_ADDRESS: "10.1.2.80", NETWORK_PEER_PORT: 6379},
+            ),
+            # The configured path already reports a Unix domain socket's peer.
+            ("unix socket", sync_connection("/tmp/valkey.sock"), {}),
+            ("async not connected", async_connection(None), {}),
+            ("not connected", SimpleNamespace(_sock=None, _writer=None), {}),
+            ("socket closed", sync_connection(error=OSError("closed")), {}),
+            ("mocked connection", mock.Mock(), {}),
+        ]
+        for name, connection, expected in cases:
+            with self.subTest(name):
+                self.assertEqual(_get_network_peer_attributes(connection), expected)
 
     def test_get_stored_procedure_name(self):
         cases = [

@@ -9,7 +9,9 @@ from unittest import IsolatedAsyncioTestCase, mock
 import valkey
 import valkey.asyncio
 import valkey.asyncio.cluster
+import valkey.asyncio.connection
 import valkey.cluster
+import valkey.connection
 from fakeredis import FakeAsyncValkey, FakeServer, FakeStrictValkey
 
 from opentelemetry import trace
@@ -27,7 +29,6 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
-    NETWORK_PEER_PORT,
     NETWORK_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
@@ -133,8 +134,6 @@ class TestValkeyAttributes(_ValkeyTestBase):
                     DB_QUERY_TEXT: "SET ? ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -149,8 +148,6 @@ class TestValkeyAttributes(_ValkeyTestBase):
                     DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "1.1.1.1",
                     SERVER_PORT: 6380,
-                    NETWORK_PEER_ADDRESS: "1.1.1.1",
-                    NETWORK_PEER_PORT: 6380,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -179,8 +176,6 @@ class TestValkeyAttributes(_ValkeyTestBase):
                     DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -450,15 +445,25 @@ class TestValkeyBehaviour(_ValkeyTestBase):
                     DB_SYSTEM_NAME: "valkey",
                     DB_NAMESPACE: "0",
                     DB_OPERATION_NAME: "GET",
-                    DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 }
             ],
         )
+        # db.query.text is opt-in for the metric but still reported on the span.
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+
+    def test_metric_query_text_opt_in(self):
+        self._reinstrument(metric_query_text=True)
+
+        client = self._mocked_client()
+        with mock.patch.object(client, "connection"):
+            client.get("key")
+
+        attributes = dict(self.get_sorted_metrics()[0].data.data_points[0].attributes)
+        self.assertEqual(attributes[DB_QUERY_TEXT], "GET ?")
 
     def test_metric_on_error(self):
         client = FakeStrictValkey()
@@ -548,6 +553,8 @@ class TestValkeyBehaviour(_ValkeyTestBase):
             (valkey.cluster.ClusterPipeline, "execute"),
             (valkey.asyncio.cluster.ValkeyCluster, "execute_command"),
             (valkey.asyncio.cluster.ClusterPipeline, "execute"),
+            (valkey.connection.AbstractConnection, "send_packed_command"),
+            (valkey.asyncio.connection.AbstractConnection, "send_packed_command"),
         ]
 
         for cls, method in targets:
@@ -607,8 +614,6 @@ class TestValkeyAsyncAttributes(_ValkeyTestBase, IsolatedAsyncioTestCase):
                     DB_QUERY_TEXT: "SET ? ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -623,8 +628,6 @@ class TestValkeyAsyncAttributes(_ValkeyTestBase, IsolatedAsyncioTestCase):
                     DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "1.1.1.1",
                     SERVER_PORT: 6380,
-                    NETWORK_PEER_ADDRESS: "1.1.1.1",
-                    NETWORK_PEER_PORT: 6380,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -653,8 +656,6 @@ class TestValkeyAsyncAttributes(_ValkeyTestBase, IsolatedAsyncioTestCase):
                     DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 },
             ),
@@ -928,15 +929,25 @@ class TestValkeyAsyncBehaviour(_ValkeyTestBase, IsolatedAsyncioTestCase):
                     DB_SYSTEM_NAME: "valkey",
                     DB_NAMESPACE: "0",
                     DB_OPERATION_NAME: "GET",
-                    DB_QUERY_TEXT: "GET ?",
                     SERVER_ADDRESS: "localhost",
                     SERVER_PORT: 6379,
-                    NETWORK_PEER_ADDRESS: "localhost",
-                    NETWORK_PEER_PORT: 6379,
                     NETWORK_TRANSPORT: "tcp",
                 }
             ],
         )
+        # db.query.text is opt-in for the metric but still reported on the span.
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+
+    async def test_metric_query_text_opt_in(self):
+        self._reinstrument(metric_query_text=True)
+
+        client = self._mocked_async_client()
+        with mock.patch.object(client, "connection", mock.AsyncMock()):
+            await client.get("key")
+
+        attributes = dict(self.get_sorted_metrics()[0].data.data_points[0].attributes)
+        self.assertEqual(attributes[DB_QUERY_TEXT], "GET ?")
 
     async def test_metric_on_error(self):
         client = FakeAsyncValkey()

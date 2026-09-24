@@ -14,7 +14,6 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_BATCH_SIZE,
     DB_OPERATION_NAME,
-    DB_QUERY_TEXT,
     DB_RESPONSE_STATUS_CODE,
     DB_STORED_PROCEDURE_NAME,
     DB_SYSTEM_NAME,
@@ -123,29 +122,56 @@ def _get_connection_attributes(
     # is falsy and must still be reported.
     attributes[DB_NAMESPACE] = _DEFAULT_NAMESPACE if db is None else str(db)
 
-    # A non-cluster client talks to exactly one node, so the peer is always the
-    # configured server, there is no separate node to resolve per operation.
+    # A Unix domain socket path is both the configured address and the peer
+    # address. Over TCP the configured host may be a DNS name, so the resolved
+    # peer is read from the socket instead, see _get_network_peer_attributes.
     if "path" in connection_kwargs:
         path = connection_kwargs.get("path", "")
         attributes[SERVER_ADDRESS] = path
         attributes[NETWORK_PEER_ADDRESS] = path
         attributes[NETWORK_TRANSPORT] = NetworkTransportValues.UNIX.value
     else:
-        host = connection_kwargs.get("host", _DEFAULT_HOST)
-        port = int(connection_kwargs.get("port", _DEFAULT_PORT))
-        attributes[SERVER_ADDRESS] = host
-        attributes[SERVER_PORT] = port
-        attributes[NETWORK_PEER_ADDRESS] = host
-        attributes[NETWORK_PEER_PORT] = port
+        attributes[SERVER_ADDRESS] = connection_kwargs.get("host", _DEFAULT_HOST)
+        attributes[SERVER_PORT] = int(connection_kwargs.get("port", _DEFAULT_PORT))
         attributes[NETWORK_TRANSPORT] = NetworkTransportValues.TCP.value
 
     return attributes
 
 
+def _get_network_peer_attributes(connection: Any) -> dict[str, AttributeValue]:
+    """Return ``network.peer.*`` for the TCP socket a connection is using.
+
+    valkey-py exposes no public accessor for the connected socket, so this
+    reads the private ``_sock`` of sync connections and ``_writer`` of asyncio
+    connections. Unix domain sockets are skipped because their peer is the
+    configured path, which _get_connection_attributes already reports.
+    """
+    peername: Any = None
+    try:
+        sock = getattr(connection, "_sock", None)
+        if sock is not None:
+            peername = sock.getpeername()
+        else:
+            writer = getattr(connection, "_writer", None)
+            if writer is not None:
+                peername = writer.get_extra_info("peername")
+    except OSError:
+        return {}
+    # IPv4 peers are (host, port) and IPv6 peers (host, port, flowinfo, scope_id).
+    if not isinstance(peername, tuple):
+        return {}
+    peer = cast("tuple[Any, ...]", peername)
+    if len(peer) < 2:
+        return {}
+    address, port = peer[:2]
+    if not isinstance(address, str) or not isinstance(port, int):
+        return {}
+    return {NETWORK_PEER_ADDRESS: address, NETWORK_PEER_PORT: port}
+
+
 def _get_common_attributes(
     instance: Any,
     operation_name: str,
-    query_text: str | None,
     stored_procedure_name: str | None,
     operation_batch_size: int | None,
 ) -> dict[str, AttributeValue]:
@@ -154,8 +180,6 @@ def _get_common_attributes(
     if operation_name:
         attributes[DB_OPERATION_NAME] = operation_name
     attributes.update(_get_connection_attributes(instance))
-    if query_text is not None:
-        attributes[DB_QUERY_TEXT] = query_text
     if stored_procedure_name is not None:
         attributes[DB_STORED_PROCEDURE_NAME] = stored_procedure_name
     if operation_batch_size is not None:

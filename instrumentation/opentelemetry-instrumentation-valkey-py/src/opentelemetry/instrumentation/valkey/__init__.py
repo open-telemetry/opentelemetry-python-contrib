@@ -112,10 +112,12 @@ API
 
 from __future__ import annotations
 
+import importlib
 import logging
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import valkey
@@ -135,12 +137,14 @@ from opentelemetry.instrumentation.valkey.utils import (
     _get_common_attributes,
     _get_error_attributes,
     _get_error_status_code,
+    _get_network_peer_attributes,
     _get_operation_name,
     _get_span_name,
     _get_stored_procedure_name,
 )
 from opentelemetry.instrumentation.valkey.version import __version__
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.attributes.db_attributes import DB_QUERY_TEXT
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import SpanKind, Status, StatusCode, get_tracer
 
@@ -153,6 +157,7 @@ if TYPE_CHECKING:
     )
     from opentelemetry.metrics import Histogram, MeterProvider
     from opentelemetry.trace import Span, Tracer, TracerProvider
+    from opentelemetry.util.types import AttributeValue
 
     # wrapt hands a wrapper the wrapped callable, the bound instance and the
     # call's positional and keyword arguments.
@@ -196,6 +201,10 @@ _ASYNC_PIPELINE_TARGETS = (
     ("valkey.asyncio.client", "Pipeline", "execute"),
     ("valkey.asyncio.cluster", "ClusterPipeline", "execute"),
 )
+# Every command, pipeline and cluster request is written through these, which
+# is where the node an operation was actually sent to becomes known.
+_CONNECTION_TARGETS = (("valkey.connection", "AbstractConnection", "send_packed_command"),)
+_ASYNC_CONNECTION_TARGETS = (("valkey.asyncio.connection", "AbstractConnection", "send_packed_command"),)
 
 
 def _execute_hook(hook: Callable[..., None], *args: Any) -> None:
@@ -213,6 +222,12 @@ class _CallContext:
 
     span: Span
     result: Any = None
+    deferred_attributes: dict[str, AttributeValue] = field(default_factory=dict)
+
+
+# The traced operation currently in progress, so that the connection wrappers
+# can report the node they wrote to.
+_ACTIVE_CALL: ContextVar[_CallContext | None] = ContextVar("opentelemetry_valkey_active_call", default=None)
 
 
 class _ValkeyTelemetry:
@@ -224,11 +239,13 @@ class _ValkeyTelemetry:
         duration_histogram: Histogram,
         request_hook: RequestHook | None = None,
         response_hook: ResponseHook | None = None,
+        metric_query_text: bool = False,
     ) -> None:
         self._tracer = tracer
         self._duration_histogram = duration_histogram
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._metric_query_text = metric_query_text
 
     @contextmanager
     def trace_command(
@@ -292,9 +309,12 @@ class _ValkeyTelemetry:
         stored_procedure_name: str | None = None,
         operation_batch_size: int | None = None,
     ) -> Iterator[_CallContext]:
-        attributes = _get_common_attributes(
-            instance, operation_name, query_text, stored_procedure_name, operation_batch_size
-        )
+        attributes = _get_common_attributes(instance, operation_name, stored_procedure_name, operation_batch_size)
+        span_attributes = dict(attributes)
+        if query_text is not None:
+            span_attributes[DB_QUERY_TEXT] = query_text
+            if self._metric_query_text:
+                attributes[DB_QUERY_TEXT] = query_text
         span_name = _get_span_name(operation_name)
 
         start_time = time.perf_counter()
@@ -303,11 +323,12 @@ class _ValkeyTelemetry:
         with self._tracer.start_as_current_span(
             span_name,
             kind=SpanKind.CLIENT,
-            attributes=attributes,
+            attributes=span_attributes,
             record_exception=False,
             set_status_on_exception=False,
         ) as span:
             ctx = _CallContext(span=span)
+            token = _ACTIVE_CALL.set(ctx)
             if self._request_hook is not None:
                 _execute_hook(self._request_hook, span, instance, args, kwargs)
             try:
@@ -326,10 +347,64 @@ class _ValkeyTelemetry:
                 if self._response_hook is not None:
                     _execute_hook(self._response_hook, span, instance, ctx.result)
             finally:
+                _ACTIVE_CALL.reset(token)
+                attributes.update(ctx.deferred_attributes)
+                if ctx.deferred_attributes and span.is_recording():
+                    span.set_attributes(ctx.deferred_attributes)
                 self._duration_histogram.record(
                     time.perf_counter() - start_time,
                     attributes=attributes,
                 )
+
+
+def _record_network_peer(connection: Any) -> None:
+    """Report the node a connection wrote to on the active traced operation."""
+    ctx = _ACTIVE_CALL.get()
+    if ctx is None:
+        return
+    try:
+        ctx.deferred_attributes = _get_network_peer_attributes(connection)
+    # pylint: disable-next=broad-except
+    except Exception as exc:
+        _logger.debug("Failed to read the Valkey peer address: %s", exc, exc_info=True)
+
+
+def _traced_send_packed_command(
+    func: _WrappedFunc,
+    instance: Any,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> Any:
+    result = func(*args, **kwargs)
+    _record_network_peer(instance)
+    return result
+
+
+async def _async_traced_send_packed_command(
+    func: _AsyncWrappedFunc,
+    instance: Any,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> Any:
+    result = await func(*args, **kwargs)
+    _record_network_peer(instance)
+    return result
+
+
+def _instrument_connections() -> None:
+    """Wrap the connection write methods, unless they already are.
+
+    The wrappers only act inside a traced operation, so they are shared by
+    ``instrument()`` and every ``instrument_client()`` call.
+    """
+    for targets, wrapper in (
+        (_CONNECTION_TARGETS, _traced_send_packed_command),
+        (_ASYNC_CONNECTION_TARGETS, _async_traced_send_packed_command),
+    ):
+        for module, class_name, method in targets:
+            cls = getattr(importlib.import_module(module), class_name)
+            if not hasattr(getattr(cls, method), "__wrapped__"):
+                _wrap_function_wrapper(module, f"{class_name}.{method}", wrapper)
 
 
 def _traced_execute_command_factory(telemetry: _ValkeyTelemetry) -> _Wrapper:
@@ -442,6 +517,7 @@ def _instrument(telemetry: _ValkeyTelemetry) -> None:
     for targets, wrapper in targets_and_wrappers:
         for module, class_name, method in targets:
             _wrap_function_wrapper(module, f"{class_name}.{method}", wrapper)
+    _instrument_connections()
 
 
 def _instrument_client(client: Any, telemetry: _ValkeyTelemetry) -> None:
@@ -454,6 +530,7 @@ def _instrument_client(client: Any, telemetry: _ValkeyTelemetry) -> None:
 
     _wrap_function_wrapper(client, "execute_command", traced_command)
     _wrap_function_wrapper(client, "pipeline", _pipeline_wrapper_factory(telemetry, is_async))
+    _instrument_connections()
 
 
 class ValkeyInstrumentor(BaseInstrumentor):
@@ -471,6 +548,7 @@ class ValkeyInstrumentor(BaseInstrumentor):
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | None = None,
         response_hook: ResponseHook | None = None,
+        metric_query_text: bool = False,
         **kwargs: Any,
     ) -> None:
         """Instruments all Valkey clients.
@@ -482,12 +560,15 @@ class ValkeyInstrumentor(BaseInstrumentor):
                 the arguments of the call before it is issued.
             response_hook: A hook that receives the span, the client instance and
                 the response of the call.
+            metric_query_text: Whether to also report ``db.query.text`` on the
+                ``db.client.operation.duration`` metric, which is opt-in.
         """
         super().instrument(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             request_hook=request_hook,
             response_hook=response_hook,
+            metric_query_text=metric_query_text,
             **kwargs,
         )
 
@@ -500,6 +581,8 @@ class ValkeyInstrumentor(BaseInstrumentor):
             _PIPELINE_TARGETS,
             _ASYNC_COMMAND_TARGETS,
             _ASYNC_PIPELINE_TARGETS,
+            _CONNECTION_TARGETS,
+            _ASYNC_CONNECTION_TARGETS,
         ):
             for module, class_name, method in targets:
                 unwrap(f"{module}.{class_name}", method)
@@ -511,6 +594,7 @@ class ValkeyInstrumentor(BaseInstrumentor):
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | None = None,
         response_hook: ResponseHook | None = None,
+        metric_query_text: bool = False,
     ) -> None:
         """Instrument a single Valkey client.
 
@@ -522,6 +606,8 @@ class ValkeyInstrumentor(BaseInstrumentor):
                 the arguments of the call before it is issued.
             response_hook: A hook that receives the span, the client instance and
                 the response of the call.
+            metric_query_text: Whether to also report ``db.query.text`` on the
+                ``db.client.operation.duration`` metric, which is opt-in.
         """
         if getattr(client, "_is_instrumented_by_opentelemetry", False):
             _logger.warning("Attempting to instrument Valkey connection while already instrumented")
@@ -533,6 +619,7 @@ class ValkeyInstrumentor(BaseInstrumentor):
                 meter_provider=meter_provider,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                metric_query_text=metric_query_text,
             ),
         )
         setattr(client, "_is_instrumented_by_opentelemetry", True)
@@ -570,4 +657,5 @@ def _build_telemetry(**kwargs: Any) -> _ValkeyTelemetry:
         duration_histogram,
         request_hook=kwargs.get("request_hook"),
         response_hook=kwargs.get("response_hook"),
+        metric_query_text=bool(kwargs.get("metric_query_text", False)),
     )
