@@ -222,7 +222,7 @@ class _CallContext:
 
     span: Span
     result: Any = None
-    deferred_attributes: dict[str, AttributeValue] = field(default_factory=dict)
+    deferred_attributes: dict[str, AttributeValue] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
 
 # The traced operation currently in progress, so that the connection wrappers
