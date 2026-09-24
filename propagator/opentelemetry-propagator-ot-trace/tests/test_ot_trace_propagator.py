@@ -8,6 +8,7 @@ from opentelemetry.context import Context
 from opentelemetry.propagators.ot_trace import (
     _MAX_BAGGAGE_BYTES_PER_ENTRY,
     _MAX_BAGGAGE_ENTRIES,
+    _MAX_BAGGAGE_TOTAL_BYTES,
     OT_BAGGAGE_PREFIX,
     OT_SAMPLED_HEADER,
     OT_SPAN_ID_HEADER,
@@ -25,7 +26,7 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import get_current_span
 
 
-# pylint: disable-next=too-many-public-methods
+# pylint: disable=too-many-public-methods
 class TestOTTracePropagator(TestCase):
     ot_trace_propagator = OTTracePropagator()
 
@@ -267,6 +268,36 @@ class TestOTTracePropagator(TestCase):
         self.assertNotIn("".join([OT_BAGGAGE_PREFIX, "big"]), carrier)
         self.assertTrue(any("bytes per list-member" in m for m in cm.output))
 
+    def test_inject_baggage_total_byte_cap(self):
+        """Cumulative byte length across all entries must be capped on inject."""
+
+        context = set_span_in_context(
+            _Span(
+                "child",
+                SpanContext(
+                    trace_id=int("80f198ee56343ba864fe8b2a57d3eff7", 16),
+                    span_id=int("e457b5a2e4d86bd1", 16),
+                    is_remote=True,
+                    trace_flags=TraceFlags.SAMPLED,
+                ),
+            )
+        )
+        chunk_val = "a" * (_MAX_BAGGAGE_TOTAL_BYTES // 3)
+        context = set_baggage("k1", chunk_val, context=context)
+        context = set_baggage("k2", chunk_val, context=context)
+        context = set_baggage("k3", chunk_val, context=context)
+
+        carrier = {}
+        with self.assertLogs("opentelemetry.propagators.ot_trace", level="WARNING") as cm:
+            self.ot_trace_propagator.inject(carrier, context)
+
+        injected = [k for k in carrier if k.startswith(OT_BAGGAGE_PREFIX)]
+        self.assertEqual(len(injected), 2)
+        self.assertIn("".join([OT_BAGGAGE_PREFIX, "k1"]), carrier)
+        self.assertIn("".join([OT_BAGGAGE_PREFIX, "k2"]), carrier)
+        self.assertNotIn("".join([OT_BAGGAGE_PREFIX, "k3"]), carrier)
+        self.assertTrue(any("maximum number of total bytes" in m for m in cm.output))
+
     def test_inject_baggage_oversized_flood_is_bounded(self):
         """A flood of oversized entries after the cap must not keep the
         inject loop iterating: oversized entries count toward the cap, so
@@ -476,6 +507,50 @@ class TestOTTracePropagator(TestCase):
         self.assertNotIn("big", baggage)
         self.assertEqual(len(baggage), 1)
         self.assertTrue(any("bytes per list-member" in m for m in cm.output))
+
+    def test_extract_baggage_total_byte_cap(self):
+        """Cumulative byte length across all entries must be capped on extract."""
+        chunk_val = "a" * (_MAX_BAGGAGE_TOTAL_BYTES // 3)
+        carrier = {
+            OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
+            OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
+            OT_SAMPLED_HEADER: "false",
+            "".join([OT_BAGGAGE_PREFIX, "k1"]): chunk_val,
+            "".join([OT_BAGGAGE_PREFIX, "k2"]): chunk_val,
+            "".join([OT_BAGGAGE_PREFIX, "k3"]): chunk_val,
+        }
+        with self.assertLogs("opentelemetry.propagators.ot_trace", level="WARNING") as cm:
+            context = self.ot_trace_propagator.extract(carrier)
+        baggage = get_all(context)
+        self.assertIn("k1", baggage)
+        self.assertIn("k2", baggage)
+        self.assertNotIn("k3", baggage)
+        self.assertEqual(len(baggage), 2)
+        self.assertTrue(any("maximum number of total bytes" in m for m in cm.output))
+
+    def test_extract_baggage_existing_context_counts_toward_cap(self):
+        """Pre-existing context baggage items count toward the entry cap."""
+        context = Context()
+        for idx in range(10):
+            context = set_baggage(f"init{idx}", f"v{idx}", context=context)
+
+        carrier = {
+            OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
+            OT_SPAN_ID_HEADER: "e457b5a2e4d86bd1",
+            OT_SAMPLED_HEADER: "false",
+        }
+        # Offer 180 new entries from carrier
+        for idx in range(_MAX_BAGGAGE_ENTRIES):
+            carrier["".join([OT_BAGGAGE_PREFIX, f"k{idx}"])] = f"v{idx}"
+
+        with self.assertLogs("opentelemetry.propagators.ot_trace", level="WARNING") as cm:
+            extracted_context = self.ot_trace_propagator.extract(carrier, context=context)
+
+        baggage = get_all(extracted_context)
+        self.assertEqual(len(baggage), _MAX_BAGGAGE_ENTRIES)
+        for idx in range(10):
+            self.assertIn(f"init{idx}", baggage)
+        self.assertTrue(any("maximum number of list-members" in m for m in cm.output))
 
     def test_extract_baggage_oversized_flood_is_bounded(self):
         """A flood of oversized entries after the cap must not keep the
