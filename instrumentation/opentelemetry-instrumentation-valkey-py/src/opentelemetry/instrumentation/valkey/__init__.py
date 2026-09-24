@@ -21,6 +21,8 @@ Instrument All Clients
 
 .. code:: python
 
+    import asyncio
+
     from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
     import valkey
 
@@ -556,10 +558,10 @@ class ValkeyInstrumentor(BaseInstrumentor):
         Args:
             tracer_provider: A TracerProvider, defaults to global.
             meter_provider: A MeterProvider, defaults to global.
-            request_hook: A hook that receives the span, the client instance and
-                the arguments of the call before it is issued.
-            response_hook: A hook that receives the span, the client instance and
-                the response of the call.
+            request_hook: A hook that receives the span, the client or pipeline
+                instance and the arguments of the call before it is issued.
+            response_hook: A hook that receives the span, the client or pipeline
+                instance and the response of the call.
             metric_query_text: Whether to also report ``db.query.text`` on the
                 ``db.client.operation.duration`` metric, which is opt-in.
         """
@@ -602,10 +604,10 @@ class ValkeyInstrumentor(BaseInstrumentor):
             client: The Valkey client to instrument.
             tracer_provider: A TracerProvider, defaults to global.
             meter_provider: A MeterProvider, defaults to global.
-            request_hook: A hook that receives the span, the client instance and
-                the arguments of the call before it is issued.
-            response_hook: A hook that receives the span, the client instance and
-                the response of the call.
+            request_hook: A hook that receives the span, the client or pipeline
+                instance and the arguments of the call before it is issued.
+            response_hook: A hook that receives the span, the client or pipeline
+                instance and the response of the call.
             metric_query_text: Whether to also report ``db.query.text`` on the
                 ``db.client.operation.duration`` metric, which is opt-in.
         """

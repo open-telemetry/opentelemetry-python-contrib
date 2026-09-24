@@ -56,6 +56,13 @@ def _assert_duration_metric(test_case, expected_attributes):
         test_case.assertEqual(data_point.count, 1)
 
 
+def _assert_nothing_recorded(test_case, span):
+    """Assert a non-recording span was checked and never written to."""
+    test_case.assertTrue(span.is_recording.called)
+    for method in ("set_attribute", "set_attributes", "record_exception", "set_status"):
+        test_case.assertFalse(getattr(span, method).called, method)
+
+
 class _ValkeyTestBase(TestBase):
     """Instruments every client for the duration of the test."""
 
@@ -79,6 +86,22 @@ class _ValkeyTestBase(TestBase):
     def _mocked_async_client(**kwargs):
         """A real async client whose connection is mocked out, so nothing is sent."""
         return valkey.asyncio.Valkey(**kwargs)
+
+    def _reinstrument_with_non_recording_span(self):
+        """Re-instrument with a tracer whose spans never record.
+
+        Returns the mocked tracer and the span it hands out.
+        """
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = False
+        mock_tracer = mock.MagicMock()
+        span_manager = mock_tracer.start_as_current_span.return_value
+        span_manager.__enter__.return_value = mock_span
+        # A truthy __exit__ would swallow the exception under test.
+        span_manager.__exit__.return_value = False
+        with mock.patch("opentelemetry.instrumentation.valkey.get_tracer", return_value=mock_tracer):
+            self._reinstrument()
+        return mock_tracer, mock_span
 
     def _reinstrument(self, **kwargs):
         """Uninstrument and re-instrument, defaulting to this test's providers."""
@@ -274,18 +297,15 @@ class TestValkeyBehaviour(_ValkeyTestBase):
     """Instrumentation lifecycle, pipelines, errors, hooks and suppression."""
 
     def test_not_recording(self):
-        client = self._mocked_client()
-        mock_tracer = mock.Mock()
-        mock_span = mock.Mock()
-        mock_span.is_recording.return_value = False
-        mock_tracer.start_span.return_value = mock_span
-        with mock.patch("opentelemetry.trace.get_tracer") as tracer:
-            tracer.return_value = mock_tracer
-            with mock.patch.object(client, "connection"):
-                client.get("key")
-            self.assertFalse(mock_span.is_recording())
-            self.assertTrue(mock_span.is_recording.called)
-            self.assertFalse(mock_span.set_attribute.called)
+        mock_tracer, mock_span = self._reinstrument_with_non_recording_span()
+        client = FakeStrictValkey()
+        client.lpush("mylist", "value")
+        # A failing command reaches every is_recording() guarded call.
+        with self.assertRaises(valkey.ResponseError):
+            client.incr("mylist")
+
+        self.assertTrue(mock_tracer.start_as_current_span.called)
+        _assert_nothing_recorded(self, mock_span)
 
     def test_no_op_tracer_provider(self):
         self._reinstrument(tracer_provider=trace.NoOpTracerProvider())
@@ -754,18 +774,16 @@ class TestValkeyAsyncBehaviour(_ValkeyTestBase, IsolatedAsyncioTestCase):
     """Instrumentation lifecycle, pipelines, errors, hooks and suppression."""
 
     async def test_not_recording(self):
-        client = self._mocked_async_client()
-        mock_tracer = mock.Mock()
-        mock_span = mock.Mock()
-        mock_span.is_recording.return_value = False
-        mock_tracer.start_span.return_value = mock_span
-        with mock.patch("opentelemetry.trace.get_tracer") as tracer:
-            tracer.return_value = mock_tracer
-            with mock.patch.object(client, "connection", mock.AsyncMock()):
-                await client.get("key")
-            self.assertFalse(mock_span.is_recording())
-            self.assertTrue(mock_span.is_recording.called)
-            self.assertFalse(mock_span.set_attribute.called)
+        mock_tracer, mock_span = self._reinstrument_with_non_recording_span()
+        client = FakeAsyncValkey()
+        # A failing command reaches every is_recording() guarded call.
+        error = valkey.ResponseError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        with mock.patch.object(client, "parse_response", mock.AsyncMock(side_effect=error)):
+            with self.assertRaises(valkey.ResponseError):
+                await client.incr("mylist")
+
+        self.assertTrue(mock_tracer.start_as_current_span.called)
+        _assert_nothing_recorded(self, mock_span)
 
     async def test_no_op_tracer_provider(self):
         self._reinstrument(tracer_provider=trace.NoOpTracerProvider())
@@ -1163,3 +1181,166 @@ class TestValkeyAsyncInstrumentClient(TestBase, IsolatedAsyncioTestCase):
         with self.assertLogs(_LOGGER_NAME, level=logging.WARNING) as logs:
             ValkeyInstrumentor.uninstrument_client(client)
         self.assertIn("wasn't instrumented", logs.output[0])
+
+
+def _patch(test_case, target, attribute, **kwargs):
+    """Patch ``target.attribute`` for the rest of the test."""
+    patcher = mock.patch.object(target, attribute, **kwargs)
+    test_case.addCleanup(patcher.stop)
+    return patcher.start()
+
+
+class TestValkeyCluster(_ValkeyTestBase):
+    """Cluster clients, with node discovery and the network calls mocked out."""
+
+    def setUp(self):
+        super().setUp()
+        # Both would otherwise query the cluster from the client's __init__.
+        _patch(self, valkey.cluster.NodesManager, "initialize")
+        _patch(self, valkey.cluster.CommandsParser, "initialize")
+        _patch(
+            self,
+            valkey.cluster.ValkeyCluster,
+            "_determine_nodes",
+            return_value=[mock.Mock(name="node")],
+        )
+        self.client = valkey.cluster.ValkeyCluster(host="localhost", port=7000)
+
+    def test_command(self):
+        _patch(self, valkey.cluster.ValkeyCluster, "_execute_command", return_value=b"value")
+        self.client.get("key")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.name, "GET")
+        self.assertEqual(
+            dict(span.attributes),
+            {DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "GET", DB_QUERY_TEXT: "GET ?"},
+        )
+        _assert_duration_metric(self, [{DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "GET"}])
+
+    def test_pipeline(self):
+        _patch(
+            self,
+            valkey.cluster.ClusterPipeline,
+            "send_cluster_commands",
+            return_value=[True, b"value"],
+        )
+        with self.client.pipeline() as pipeline:
+            pipeline.set("key", "value")
+            pipeline.get("key")
+            pipeline.execute()
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.name, "PIPELINE")
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                DB_SYSTEM_NAME: "valkey",
+                DB_OPERATION_NAME: "PIPELINE",
+                DB_QUERY_TEXT: "SET ? ?\nGET ?",
+                DB_OPERATION_BATCH_SIZE: 2,
+            },
+        )
+        _assert_duration_metric(
+            self,
+            [{DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "PIPELINE", DB_OPERATION_BATCH_SIZE: 2}],
+        )
+
+    def test_response_error(self):
+        error = valkey.ResponseError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        _patch(self, valkey.cluster.ValkeyCluster, "_execute_command", side_effect=error)
+        with self.assertRaises(valkey.ResponseError) as raised:
+            self.client.incr("key")
+
+        self.assertIs(raised.exception, error)
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertIs(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "ResponseError")
+        self.assertEqual(span.attributes[DB_RESPONSE_STATUS_CODE], "WRONGTYPE")
+
+
+class TestValkeyAsyncCluster(_ValkeyTestBase, IsolatedAsyncioTestCase):
+    """Async cluster clients, with node discovery and the network calls mocked out."""
+
+    def setUp(self):
+        super().setUp()
+        self.client = valkey.asyncio.cluster.ValkeyCluster(host="localhost", port=7000)
+        _patch(
+            self,
+            valkey.asyncio.cluster.ValkeyCluster,
+            "initialize",
+            new_callable=mock.AsyncMock,
+            return_value=self.client,
+        )
+        _patch(
+            self,
+            valkey.asyncio.cluster.ValkeyCluster,
+            "_determine_nodes",
+            new_callable=mock.AsyncMock,
+            return_value=[mock.Mock(name="node")],
+        )
+
+    async def test_command(self):
+        _patch(
+            self,
+            valkey.asyncio.cluster.ValkeyCluster,
+            "_execute_command",
+            new_callable=mock.AsyncMock,
+            return_value=b"value",
+        )
+        await self.client.get("key")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.name, "GET")
+        self.assertEqual(
+            dict(span.attributes),
+            {DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "GET", DB_QUERY_TEXT: "GET ?"},
+        )
+        _assert_duration_metric(self, [{DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "GET"}])
+
+    async def test_pipeline(self):
+        _patch(
+            self,
+            valkey.asyncio.cluster.ClusterPipeline,
+            "_execute",
+            new_callable=mock.AsyncMock,
+            return_value=[True, b"value"],
+        )
+        async with self.client.pipeline() as pipeline:
+            pipeline.set("key", "value")
+            pipeline.get("key")
+            await pipeline.execute()
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.name, "PIPELINE")
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                DB_SYSTEM_NAME: "valkey",
+                DB_OPERATION_NAME: "PIPELINE",
+                DB_QUERY_TEXT: "SET ? ?\nGET ?",
+                DB_OPERATION_BATCH_SIZE: 2,
+            },
+        )
+        _assert_duration_metric(
+            self,
+            [{DB_SYSTEM_NAME: "valkey", DB_OPERATION_NAME: "PIPELINE", DB_OPERATION_BATCH_SIZE: 2}],
+        )
+
+    async def test_response_error(self):
+        error = valkey.ResponseError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        _patch(
+            self,
+            valkey.asyncio.cluster.ValkeyCluster,
+            "_execute_command",
+            new_callable=mock.AsyncMock,
+            side_effect=error,
+        )
+        with self.assertRaises(valkey.ResponseError) as raised:
+            await self.client.incr("key")
+
+        self.assertIs(raised.exception, error)
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertIs(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "ResponseError")
+        self.assertEqual(span.attributes[DB_RESPONSE_STATUS_CODE], "WRONGTYPE")

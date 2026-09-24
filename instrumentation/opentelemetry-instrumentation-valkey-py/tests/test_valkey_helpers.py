@@ -302,6 +302,14 @@ class TestValkeyUtil(TestBase):
             with self.subTest(name):
                 self.assertEqual(_get_batch_query_text(command_stack), expected)
 
+    def test_get_batch_query_text_is_trimmed(self):
+        # Every command is short, but joining 300 of them is not.
+        command_stack = [("SET", "one", 1), ("GET", "two")] * 150
+        query_text = _get_batch_query_text(command_stack)
+        self.assertEqual(len(query_text), 1000)
+        self.assertTrue(query_text.startswith("SET ? ?\nGET ?\n"))
+        self.assertTrue(query_text.endswith("..."))
+
 
 class TestValkeyMetrics(TestBase):
     def test_get_error_attributes(self):

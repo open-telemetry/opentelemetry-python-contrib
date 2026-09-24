@@ -89,15 +89,19 @@ _TRANSACTION_FLAGS = ("transaction", "is_transaction", "explicit_transaction")
 _ERROR_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
+def _truncate_query_text(text: str) -> str:
+    """Trim ``db.query.text`` to at most ``_CMD_MAX_LEN`` characters."""
+    if len(text) > _CMD_MAX_LEN:
+        return text[: _CMD_MAX_LEN - len(_VALUE_TOO_LONG_MARK)] + _VALUE_TOO_LONG_MARK
+    return text
+
+
 def _format_command_args(args: tuple[Any, ...] | list[Any]) -> str:
     """Format and sanitize command arguments, and trim them as needed."""
     if not args:
         return ""
     # Sanitized query format: "COMMAND ? ?"
-    out_str = str(args[0]) + " ?" * (len(args) - 1)
-    if len(out_str) > _CMD_MAX_LEN:
-        out_str = out_str[: _CMD_MAX_LEN - len(_VALUE_TOO_LONG_MARK)] + _VALUE_TOO_LONG_MARK
-    return out_str
+    return _truncate_query_text(str(args[0]) + " ?" * (len(args) - 1))
 
 
 def _get_connection_attributes(
@@ -299,7 +303,7 @@ def _get_batch_query_text(command_stack: list[tuple[Any, ...]]) -> str:
     queries = [_format_command_args(command) for command in command_stack]
     if len(set(queries)) == 1:
         return queries[0]
-    return "\n".join(queries)
+    return _truncate_query_text("\n".join(queries))
 
 
 def _get_error_status_code(exception: BaseException) -> str | None:

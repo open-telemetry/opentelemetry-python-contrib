@@ -12,12 +12,23 @@ import valkey.asyncio.client
 import valkey.asyncio.cluster
 import valkey.client
 import valkey.cluster
-import valkey.connection
 
 from opentelemetry.trace import Span
 
-RequestHook = Callable[[Span, valkey.connection.Connection, list[Any], dict[str, Any]], None]
-ResponseHook = Callable[[Span, valkey.connection.Connection, Any], None]
+# The object a traced call was made on, which is handed to the hooks.
+ValkeyClient = (
+    valkey.Valkey
+    | valkey.ValkeyCluster
+    | valkey.client.Pipeline
+    | valkey.cluster.ClusterPipeline
+    | valkey.asyncio.Valkey
+    | valkey.asyncio.ValkeyCluster
+    | valkey.asyncio.client.Pipeline
+    | valkey.asyncio.cluster.ClusterPipeline
+)
+
+RequestHook = Callable[[Span, ValkeyClient, tuple[Any, ...], dict[str, Any]], None]
+ResponseHook = Callable[[Span, ValkeyClient, Any], None]
 
 
 class QueuedCommand(Protocol):
