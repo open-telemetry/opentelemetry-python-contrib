@@ -200,6 +200,13 @@ def test_update_instance_uid_rejects_wrong_length(client):
     assert client._instance_uid == old_uid
 
 
+def test_update_instance_uid_rejects_all_zeros(client):
+    old_uid = client._instance_uid
+    with pytest.raises(ValueError):
+        client.update_instance_uid(bytes(16))
+    assert client._instance_uid == old_uid
+
+
 def test_build_heartbeat_message(client):
     data = client.build_heartbeat_message()
 

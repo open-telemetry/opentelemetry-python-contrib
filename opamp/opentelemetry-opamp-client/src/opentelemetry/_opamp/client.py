@@ -88,6 +88,8 @@ class OpAMPClient:
     def update_instance_uid(self, instance_uid: bytes) -> None:
         if len(instance_uid) != 16:
             raise ValueError(f"instance_uid must be 16 bytes, got {len(instance_uid)}")
+        if instance_uid == bytes(16):
+            raise ValueError("instance_uid must not be all zeros")
         self._instance_uid = instance_uid
 
     def build_agent_disconnect_message(self) -> bytes:
