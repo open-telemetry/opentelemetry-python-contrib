@@ -195,14 +195,14 @@ def test_update_instance_uid(client):
 
 def test_update_instance_uid_rejects_wrong_length(client):
     old_uid = client._instance_uid
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be 16 bytes, got 8"):
         client.update_instance_uid(b"\x01" * 8)
     assert client._instance_uid == old_uid
 
 
 def test_update_instance_uid_rejects_all_zeros(client):
     old_uid = client._instance_uid
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must not be all zeros"):
         client.update_instance_uid(bytes(16))
     assert client._instance_uid == old_uid
 

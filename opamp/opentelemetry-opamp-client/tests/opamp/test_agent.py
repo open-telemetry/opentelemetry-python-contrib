@@ -8,6 +8,7 @@ from unittest import mock
 from opentelemetry._opamp.agent import OpAMPAgent, _safe_invoke
 from opentelemetry._opamp.agent import _Job as Job
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
+from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
 
 
@@ -320,6 +321,42 @@ def test_agent_identification_updates_instance_uid():
     )
 
     client_mock.update_instance_uid.assert_called_once_with(new_uid)
+
+
+def test_agent_identification_applies_to_full_state_report():
+    client = OpAMPClient(endpoint="url", agent_identifying_attributes={"foo": "bar"})
+    agent = OpAMPAgent(interval=30, client=client, callbacks=_NoOpCallbacks())
+
+    new_uid = b"\x01" * 16
+    agent._process_message(
+        opamp_pb2.ServerToAgent(
+            agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid),
+            flags=opamp_pb2.ServerToAgentFlags_ReportFullState,
+        )
+    )
+
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(agent._queue.get_nowait().payload)
+    assert message.instance_uid == new_uid
+
+
+def test_agent_identification_applied_with_error_response():
+    client_mock = mock.Mock()
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=cb)
+
+    new_uid = b"\x01" * 16
+    error_response = opamp_pb2.ServerErrorResponse(error_message="duplicate instance_uid")
+    agent._process_message(
+        opamp_pb2.ServerToAgent(
+            error_response=error_response,
+            agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid),
+        )
+    )
+
+    client_mock.update_instance_uid.assert_called_once_with(new_uid)
+    cb.on_error.assert_called_once_with(agent, client_mock, error_response)
+    cb.on_message.assert_not_called()
 
 
 def test_invalid_agent_identification_is_ignored(caplog):

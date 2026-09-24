@@ -217,6 +217,14 @@ class OpAMPAgent:
                 self._queue.task_done()
 
     def _process_message(self, message: opamp_pb2.ServerToAgent) -> None:
+        # The server may send a new instance UID alongside an error_response
+        # (e.g. when rejecting a duplicate), so apply it first.
+        if message.HasField("agent_identification"):
+            try:
+                self._client.update_instance_uid(message.agent_identification.new_instance_uid)
+            except ValueError as exc:
+                logger.warning("Ignoring agent_identification: %s", exc)
+
         if message.HasField("error_response"):
             _safe_invoke(
                 self._callbacks.on_error,
@@ -225,12 +233,6 @@ class OpAMPAgent:
                 message.error_response,
             )
             return
-
-        if message.HasField("agent_identification"):
-            try:
-                self._client.update_instance_uid(message.agent_identification.new_instance_uid)
-            except ValueError as exc:
-                logger.warning("Ignoring agent_identification: %s", exc)
 
         if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
             logger.debug("Server requested full state report")
