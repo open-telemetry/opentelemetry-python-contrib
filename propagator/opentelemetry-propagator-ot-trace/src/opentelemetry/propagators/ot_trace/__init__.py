@@ -153,9 +153,6 @@ class OTTracePropagator(TextMapPropagator):
 
         processed = 0
         for header_name, header_value in baggage.items():
-            if _valid_header_name.fullmatch(header_name) is None or _valid_header_value.fullmatch(header_value) is None:
-                continue
-
             if processed >= _MAX_BAGGAGE_ENTRIES:
                 _logger.warning("ot-baggage exceeded the maximum number of list-members")
                 break
@@ -166,6 +163,9 @@ class OTTracePropagator(TextMapPropagator):
                     "ot-baggage entry with key `%s` exceeded the maximum number of bytes per list-member",
                     header_name,
                 )
+                continue
+
+            if _valid_header_name.fullmatch(header_name) is None or _valid_header_value.fullmatch(header_value) is None:
                 continue
 
             setter.set(

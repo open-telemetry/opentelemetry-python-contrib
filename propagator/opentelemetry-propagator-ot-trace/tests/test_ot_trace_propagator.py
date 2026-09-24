@@ -297,6 +297,35 @@ class TestOTTracePropagator(TestCase):
         self.assertEqual(len(cm.output), _MAX_BAGGAGE_ENTRIES + 1)
         self.assertTrue(any("maximum number of list-members" in m for m in cm.output))
 
+    def test_inject_baggage_invalid_flood_is_bounded(self):
+        """A flood of invalid entries after the cap must not keep the
+        inject loop iterating: invalid entries count toward the cap, so
+        the loop stops after _MAX_BAGGAGE_ENTRIES entries are processed."""
+
+        context = set_span_in_context(
+            _Span(
+                "child",
+                SpanContext(
+                    trace_id=int("80f198ee56343ba864fe8b2a57d3eff7", 16),
+                    span_id=int("e457b5a2e4d86bd1", 16),
+                    is_remote=True,
+                    trace_flags=TraceFlags.SAMPLED,
+                ),
+            )
+        )
+        for idx in range(_MAX_BAGGAGE_ENTRIES + 50):
+            # Invalid header name containing illegal characters (space)
+            context = set_baggage(f"bad key {idx}", f"val{idx}", context=context)
+
+        carrier = {}
+        with self.assertLogs("opentelemetry.propagators.ot_trace", level="WARNING") as cm:
+            self.ot_trace_propagator.inject(carrier, context)
+
+        injected = [k for k in carrier if k.startswith(OT_BAGGAGE_PREFIX)]
+        self.assertEqual(len(injected), 0)
+        self.assertEqual(len(cm.output), 1)
+        self.assertTrue(any("maximum number of list-members" in m for m in cm.output))
+
     def test_extract_trace_id_span_id_sampled_true(self):
         """Test valid trace_id, span_id and sampled true"""
 
@@ -412,7 +441,7 @@ class TestOTTracePropagator(TestCase):
     def test_extract_baggage_count_capped_at_max(self):
         """Number of ot-baggage-* entries recorded must be capped.
 
-        Mirrors the W3C Baggage spec recommendation (180 list-members).
+        Mirrors W3CBaggagePropagator and OTel SDK baggage limits (180 list-members).
         """
         carrier = {
             OT_TRACE_ID_HEADER: "64fe8b2a57d3eff7",
