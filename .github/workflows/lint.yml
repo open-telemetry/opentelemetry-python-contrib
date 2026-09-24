@@ -670,6 +670,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-mysqlclient
 
+  lint-instrumentation-oracledb:
+    name: instrumentation-oracledb
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-oracledb
+
   lint-instrumentation-psycopg2:
     name: instrumentation-psycopg2
     runs-on: ubuntu-latest
