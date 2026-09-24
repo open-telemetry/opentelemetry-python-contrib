@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: clarify dependency conflict messages, in logs and in `DependencyConflictError`, and promote auto-instrumentation version conflict logs to error level
