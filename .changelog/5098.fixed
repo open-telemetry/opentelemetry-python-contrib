@@ -1,0 +1,1 @@
+`opentelemetry-propagator-ot-trace`: cap ot-baggage-* entries on extract and inject
