@@ -78,19 +78,22 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    def _start_span(self, method, **kwargs):
+    @staticmethod
+    def _span_attributes(method: str) -> dict[str, str | int]:
         service, meth = method.lstrip("/").split("/", 1)
-        attributes = {
+
+        return {
             RPC_SYSTEM: "grpc",
             RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             RPC_METHOD: meth,
             RPC_SERVICE: service,
         }
 
+    def _start_span(self, method, **kwargs):
         return self._tracer.start_as_current_span(
             name=method,
             kind=trace.SpanKind.CLIENT,
-            attributes=attributes,
+            attributes=self._span_attributes(method),
             **kwargs,
         )
 
@@ -185,8 +188,17 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
         else:
             mutable_metadata = OrderedDict(metadata)
 
-        with self._start_span(client_info.full_method) as span:
-            inject(mutable_metadata, setter=_carrier_setter)
+        span = self._tracer.start_span(
+            name=client_info.full_method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=self._span_attributes(client_info.full_method),
+        )
+        try:
+            inject(
+                mutable_metadata,
+                context=trace.set_span_in_context(span),
+                setter=_carrier_setter,
+            )
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
                 full_method=client_info.full_method,
@@ -203,6 +215,8 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
                 span.set_status(Status(StatusCode.ERROR))
                 span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
                 raise err
+        finally:
+            span.end()
 
     def intercept_stream(self, request_or_iterator, metadata, client_info, invoker):
         if not is_instrumentation_enabled():
