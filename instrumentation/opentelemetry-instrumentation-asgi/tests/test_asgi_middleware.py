@@ -2036,14 +2036,6 @@ class TestAsgiAttributes(unittest.TestCase):
         )
 
     def test_collect_target_attribute_prefers_http_route_attribute(self):
-        """
-        Regression test: for FastAPI apps that nest include_router(prefix=...)
-        calls, scope["route"].path_format only reflects the innermost
-        router's local path template. The already-resolved HTTP_ROUTE
-        attribute (set by the framework's span-naming callback) correctly
-        composes all nesting levels, so it must win.
-        """
-
         class TestRoute:
             path_format = "/{id}"
 
@@ -2055,8 +2047,6 @@ class TestAsgiAttributes(unittest.TestCase):
         )
 
     def test_collect_target_attribute_http_route_with_root_path(self):
-        """root_path (set for app.mount() sub-apps) must still be prepended
-        on top of the HTTP_ROUTE-derived value."""
         attributes = {HTTP_ROUTE: "/home"}
         self.scope["root_path"] = "/sub"
         self.assertEqual(

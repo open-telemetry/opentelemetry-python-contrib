@@ -546,15 +546,10 @@ def _collect_target_attribute(
     """
     root_path = scope.get("root_path", "")
 
-    # Prefer the already-resolved http.route attribute (set by the
-    # framework's span-naming callback, e.g. FastAPI's or Starlette's
-    # _get_default_span_details): it correctly composes nested
-    # include_router(prefix=...) mounts, whereas scope["route"].path_format
-    # only reflects the innermost router's local path template.
+    # Prefer the already-resolved http.route attribute set by the
+    # framework's wrapping middleware, like FastAPI or Starlette.
     route = attributes.get(HTTP_ROUTE)
     if not route:
-        # FastAPI / Starlette fallback when HTTP_ROUTE wasn't set (e.g. a
-        # bare ASGI app with no default_span_details override).
         route_obj = scope.get("route")
         route = getattr(route_obj, "path_format", None)
 
