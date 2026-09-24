@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Iterable
+from logging import getLogger
 from re import compile as re_compile
 from typing import Any
 
@@ -25,10 +26,16 @@ from opentelemetry.trace import (
     set_span_in_context,
 )
 
+_logger = getLogger(__name__)
+
 OT_TRACE_ID_HEADER = "ot-tracer-traceid"
 OT_SPAN_ID_HEADER = "ot-tracer-spanid"
 OT_SAMPLED_HEADER = "ot-tracer-sampled"
 OT_BAGGAGE_PREFIX = "ot-baggage-"
+
+# https://www.w3.org/TR/baggage/#limits
+_MAX_BAGGAGE_ENTRIES = 180
+_MAX_BAGGAGE_BYTES_PER_ENTRY = 4096
 
 _valid_header_name = re_compile(r"[\w_^`!#$%&'*+.|~]+")
 _valid_header_value = re_compile(r"[\t\x20-\x7e\x80-\xff]+")
@@ -80,13 +87,34 @@ class OTTracePropagator(TextMapPropagator):
                 context,
             )
 
-            baggage = get_all(context) or {}
+            baggage = dict(get_all(context)) or {}
 
+            processed = 0
             for key in getter.keys(carrier):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = _extract_first_element(getter.get(carrier, key))
+                value = _extract_first_element(getter.get(carrier, key))
+                if value is None:
+                    continue
+
+                # Count every ot-baggage-* entry towards the cap *before*
+                # the per-entry byte check, so a flood of oversized entries
+                # cannot keep the loop running past the cap.
+                if processed >= _MAX_BAGGAGE_ENTRIES:
+                    _logger.warning("ot-baggage exceeded the maximum number of list-members")
+                    break
+                processed += 1
+
+                baggage_key = key[len(OT_BAGGAGE_PREFIX) :]
+                if len(baggage_key) + len(value) > _MAX_BAGGAGE_BYTES_PER_ENTRY:
+                    _logger.warning(
+                        "ot-baggage entry with key `%s` exceeded the maximum number of bytes per list-member",
+                        baggage_key,
+                    )
+                    continue
+
+                baggage[baggage_key] = value
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)
@@ -123,8 +151,21 @@ class OTTracePropagator(TextMapPropagator):
         if not baggage:
             return
 
+        processed = 0
         for header_name, header_value in baggage.items():
             if _valid_header_name.fullmatch(header_name) is None or _valid_header_value.fullmatch(header_value) is None:
+                continue
+
+            if processed >= _MAX_BAGGAGE_ENTRIES:
+                _logger.warning("ot-baggage exceeded the maximum number of list-members")
+                break
+            processed += 1
+
+            if len(header_name) + len(header_value) > _MAX_BAGGAGE_BYTES_PER_ENTRY:
+                _logger.warning(
+                    "ot-baggage entry with key `%s` exceeded the maximum number of bytes per list-member",
+                    header_name,
+                )
                 continue
 
             setter.set(
