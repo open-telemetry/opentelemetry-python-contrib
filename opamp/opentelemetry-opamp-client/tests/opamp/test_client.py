@@ -183,6 +183,30 @@ def test_build_agent_disconnect_message(client):
     assert message.capabilities == _DEFAULT_CAPABILITIES
 
 
+def test_update_instance_uid(client):
+    new_uid = b"\x01" * 16
+    client.update_instance_uid(new_uid)
+
+    data = client.build_heartbeat_message()
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(data)
+    assert message.instance_uid == new_uid
+
+
+def test_update_instance_uid_rejects_wrong_length(client):
+    old_uid = client._instance_uid
+    with pytest.raises(ValueError, match="must be 16 bytes, got 8"):
+        client.update_instance_uid(b"\x01" * 8)
+    assert client._instance_uid == old_uid
+
+
+def test_update_instance_uid_rejects_all_zeros(client):
+    old_uid = client._instance_uid
+    with pytest.raises(ValueError, match="must not be all zeros"):
+        client.update_instance_uid(bytes(16))
+    assert client._instance_uid == old_uid
+
+
 def test_build_heartbeat_message(client):
     data = client.build_heartbeat_message()
 
