@@ -404,7 +404,7 @@ def collect_request_attributes(
     if flavor:
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
-    if capture_custom_headers and trace.get_current_span() is trace.INVALID_SPAN:
+    if capture_custom_headers:
         result.update(collect_custom_request_headers_attributes(environ))
 
     return result
@@ -671,7 +671,9 @@ class OpenTelemetryMiddleware:
         req_attrs = collect_request_attributes(
             environ,
             self._sem_conv_opt_in_mode,
-            capture_custom_headers=True,
+            # Custom headers are only recorded on SERVER spans, which are
+            # created when there is no current span.
+            capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
         )
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
