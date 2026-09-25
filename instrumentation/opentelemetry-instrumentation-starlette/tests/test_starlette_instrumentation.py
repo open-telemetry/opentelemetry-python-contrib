@@ -48,9 +48,9 @@ _expected_metric_names = [
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
-    "http.server.response.size": _duration_attrs,
-    "http.server.request.size": _duration_attrs,
+    "http.server.duration": {*_duration_attrs, HTTP_TARGET},
+    "http.server.response.size": {*_duration_attrs, HTTP_TARGET},
+    "http.server.request.size": {*_duration_attrs, HTTP_TARGET},
 }
 
 SCOPE = "opentelemetry.instrumentation.starlette"
@@ -194,6 +194,7 @@ class TestStarletteManualInstrumentation(TestBase):
             "http.scheme": "http",
             "http.server_name": "testserver",
             "http.status_code": 405,
+            "http.target": "/foobar",
             "net.host.port": 80,
         }
         expected_requests_count_attributes = {
