@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-django`: add `code.function.name`, `code.file.path` and `code.line.number` span attributes for the resolved view
