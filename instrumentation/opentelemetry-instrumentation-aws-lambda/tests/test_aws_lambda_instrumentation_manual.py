@@ -5,7 +5,6 @@
 
 import logging
 import os
-
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
