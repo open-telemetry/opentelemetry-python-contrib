@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: normalize Kombu routing objects in span attributes
