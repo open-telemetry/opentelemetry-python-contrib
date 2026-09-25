@@ -58,6 +58,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
@@ -2004,7 +2005,7 @@ class TestAsgiAttributes(unittest.TestCase):
         )
 
     def test_collect_target_attribute_missing(self):
-        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
+        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope, {}))
 
     def test_collect_target_attribute_fastapi(self):
         class TestRoute:
@@ -2012,7 +2013,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         self.scope["route"] = TestRoute()
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute(self.scope, {}),
             "/api/users/{user_id}",
         )
 
@@ -2023,15 +2024,34 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["route"] = TestRoute()
         self.scope["root_path"] = "/api/v2"
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute(self.scope, {}),
             "/api/v2/users/{user_id}",
         )
 
     def test_collect_target_attribute_fastapi_starlette_invalid(self):
         self.scope["route"] = object()
         self.assertIsNone(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute(self.scope, {}),
             "HTTP_TARGET values is not None",
+        )
+
+    def test_collect_target_attribute_prefers_http_route_attribute(self):
+        class TestRoute:
+            path_format = "/{id}"
+
+        self.scope["route"] = TestRoute()
+        attributes = {HTTP_ROUTE: "/api/foo/bar/{id}"}
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope, attributes),
+            "/api/foo/bar/{id}",
+        )
+
+    def test_collect_target_attribute_http_route_with_root_path(self):
+        attributes = {HTTP_ROUTE: "/home"}
+        self.scope["root_path"] = "/sub"
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope, attributes),
+            "/sub/home",
         )
 
 
