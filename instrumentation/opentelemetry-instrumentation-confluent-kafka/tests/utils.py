@@ -5,10 +5,20 @@
 from confluent_kafka import Consumer, Producer
 
 
+class MockClusterMetadata:
+    def __init__(self, cluster_id: str | None = None) -> None:
+        self.cluster_id = cluster_id
+        self.brokers: dict = {}
+        self.topics: dict = {}
+
+
 class MockConsumer(Consumer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
+        self._mock_cluster_id: str | None = None
+        self.list_topics_calls = 0
+        self.list_topics_topics: list = []
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -20,6 +30,11 @@ class MockConsumer(Consumer):
         if len(self._queue) > 0:
             return self._queue.pop(0)
         return None
+
+    def list_topics(self, topic=None, timeout=-1):
+        self.list_topics_calls += 1
+        self.list_topics_topics.append(topic)
+        return MockClusterMetadata(cluster_id=self._mock_cluster_id)
 
 
 class MockedMessage:
@@ -62,6 +77,8 @@ class MockedProducer(Producer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
+        self._mock_cluster_id: str | None = None
+        self.list_topics_calls = 0
         super().__init__(config)
 
     def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -81,3 +98,32 @@ class MockedProducer(Producer):
 
     def flush(self, *args, **kwargs):
         return len(self._queue)
+
+    def list_topics(self, topic=None, timeout=-1):
+        self.list_topics_calls += 1
+        return MockClusterMetadata(cluster_id=self._mock_cluster_id)
+
+
+class MockedProducerWithoutConfig(MockedProducer):
+    """Mirrors a real ``confluent_kafka.Producer``, which exposes no ``config``.
+
+    The C type carries no ``config`` attribute, so nothing can key a cache on
+    the bootstrap servers for a manually instrumented producer.
+    """
+
+    def __init__(self, queue, config):
+        super().__init__(queue, config)
+        del self.config
+
+
+class MockConsumerWithoutConfig(MockConsumer):
+    """Mirrors a real ``confluent_kafka.Consumer``, which exposes no ``config``.
+
+    The C type carries no ``config`` attribute and rejects attribute
+    assignment, so a manually instrumented consumer cannot key the
+    per-bootstrap cache unless the address is supplied explicitly.
+    """
+
+    def __init__(self, queue, config):
+        super().__init__(queue, config)
+        del self.config
