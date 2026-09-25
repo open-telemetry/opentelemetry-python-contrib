@@ -53,6 +53,7 @@ dependencies = [
     "opentelemetry-instrumentation-flask==0.66b0.dev",
     "opentelemetry-instrumentation-grpc==0.66b0.dev",
     "opentelemetry-instrumentation-httpx==0.66b0.dev",
+    "opentelemetry-instrumentation-ibmmq==0.66b0.dev",
     "opentelemetry-instrumentation-jinja2==0.66b0.dev",
     "opentelemetry-instrumentation-kafka-python==0.66b0.dev",
     "opentelemetry-instrumentation-logging==0.66b0.dev",
