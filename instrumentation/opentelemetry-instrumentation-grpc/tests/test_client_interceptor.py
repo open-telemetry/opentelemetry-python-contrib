@@ -140,6 +140,37 @@ class TestClientProto(TestBase):
             },
         )
 
+    def test_unary_stream_does_not_restore_ended_parent(self):
+        tracer = trace.get_tracer(__name__)
+        request = Request(client_id=1, request_data="data")
+
+        with tracer.start_as_current_span("request") as request_span:
+            with tracer.start_as_current_span("library.query") as library_span:
+                stream = self._stub.ServerStreamingMethod(request, metadata=(("key", "value"),))
+                next(stream)
+
+            self.assertEqual(
+                trace.get_current_span().get_span_context().span_id,
+                request_span.get_span_context().span_id,
+            )
+
+            list(stream)
+
+            self.assertEqual(
+                trace.get_current_span().get_span_context().span_id,
+                request_span.get_span_context().span_id,
+            )
+
+            with tracer.start_as_current_span("next.operation"):
+                pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        rpc_span = next(span for span in spans if span.name == "/GRPCTestServer/ServerStreamingMethod")
+        next_operation_span = next(span for span in spans if span.name == "next.operation")
+
+        self.assertEqual(rpc_span.parent.span_id, library_span.get_span_context().span_id)
+        self.assertEqual(next_operation_span.parent.span_id, request_span.get_span_context().span_id)
+
     def test_stream_unary(self):
         client_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
