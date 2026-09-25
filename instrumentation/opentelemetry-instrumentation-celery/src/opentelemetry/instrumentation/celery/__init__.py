@@ -75,7 +75,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.metrics import get_meter
+from opentelemetry.metrics import get_meter, get_meter_provider
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
@@ -139,6 +139,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         use_span_links = kwargs.get("use_span_links", False)
 
+        self._tracer_provider = tracer_provider or trace.get_tracer_provider()
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -148,6 +149,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self._use_span_links = use_span_links
 
         meter_provider = kwargs.get("meter_provider")
+        self._meter_provider = meter_provider or get_meter_provider()
         meter = get_meter(
             __name__,
             __version__,
@@ -164,6 +166,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.connect(self._trace_after_publish, weak=False)
         signals.task_failure.connect(self._trace_failure, weak=False)
         signals.task_retry.connect(self._trace_retry, weak=False)
+        signals.worker_process_shutdown.connect(self._flush_providers, weak=False)
 
     def _uninstrument(self, **kwargs):
         signals.task_prerun.disconnect(self._trace_prerun)
@@ -172,6 +175,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.disconnect(self._trace_after_publish)
         signals.task_failure.disconnect(self._trace_failure)
         signals.task_retry.disconnect(self._trace_retry)
+        signals.worker_process_shutdown.disconnect(self._flush_providers)
         self.task_id_to_start_time = {}
 
     def _trace_prerun(self, *args, **kwargs):
@@ -353,6 +357,15 @@ class CeleryInstrumentor(BaseInstrumentor):
         # Use `str(reason)` instead of `reason.message` in case we get
         # something that isn't an `Exception`
         span.set_attribute(_TASK_RETRY_REASON_KEY, str(reason))
+
+    def _flush_providers(self, *args, **kwargs):
+        # Flush the tracer and meter providers when a worker process is
+        # shutting down. With `worker_max_tasks_per_child`, the pool child
+        # process is terminated as soon as the last task returns, so any spans
+        # or metrics still buffered in the SDK would otherwise be lost.
+        for provider in (self._tracer_provider, self._meter_provider):
+            if provider is not None and hasattr(provider, "force_flush"):
+                provider.force_flush()
 
     def update_task_duration_time(self, task_id):
         cur_time = default_timer()
