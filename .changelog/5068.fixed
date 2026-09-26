@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: Prevent recording uncaught exceptions twice on gRPC server spans.
