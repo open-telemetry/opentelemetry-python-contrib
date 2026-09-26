@@ -265,7 +265,17 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             return await func(*args, **kwargs)
 
         exception = None
-        name = args[0].split()[0]
+        # A statement that is empty or whitespace-only has no tokens; must not
+        # raise IndexError. Fall back to the database name or dialect instead,
+        # as the dbapi instrumentation does.
+        tokens = args[0].split()
+        name = tokens[0] if tokens else ""
+        if not name:
+            name = (
+                getattr(instance, "database", None)
+                or getattr(instance, "filename", None)
+                or getattr(getattr(instance, "capabilities", None), "dialect", "")
+            )
 
         with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
