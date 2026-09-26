@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: stop exporting the injected `otelSpanID`, `otelTraceID`, `otelTraceSampled` and `otelServiceName` attributes on emitted log records, where the trace context is already carried by the `trace_id`, `span_id` and `trace_flags` fields
