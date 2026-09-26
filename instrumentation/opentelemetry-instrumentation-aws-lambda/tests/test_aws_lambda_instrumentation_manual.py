@@ -4,6 +4,7 @@
 # pylint: disable=too-many-lines
 
 import logging
+import json
 import os
 from collections.abc import Callable
 from copy import deepcopy
@@ -225,6 +226,99 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         self.assertTrue(parent_context.is_remote)
 
         test_env_patch.stop()
+
+    def test_request_hook(self):
+        hook_calls = []
+
+        def request_hook(span, lambda_event, lambda_context):
+            hook_calls.append((span, lambda_event, lambda_context))
+
+        AwsLambdaInstrumentor().instrument(request_hook=request_hook)
+
+        mock_execute_lambda({"key": "value"})
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(len(hook_calls), 1)
+        hook_span, hook_event, hook_context = hook_calls[0]
+        # The hook receives the same server span the instrumentation created.
+        self.assertEqual(
+            hook_span.get_span_context().span_id,
+            span.get_span_context().span_id,
+        )
+        self.assertEqual(hook_event, {"key": "value"})
+        self.assertEqual(hook_context.function_name, MOCK_LAMBDA_CONTEXT.function_name)
+
+    def test_response_hook(self):
+        hook_calls = []
+
+        def response_hook(span, lambda_event, lambda_context, result):
+            hook_calls.append((span, lambda_event, lambda_context, result))
+
+        AwsLambdaInstrumentor().instrument(response_hook=response_hook)
+
+        mock_execute_lambda({"key": "value"})
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(len(hook_calls), 1)
+        hook_span, hook_event, hook_context, hook_result = hook_calls[0]
+        self.assertEqual(
+            hook_span.get_span_context().span_id,
+            span.get_span_context().span_id,
+        )
+        self.assertEqual(hook_event, {"key": "value"})
+        # The response hook sees exactly what the handler returned
+        # (mocks.lambda_function.handler serialises baggage to JSON).
+        self.assertEqual(hook_result, json.dumps({"baggage_content": {}}))
+
+    def test_hooks_are_optional(self):
+        # Instrumenting without hooks must not break the handler path.
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans
+        self.assertEqual(len(spans), 1)
+
+    def test_request_hook_exception_is_swallowed(self):
+        # A failing request hook must not break the handler or the span.
+        def request_hook(span, lambda_event, lambda_context):
+            raise RuntimeError("request hook boom")
+
+        AwsLambdaInstrumentor().instrument(request_hook=request_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.aws_lambda", level="ERROR") as log_records:
+            result = mock_execute_lambda({"key": "value"})
+
+        # The handler still ran and returned its (JSON) result.
+        self.assertIn("baggage_content", result)
+        # The exception was logged, not raised.
+        self.assertTrue(any("request_hook" in r.getMessage() for r in log_records.records))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+    def test_response_hook_exception_is_swallowed(self):
+        # A failing response hook must not break the handler or the span.
+        def response_hook(span, lambda_event, lambda_context, result):
+            raise RuntimeError("response hook boom")
+
+        AwsLambdaInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.aws_lambda", level="ERROR") as log_records:
+            result = mock_execute_lambda({"key": "value"})
+
+        self.assertIn("baggage_content", result)
+        self.assertTrue(any("response_hook" in r.getMessage() for r in log_records.records))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
 
     def test_parent_context_from_lambda_event(self):
         @dataclass
