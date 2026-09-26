@@ -1,0 +1,2 @@
+Fix Flask instrumentation ending the server span before a streaming (e.g. Server-Sent Events) response body is fully sent
+  ([#5090](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5090))
