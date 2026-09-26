@@ -2,17 +2,70 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from time import sleep
+import threading
+from time import monotonic, sleep
 from unittest import mock
 
 from opentelemetry._opamp.agent import OpAMPAgent, _safe_invoke
 from opentelemetry._opamp.agent import _Job as Job
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
+from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.transport.base import HttpTransport
 
 
 class _NoOpCallbacks(OpAMPCallbacks):
     pass
+
+
+class _RecordingTransport(HttpTransport):
+    """Records every AgentToServer it is given.
+
+    The request numbered ``hold`` (1-based) waits until ``release`` is set, and the one
+    numbered ``fail`` raises. ``responses`` are returned in order, then empty messages.
+    """
+
+    def __init__(self, hold=None, fail=None, responses=()):
+        self.sent = []
+        self.hold, self.fail = hold, fail
+        self.held = threading.Event()
+        self.release = threading.Event()
+        self._responses = list(responses)
+
+    def send(
+        self, *, url, headers, data, timeout_millis, tls_certificate, tls_client_certificate=None, tls_client_key=None
+    ):
+        message = opamp_pb2.AgentToServer()
+        message.ParseFromString(data)
+        self.sent.append(message)
+        if len(self.sent) == self.hold:
+            self.held.set()
+            assert self.release.wait(5)
+        if len(self.sent) == self.fail:
+            raise ConnectionError("request failed")
+        return self._responses.pop(0) if self._responses else opamp_pb2.ServerToAgent()
+
+    def sequence_nums(self):
+        return [message.sequence_num for message in self.sent]
+
+
+def _client(transport):
+    return OpAMPClient(
+        endpoint="http://localhost/v1/opamp",
+        agent_identifying_attributes={"service.name": "test"},
+        transport=transport,
+    )
+
+
+def _wait_for(condition, timeout=5.0):
+    deadline = monotonic() + timeout
+    while not condition():
+        assert monotonic() < deadline, "timed out"
+        sleep(0.005)
+
+
+def _wait_until_idle(agent):
+    _wait_for(lambda: agent._queue.unfinished_tasks == 0)
 
 
 def test_can_instantiate_agent():
@@ -310,6 +363,89 @@ def test_report_full_state_flag_triggers_full_state_send():
     client_mock.build_full_state_message.assert_called()
 
 
+def test_heartbeats_queued_behind_a_slow_request_get_consecutive_sequence_nums():
+    transport = _RecordingTransport(hold=2)
+    agent = OpAMPAgent(interval=0.01, client=_client(transport), callbacks=_NoOpCallbacks())
+    agent.start()
+    assert transport.held.wait(5)
+    # the first heartbeat is in flight: let a few more queue up behind it
+    _wait_for(lambda: agent._queue.qsize() >= 2)
+    agent._schedule = False
+    sleep(0.05)
+    transport.release.set()
+    _wait_until_idle(agent)
+    agent.stop()
+
+    assert len(transport.sent) >= 5
+    assert transport.sequence_nums() == list(range(len(transport.sent)))
+
+
+def test_retried_message_gets_a_new_sequence_num():
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    transport = _RecordingTransport(
+        fail=2,
+        responses=[opamp_pb2.ServerToAgent(flags=opamp_pb2.ServerToAgentFlags_ReportFullState)],
+    )
+    agent = OpAMPAgent(interval=30, client=_client(transport), callbacks=cb, initial_backoff=0)
+    agent.start()
+    _wait_for(lambda: len(transport.sent) == 3)
+    _wait_until_idle(agent)
+    agent.stop()
+
+    # connection, full state report (fails), its retry, disconnect
+    assert transport.sequence_nums() == [0, 1, 2, 3]
+    assert transport.sent[2].HasField("agent_description")
+    assert cb.on_connect_failed.call_count == 1
+
+
+def test_send_builds_callable_payload_when_sent():
+    transport = _RecordingTransport(hold=1)
+    client = _client(transport)
+    agent = OpAMPAgent(interval=30, client=client, callbacks=_NoOpCallbacks())
+    agent.start()
+    assert transport.held.wait(5)
+    # queued while the connection message is in flight
+    agent.send(client.build_heartbeat_message)
+    agent.send(client.build_heartbeat_message)
+    transport.release.set()
+    _wait_until_idle(agent)
+    agent.stop()
+
+    assert transport.sequence_nums() == [0, 1, 2, 3]
+
+
+def test_send_passes_bytes_payload_unchanged():
+    client_mock = mock.Mock()
+    client_mock.send.return_value = opamp_pb2.ServerToAgent()
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=_NoOpCallbacks())
+    agent.start()
+    agent.send(b"prebuilt")
+    _wait_until_idle(agent)
+    agent.stop()
+
+    client_mock.send.assert_any_call(b"prebuilt")
+
+
+def test_job_is_dropped_when_its_message_cannot_be_built(caplog):
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    transport = _RecordingTransport()
+    client = _client(transport)
+    agent = OpAMPAgent(interval=30, client=client, callbacks=cb)
+    agent.start()
+
+    broken = mock.Mock(side_effect=ValueError("boom"))
+    agent.send(broken)
+    agent.send(client.build_heartbeat_message)
+    _wait_until_idle(agent)
+    agent.stop()
+
+    # not retried, and nothing was sent for it: connection, heartbeat, disconnect
+    broken.assert_called_once_with()
+    assert transport.sequence_nums() == [0, 1, 2]
+    cb.on_connect_failed.assert_not_called()
+    assert "Failed to build message" in caplog.text
+
+
 def test_safe_invoke_logs_error(caplog):
     caplog.set_level(logging.ERROR, logger="opentelemetry._opamp.agent")
 
@@ -333,6 +469,18 @@ def test_can_instantiate_job():
     job = Job(payload="payload")
 
     assert isinstance(job, Job)
+
+
+def test_job_build_returns_bytes_payload():
+    assert Job(payload=b"message").build() == b"message"
+
+
+def test_job_build_calls_callable_payload_each_time():
+    builder = mock.Mock(side_effect=[b"first", b"second"])
+    job = Job(payload=builder)
+
+    assert job.build() == b"first"
+    assert job.build() == b"second"
 
 
 def test_job_should_retry():
