@@ -181,6 +181,41 @@ async def long_response_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*", "more_body": False})
 
 
+async def sized_or_streaming_asgi(scope, receive, send):
+    """Serve a sized response on /sized and a streaming one elsewhere.
+
+    A streaming response carries no Content-Length header, which is the case
+    an ASGI server produces for chunked transfer.
+    """
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    if message.get("type") != "http.request":
+        return
+    if scope["path"] == "/sized":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+    else:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"Content-Type", b"text/plain"]],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
+
+
 async def background_execution_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -1773,6 +1808,34 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     )
                     assertions += 1
         self.assertEqual(assertions, 3)
+
+    async def test_response_size_not_carried_into_next_request(self):
+        """A response without Content-Length must not report the previous size.
+
+        One middleware instance serves every request, so per-request state
+        held on the instance is still there when the next request is served.
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(sized_or_streaming_asgi)
+
+        self.scope["path"] = "/sized"
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self.scope["path"] = "/streaming"
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        # only the first request sent a Content-Length
+        self.assertEqual(sum(point.count for point in points), 1)
+        self.assertEqual(sum(point.sum for point in points), 1024)
 
     async def test_no_metric_for_websockets(self):
         self.scope = {

@@ -677,7 +677,6 @@ class OpenTelemetryMiddleware:
         self.server_request_hook = failsafe(server_request_hook)
         self.client_request_hook = failsafe(client_request_hook)
         self.client_response_hook = failsafe(client_response_hook)
-        self.content_length_header = None
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
         # Environment variables as constructor parameters
@@ -768,12 +767,14 @@ class OpenTelemetryMiddleware:
 
                 otel_receive = self._get_otel_receive(span_name, scope, receive)
 
+                response_size_holder: dict[str, int] = {}
                 otel_send = self._get_otel_send(
                     current_span,
                     span_name,
                     scope,
                     send,
                     attributes,
+                    response_size_holder,
                 )
 
                 await self.app(scope, otel_receive, otel_send)
@@ -808,16 +809,17 @@ class OpenTelemetryMiddleware:
                         context=span_ctx,
                     )
                 self.active_requests_counter.add(-1, active_requests_count_attrs)
-                if self.content_length_header:
+                response_size = response_size_holder.get("content_length")
+                if response_size:
                     if self.server_response_size_histogram:
                         self.server_response_size_histogram.record(
-                            self.content_length_header,
+                            response_size,
                             duration_attrs_old,
                             context=span_ctx,
                         )
                     if self.server_response_body_size_histogram:
                         self.server_response_body_size_histogram.record(
-                            self.content_length_header,
+                            response_size,
                             duration_attrs_new,
                             context=span_ctx,
                         )
@@ -931,6 +933,7 @@ class OpenTelemetryMiddleware:
         scope,
         send,
         duration_attrs,
+        response_size_holder,
     ):
         expecting_trailers = False
 
@@ -967,7 +970,7 @@ class OpenTelemetryMiddleware:
             content_length = asgi_getter.get(message, "content-length")
             if content_length:
                 try:
-                    self.content_length_header = int(content_length[0])
+                    response_size_holder["content_length"] = int(content_length[0])
                 except ValueError:
                     pass
 
