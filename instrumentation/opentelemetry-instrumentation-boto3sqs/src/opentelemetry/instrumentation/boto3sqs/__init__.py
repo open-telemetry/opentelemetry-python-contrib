@@ -308,7 +308,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 receipt_handle = entry.get("ReceiptHandle")
                 if receipt_handle:
                     Boto3SQSInstrumentor._safe_end_processing_span(receipt_handle)
-                return wrapped(*args, **kwargs)
+            return wrapped(*args, **kwargs)
 
         wrap_function_wrapper(sqs_class, "delete_message_batch", delete_message_wrapper_batch)
 
