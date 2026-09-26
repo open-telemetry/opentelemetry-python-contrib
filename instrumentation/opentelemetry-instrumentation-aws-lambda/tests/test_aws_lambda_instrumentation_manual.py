@@ -250,9 +250,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             span.get_span_context().span_id,
         )
         self.assertEqual(hook_event, {"key": "value"})
-        self.assertEqual(
-            hook_context.function_name, MOCK_LAMBDA_CONTEXT.function_name
-        )
+        self.assertEqual(hook_context.function_name, MOCK_LAMBDA_CONTEXT.function_name)
 
     def test_response_hook(self):
         hook_calls = []
@@ -288,6 +286,38 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         spans = self.memory_exporter.get_finished_spans()
         assert spans
+        self.assertEqual(len(spans), 1)
+
+    def test_request_hook_exception_is_swallowed(self):
+        # A failing request hook must not break the handler or the span.
+        def request_hook(span, lambda_event, lambda_context):
+            raise RuntimeError("request hook boom")
+
+        AwsLambdaInstrumentor().instrument(request_hook=request_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.aws_lambda", level="ERROR") as log_records:
+            result = mock_execute_lambda({"key": "value"})
+
+        # The handler still ran and returned its (JSON) result.
+        self.assertIn("baggage_content", result)
+        # The exception was logged, not raised.
+        self.assertTrue(any("request_hook" in r.getMessage() for r in log_records.records))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+    def test_response_hook_exception_is_swallowed(self):
+        # A failing response hook must not break the handler or the span.
+        def response_hook(span, lambda_event, lambda_context, result):
+            raise RuntimeError("response hook boom")
+
+        AwsLambdaInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.aws_lambda", level="ERROR") as log_records:
+            result = mock_execute_lambda({"key": "value"})
+
+        self.assertIn("baggage_content", result)
+        self.assertTrue(any("response_hook" in r.getMessage() for r in log_records.records))
+        spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
 
     def test_parent_context_from_lambda_event(self):
