@@ -581,14 +581,16 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         result = {}
         _set_db_redis_database_index(result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
-        self.assertNotIn(DB_NAMESPACE, result)
+        self.assertIn(DB_NAMESPACE, result)
+        self.assertEqual(result[DB_NAMESPACE], "0")
 
     def test_db_redis_database_index_database_dup(self):
         result = {}
         _set_db_redis_database_index(result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         self.assertIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
-        self.assertNotIn(DB_NAMESPACE, result)
+        self.assertIn(DB_NAMESPACE, result)
+        self.assertEqual(result[DB_NAMESPACE], "0")
 
     def test_db_redis_database_index_none_value(self):
         result = {}
