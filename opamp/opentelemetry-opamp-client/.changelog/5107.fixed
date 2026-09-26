@@ -1,0 +1,1 @@
+Build queued messages when they are sent, so each one carries the current sequence number.

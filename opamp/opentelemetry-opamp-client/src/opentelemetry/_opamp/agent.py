@@ -30,6 +30,10 @@ def _safe_invoke(function: Callable[..., Any], *args: Any) -> None:
 class _Job:
     """
     Represents a single request job, with retry/backoff metadata.
+
+    The payload is either the bytes to send or a function returning them. A function is
+    called right before each attempt, so the message gets the sequence number that is
+    current when it is sent.
     """
 
     def __init__(
@@ -45,6 +49,10 @@ class _Job:
         self.initial_backoff = initial_backoff
         # callback is called after OpAMP message handler is executed
         self.callback = callback
+
+    def build(self) -> Any:
+        """Returns the message to send for the next attempt"""
+        return self.payload() if callable(self.payload) else self.payload
 
     def should_retry(self) -> bool:
         """Checks if we should retry again"""
@@ -114,21 +122,25 @@ class OpAMPAgent:
         atexit.register(self.stop)
 
         # enqueue the connection message so we can then enable heartbeat
-        payload = self._client.build_full_state_message()
         self.send(
-            payload,
+            self._client.build_full_state_message,
             max_retries=self._max_retries,
             callback=self._enable_scheduler,
         )
 
     def send(
         self,
-        payload: Any,
+        payload: bytes | Callable[[], bytes],
         max_retries: int | None = None,
         callback: Callable[..., None] | None = None,
     ) -> None:
         """
         Enqueue an on-demand request.
+
+        :param payload: the message to send, or a function that builds it. A function is
+            called just before the message is sent, so the message carries the sequence
+            number that is current then. Bytes are sent unchanged, so they keep the
+            sequence number they were built with.
         """
         if not self._worker.is_alive():
             logger.warning("Called send() but worker thread is not alive. Worker threads is started with start()")
@@ -150,9 +162,8 @@ class OpAMPAgent:
         """
         while not self._stop.wait(self._interval):
             if self._schedule:
-                payload = self._client.build_heartbeat_message()
                 job = _Job(
-                    payload=payload,
+                    payload=self._client.build_heartbeat_message,
                     max_retries=self._heartbeat_max_retries,
                     initial_backoff=self._initial_backoff,
                 )
@@ -173,7 +184,12 @@ class OpAMPAgent:
             message = None
             while job.should_retry() and not self._stop.is_set():
                 try:
-                    message = self._client.send(job.payload)
+                    data = job.build()
+                except Exception:
+                    logger.exception("Failed to build message for job %r, dropping it", job.payload)
+                    break
+                try:
+                    message = self._client.send(data)
                     _safe_invoke(self._callbacks.on_connect, self, self._client)
                     logger.debug("Job succeeded: %r", job.payload)
                     break
@@ -228,8 +244,7 @@ class OpAMPAgent:
 
         if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
             logger.debug("Server requested full state report")
-            payload = self._client.build_full_state_message()
-            self.send(payload)
+            self.send(self._client.build_full_state_message)
 
         msg_data = MessageData.from_server_message(message)
         _safe_invoke(
