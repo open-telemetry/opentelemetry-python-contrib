@@ -39,6 +39,7 @@ members = [
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-flask",
     "opentelemetry-instrumentation-grpc",
+    "opentelemetry-instrumentation-http-base",
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-jinja2",
     "opentelemetry-instrumentation-kafka-python",
@@ -3222,6 +3223,16 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-instrumentation-http-base"
+source = { editable = "opentelemetry-instrumentation-http-base" }
+dependencies = [
+    { name = "opentelemetry-api" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" }]
+
+[[package]]
 name = "opentelemetry-instrumentation-httpx"
 source = { editable = "instrumentation/opentelemetry-instrumentation-httpx" }
 dependencies = [
@@ -4049,6 +4060,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-fastapi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-flask", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-grpc", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-http-base" },
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-jinja2", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments"] },
@@ -4122,6 +4134,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-flask", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-flask" },
     { name = "opentelemetry-instrumentation-grpc", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-grpc" },
+    { name = "opentelemetry-instrumentation-http-base", editable = "opentelemetry-instrumentation-http-base" },
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-jinja2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-jinja2" },
     { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
