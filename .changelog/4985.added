@@ -1,1 +1,1 @@
-Document database semantic convention opt-in values in database instrumentation modules.
+`opentelemetry-instrumentation-*`: document `OTEL_SEMCONV_STABILITY_OPT_IN` for database instrumentations
