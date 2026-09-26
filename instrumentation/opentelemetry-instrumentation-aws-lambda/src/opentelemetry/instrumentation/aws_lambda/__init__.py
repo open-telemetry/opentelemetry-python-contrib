@@ -384,7 +384,10 @@ def _instrument(
                 result = None
 
                 if request_hook:
-                    request_hook(span, lambda_event, lambda_context)
+                    try:
+                        request_hook(span, lambda_event, lambda_context)
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        logger.exception("Exception raised by request_hook")
 
                 try:
                     if event_type is _LambdaEventType.SQS:
@@ -404,7 +407,10 @@ def _instrument(
                     )
 
                 if response_hook:
-                    response_hook(span, lambda_event, lambda_context, result)
+                    try:
+                        response_hook(span, lambda_event, lambda_context, result)
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        logger.exception("Exception raised by response_hook")
         finally:
             if token:
                 context_api.detach(token)
