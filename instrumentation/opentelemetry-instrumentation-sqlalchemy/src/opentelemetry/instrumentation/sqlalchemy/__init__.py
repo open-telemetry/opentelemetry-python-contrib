@@ -42,6 +42,14 @@ Usage
 Configuration
 -------------
 
+Database client metrics
+***********************
+Connection pool usage is reported as the ``db.client.connection.count``
+metric, with the ``db.client.connection.pool.name`` and
+``db.client.connection.state`` (``idle``/``used``) attributes. See the
+`database semantic conventions
+<https://opentelemetry.io/docs/specs/semconv/database/>`_ for more information.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
@@ -145,7 +153,9 @@ from opentelemetry.instrumentation.sqlalchemy.package import _instruments
 from opentelemetry.instrumentation.sqlalchemy.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    create_db_client_connection_count,
+)
 from opentelemetry.trace import get_tracer
 
 
@@ -202,11 +212,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             schema_url=schema_url,
         )
 
-        connections_usage = meter.create_up_down_counter(
-            name=MetricInstruments.DB_CLIENT_CONNECTIONS_USAGE,
-            unit="connections",
-            description="The number of connections that are currently in state described by the state attribute.",
-        )
+        connection_count = create_db_client_connection_count(meter)
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
@@ -217,7 +223,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             "create_engine",
             _wrap_create_engine(
                 tracer,
-                connections_usage,
+                connection_count,
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
@@ -228,7 +234,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             "create_engine",
             _wrap_create_engine(
                 tracer,
-                connections_usage,
+                connection_count,
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
@@ -241,7 +247,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "create_engine",
                 _wrap_create_engine(
                     tracer,
-                    connections_usage,
+                    connection_count,
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
@@ -258,7 +264,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 "create_async_engine",
                 _wrap_create_async_engine(
                     tracer,
-                    connections_usage,
+                    connection_count,
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
@@ -268,7 +274,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             return EngineTracer(
                 tracer,
                 kwargs.get("engine"),
-                connections_usage,
+                connection_count,
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
@@ -278,7 +284,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 EngineTracer(
                     tracer,
                     engine,
-                    connections_usage,
+                    connection_count,
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                     kwargs.get("enable_attribute_commenter", False),

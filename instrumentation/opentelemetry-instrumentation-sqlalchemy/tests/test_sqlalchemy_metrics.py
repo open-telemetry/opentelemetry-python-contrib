@@ -9,6 +9,11 @@ from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
+CONNECTION_COUNT = "db.client.connection.count"
+CONNECTIONS_USAGE = "db.client.connections.usage"
+POOL_NAME = "db.client.connection.pool.name"
+STATE = "db.client.connection.state"
+
 
 class TestSqlalchemyMetricsInstrumentation(TestBase):
     def setUp(self):
@@ -24,16 +29,17 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
         metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
+        self.assertEqual(metrics[0].name, CONNECTION_COUNT)
         self.assert_metric_expected(
             metrics[0],
             [
                 self.create_number_data_point(
                     value=idle,
-                    attributes={"pool.name": pool_name, "state": "idle"},
+                    attributes={POOL_NAME: pool_name, STATE: "idle"},
                 ),
                 self.create_number_data_point(
                     value=used,
-                    attributes={"pool.name": pool_name, "state": "used"},
+                    attributes={POOL_NAME: pool_name, STATE: "used"},
                 ),
             ],
         )
@@ -128,3 +134,16 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         engine.connect()
 
         self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
+
+    def test_deprecated_usage_metric_not_emitted(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        with engine.connect():
+            metric_names = {m.name for m in self.get_sorted_metrics(SCOPE)}
+
+        self.assertIn(CONNECTION_COUNT, metric_names)
+        self.assertNotIn(CONNECTIONS_USAGE, metric_names)
