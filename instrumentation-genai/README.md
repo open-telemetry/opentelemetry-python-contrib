@@ -10,7 +10,7 @@
 | --------------- | ------------------ | --------------- | -------------- |
 | [opentelemetry-instrumentation-genai-anthropic](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-anthropic) | anthropic >= 0.16.0 | Yes | development
 | [opentelemetry-instrumentation-genai-claude-agent-sdk](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-claude-agent-sdk) | claude-agent-sdk >= 0.1.14 | No | development
-| [opentelemetry-instrumentation-google-genai](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai) | google-genai >= 1.32.0 | yes | development
+| [opentelemetry-instrumentation-google-genai](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai) | google-genai >= 1.32.0 | Yes | development
 | [opentelemetry-instrumentation-genai-langchain](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-langchain) | langchain >= 0.3.21 | Yes | development
 | [opentelemetry-instrumentation-genai-openai-agents](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents) | openai-agents >= 0.3.3 | No | development
 | [opentelemetry-instrumentation-genai-openai](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai) | openai >= 1.26.0 | Yes | development
