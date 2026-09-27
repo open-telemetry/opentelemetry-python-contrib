@@ -161,6 +161,9 @@ from typing import Any
 
 import psycopg2
 from psycopg2.extensions import (
+    connection as pg_connection,  # pylint: disable=no-name-in-module
+)
+from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
@@ -312,11 +315,16 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
         kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
+        base_connection_factory = kwargs.pop("connection_factory", None)
         base_cursor_factory = kwargs.pop("cursor_factory", None)
         new_factory_kwargs = {"db_api": self}
         if base_cursor_factory:
             new_factory_kwargs["base_factory"] = base_cursor_factory
         kwargs["cursor_factory"] = _new_cursor_factory(**new_factory_kwargs)
+        kwargs["connection_factory"] = _new_connection_factory(
+            db_api=self,
+            base_factory=base_connection_factory,
+        )
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
         return connection
@@ -348,6 +356,25 @@ class CursorTracer(dbapi.CursorTracer):
         if isinstance(statement, Composed):
             statement = statement.as_string(cursor)
         return statement
+
+
+def _new_connection_factory(
+    db_api: dbapi.DatabaseApiIntegration,
+    base_factory: type[pg_connection] | None = None,
+):
+    base_factory = base_factory or pg_connection
+
+    class TracedConnectionFactory(base_factory):
+        def cursor(self, *args, **kwargs):
+            base_cursor_factory = kwargs.pop("cursor_factory", None)
+            if base_cursor_factory:
+                kwargs["cursor_factory"] = _new_cursor_factory(
+                    db_api=db_api,
+                    base_factory=base_cursor_factory,
+                )
+            return super().cursor(*args, **kwargs)
+
+    return TracedConnectionFactory
 
 
 def _new_cursor_factory(

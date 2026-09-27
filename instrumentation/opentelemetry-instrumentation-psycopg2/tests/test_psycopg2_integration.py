@@ -48,13 +48,19 @@ class MockConnection:
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
 
-    def cursor(self):
-        if self.cursor_factory:
-            return self.cursor_factory(self)
+    def cursor(self, *args, **kwargs):
+        cursor_factory = kwargs.pop("cursor_factory", self.cursor_factory)
+        if cursor_factory:
+            return cursor_factory(self)
         return MockCursor()
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
         return {"dbname": "test"}
+
+
+def mock_connect(*args, **kwargs):
+    connection_factory = kwargs.pop("connection_factory", MockConnection)
+    return connection_factory(*args, **kwargs)
 
 
 # pylint: disable=too-many-public-methods
@@ -62,15 +68,18 @@ class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch("opentelemetry.instrumentation.psycopg2.pg_cursor", MockCursor)
-        self.connection_mock = mock.patch("psycopg2.connect", MockConnection)
+        self.pg_connection_mock = mock.patch("opentelemetry.instrumentation.psycopg2.pg_connection", MockConnection)
+        self.connection_mock = mock.patch("psycopg2.connect", mock_connect)
 
         self.cursor_mock.start()
+        self.pg_connection_mock.start()
         self.connection_mock.start()
 
     def tearDown(self):
         super().tearDown()
         self.memory_exporter.clear()
         self.cursor_mock.stop()
+        self.pg_connection_mock.stop()
         self.connection_mock.stop()
         with self.disable_logging():
             Psycopg2Instrumentor().uninstrument()
@@ -101,6 +110,32 @@ class TestPostgresqlIntegration(TestBase):
         query = "SELECT * FROM test"
         cursor.execute(query)
 
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrumentor_with_cursor_factory_argument(self):
+        Psycopg2Instrumentor().instrument()
+
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor(cursor_factory=MockCursor)
+        cursor.execute("SELECT * FROM test")
+
+        self.assertIsInstance(cursor, MockCursor)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrumentor_with_connection_and_cursor_factory_arguments(self):
+        class CustomConnection(MockConnection):
+            pass
+
+        Psycopg2Instrumentor().instrument()
+
+        cnx = psycopg2.connect(database="test", connection_factory=CustomConnection)
+        cursor = cnx.cursor(cursor_factory=MockCursor)
+        cursor.execute("SELECT * FROM test")
+
+        self.assertIsInstance(cnx, CustomConnection)
+        self.assertIsInstance(cursor, MockCursor)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
