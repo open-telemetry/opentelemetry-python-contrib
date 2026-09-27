@@ -1,0 +1,1 @@
+Trace Psycopg2 queries when a cursor factory is passed to ``connection.cursor()``.
