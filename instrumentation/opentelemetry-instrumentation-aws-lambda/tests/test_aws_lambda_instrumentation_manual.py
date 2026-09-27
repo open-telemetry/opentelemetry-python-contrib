@@ -3,8 +3,8 @@
 
 # pylint: disable=too-many-lines
 
-import logging
 import json
+import logging
 import os
 from collections.abc import Callable
 from copy import deepcopy
@@ -274,6 +274,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             span.get_span_context().span_id,
         )
         self.assertEqual(hook_event, {"key": "value"})
+        self.assertEqual(hook_context.function_name, MOCK_LAMBDA_CONTEXT.function_name)
         # The response hook sees exactly what the handler returned
         # (mocks.lambda_function.handler serialises baggage to JSON).
         self.assertEqual(hook_result, json.dumps({"baggage_content": {}}))
