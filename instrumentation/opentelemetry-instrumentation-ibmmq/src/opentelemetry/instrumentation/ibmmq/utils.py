@@ -175,6 +175,15 @@ def _name_after_open(span: Span, queue: Any, operation: str) -> None:
         span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
 
 
+# messaging.operation.type is a closed semconv enum, so the type comes from
+# it while messaging.operation.name keeps the human operation word used by
+# the Java IBM MQ instrumentation.
+_OPERATION_TYPES = {
+    "publish": messaging_attributes.MessagingOperationTypeValues.SEND.value,
+    "receive": messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+}
+
+
 def _enrich_span(
     span: Span,
     destination: str | None,
@@ -185,7 +194,8 @@ def _enrich_span(
     # MessagingSystemValues is a closed enum with no IBM MQ member, so a
     # literal string is intentional here.
     span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "ibmmq")
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION, operation)
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, operation)
+    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_TYPE, _OPERATION_TYPES[operation])
     if destination is not None:
         span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
     if _experimental_attributes_enabled:

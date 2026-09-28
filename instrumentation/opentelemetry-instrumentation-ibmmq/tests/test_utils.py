@@ -77,7 +77,11 @@ class TestUtils(TestBase):
         self.assertEqual(span.name, "DEV.QUEUE.1 publish")
         self.assertEqual(span.kind, SpanKind.PRODUCER)
         self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "ibmmq")
-        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION], "publish")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION_NAME], "publish")
+        self.assertEqual(
+            span.attributes[messaging_attributes.MESSAGING_OPERATION_TYPE],
+            messaging_attributes.MessagingOperationTypeValues.SEND.value,
+        )
         self.assertEqual(
             span.attributes[messaging_attributes.MESSAGING_DESTINATION_NAME],
             fakes.QUEUE_NAME,
@@ -119,7 +123,11 @@ class TestUtils(TestBase):
         span = spans[0]
         self.assertEqual(span.name, "DEV.QUEUE.1 receive")
         self.assertEqual(span.kind, SpanKind.CONSUMER)
-        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION], "receive")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION_NAME], "receive")
+        self.assertEqual(
+            span.attributes[messaging_attributes.MESSAGING_OPERATION_TYPE],
+            messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+        )
 
     # -- 9: Queue.get, MQRC_NO_MSG_AVAILABLE -------------------------------
 
@@ -164,7 +172,11 @@ class TestUtils(TestBase):
         wrapper(queue.get, queue, (None, gmo), {})
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(span.kind, SpanKind.CONSUMER)
-        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION], "receive")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_OPERATION_NAME], "receive")
+        self.assertEqual(
+            span.attributes[messaging_attributes.MESSAGING_OPERATION_TYPE],
+            messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+        )
         self.assertNotIn(utils._ATTR_BROWSE, span.attributes)
 
         self.memory_exporter.clear()
