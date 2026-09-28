@@ -32,13 +32,12 @@ class _Job:
     Represents a single request job, with retry/backoff metadata.
 
     The payload is either the bytes to send or a function returning them. A function is
-    called right before each attempt, so the message gets the sequence number that is
-    current when it is sent.
+    called once, when the worker picks up the job, and retries send the same message.
     """
 
     def __init__(
         self,
-        payload: Any,
+        payload: bytes | Callable[[], bytes],
         max_retries: int = 1,
         initial_backoff: float = 1.0,
         callback: Callable[..., None] | None = None,
@@ -50,8 +49,8 @@ class _Job:
         # callback is called after OpAMP message handler is executed
         self.callback = callback
 
-    def build(self) -> Any:
-        """Returns the message to send for the next attempt"""
+    def build(self) -> bytes:
+        """Returns the message to send"""
         return self.payload() if callable(self.payload) else self.payload
 
     def should_retry(self) -> bool:
@@ -122,8 +121,9 @@ class OpAMPAgent:
         atexit.register(self.stop)
 
         # enqueue the connection message so we can then enable heartbeat
+        payload = self._client.build_full_state_message()
         self.send(
-            self._client.build_full_state_message,
+            payload,
             max_retries=self._max_retries,
             callback=self._enable_scheduler,
         )
@@ -138,9 +138,9 @@ class OpAMPAgent:
         Enqueue an on-demand request.
 
         :param payload: the message to send, or a function that builds it. A function is
-            called just before the message is sent, so the message carries the sequence
-            number that is current then. Bytes are sent unchanged, so they keep the
-            sequence number they were built with.
+            called when the message is about to be sent, so the message is built from the
+            state at that point. Bytes are sent as they are, with the sequence number they got
+            when they were built.
         """
         if not self._worker.is_alive():
             logger.warning("Called send() but worker thread is not alive. Worker threads is started with start()")
@@ -182,12 +182,12 @@ class OpAMPAgent:
                 continue
 
             message = None
-            while job.should_retry() and not self._stop.is_set():
-                try:
-                    data = job.build()
-                except Exception:
-                    logger.exception("Failed to build message for job %r, dropping it", job.payload)
-                    break
+            try:
+                data = job.build()
+            except Exception:
+                logger.exception("Failed to build message for job %r, dropping it", job.payload)
+                data = None
+            while data is not None and job.should_retry() and not self._stop.is_set():
                 try:
                     message = self._client.send(data)
                     _safe_invoke(self._callbacks.on_connect, self, self._client)
@@ -242,10 +242,6 @@ class OpAMPAgent:
             )
             return
 
-        if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
-            logger.debug("Server requested full state report")
-            self.send(self._client.build_full_state_message)
-
         msg_data = MessageData.from_server_message(message)
         _safe_invoke(
             self._callbacks.on_message,
@@ -253,6 +249,12 @@ class OpAMPAgent:
             self._client,
             msg_data,
         )
+
+        # Queued after on_message so that it goes after any message the callback builds and
+        # sends, which has already taken its sequence number.
+        if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
+            logger.debug("Server requested full state report")
+            self.send(self._client.build_full_state_message)
 
     def stop(self, timeout: float | None = None) -> None:
         """
