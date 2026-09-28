@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-celery`: populate `celery.origin` and `celery.hostname` as distinct span attributes
+`opentelemetry-instrumentation-celery`: `celery.hostname` on worker spans now reports the executing worker instead of being overwritten by the message `origin`; the publisher's nodename is emitted separately as `celery.origin`
