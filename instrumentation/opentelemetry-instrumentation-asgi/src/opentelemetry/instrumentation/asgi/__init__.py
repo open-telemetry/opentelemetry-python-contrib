@@ -301,7 +301,6 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-from opentelemetry.util.types import AttributeValue
 
 
 class ASGIGetter(Getter[dict]):
@@ -530,7 +529,7 @@ def get_default_span_details(scope: dict) -> tuple[str, dict]:
 
 def _collect_target_attribute(
     scope: dict[str, typing.Any],
-    attributes: dict[str, AttributeValue],
+    route: str | None = None,
 ) -> str | None:
     """
     Returns the target path as defined by the Semantic Conventions.
@@ -546,9 +545,6 @@ def _collect_target_attribute(
     """
     root_path = scope.get("root_path", "")
 
-    # Prefer the already-resolved http.route attribute set by the
-    # framework's wrapping middleware, like FastAPI or Starlette.
-    route = attributes.get(HTTP_ROUTE)
     if not route:
         route_obj = scope.get("route")
         route = getattr(route_obj, "path_format", None)
@@ -786,7 +782,7 @@ class OpenTelemetryMiddleware:
                 await self.app(scope, otel_receive, otel_send)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope, attributes)
+                target = _collect_target_attribute(scope, attributes.get(HTTP_ROUTE))
                 if target:
                     path, query = _parse_url_query(target)
                     _set_http_target(
