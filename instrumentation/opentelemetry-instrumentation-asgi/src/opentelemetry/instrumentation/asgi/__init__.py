@@ -742,6 +742,12 @@ class OpenTelemetryMiddleware:
 
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
+
+        # Initialize before the try block: the holder is read unconditionally in
+        # finally, so it must exist even if the wrapped block raises before
+        # otel_send is constructed (otherwise finally would mask the original
+        # exception with an UnboundLocalError).
+        response_size_holder: dict[str, int] = {}
         try:
             with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
@@ -767,7 +773,6 @@ class OpenTelemetryMiddleware:
 
                 otel_receive = self._get_otel_receive(span_name, scope, receive)
 
-                response_size_holder: dict[str, int] = {}
                 otel_send = self._get_otel_send(
                     current_span,
                     span_name,
