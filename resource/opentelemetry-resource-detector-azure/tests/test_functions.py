@@ -11,6 +11,8 @@ from opentelemetry.resource.detector.azure.functions import (
 TEST_WEBSITE_SITE_NAME = "TEST_WEBSITE_SITE_NAME"
 TEST_REGION_NAME = "TEST_REGION_NAME"
 TEST_WEBSITE_INSTANCE_ID = "TEST_WEBSITE_INSTANCE_ID"
+TEST_WEBSITE_POD_NAME = "TEST_WEBSITE_POD_NAME"
+TEST_CONTAINER_NAME = "TEST_CONTAINER_NAME"
 
 TEST_WEBSITE_RESOURCE_GROUP = "example-resource-group"
 TEST_SUBSCRIPTION_ID = "00000000-0000-0000-0000-000000000000"
@@ -116,6 +118,73 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
                     self.assertEqual(attributes[key], value)
                 for key in omitted_attributes[missing_environment_variable]:
                     self.assertNotIn(key, attributes)
+
+    def test_faas_instance_environment_variables(self) -> None:
+        instance_id_environment = {
+            "WEBSITE_INSTANCE_ID": TEST_WEBSITE_INSTANCE_ID,
+            "WEBSITE_POD_NAME": TEST_WEBSITE_POD_NAME,
+            "CONTAINER_NAME": TEST_CONTAINER_NAME,
+        }
+        base_environment = TEST_FUNCTIONS_ENVIRONMENT.copy()
+        del base_environment["WEBSITE_INSTANCE_ID"]
+
+        cases = {
+            "instance id only": (
+                {"WEBSITE_INSTANCE_ID": TEST_WEBSITE_INSTANCE_ID},
+                TEST_WEBSITE_INSTANCE_ID,
+            ),
+            "pod name only": (
+                {"WEBSITE_POD_NAME": TEST_WEBSITE_POD_NAME},
+                TEST_WEBSITE_POD_NAME,
+            ),
+            "container name only": (
+                {"CONTAINER_NAME": TEST_CONTAINER_NAME},
+                TEST_CONTAINER_NAME,
+            ),
+            "instance id before pod name and container name": (
+                instance_id_environment,
+                TEST_WEBSITE_INSTANCE_ID,
+            ),
+            "pod name before container name": (
+                {
+                    "WEBSITE_POD_NAME": TEST_WEBSITE_POD_NAME,
+                    "CONTAINER_NAME": TEST_CONTAINER_NAME,
+                },
+                TEST_WEBSITE_POD_NAME,
+            ),
+            "empty instance id skipped": (
+                {**instance_id_environment, "WEBSITE_INSTANCE_ID": ""},
+                TEST_WEBSITE_POD_NAME,
+            ),
+            "empty instance id and pod name skipped": (
+                {
+                    **instance_id_environment,
+                    "WEBSITE_INSTANCE_ID": "",
+                    "WEBSITE_POD_NAME": "",
+                },
+                TEST_CONTAINER_NAME,
+            ),
+            "all empty": (
+                {
+                    "WEBSITE_INSTANCE_ID": "",
+                    "WEBSITE_POD_NAME": "",
+                    "CONTAINER_NAME": "",
+                },
+                None,
+            ),
+            "none set": ({}, None),
+        }
+
+        for name, (instance_environment, expected) in cases.items():
+            with self.subTest(name):
+                environment = {**base_environment, **instance_environment}
+                with patch.dict("os.environ", environment, clear=True):
+                    attributes = AzureFunctionsResourceDetector().detect().attributes
+
+                if expected is None:
+                    self.assertNotIn("faas.instance", attributes)
+                else:
+                    self.assertEqual(attributes["faas.instance"], expected)
 
     @patch.dict(
         "os.environ",

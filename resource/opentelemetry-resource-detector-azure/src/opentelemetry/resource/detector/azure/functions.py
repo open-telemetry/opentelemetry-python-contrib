@@ -18,6 +18,7 @@ from opentelemetry.semconv.resource import (
 from ._constants import (
     _AZURE_RESOURCE_GROUP_NAME_RESOURCE_ATTRIBUTE,
     _FUNCTIONS_ATTRIBUTE_ENV_VARS,
+    _FUNCTIONS_INSTANCE_ID_ENV_VARS,
     _REGION_NAME,
     _WEBSITE_RESOURCE_GROUP,
     _WEBSITE_SITE_NAME,
@@ -46,6 +47,11 @@ class AzureFunctionsResourceDetector(ResourceDetector):
             azure_resource_uri = _get_azure_resource_uri()
             if azure_resource_uri:
                 attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = azure_resource_uri
+            for env_var in _FUNCTIONS_INSTANCE_ID_ENV_VARS:
+                instance_id = environ.get(env_var)
+                if instance_id:
+                    attributes[ResourceAttributes.FAAS_INSTANCE] = instance_id
+                    break
             for key, env_var in _FUNCTIONS_ATTRIBUTE_ENV_VARS.items():
                 value = environ.get(env_var)
                 if value:
