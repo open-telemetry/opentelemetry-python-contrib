@@ -399,15 +399,12 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             self.assertEqual(200, resp.status_code)
 
             metrics = self.get_sorted_metrics(SCOPE)
-            duration_metrics = [
-                metric for metric in metrics if metric.name in ("http.server.duration", "http.server.request.duration")
-            ]
+            duration_metrics = [metric for metric in metrics if metric.name == "http.server.duration"]
             self.assertTrue(duration_metrics)
             for metric in duration_metrics:
                 for point in metric.data.data_points:
                     if isinstance(point, HistogramDataPoint):
-                        target = point.attributes.get("http.target") or point.attributes.get("url.path")
-                        self.assertEqual("/api/foo/bar/{bar_id}", target)
+                        self.assertEqual("/api/foo/bar/{bar_id}", point.attributes.get("http.target"))
         finally:
             self._instrumentor.uninstrument_app(app)
 
