@@ -53,7 +53,7 @@ libraries = [
     {"library": "remoulade >= 0.50", "instrumentation": "opentelemetry-instrumentation-remoulade==0.67b0.dev"},
     {"library": "requests ~= 2.0", "instrumentation": "opentelemetry-instrumentation-requests==0.67b0.dev"},
     {
-        "library": "sqlalchemy >= 1.0.0, < 2.1.0",
+        "library": "sqlalchemy >= 1.4.0, < 2.2.0",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.67b0.dev",
     },
     {"library": "starlette >= 0.13", "instrumentation": "opentelemetry-instrumentation-starlette==0.67b0.dev"},

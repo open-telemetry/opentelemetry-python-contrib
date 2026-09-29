@@ -9768,8 +9768,8 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-grpc-1-wrapt2 -- -ra
 
-  py310-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 3.10 Ubuntu
+  py310-test-instrumentation-sqlalchemy-oldest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9787,10 +9787,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py310-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py310-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.10 Ubuntu
+  py310-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9808,10 +9808,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py310-test-instrumentation-sqlalchemy-latest -- -ra
 
-  py311-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 3.11 Ubuntu
+  py311-test-instrumentation-sqlalchemy-oldest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9829,10 +9829,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py311-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py311-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.11 Ubuntu
+  py311-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9850,10 +9850,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py311-test-instrumentation-sqlalchemy-latest -- -ra
 
-  py312-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 3.12 Ubuntu
+  py312-test-instrumentation-sqlalchemy-oldest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9871,10 +9871,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py312-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py312-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.12 Ubuntu
+  py312-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9892,10 +9892,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py312-test-instrumentation-sqlalchemy-latest -- -ra
 
-  py313-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 3.13 Ubuntu
+  py313-test-instrumentation-sqlalchemy-oldest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9913,10 +9913,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py313-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py313-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.13 Ubuntu
+  py313-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9934,10 +9934,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py313-test-instrumentation-sqlalchemy-latest -- -ra
 
-  py314-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.14 Ubuntu
+  py314-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9955,10 +9955,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py314-test-instrumentation-sqlalchemy-latest -- -ra
 
-  pypy3-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 pypy-3.10 Ubuntu
+  pypy3-test-instrumentation-sqlalchemy-oldest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9976,10 +9976,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e pypy3-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  pypy3-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 pypy-3.10 Ubuntu
+  pypy3-test-instrumentation-sqlalchemy-latest_ubuntu-latest:
+    name: instrumentation-sqlalchemy-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -9997,7 +9997,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e pypy3-test-instrumentation-sqlalchemy-latest -- -ra
 
   py310-test-instrumentation-redis_ubuntu-latest:
     name: instrumentation-redis 3.10 Ubuntu

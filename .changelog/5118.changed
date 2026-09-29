@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: Support SQLAlchemy 2.1 and drop support for SQLAlchemy < 1.4
