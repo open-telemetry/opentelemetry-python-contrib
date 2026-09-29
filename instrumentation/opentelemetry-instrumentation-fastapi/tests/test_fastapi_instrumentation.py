@@ -124,6 +124,12 @@ _recommended_attrs_both.update(_recommended_attrs_new)
 _recommended_attrs_both["http.server.active_requests"].extend(_server_active_requests_count_attrs_old)
 
 
+pytestmark = pytest.mark.skipif(
+    otel_fastapi.telemetry is not None,
+    reason="FastAPI provides native OpenTelemetry instrumentation",
+)
+
+
 class CustomMiddleware:
     def __init__(self, app: fastapi.FastAPI) -> None:
         self.app = app
