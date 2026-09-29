@@ -18,6 +18,11 @@ TEST_WEBSITE_MEMORY_LIMIT_MB = "1024"
 
 
 class TestAzureAppServiceResourceDetector(unittest.TestCase):
+    def test_is_process_dependent(self):
+        detector = AzureFunctionsResourceDetector()
+
+        self.assertTrue(detector.is_process_dependent())
+
     @patch.dict(
         "os.environ",
         {

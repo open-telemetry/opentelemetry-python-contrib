@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.asyncpg import (
     _PREPARED_STMT_METHODS,
     AsyncPGInstrumentor,
 )
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
@@ -144,6 +145,9 @@ class TestAsyncPGInstrumentation(TestBase):
         # init the cursor and fetch a single record
         crs = cursor.Cursor(conn, "SELECT * FROM test", state, [], Record)
         asyncio.run(crs._init(1))
+        with suppress_instrumentation():
+            self.assertEqual(asyncio.run(crs.fetch(1)), [])
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
         asyncio.run(crs.fetch(1))
 
         spans = self.memory_exporter.get_finished_spans()
@@ -153,6 +157,10 @@ class TestAsyncPGInstrumentation(TestBase):
 
         # Now test that the StopAsyncIteration of the cursor does not get recorded as an ERROR
         crs_iter = cursor.CursorIterator(conn, "SELECT * FROM test", state, [], Record, 1, 1)
+
+        with suppress_instrumentation(), pytest.raises(StopAsyncIteration):
+            asyncio.run(anext(crs_iter))
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
 
         with pytest.raises(StopAsyncIteration):
             asyncio.run(anext(crs_iter))
@@ -270,7 +278,11 @@ class TestAsyncPGInstrumentation(TestBase):
                 apg.instrument(tracer_provider=self.tracer_provider)
 
                 stmt = PreparedStatement(conn, query, state)
-                asyncio.run(getattr(stmt, method_name)(*call_args))
+                with suppress_instrumentation():
+                    suppressed_result = asyncio.run(getattr(stmt, method_name)(*call_args))
+                self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+                result = asyncio.run(getattr(stmt, method_name)(*call_args))
+                self.assertEqual(result, suppressed_result)
 
                 spans = self.memory_exporter.get_finished_spans()
                 self.assertEqual(len(spans), 1)
@@ -298,6 +310,10 @@ class TestAsyncPGInstrumentation(TestBase):
         apg.instrument(tracer_provider=self.tracer_provider)
 
         stmt = PreparedStatement(conn, "SELECT 1", state)
+        with suppress_instrumentation(), self.assertRaisesRegex(RuntimeError, "db error"):
+            asyncio.run(stmt.fetch())
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+
         with self.assertRaises(RuntimeError):
             asyncio.run(stmt.fetch())
 
@@ -369,6 +385,26 @@ class TestAsyncPGSemconvMigration(TestBase):
                 apg._tracer._instrumentation_scope.schema_url,
                 "https://opentelemetry.io/schemas/1.25.0",
             )
+
+    def test_suppress_instrumentation(self) -> None:
+        conn = self._make_execute_conn()
+        conn._protocol.query = mock.AsyncMock(return_value="SELECT 1")
+        with suppress_instrumentation():
+            spans = self._run_execute(conn)
+        self.assertEqual(spans, ())
+        conn._protocol.query.assert_awaited_once_with("SELECT 1", None)
+
+        AsyncPGInstrumentor().uninstrument()
+        self.assertEqual(len(self._run_execute(conn)), 1)
+
+    def test_suppress_instrumentation_error(self) -> None:
+        conn = self._make_execute_conn()
+        error = RuntimeError("db error")
+        conn._protocol.query = mock.AsyncMock(side_effect=error)
+        with suppress_instrumentation(), self.assertRaises(RuntimeError) as raised:
+            self._run_execute(conn)
+        self.assertIs(raised.exception, error)
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
 
     def test_span(self):
         conn = self._make_execute_conn()

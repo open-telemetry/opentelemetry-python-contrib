@@ -2663,7 +2663,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<10.0.0" },
+    { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<11.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from logging import getLogger
+from logging import Logger, getLogger
 
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -14,7 +14,11 @@ from opentelemetry.util._importlib_metadata import (
     version,
 )
 
-logger = getLogger(__name__)
+_logger = getLogger(__name__)
+
+
+def _format_deps(deps: Collection[str]) -> str:
+    return ", ".join(str(dep) for dep in deps)
 
 
 class DependencyConflict:
@@ -53,10 +57,44 @@ class DependencyConflict:
         self.required_any = required_any
         self.found_any = found_any
 
+    @property
+    def _is_version_conflict(self) -> bool:
+        """False when the dependency is not installed at all, rather than installed at an incompatible version."""
+        return bool(self.found or self.found_any)
+
+    def _log(self, logger: Logger, instrumentor_name: str) -> None:
+        """Log as an error for a version conflict, at debug level when the dependency is not installed."""
+        log = logger.error if self._is_version_conflict else logger.debug
+        log(self._format_message(instrumentor_name))
+
+    def _format_message(self, instrumentor_name: str | None = None) -> str:
+        subject = instrumentor_name or "This instrumentation"
+        if self.required:
+            if self.found:
+                return (
+                    f'{subject} only instruments "{self.required}", '
+                    f'but currently installed version ("{self.found}") falls outside of that range, '
+                    f"so nothing can be instrumented."
+                )
+            return (
+                f'{subject} only instruments "{self.required}", '
+                f"but no installed version was found, so nothing can be instrumented."
+            )
+        if self.required_any:
+            if self.found_any:
+                return (
+                    f'{subject} instruments any of "{_format_deps(self.required_any)}", '
+                    f'but currently installed version(s) ("{_format_deps(self.found_any)}") fall outside of that range, '
+                    f"so nothing can be instrumented."
+                )
+            return (
+                f'{subject} requires any of "{_format_deps(self.required_any)}", '
+                f"but none are installed, so nothing can be instrumented."
+            )
+        return f"{subject} has an unknown dependency conflict, so nothing can be instrumented."
+
     def __str__(self):
-        if not self.required and (self.required_any or self.found_any):
-            return f'DependencyConflict: requested any of the following: "{self.required_any}" but found: "{self.found_any}"'
-        return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
+        return self._format_message()
 
 
 class DependencyConflictError(Exception):
@@ -105,7 +143,7 @@ def get_dependency_conflicts(
             try:
                 req = Requirement(dep)
             except InvalidRequirement as exc:
-                logger.warning(
+                _logger.warning(
                     'error parsing dependency, reporting as a conflict: "%s" - %s',
                     dep,
                     exc,
@@ -142,7 +180,7 @@ def _get_dependency_conflicts_any(
             try:
                 req = Requirement(dep)
             except InvalidRequirement as exc:
-                logger.warning(
+                _logger.warning(
                     'error parsing dependency, reporting as a conflict: "%s" - %s',
                     dep,
                     exc,
