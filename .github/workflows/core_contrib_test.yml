@@ -37,6 +37,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -44,6 +45,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -67,6 +69,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -74,6 +77,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -97,6 +101,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -104,6 +109,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -127,6 +133,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -134,6 +141,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -157,6 +165,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -164,6 +173,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -187,6 +197,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -194,6 +205,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -217,6 +229,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -224,6 +237,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -247,6 +261,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -254,6 +269,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -277,6 +293,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -284,6 +301,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -307,6 +325,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -314,6 +333,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -337,6 +357,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -344,6 +365,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -367,6 +389,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -374,6 +397,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -397,6 +421,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -404,6 +429,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -427,6 +453,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -434,6 +461,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -457,6 +485,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -464,6 +493,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -487,6 +517,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -494,6 +525,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -517,6 +549,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -524,6 +557,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -547,6 +581,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -554,6 +589,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -577,6 +613,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -584,6 +621,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -607,6 +645,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -614,6 +653,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -637,6 +677,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -644,6 +685,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -667,6 +709,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -674,6 +717,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -697,6 +741,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -704,6 +749,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -727,6 +773,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -734,6 +781,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -757,6 +805,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -764,6 +813,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -787,6 +837,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -794,6 +845,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -817,6 +869,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -824,6 +877,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -847,6 +901,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -854,6 +909,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -877,6 +933,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -884,6 +941,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -907,6 +965,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -914,6 +973,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -937,6 +997,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -944,6 +1005,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -967,6 +1029,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -974,6 +1037,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -997,6 +1061,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1004,6 +1069,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1027,6 +1093,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1034,6 +1101,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1057,6 +1125,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1064,6 +1133,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1117,6 +1187,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1124,6 +1195,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1147,6 +1219,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1154,6 +1227,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1177,6 +1251,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1184,6 +1259,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1207,6 +1283,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1214,6 +1291,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1237,6 +1315,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1244,6 +1323,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1267,6 +1347,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1274,6 +1355,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1297,6 +1379,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1304,6 +1387,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1327,6 +1411,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1334,6 +1419,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1357,6 +1443,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1364,6 +1451,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1387,6 +1475,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1394,6 +1483,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1417,6 +1507,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1424,6 +1515,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1447,6 +1539,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1454,6 +1547,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1477,6 +1571,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1484,6 +1579,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1507,6 +1603,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1514,6 +1611,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1537,6 +1635,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1544,6 +1643,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1567,6 +1667,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1574,6 +1675,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1597,6 +1699,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1604,6 +1707,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1627,6 +1731,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1634,6 +1739,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1657,6 +1763,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1664,6 +1771,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1687,6 +1795,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1694,6 +1803,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1717,6 +1827,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1724,6 +1835,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1747,6 +1859,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1754,6 +1867,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1777,6 +1891,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1784,6 +1899,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1807,6 +1923,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1814,6 +1931,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1837,6 +1955,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1844,6 +1963,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1867,6 +1987,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1874,6 +1995,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1897,6 +2019,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1904,6 +2027,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1927,6 +2051,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1934,6 +2059,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1957,6 +2083,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1964,6 +2091,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -1987,6 +2115,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -1994,6 +2123,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2017,6 +2147,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2024,6 +2155,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2047,6 +2179,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2054,6 +2187,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2077,6 +2211,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2084,6 +2219,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2107,6 +2243,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2114,6 +2251,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2137,6 +2275,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2144,6 +2283,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2167,6 +2307,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2174,6 +2315,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2197,6 +2339,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2204,6 +2347,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2227,6 +2371,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2234,6 +2379,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2257,6 +2403,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2264,6 +2411,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2287,6 +2435,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2294,6 +2443,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2317,6 +2467,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2324,6 +2475,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2347,6 +2499,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2354,6 +2507,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2377,6 +2531,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2384,6 +2539,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2407,6 +2563,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2414,6 +2571,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2437,6 +2595,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2444,6 +2603,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2467,6 +2627,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2474,6 +2635,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2497,6 +2659,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2504,6 +2667,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2527,6 +2691,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2534,6 +2699,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2557,6 +2723,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2564,6 +2731,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2587,6 +2755,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2594,6 +2763,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2617,6 +2787,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2624,6 +2795,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2647,6 +2819,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2654,6 +2827,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2677,6 +2851,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2684,6 +2859,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2707,6 +2883,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2714,6 +2891,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2737,6 +2915,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2744,6 +2923,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2767,6 +2947,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2774,6 +2955,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2797,6 +2979,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2804,6 +2987,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2827,6 +3011,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2834,6 +3019,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2857,6 +3043,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2864,6 +3051,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2887,6 +3075,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2894,6 +3083,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2917,6 +3107,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2924,6 +3115,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2947,6 +3139,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2954,6 +3147,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -2977,6 +3171,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -2984,6 +3179,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3007,6 +3203,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3014,6 +3211,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3037,6 +3235,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3044,6 +3243,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3067,6 +3267,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3074,6 +3275,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3097,6 +3299,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3104,6 +3307,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3127,6 +3331,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3134,6 +3339,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3157,6 +3363,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3164,6 +3371,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3187,6 +3395,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3194,6 +3403,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3217,6 +3427,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3224,6 +3435,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3247,6 +3459,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3254,6 +3467,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3277,6 +3491,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3284,6 +3499,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3307,6 +3523,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3314,6 +3531,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3337,6 +3555,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3344,6 +3563,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3367,6 +3587,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3374,6 +3595,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3397,6 +3619,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3404,6 +3627,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3427,6 +3651,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3434,6 +3659,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3457,6 +3683,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3464,6 +3691,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3487,6 +3715,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3494,6 +3723,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3517,6 +3747,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3524,6 +3755,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3547,6 +3779,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3554,6 +3787,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3577,6 +3811,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3584,6 +3819,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3607,6 +3843,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3614,6 +3851,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3637,6 +3875,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3644,6 +3883,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3667,6 +3907,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3674,6 +3915,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3697,6 +3939,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3704,6 +3947,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -3727,6 +3971,7 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -3734,6 +3979,7 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
