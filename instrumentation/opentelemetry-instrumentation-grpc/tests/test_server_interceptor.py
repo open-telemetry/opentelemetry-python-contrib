@@ -710,6 +710,37 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             },
         )
 
+    def test_uncaught_exception_recorded_once(self):
+        """Check that an uncaught exception is recorded exactly once on the span."""
+        interceptor = server_interceptor()
+        failure_message = "unexpected failure"
+
+        def fail_handler(request, context):
+            raise ValueError(failure_message)
+
+        rpc_call = "TestServicer/fail_handler"
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(fail_handler),))
+            server.start()
+
+            with self.assertRaises(grpc.RpcError) as cm:
+                channel.unary_unary(rpc_call)(b"")
+
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.UNKNOWN)
+            server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+        self.assertEqual(exception_events[0].attributes["exception.type"], "ValueError")
+        self.assertEqual(exception_events[0].attributes["exception.message"], failure_message)
+
 
 class TestOpenTelemetryServerInterceptorUnix(
     TestOpenTelemetryServerInterceptor,
