@@ -19,11 +19,11 @@ concurrency:
 
 jobs:
   misc:
-    uses: ./.github/workflows/misc.yml
+    uses: ./.github/workflows/misc.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   lint:
-    uses: ./.github/workflows/lint.yml
+    uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   tests:
-    uses: ./.github/workflows/test.yml
+    uses: ./.github/workflows/test.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
 
   check:
     if: always()

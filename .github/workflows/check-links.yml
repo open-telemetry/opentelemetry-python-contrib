@@ -40,6 +40,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Get changed markdown files
         id: changed-files
@@ -51,26 +52,30 @@ jobs:
 
       - name: Install markdown-link-check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: npm install -g markdown-link-check@v3.12.2
+        run: npm install -g markdown-link-check@v3.12.2 # zizmor: ignore[adhoc-packages] pinned CI-only checker is intentionally separate from project dependencies
 
       - name: Check links on push to main
         if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'push'
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           markdown-link-check \
             --verbose \
             --config .github/workflows/check_links_config.json \
-            ${{ steps.changed-files.outputs.all_changed_files }} \
+            $CHANGED_FILES \
             || { echo "Check that anchor links are lowercase"; exit 1; }
 
       - name: Check new links
         if: steps.changed-files.outputs.any_changed == 'true' && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           # Extract URLs only from added lines in the diff to avoid
           # rate limiting when checking all links in large files like
           # CHANGELOG.md. Only new/changed links are checked on PRs;
           # pushes to main still check all links in changed files.
           git diff "$DIFF_RANGE" -- \
-            ${{ steps.changed-files.outputs.all_changed_files }} \
+            $CHANGED_FILES \
             | grep '^+' | grep -v '^+++' \
             | grep -oP 'https?://[^\s\)\]\"'"'"'`>]+' \
             | sort -u > /tmp/new_links.txt
