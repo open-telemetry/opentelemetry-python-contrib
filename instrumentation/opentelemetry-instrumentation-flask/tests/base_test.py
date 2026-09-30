@@ -11,7 +11,7 @@ import flask
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
 
-from opentelemetry import context, trace
+from opentelemetry import baggage, context, trace
 
 
 class InstrumentationTest:
@@ -20,6 +20,10 @@ class InstrumentationTest:
         if helloid == 500:
             raise ValueError(":-(")
         return "Hello: " + str(helloid)
+
+    @staticmethod
+    def _baggage_endpoint():
+        return dict(baggage.get_all())
 
     @staticmethod
     def _sqlcommenter_endpoint():
@@ -89,6 +93,7 @@ class InstrumentationTest:
 
         # pylint: disable=no-member
         self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
+        self.app.route("/baggage")(self._baggage_endpoint)
         self.app.route("/sqlcommenter")(self._sqlcommenter_endpoint)
         self.app.route("/multithreaded")(self._multithreaded_endpoint)
         self.app.route("/copy_context")(self._copy_context_endpoint)
