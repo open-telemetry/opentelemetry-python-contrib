@@ -1,7 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""Environment variables read by :meth:`HttpClientTelemetryDevelopmentOptions.from_env`.
+"""Environment variables read by
+:meth:`~opentelemetry.instrumentation.http.client._incubating.HttpClientTelemetryDevelopmentOptions.from_env`.
 
 .. warning::
     These environment variables are at the **Development** stability level and

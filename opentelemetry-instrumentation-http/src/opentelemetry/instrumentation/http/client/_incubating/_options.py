@@ -33,7 +33,7 @@ _METRIC_FIELDS = (
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class HttpClientTelemetryDevelopmentOptions:
-    """Development options for :class:`HttpClientTelemetry`.
+    """Development options for :class:`~opentelemetry.instrumentation.http.client.HttpClientTelemetry`.
 
     .. warning::
         These options are at the **Development** stability level and do NOT

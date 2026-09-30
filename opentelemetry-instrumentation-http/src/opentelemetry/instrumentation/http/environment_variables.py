@@ -1,7 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""Environment variables read by :meth:`HttpClientTelemetryOptions.from_env`.
+"""Environment variables read by
+:meth:`~opentelemetry.instrumentation.http.client.HttpClientTelemetryOptions.from_env`.
 
 List variables are comma-separated. Empty values are treated as unset, and
 invalid values are ignored with a warning.

@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""Library-agnostic telemetry for HTTP clients.
+"""Library agnostic telemetry for HTTP clients.
 
 This package is for authors of HTTP client *instrumentations*, not for
 application developers. An instrumentation describes each outgoing request
@@ -275,7 +275,6 @@ References
 .. _HTTP semantic conventions: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md
 """
 
-# Redundant ``as`` aliases mark explicit re-exports (PEP 484), which pylint does not recognize.
 # pylint: disable=useless-import-alias
 from opentelemetry.instrumentation.http.client._connection import (
     HttpClientConnection as HttpClientConnection,

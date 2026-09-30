@@ -9,7 +9,6 @@
     release, including minor and patch releases.
 """
 
-# Redundant ``as`` aliases mark explicit re-exports (PEP 484), which pylint does not recognize.
 # pylint: disable=useless-import-alias
 from opentelemetry.instrumentation.http.client._incubating._options import (
     HttpClientTelemetryDevelopmentOptions as HttpClientTelemetryDevelopmentOptions,
