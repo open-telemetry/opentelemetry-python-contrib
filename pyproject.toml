@@ -10,6 +10,7 @@ dependencies = [
   "opentelemetry-instrumentation",
   "opentelemetry-distro",
   "opentelemetry-test-utils",
+  "opentelemetry-exporter-otlp",
   "opentelemetry-exporter-prometheus-remote-write",
   "opentelemetry-exporter-richconsole",
   "opentelemetry-instrumentation-aio-pika[instruments]",
