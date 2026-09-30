@@ -279,6 +279,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_request_body_size,
     create_http_server_response_body_size,
 )
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -528,6 +529,7 @@ def get_default_span_details(scope: dict) -> tuple[str, dict]:
 
 def _collect_target_attribute(
     scope: dict[str, typing.Any],
+    route: str | None = None,
 ) -> str | None:
     """
     Returns the target path as defined by the Semantic Conventions.
@@ -541,13 +543,14 @@ def _collect_target_attribute(
     Note: this function requires specific code for each framework, as there's no
     standard attribute to use.
     """
-    # FastAPI
     root_path = scope.get("root_path", "")
 
-    route = scope.get("route")
-    path_format = getattr(route, "path_format", None)
-    if path_format:
-        return f"{root_path}{path_format}"
+    if not route:
+        route_obj = scope.get("route")
+        route = getattr(route_obj, "path_format", None)
+
+    if route:
+        return f"{root_path}{route}"
 
     return None
 
@@ -779,7 +782,7 @@ class OpenTelemetryMiddleware:
                 await self.app(scope, otel_receive, otel_send)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope)
+                target = _collect_target_attribute(scope, attributes.get(HTTP_ROUTE))
                 if target:
                     path, query = _parse_url_query(target)
                     _set_http_target(
