@@ -488,17 +488,30 @@ def test_build_full_state_message_no_config(client):
     assert message.effective_config.config_map.config_map == {}
 
 
-def test_message_sequence_num_increases_in_send(client):
+def test_each_built_message_gets_the_next_sequence_num(client):
+    remote_config_status = client.update_remote_config_status(
+        remote_config_hash=b"1234", status=opamp_pb2.RemoteConfigStatuses_APPLIED
+    )
+    built = [
+        client.build_full_state_message(),
+        client.build_heartbeat_message(),
+        client.build_remote_config_status_response_message(remote_config_status),
+        client.build_agent_disconnect_message(),
+    ]
+
+    assert [opamp_pb2.AgentToServer.FromString(data).sequence_num for data in built] == [0, 1, 2, 3]
+    assert client._sequence_num == 4
+
+
+def test_send_does_not_change_the_sequence_num(client):
     client._transport = mock.Mock()
-    for index in range(2):
-        data = client.build_heartbeat_message()
+    data = client.build_heartbeat_message()
+    client.send(data)
+    client._transport.send.side_effect = ConnectionError
+    with pytest.raises(ConnectionError):
         client.send(data)
 
-        message = opamp_pb2.AgentToServer()
-        message.ParseFromString(data)
-
-        assert message
-        assert message.sequence_num == index
+    assert opamp_pb2.AgentToServer.FromString(client.build_heartbeat_message()).sequence_num == 1
 
 
 def test_send(client):
