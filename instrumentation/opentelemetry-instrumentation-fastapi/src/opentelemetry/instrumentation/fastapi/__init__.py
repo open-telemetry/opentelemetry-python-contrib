@@ -5,6 +5,12 @@
 Usage
 -----
 
+FastAPI 0.142.0 and newer provide native OpenTelemetry instrumentation. When
+native support is available, this instrumentor leaves FastAPI unchanged.
+Configure telemetry directly in FastAPI. The contrib configuration options,
+hooks, and instrumentation-specific environment variables below apply only to
+older FastAPI versions.
+
 .. code-block:: python
 
     import fastapi
@@ -221,6 +227,11 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from typing_extensions import Unpack
 
 try:
+    from fastapi import telemetry
+except ImportError:
+    telemetry = None
+
+try:
     # FastAPI >= 0.137.2 exposes a public helper that flattens routes added via
     # include_router() (nested under _IncludedRouter in 0.137) into matchable
     # RouteContext objects. Older versions don't have it; see _flatten_routes.
@@ -276,6 +287,10 @@ if TYPE_CHECKING:
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
+_NATIVE_INSTRUMENTATION_WARNING = (
+    "FastAPI has native OpenTelemetry support. Skipping contrib instrumentation. "
+    "Configure telemetry directly in FastAPI."
+)
 
 
 class FastAPIInstrumentor(BaseInstrumentor):
@@ -320,6 +335,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
             exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
+        if telemetry is not None:
+            _logger.warning(_NATIVE_INSTRUMENTATION_WARNING)
+            return
+
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -467,6 +486,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI) -> None:
+        if telemetry is not None:
+            return
+
         original_build_middleware_stack = getattr(app, "_original_build_middleware_stack", None)
         if original_build_middleware_stack:
             app.build_middleware_stack = original_build_middleware_stack
@@ -488,11 +510,18 @@ class FastAPIInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs: Unpack[_InstrumentKwargs]) -> None:
+        if telemetry is not None:
+            _logger.warning(_NATIVE_INSTRUMENTATION_WARNING)
+            return
+
         self._original_fastapi = fastapi.FastAPI
         _InstrumentedFastAPI._instrument_kwargs = kwargs
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs: Unpack[_UninstrumentKwargs]) -> None:
+        if telemetry is not None:
+            return
+
         # Create a copy of the set to avoid RuntimeError during iteration
         instances_to_uninstrument = list(_InstrumentedFastAPI._instrumented_fastapi_apps)
         for instance in instances_to_uninstrument:
