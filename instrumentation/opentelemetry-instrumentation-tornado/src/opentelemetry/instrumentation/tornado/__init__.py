@@ -251,6 +251,7 @@ _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
 _START_TIME = "start_time"
+_METRICS_RECORDED = "metrics_recorded"
 
 _excluded_urls = get_excluded_urls("TORNADO")
 _traced_request_attrs = get_traced_request_attrs("TORNADO")
@@ -829,9 +830,15 @@ def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
 
 
 def _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in_mode):
-    otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
-    if otel_handler_state.get("exclude_request"):
+    otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None)
+    if otel_handler_state is None:
+        otel_handler_state = {}
+        setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
+    # Tornado calls both log_exception and on_finish for a failed request,
+    # record metrics only from whichever runs first.
+    if otel_handler_state.get("exclude_request") or otel_handler_state.get(_METRICS_RECORDED):
         return
+    otel_handler_state[_METRICS_RECORDED] = True
     start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
     elapsed_time_s = default_timer() - start_time
     elapsed_time_ms = round(elapsed_time_s * 1000)
@@ -841,11 +848,14 @@ def _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in
 
     if isinstance(error, tornado.web.HTTPError):
         status_code = error.status_code
+    elif error is not None and not handler._headers_written:
+        # send_error(500) runs after log_exception returns
+        status_code = 500
 
     # Record old semconv metrics
     if _report_old(sem_conv_opt_in_mode):
         metric_attributes_old = _create_metric_attributes_old(handler)
-        if isinstance(error, tornado.web.HTTPError):
+        if error is not None:
             metric_attributes_old[HTTP_STATUS_CODE] = status_code
 
         server_histograms["old_response_size"].record(response_size, attributes=metric_attributes_old)
@@ -864,7 +874,7 @@ def _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in
     # Record new semconv metrics
     if _report_new(sem_conv_opt_in_mode):
         metric_attributes_new = _create_metric_attributes_new(handler)
-        if isinstance(error, tornado.web.HTTPError):
+        if error is not None:
             metric_attributes_new[HTTP_RESPONSE_STATUS_CODE] = status_code
 
         server_histograms["new_response_size"].record(response_size, attributes=metric_attributes_new)

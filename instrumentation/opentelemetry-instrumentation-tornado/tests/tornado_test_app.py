@@ -120,6 +120,12 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class RaiseAfterFinishHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.finish("done")
+        raise ValueError("raised after finish")
+
+
 class ParametrizedHandler(tornado.web.RequestHandler):
     async def get(self, message: str):
         self.write(message)
@@ -153,6 +159,7 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/raise_after_finish", RaiseAfterFinishHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
             (r"/parametrized/(.*)/", ParametrizedHandler),
