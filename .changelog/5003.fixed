@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: flush tracer and meter providers when a worker process shuts down so spans are not lost when `worker_max_tasks_per_child` recycles the pool child
