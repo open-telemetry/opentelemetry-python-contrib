@@ -4,19 +4,21 @@
 
 from unittest import TestCase, mock
 
+from kafka.consumer.fetcher import ConsumerRecord
 from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
 
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
-    _enrich_span,
+    _enrich_send_span,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
     _wrap_next,
     _wrap_send,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
@@ -29,9 +31,10 @@ class TestUtils(TestCase):
         self.headers = []
         self.kwargs = {"partition": 0, "headers": self.headers}
 
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_client_id")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_send_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     def test_wrap_send_with_topic_as_arg(
@@ -41,6 +44,7 @@ class TestUtils(TestCase):
         enrich_span: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
     ) -> None:
         self.wrap_send_helper(
             inject,
@@ -48,11 +52,13 @@ class TestUtils(TestCase):
             enrich_span,
             extract_send_partition,
             extract_bootstrap_servers,
+            extract_client_id,
         )
 
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_client_id")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_send_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     def test_wrap_send_with_topic_as_kwarg(
@@ -62,6 +68,7 @@ class TestUtils(TestCase):
         enrich_span: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
     ) -> None:
         self.args = []
         self.kwargs["topic"] = self.topic_name
@@ -71,8 +78,10 @@ class TestUtils(TestCase):
             enrich_span,
             extract_send_partition,
             extract_bootstrap_servers,
+            extract_client_id,
         )
 
+    # pylint: disable=too-many-locals
     def wrap_send_helper(
         self,
         inject: mock.MagicMock,
@@ -80,6 +89,7 @@ class TestUtils(TestCase):
         enrich_span: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         produce_hook = mock.MagicMock()
@@ -91,6 +101,7 @@ class TestUtils(TestCase):
         retval = wrapped_send(original_send_callback, kafka_producer, self.args, self.kwargs)
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer)
+        extract_client_id.assert_called_once_with(kafka_producer)
         # The partition is read back from the future returned by send(), not
         # estimated from the call arguments.
         extract_send_partition.assert_called_once_with(original_send_callback.return_value)
@@ -99,9 +110,11 @@ class TestUtils(TestCase):
         span = tracer.start_as_current_span().__enter__.return_value
         enrich_span.assert_called_once_with(
             span,
-            extract_bootstrap_servers.return_value,
-            self.topic_name,
-            extract_send_partition.return_value,
+            bootstrap_servers=extract_bootstrap_servers.return_value,
+            client_id=extract_client_id.return_value,
+            topic=self.topic_name,
+            partition=extract_send_partition.return_value,
+            key=None,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -116,8 +129,12 @@ class TestUtils(TestCase):
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_client_id")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_consumer_group")
     def test_wrap_next(
         self,
+        extract_consumer_group: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
@@ -133,6 +150,12 @@ class TestUtils(TestCase):
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
+        extract_client_id.assert_called_once_with(kafka_consumer)
+        client_id = extract_client_id.return_value
+
+        extract_consumer_group.assert_called_once_with(kafka_consumer)
+        consumer_group = extract_consumer_group.return_value
+
         original_next_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(record, original_next_callback.return_value)
 
@@ -145,13 +168,15 @@ class TestUtils(TestCase):
             record,
             context,
             bootstrap_servers,
+            client_id,
+            consumer_group,
             self.args,
             self.kwargs,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_consume_span")
     @mock.patch("opentelemetry.context.detach")
     def test_create_consumer_span(
         self,
@@ -163,6 +188,8 @@ class TestUtils(TestCase):
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
         bootstrap_servers = mock.MagicMock()
+        client_id = mock.MagicMock()
+        consumer_group = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
 
@@ -172,6 +199,8 @@ class TestUtils(TestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            client_id,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -187,7 +216,16 @@ class TestUtils(TestCase):
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
+        enrich_span.assert_called_once_with(
+            span,
+            bootstrap_servers=bootstrap_servers,
+            client_id=client_id,
+            consumer_group=consumer_group,
+            topic=record.topic,
+            partition=record.partition,
+            key=str(record.key),
+            offset=record.offset,
+        )
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
@@ -235,22 +273,36 @@ class TestUtils(TestCase):
 
         self.assertIsNone(partition)
 
-    def test_enrich_span_records_partition_when_present(self):
+    def test_enrich_send_span_records_partition_when_present(self):
         span = mock.MagicMock()
         span.is_recording.return_value = True
 
-        _enrich_span(span, ["localhost:9092"], self.topic_name, 2)
+        _enrich_send_span(
+            span,
+            bootstrap_servers=["localhost:9092"],
+            client_id="client-1",
+            topic=self.topic_name,
+            partition=2,
+            key=None,
+        )
 
-        span.set_attribute.assert_any_call(SpanAttributes.MESSAGING_KAFKA_PARTITION, 2)
+        span.set_attribute.assert_any_call(messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID, "2")
 
-    def test_enrich_span_omits_partition_when_none(self):
+    def test_enrich_send_span_omits_partition_when_none(self):
         span = mock.MagicMock()
         span.is_recording.return_value = True
 
-        _enrich_span(span, ["localhost:9092"], self.topic_name, None)
+        _enrich_send_span(
+            span,
+            bootstrap_servers=["localhost:9092"],
+            client_id="client-1",
+            topic=self.topic_name,
+            partition=None,
+            key=None,
+        )
 
         recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
-        self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+        self.assertNotIn(messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID, recorded_attributes)
 
 
 @mock.patch(
@@ -268,7 +320,10 @@ class TestWrapSendSpanLifetime(TestBase):
         self.args = [self.topic_name]
         self.kwargs = {"partition": 0, "headers": []}
         self.producer = mock.MagicMock()
-        self.producer.config = {"bootstrap_servers": ["localhost:9092"]}
+        self.producer.config = {
+            "bootstrap_servers": ["localhost:9092"],
+            "client_id": "client-1",
+        }
 
     def test_wrap_send_records_exception_raised_by_send(self, _extract_send_partition: mock.MagicMock) -> None:
         error = ConnectionError("broker unavailable")
@@ -309,3 +364,102 @@ class TestWrapSendSpanLifetime(TestBase):
         self.assertEqual(span.kind, SpanKind.PRODUCER)
         self.assertIs(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(len(span.events), 0)
+
+
+class TestSpanAttributes(TestBase):
+    """Verifies the exact semantic-convention attribute names and value
+    types recorded on produced and consumed spans."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+
+    def test_send_span_attributes(self) -> None:
+        producer = mock.MagicMock()
+        producer.config = {
+            "bootstrap_servers": ["localhost:9092"],
+            "client_id": "client-1",
+        }
+        future = mock.MagicMock()
+        future._produce_future.topic_partition = ("test_topic", 3)
+        original_send = mock.MagicMock(return_value=future)
+
+        wrapped_send = _wrap_send(self.tracer, None)
+        wrapped_send(
+            original_send,
+            producer,
+            ["test_topic"],
+            {"key": b"key-1", "headers": []},
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "test_topic send")
+        self.assertEqual(span.kind, SpanKind.PRODUCER)
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                server_attributes.SERVER_ADDRESS: '["localhost:9092"]',
+                messaging_attributes.MESSAGING_CLIENT_ID: "client-1",
+                messaging_attributes.MESSAGING_DESTINATION_NAME: "test_topic",
+                messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "3",
+                messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY: "key-1",
+                messaging_attributes.MESSAGING_OPERATION_NAME: "send",
+                messaging_attributes.MESSAGING_OPERATION_TYPE: messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+            },
+        )
+
+    def test_receive_span_attributes(self) -> None:
+        consumer = mock.MagicMock()
+        consumer.config = {
+            "bootstrap_servers": ["localhost:9092"],
+            "client_id": "client-1",
+            "group_id": "group-1",
+        }
+        # ConsumerRecord's field set differs across supported kafka-python
+        # versions (e.g. ``leader_epoch`` is not present in 2.0.3), so build
+        # it from whatever fields the installed version actually defines.
+        field_values = {
+            "topic": "test_topic",
+            "partition": 3,
+            "leader_epoch": -1,
+            "offset": 42,
+            "timestamp": -1,
+            "timestamp_type": 0,
+            "key": b"key-1",
+            "value": b"value-1",
+            "headers": [],
+            "checksum": None,
+            "serialized_key_size": -1,
+            "serialized_value_size": -1,
+            "serialized_header_size": -1,
+        }
+        record = ConsumerRecord(**{field: field_values[field] for field in ConsumerRecord._fields})
+        original_next = mock.MagicMock(return_value=record)
+
+        wrapped_next = _wrap_next(self.tracer, None)
+        wrapped_next(original_next, consumer, [], {})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "test_topic receive")
+        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                server_attributes.SERVER_ADDRESS: '["localhost:9092"]',
+                messaging_attributes.MESSAGING_CLIENT_ID: "client-1",
+                messaging_attributes.MESSAGING_DESTINATION_NAME: "test_topic",
+                messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "3",
+                messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY: "key-1",
+                messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME: "group-1",
+                messaging_attributes.MESSAGING_OPERATION_NAME: "receive",
+                messaging_attributes.MESSAGING_OPERATION_TYPE: messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+                messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 42,
+                messaging_attributes.MESSAGING_MESSAGE_ID: "test_topic.3.42",
+            },
+        )
