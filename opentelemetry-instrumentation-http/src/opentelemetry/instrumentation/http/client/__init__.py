@@ -98,19 +98,25 @@ every path, later calls have no effect.
 
 .. code-block:: python
 
-    async def send_async(method, url, headers, body):
+    def fetch(method, url, headers, body, callback):
         operation = telemetry.start(HttpClientRequest(method=method, url=url, headers=headers))
         operation.inject(headers)
+
+        def on_response(response):
+            operation.set_response(HttpClientResponse(status_code=response.status, headers=response.headers))
+            operation.end()
+            callback(response, None)
+
+        def on_error(exc):
+            operation.end(exception=exc)
+            callback(None, exc)
+
         try:
-            response = await connection.send(method, url, headers, body)
+            client.send(method, url, headers, body, on_response=on_response, on_error=on_error)
         except BaseException as exc:
+            # The request failed before it was handed to the client.
             operation.end(exception=exc)
             raise
-        # Sizes that are only known once the request was written.
-        operation.set_request_size(body_size=response.request_body_size)
-        operation.set_response(HttpClientResponse(status_code=response.status, headers=response.headers))
-        operation.end()
-        return response
 
 End the operation once the response headers were read or failed to be read.
 Whether reading the response body is included is up to the instrumentation

@@ -12,6 +12,7 @@ from opentelemetry.context import Context
 from opentelemetry.instrumentation.http._internal._body import (
     CONTENT_TYPE_HEADER,
     BodyContentCapture,
+    is_textual_content_type,
 )
 from opentelemetry.instrumentation.http._internal._errors import (
     get_error_type,
@@ -91,7 +92,9 @@ class HttpClientOperation:
         recording = span.is_recording()
         self._request_body = (
             BodyContentCapture(telemetry._body_content_max_size)
-            if recording and telemetry._capture_request_body_content
+            if recording
+            and telemetry._capture_request_body_content
+            and is_textual_content_type(request_content_type)
             else None
         )
         self._response_body = (
@@ -157,6 +160,9 @@ class HttpClientOperation:
         telemetry = self._telemetry
         if self._response_body is not None:
             self._response_content_type = get_header_value(response.headers, CONTENT_TYPE_HEADER)
+            # Stop buffering content that will not be recorded.
+            if not is_textual_content_type(self._response_content_type):
+                self._response_body = None
         # pylint: disable=protected-access
         self._span.set_attributes(
             get_status_code_attributes(response.status_code)
@@ -200,7 +206,8 @@ class HttpClientOperation:
         by ``Content-Encoding`` removed. Do not read or rewind body streams
         just to call this: pass chunks as the HTTP client sends them. The
         content is recorded when the operation ends, chunks passed after
-        :meth:`end` are ignored.
+        :meth:`end` are ignored. Nothing is buffered when the request
+        ``Content-Type`` is not textual.
         """
         if self._ended or self._request_body is None:
             return
@@ -216,7 +223,8 @@ class HttpClientOperation:
         content is recorded when the operation ends, so only the part of the
         body received by then is recorded; chunks passed after :meth:`end` are
         ignored. The ``Content-Type`` is taken from the headers passed to
-        :meth:`set_response`.
+        :meth:`set_response`; chunks passed after it indicates non-textual
+        content are not buffered.
         """
         if self._ended or self._response_body is None:
             return

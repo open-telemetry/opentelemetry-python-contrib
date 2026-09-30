@@ -37,15 +37,18 @@ def is_textual_content_type(content_type: str | None) -> bool:
 
 
 def get_charset(content_type: str | None) -> str:
-    """Return the ``charset`` of ``content_type``, or UTF-8 when it is missing or unknown."""
+    """Return the ``charset`` of ``content_type``, or UTF-8 when it is missing, unknown or not a text encoding."""
     if not content_type:
         return _DEFAULT_CHARSET
     charset = _get_charset_parameter(content_type)
     if charset is None:
         return _DEFAULT_CHARSET
     try:
-        codecs.lookup(charset)
+        codec = codecs.lookup(charset)
     except LookupError:
+        return _DEFAULT_CHARSET
+    # Codecs such as base64_codec are not text encodings and cannot decode bytes to str.
+    if not getattr(codec, "_is_text_encoding", True):
         return _DEFAULT_CHARSET
     return charset
 
@@ -73,9 +76,13 @@ class BodyContentCapture:
     def get_content(self, content_type: str | None) -> str | None:
         """Return the buffered content decoded as text, or ``None`` if none was added or it is not textual.
 
-        Truncated content is cut on a character boundary. Invalid bytes are replaced.
+        Truncated content is cut on a character boundary. Invalid bytes are replaced. Content that
+        cannot be decoded, such as UTF-16 without a byte order mark, is not returned.
         """
         if not self._added or not is_textual_content_type(content_type):
             return None
         decoder = codecs.getincrementaldecoder(get_charset(content_type))(errors="replace")
-        return decoder.decode(bytes(self._buffer), final=not self._truncated)
+        try:
+            return decoder.decode(bytes(self._buffer), final=not self._truncated)
+        except UnicodeError:
+            return None

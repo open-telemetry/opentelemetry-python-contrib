@@ -52,6 +52,8 @@ class TestGetCharset(TestCase):
             ("text/plain", "utf-8"),
             ("text/plain; charset=", "utf-8"),
             ("text/plain; charset=unknown-charset", "utf-8"),
+            ("text/plain; charset=base64_codec", "utf-8"),
+            ("text/plain; charset=rot_13", "utf-8"),
             (None, "utf-8"),
         ):
             with self.subTest(content_type=content_type):
@@ -80,6 +82,12 @@ class TestBodyContentCapture(TestCase):
             # Invalid bytes, or an incomplete character without truncation, are replaced.
             (None, (b"a\xffb",), "text/plain", "a�b"),
             (None, ("é".encode()[:1],), "text/plain", "�"),
+            # Content that cannot be decoded is not returned.
+            (None, (b"h\x00i\x00",), "text/plain; charset=utf-16", None),
+            (None, (b"h\x00\x00\x00",), "text/plain; charset=utf-32", None),
+            (None, (b"abc",), "text/plain; charset=idna", None),
+            # Non-text codecs fall back to UTF-8.
+            (None, (b"aGk=",), "text/plain; charset=base64_codec", "aGk="),
         ):
             with self.subTest(max_size=max_size, chunks=chunks, content_type=content_type):
                 capture = BodyContentCapture(max_size)

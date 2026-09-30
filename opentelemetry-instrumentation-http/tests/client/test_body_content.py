@@ -175,6 +175,29 @@ class TestHttpClientTelemetryBodyContent(TestBase):
 
         self.assertEqual(self._body_attributes(), {_REQUEST_BODY: "{}"})
 
+    def test_undecodable_content_does_not_interrupt_end(self) -> None:
+        for charset, expected in (("utf-16", {}), ("base64_codec", {_RESPONSE_BODY: "aGk="})):
+            with self.subTest(charset=charset):
+                operation = self._start()
+                operation.set_response(
+                    HttpClientResponse(status_code=200, headers={"content-type": f"text/plain; charset={charset}"})
+                )
+                operation.add_response_body(b"aGk=")
+                operation.end(exception=ConnectionError("reset"))
+
+                (span,) = self.get_finished_spans()
+                self.assertEqual(span.attributes["error.type"], "ConnectionError")
+                self.assertEqual(self._body_attributes(), expected)
+
+    def test_non_textual_content_is_not_buffered(self) -> None:
+        operation = self._start(headers={"content-type": "application/octet-stream"})
+        self.assertIsNone(operation._request_body)  # pylint: disable=protected-access
+
+        self.assertIsNotNone(operation._response_body)  # pylint: disable=protected-access
+        operation.set_response(HttpClientResponse(status_code=200, headers={"content-type": "image/png"}))
+        self.assertIsNone(operation._response_body)  # pylint: disable=protected-access
+        operation.end()
+
     def test_suppressed_operation_is_noop(self) -> None:
         operation = HttpClientTelemetry(
             instrumenting_module_name="test",
