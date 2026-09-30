@@ -1,0 +1,58 @@
+interactions:
+- request:
+    body: |-
+      {
+        "inputText": "Say this is a test"
+      }
+    headers:
+      Content-Length:
+      - '36'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250826T103000Z
+      X-Amzn-Trace-Id:
+      - Root=1-aaaaaaaa-bbbbbbbbbbbbbbbbbbbbbbbb;Parent=cccccccccccccccc;Sampled=1
+      amz-sdk-invocation-id:
+      - 11111111-2222-3333-4444-555555555555
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-embed-text-v1/invoke
+  response:
+    body:
+      string: |-
+        {
+          "embedding": [
+            0.0135,
+            -0.0272,
+            0.0047,
+            0.0189,
+            -0.0091,
+            0.0023,
+            0.0314,
+            -0.0168
+          ],
+          "inputTextTokenCount": 5
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Aug 2026 10:30:00 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '120'
+      x-amzn-RequestId:
+      - aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+    status:
+      code: 200
+      message: OK
+version: 1
