@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Allow `opentelemetry-semantic-conventions` 1.x
 - Deprecate `opentelemetry-instrumentation-openai-agents-v2`. Use the
   `opentelemetry-instrumentation-genai-openai-agents` package instead. This
   package now only receives security patches.
