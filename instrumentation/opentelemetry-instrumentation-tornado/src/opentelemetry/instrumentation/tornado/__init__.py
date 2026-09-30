@@ -77,14 +77,14 @@ created span and some other contextual information. Example:
 
     # will be called just before sending out a request with
     # `tornado.httpclient.AsyncHTTPClient.fetch`.
-    # `request` is an instance of ``tornado.httpclient.HTTPRequest`.
+    # `request` is an instance of ``tornado.httpclient.HTTPRequest``.
     def client_request_hook(span, request):
         pass
 
 
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
-    # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
+    # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]``.
     def client_response_hook(span, future):
         pass
 
@@ -428,7 +428,7 @@ def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> dic
     if active_meter is not None:
         histograms["active_requests"] = active_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
+            unit="{request}",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
