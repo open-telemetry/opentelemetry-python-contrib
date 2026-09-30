@@ -77,14 +77,14 @@ created span and some other contextual information. Example:
 
     # will be called just before sending out a request with
     # `tornado.httpclient.AsyncHTTPClient.fetch`.
-    # `request` is an instance of ``tornado.httpclient.HTTPRequest``.
+    # `request` is an instance of ``tornado.httpclient.HTTPRequest`.
     def client_request_hook(span, request):
         pass
 
 
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
-    # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]``.
+    # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
     def client_response_hook(span, future):
         pass
 
