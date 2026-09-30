@@ -36,5 +36,5 @@ OTEL_PYTHON_EXCLUDED_URLS = "OTEL_PYTHON_EXCLUDED_URLS"
 """Regular expressions for request URLs to exclude from telemetry.
 
 An instrumentation-specific ``OTEL_PYTHON_<NAME>_EXCLUDED_URLS`` variable takes
-precedence when it is set and valid.
+precedence when it is set, even if empty.
 """

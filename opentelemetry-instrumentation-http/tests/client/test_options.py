@@ -170,16 +170,22 @@ class TestOptionsFromEnv(TestCase):
             {"excluded_urls": (re.compile("specific"),)},
             None,
         ),
+        (
+            "excluded urls fall back to generic when specific is unset",
+            "REQUESTS",
+            {"OTEL_PYTHON_EXCLUDED_URLS": "generic"},
+            {"excluded_urls": (re.compile("generic"),)},
+            None,
+        ),
         *(
             (
-                f"excluded urls fall back to generic when specific is {specific!r}",
+                f"excluded urls do not fall back to generic when specific is {specific!r}",
                 "REQUESTS",
-                {"OTEL_PYTHON_EXCLUDED_URLS": "generic"}
-                | ({} if specific is None else {"OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": specific}),
-                {"excluded_urls": (re.compile("generic"),)},
+                {"OTEL_PYTHON_REQUESTS_EXCLUDED_URLS": specific, "OTEL_PYTHON_EXCLUDED_URLS": "generic"},
+                {"excluded_urls": None},
                 "OTEL_PYTHON_REQUESTS_EXCLUDED_URLS" if specific == "[bad" else None,
             )
-            for specific in (None, "", "  ", "[bad")
+            for specific in ("", "  ", "[bad")
         ),
         (
             "excluded urls without name read generic only",

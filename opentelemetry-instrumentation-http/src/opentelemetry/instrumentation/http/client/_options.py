@@ -7,6 +7,7 @@ import logging
 import re
 from collections.abc import Collection
 from dataclasses import dataclass, fields
+from os import environ
 from typing import Any
 
 from opentelemetry.instrumentation.http._internal._env import (
@@ -113,14 +114,15 @@ class HttpClientTelemetryOptions:
         Args:
             instrumentation_name: Name used to read the instrumentation-specific
                 ``OTEL_PYTHON_<NAME>_EXCLUDED_URLS`` variable, e.g.
-                ``"REQUESTS"``. When that variable is unset, empty or invalid,
+                ``"REQUESTS"``. When that variable is unset,
                 ``OTEL_PYTHON_EXCLUDED_URLS`` is used instead.
         """
-        excluded_urls = None
+        excluded_urls_env_var = OTEL_PYTHON_EXCLUDED_URLS
         if instrumentation_name is not None:
-            excluded_urls = parse_patterns_env_var(f"OTEL_PYTHON_{instrumentation_name.upper()}_EXCLUDED_URLS")
-        if excluded_urls is None:
-            excluded_urls = parse_patterns_env_var(OTEL_PYTHON_EXCLUDED_URLS)
+            specific_env_var = f"OTEL_PYTHON_{instrumentation_name.upper()}_EXCLUDED_URLS"
+            if specific_env_var in environ:
+                excluded_urls_env_var = specific_env_var
+        excluded_urls = parse_patterns_env_var(excluded_urls_env_var)
 
         known_methods = parse_list_env_var(OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS)
         capture_all_methods = None

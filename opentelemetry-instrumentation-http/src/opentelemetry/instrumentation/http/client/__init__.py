@@ -3,13 +3,13 @@
 
 """Library agnostic telemetry for HTTP clients.
 
-This package is for authors of HTTP client *instrumentations*, not for
-application developers. An instrumentation describes each outgoing request
-with :class:`HttpClientRequest` and each response with
-:class:`HttpClientResponse`; :class:`HttpClientTelemetry` turns them into HTTP
-client spans that follow the `HTTP semantic conventions`_: span name and kind,
+This package is intended for use by authors of HTTP instrumentation libraries,
+providing a high-level implementation agnostic API for instrumenting HTTP requests.
+This package represents each outgoing request with :class:`HttpClientRequest`
+and each response with :class:`HttpClientResponse`. :class:`HttpClientTelemetry` turns
+them into HTTP client spans that follow the `HTTP semantic conventions`_: span name and kind,
 required and conditionally required attributes, error status and
-``error.type``, redaction of sensitive URL parts, opt-in attributes, and
+``error.type``, redaction of sensitive URL parts, opt-in attributes and
 context propagation.
 
 Every attempt to send a request over the wire is tracked by its own
@@ -18,11 +18,10 @@ Every attempt to send a request over the wire is tracked by its own
 Creating the telemetry
 **********************
 
-Create one :class:`HttpClientTelemetry` per instrumentation, for example when
-the instrumentor is enabled, and reuse it for every request. Options are read
-once, when the telemetry is created. Combine the options configured through
-environment variables with the ones passed in code using
-:meth:`HttpClientTelemetryOptions.merge`; options set in the argument win.
+Create one :class:`HttpClientTelemetry` per instrumentation and reuse it for
+every request. Options are read once, when the telemetry is created.
+Combine the options configured through environment variables with the ones passed
+in code using :meth:`HttpClientTelemetryOptions.merge`, options set in the argument win.
 
 .. code-block:: python
 
@@ -95,7 +94,7 @@ When the request does not fit in a ``with`` block, for example with
 callbacks or when the response is handed back to the caller before the
 operation ends, use :meth:`HttpClientTelemetry.start` and
 :meth:`HttpClientOperation.end`. Make sure ``end`` is called exactly once on
-every path; later calls have no effect.
+every path, later calls have no effect.
 
 .. code-block:: python
 
@@ -113,7 +112,7 @@ every path; later calls have no effect.
         operation.end()
         return response
 
-End the operation once the response headers were read, or failed to be read.
+End the operation once the response headers were read or failed to be read.
 Whether reading the response body is included is up to the instrumentation
 and should be documented by it, but do not end the operation from the
 asynchronous cleanup of a response body the application never read.
@@ -122,7 +121,7 @@ Retries and redirects
 *********************
 
 Start a new operation for every attempt, including redirects, authentication
-challenges and retries after errors, and pass the ordinal of the resend as
+challenges and retries after errors and pass the attempt number as
 ``resend_count``. Do not wrap the attempts in an additional logical span.
 
 .. code-block:: python
@@ -143,8 +142,8 @@ Context propagation
 outgoing request with the propagator passed to :class:`HttpClientTelemetry`,
 or the global propagator. Pass a :class:`~opentelemetry.propagators.textmap.Setter`
 for carriers that are not mutable string mappings. The context is injected
-even when the span is not sampled, so that downstream services make the same
-sampling decision, but nothing is injected when HTTP instrumentation is
+even when the span is not sampled so that downstream services make the same
+sampling decision. Nothing is injected when HTTP instrumentation is
 suppressed or the URL is excluded.
 
 :attr:`HttpClientOperation.context` contains the operation's span but is not
@@ -159,7 +158,7 @@ Errors and cancellation
   interpreted, mark the span as an error with the status code as
   ``error.type``. No extra call is needed.
 * Pass the exception that made the request fail to
-  :meth:`HttpClientOperation.end`, or record it earlier with
+  :meth:`HttpClientOperation.end` or record it earlier with
   :meth:`HttpClientOperation.record_exception`. Only the first failure is
   kept. Do not record exceptions that were handled or retried.
 * Pass ``error_type`` for a low-cardinality, library-specific identifier
@@ -167,6 +166,8 @@ Errors and cancellation
 * Cancellations (``asyncio.CancelledError``, ``GeneratorExit``,
   ``KeyboardInterrupt``, or ``end(cancelled=True)``) are recorded as errors
   unless the development option ``ignore_cancellation_errors`` is set.
+  ``end(cancelled=True)`` without ``exception`` or ``error_type`` records no
+  error.
 
 Development options
 *******************
@@ -202,7 +203,7 @@ Capturing body content
 ``http.request.body.content`` and ``http.response.body.content`` are only
 recorded when ``capture_request_body_content`` or
 ``capture_response_body_content`` is set in code. Pass the body chunks as the
-HTTP client sends or the application receives them; the content is recorded
+HTTP client sends or the application receives them. The content is recorded
 when the operation ends.
 
 .. code-block:: python
@@ -230,10 +231,9 @@ when the operation ends.
     operation.end()
 
 * Body content may contain sensitive information. Set
-  ``body_content_max_size``; content is unbounded otherwise.
+  ``body_content_max_size`` content is unbounded otherwise.
 * Only bodies whose ``Content-Type`` is textual are recorded, decoded with the
-  declared ``charset`` (UTF-8 by default). Binary bodies are skipped because
-  span attributes cannot hold byte arrays.
+  declared ``charset`` (UTF-8 by default). Binary bodies are skipped.
 * Pass content with any ``Content-Encoding`` (gzip, br, ...) removed.
 * Never read, rewind or close body streams just to capture them.
 * Chunks passed after the operation ended are ignored, so response bodies are
@@ -254,16 +254,6 @@ Caveats
   are set when the operation starts. Pass ``server_address`` and
   ``server_port`` in the request when they differ from the URL, for example
   when a ``Host`` header overrides it.
-* Unknown HTTP methods are recorded as ``_OTHER``, and their spans are named
-  ``HTTP``. Methods are case-sensitive: ``get`` is unknown. See the
-  ``known_methods`` and ``capture_all_methods`` options.
-* When the instrumented client is built on another instrumented HTTP client
-  (for example requests on urllib3), send the request inside
-  ``opentelemetry.instrumentation.utils.suppress_http_instrumentation()`` to
-  avoid duplicate client spans.
-* Only spans are emitted today. ``meter_provider``,
-  :meth:`HttpClientTelemetry.start_connection` and
-  :class:`HttpClientConnection` are accepted, but record no metrics yet.
 
 References
 **********

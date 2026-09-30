@@ -256,7 +256,7 @@ class HttpClientOperation:
 
         ``error.type`` is recorded as, in order of precedence: the response
         status code as a string when it indicates an error, ``error_type``
-        (``_OTHER`` when empty), or the fully qualified type name of
+        (``_OTHER`` when empty) or the fully qualified type name of
         ``exception`` (without the ``builtins.`` prefix).
 
         Args:
@@ -268,7 +268,8 @@ class HttpClientOperation:
                 recorded as errors when ``ignore_cancellation_errors`` is set;
                 ``asyncio.CancelledError``, ``GeneratorExit`` and
                 ``KeyboardInterrupt`` exceptions are always treated as
-                cancellations.
+                cancellations. Without ``exception`` or ``error_type``, no
+                error is recorded.
             end_time: End time of the operation in nanoseconds since the epoch.
         """
         if self._ended:
