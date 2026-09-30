@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-threading`: keep submitted callable metadata in `submit`

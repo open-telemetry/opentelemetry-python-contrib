@@ -26,6 +26,7 @@ run method or the executor's worker thread."
 
 from __future__ import annotations
 
+import functools
 import threading
 from collections.abc import Callable, Collection
 from concurrent import futures
@@ -155,6 +156,7 @@ class ThreadingInstrumentor(BaseInstrumentor):
         original_func = args[0]
         otel_context = context.get_current()
 
+        @functools.wraps(original_func)
         def wrapped_func(*func_args: Any, **func_kwargs: Any) -> R:
             token = None
             try:
