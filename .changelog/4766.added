@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: add `configuration` opt-in attribute on `BaseInstrumentor` for declarative-config validation, and set it on `URLLib3Instrumentor` via `URLLib3InstrumentorConfig`
