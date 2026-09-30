@@ -16,15 +16,11 @@ from wrapt import ObjectProxy
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
-from opentelemetry.semconv._incubating.attributes import messaging_attributes
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes,
+    server_attributes,
 )
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
 
@@ -128,7 +124,9 @@ def _decorate_basic_publish(
                 publish_hook(span, body, properties)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
-            retval = original_function(exchange, routing_key, body, properties, mandatory)
+            retval = original_function(
+                exchange, routing_key, body, properties, mandatory
+            )
         return retval
 
     return decorated_function
@@ -155,7 +153,9 @@ def _get_span(
     return span
 
 
-def _generate_span_name(task_name: str, operation: MessagingOperationValues | None) -> str:
+def _generate_span_name(
+    task_name: str, operation: MessagingOperationValues | None
+) -> str:
     if not operation:
         return f"{task_name} send"
     return f"{task_name} {operation.value}"
@@ -170,25 +170,38 @@ def _enrich_span(
 ) -> None:
     span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq")
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(messaging_attributes.MESSAGING_OPERATION, operation.value)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
+        span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_TEMPORARY, True)
+    span.set_attribute(
+        messaging_attributes.MESSAGING_DESTINATION_NAME, task_destination
+    )
     if properties.message_id:
         span.set_attribute(
             messaging_attributes.MESSAGING_MESSAGE_ID,
             properties.message_id,
         )
     if properties.correlation_id:
-        span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id)
+        span.set_attribute(
+            messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+            properties.correlation_id,
+        )
     if not channel:
         return
     if not hasattr(channel.connection, "params"):
-        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
+        span.set_attribute(
+            server_attributes.SERVER_ADDRESS, channel.connection._impl.params.host
+        )
+        span.set_attribute(
+            server_attributes.SERVER_PORT, channel.connection._impl.params.port
+        )
     else:
-        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
+        span.set_attribute(
+            server_attributes.SERVER_ADDRESS, channel.connection.params.host
+        )
+        span.set_attribute(
+            server_attributes.SERVER_PORT, channel.connection.params.port
+        )
 
 
 # pylint:disable=abstract-method
@@ -208,7 +221,6 @@ class ReadyMessagesDequeProxy(ObjectProxy):
 
     def popleft(self, *args, **kwargs):
         try:
-            # end active context if exists
             if self._self_active_token:
                 context.detach(self._self_active_token)
         except Exception as inst_exception:  # pylint: disable=W0703
@@ -217,7 +229,6 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         evt = self.__wrapped__.popleft(*args, **kwargs)  # pylint:disable=no-member
 
         try:
-            # If a new message was received, create a span and set as active context
             if isinstance(evt, _ConsumerDeliveryEvt):
                 method = evt.method
                 properties = evt.properties
@@ -233,7 +244,9 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     self._self_tracer,
                     None,
                     properties,
-                    destination=(method.exchange if method.exchange else method.routing_key),
+                    destination=(
+                        method.exchange if method.exchange else method.routing_key
+                    ),
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,
                     operation=MessagingOperationValues.RECEIVE,
@@ -241,16 +254,13 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 try:
                     if message_ctx_token:
                         context.detach(message_ctx_token)
-                    self._self_active_token = context.attach(trace.set_span_in_context(span))
+                    self._self_active_token = context.attach(
+                        trace.set_span_in_context(span)
+                    )
                     self._self_consume_hook(span, evt.body, properties)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
                 finally:
-                    # We must end the span here, because the next place we can hook
-                    # is not the end of the user code, but only when the next message
-                    # arrives. we still set this span's context as the active context
-                    # so spans created by user code that handles this message will be
-                    # children of this one.
                     span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
