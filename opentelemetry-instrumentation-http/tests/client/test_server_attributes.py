@@ -46,7 +46,7 @@ class TestHttpClientTelemetryServerAttributes(TestBase):
                 {SERVER_ADDRESS: "example.com", SERVER_PORT: 8443},
             ),
             (
-                "unparseable url with explicit address",
+                "unparsable url with explicit address",
                 HttpClientRequest(method="GET", url="http://[::1", server_address="::1"),
                 {SERVER_ADDRESS: "::1"},
             ),

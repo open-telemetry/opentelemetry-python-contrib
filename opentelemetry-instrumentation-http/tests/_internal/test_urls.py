@@ -121,9 +121,9 @@ class TestUrlAttributes(TestCase):
                     capture_url_template=capture_url_template,
                 ).get_attributes(url, urlsplit(url), url_template)
 
-                self.assertEqual({key: attributes[key] for key in attributes if key != "url.full"}, expected)
+                self.assertEqual({key: value for key, value in attributes.items() if key != "url.full"}, expected)
 
-    def test_unparseable_url(self) -> None:
+    def test_unparsable_url(self) -> None:
         attributes = UrlAttributes(
             sensitive_query_parameters=None, capture_url_scheme=True, capture_url_template=True
         ).get_attributes("http://[::1", None, "/path")

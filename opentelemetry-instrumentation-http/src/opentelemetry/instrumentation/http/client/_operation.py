@@ -92,9 +92,7 @@ class HttpClientOperation:
         recording = span.is_recording()
         self._request_body = (
             BodyContentCapture(telemetry._body_content_max_size)
-            if recording
-            and telemetry._capture_request_body_content
-            and is_textual_content_type(request_content_type)
+            if recording and telemetry._capture_request_body_content and is_textual_content_type(request_content_type)
             else None
         )
         self._response_body = (
