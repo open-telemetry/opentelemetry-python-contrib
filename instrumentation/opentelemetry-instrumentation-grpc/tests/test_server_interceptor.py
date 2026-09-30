@@ -107,6 +107,32 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             channel = grpc.insecure_channel(f"localhost:{port:d}")
             yield server, channel
 
+    def test_disable_next_message_compression(self) -> None:
+        def handler(request: bytes, context: grpc.ServicerContext) -> bytes:
+            context.set_compression(grpc.Compression.Gzip)
+            context.disable_next_message_compression()
+            return request
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+            rpc_call = "TestServicer/handler"
+            try:
+                server.start()
+                response = channel.unary_unary(rpc_call)(b"test")
+            finally:
+                server.stop(None)
+
+        self.assertEqual(response, b"test")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertSpanHasAttributes(span, {RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0]})
+
     def test_instrumentor(self):
         def handler(request, context):
             return b""
