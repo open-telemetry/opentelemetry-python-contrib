@@ -103,9 +103,7 @@ def vcr_config():
 
 @pytest.fixture(scope="function")
 def instrument_no_content(tracer_provider, logger_provider, meter_provider):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"})
 
     instrumentor = BotocoreInstrumentor()
     instrumentor.instrument(
@@ -121,9 +119,7 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider):
 
 @pytest.fixture(scope="function")
 def instrument_with_content(tracer_provider, logger_provider, meter_provider):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"})
     instrumentor = BotocoreInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -210,9 +206,7 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):

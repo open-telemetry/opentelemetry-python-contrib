@@ -4,7 +4,8 @@
 import abc
 import inspect
 import json
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlparse
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
@@ -25,37 +26,33 @@ from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
 
 # pylint: disable=invalid-name
-_AttributePathT = Union[str, Tuple[str]]
+_AttributePathT = str | tuple[str]
 
 
 # converter functions
 
 
-def _conv_val_to_single_attr_tuple(value: str) -> Tuple[str]:
+def _conv_val_to_single_attr_tuple(value: str) -> tuple[str]:
     return None if value is None else (value,)
 
 
-def _conv_dict_to_key_tuple(value: Dict[str, Any]) -> Optional[Tuple[str]]:
-    return tuple(value.keys()) if isinstance(value, Dict) else None
+def _conv_dict_to_key_tuple(value: dict[str, Any]) -> tuple[str] | None:
+    return tuple(value.keys()) if isinstance(value, dict) else None
 
 
-def _conv_list_to_json_list(value: List) -> Optional[List[str]]:
-    return (
-        [json.dumps(item) for item in value]
-        if isinstance(value, List)
-        else None
-    )
+def _conv_list_to_json_list(value: list) -> list[str] | None:
+    return [json.dumps(item) for item in value] if isinstance(value, list) else None
 
 
-def _conv_val_to_single_json_tuple(value: str) -> Optional[Tuple[str]]:
+def _conv_val_to_single_json_tuple(value: str) -> tuple[str] | None:
     return (json.dumps(value),) if value is not None else None
 
 
-def _conv_dict_to_json_str(value: Dict) -> Optional[str]:
-    return json.dumps(value) if isinstance(value, Dict) else None
+def _conv_dict_to_json_str(value: dict) -> str | None:
+    return json.dumps(value) if isinstance(value, dict) else None
 
 
-def _conv_val_to_len(value) -> Optional[int]:
+def _conv_val_to_len(value) -> int | None:
     return len(value) if value is not None else None
 
 
@@ -93,7 +90,7 @@ _RES_ITEM_COL_METRICS = ("ItemCollectionMetrics", _conv_dict_to_json_str)
 # DynamoDB operations with enhanced attributes
 ################################################################################
 
-_AttrSpecT = Tuple[_AttributePathT, Optional[Callable]]
+_AttrSpecT = tuple[_AttributePathT, Callable | None]
 
 
 class _DynamoDbOperation(abc.ABC):
@@ -107,15 +104,11 @@ class _DynamoDbOperation(abc.ABC):
         pass
 
     @classmethod
-    def add_start_attributes(
-        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
-    ):
+    def add_start_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
         pass
 
     @classmethod
-    def add_response_attributes(
-        cls, call_context: _AwsSdkCallContext, span: Span, result: _BotoResultT
-    ):
+    def add_response_attributes(cls, call_context: _AwsSdkCallContext, span: Span, result: _BotoResultT):
         pass
 
 
@@ -234,9 +227,7 @@ class _OpListTables(_DynamoDbOperation):
 
 
 class _OpPutItem(_DynamoDbOperation):
-    start_attributes = {
-        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME
-    }
+    start_attributes = {aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME}
     response_attributes = {
         aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
         aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
@@ -334,13 +325,15 @@ class _OpUpdateTable(_DynamoDbOperation):
 # DynamoDB extension
 ################################################################################
 
-_OPERATION_MAPPING = {
-    op.operation_name(): op
-    for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _DynamoDbOperation)
-    and not inspect.isabstract(op)
-}  # type: Dict[str, _DynamoDbOperation]
+
+def _is_operation(op: object) -> bool:
+    try:
+        return inspect.isclass(op) and issubclass(op, _DynamoDbOperation) and not inspect.isabstract(op)
+    except TypeError:
+        return False
+
+
+_OPERATION_MAPPING = {op.operation_name(): op for op in globals().values() if _is_operation(op)}  # type: Dict[str, _DynamoDbOperation]
 
 
 class _DynamoDbExtension(_AwsSdkExtension):
@@ -349,9 +342,7 @@ class _DynamoDbExtension(_AwsSdkExtension):
         self._op = _OPERATION_MAPPING.get(call_context.operation)
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        attributes[db_attributes.DB_SYSTEM] = (
-            db_attributes.DbSystemValues.DYNAMODB.value
-        )
+        attributes[db_attributes.DB_SYSTEM] = db_attributes.DbSystemValues.DYNAMODB.value
         attributes[db_attributes.DB_OPERATION] = self._call_context.operation
         attributes[NET_PEER_NAME] = self._get_peer_name()
 
@@ -361,16 +352,12 @@ class _DynamoDbExtension(_AwsSdkExtension):
         def attr_setter(key: str, value: AttributeValue):
             attributes[key] = value
 
-        self._add_attributes(
-            self._call_context.params, self._op.start_attributes, attr_setter
-        )
+        self._add_attributes(self._call_context.params, self._op.start_attributes, attr_setter)
 
     def _get_peer_name(self) -> str:
         return urlparse(self._call_context.endpoint_url).netloc
 
-    def before_service_call(
-        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
-    ):
+    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
         if not span.is_recording() or self._op is None:
             return
 
@@ -392,14 +379,12 @@ class _DynamoDbExtension(_AwsSdkExtension):
         if self._op is None:
             return
 
-        self._add_attributes(
-            result, self._op.response_attributes, span.set_attribute
-        )
+        self._add_attributes(result, self._op.response_attributes, span.set_attribute)
 
     def _add_attributes(
         self,
-        provider: Dict[str, Any],
-        attributes: Dict[str, _AttrSpecT],
+        provider: dict[str, Any],
+        attributes: dict[str, _AttrSpecT],
         setter: Callable[[str, AttributeValue], None],
     ):
         if attributes is None:
@@ -417,7 +402,7 @@ class _DynamoDbExtension(_AwsSdkExtension):
             setter(attr_key, value)
 
     @staticmethod
-    def _get_attr_value(provider: Dict[str, Any], attr_path: _AttributePathT):
+    def _get_attr_value(provider: dict[str, Any], attr_path: _AttributePathT):
         if isinstance(attr_path, str):
             return provider.get(attr_path)
 

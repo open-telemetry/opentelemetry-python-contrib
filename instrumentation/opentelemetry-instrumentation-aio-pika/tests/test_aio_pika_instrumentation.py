@@ -13,11 +13,7 @@ class TestPika(TestCase):
         instrumentation = AioPikaInstrumentor()
         instrumentation.instrument()
         self.assertTrue(isinstance(Queue.consume, wrapt.BoundFunctionWrapper))
-        self.assertTrue(
-            isinstance(Exchange.publish, wrapt.BoundFunctionWrapper)
-        )
+        self.assertTrue(isinstance(Exchange.publish, wrapt.BoundFunctionWrapper))
         instrumentation.uninstrument()
         self.assertFalse(isinstance(Queue.consume, wrapt.BoundFunctionWrapper))
-        self.assertFalse(
-            isinstance(Exchange.publish, wrapt.BoundFunctionWrapper)
-        )
+        self.assertFalse(isinstance(Exchange.publish, wrapt.BoundFunctionWrapper))

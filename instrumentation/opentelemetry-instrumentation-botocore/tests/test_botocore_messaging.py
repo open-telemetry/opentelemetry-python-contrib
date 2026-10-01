@@ -13,9 +13,7 @@ class TestMessageAttributes(TestBase):
         carrier = {}
 
         message_attributes_setter.set(carrier, "key", "value")
-        self.assertEqual(
-            {"key": {"DataType": "String", "StringValue": "value"}}, carrier
-        )
+        self.assertEqual({"key": {"DataType": "String", "StringValue": "value"}}, carrier)
 
     def test_inject_propagation_context(self):
         carrier = {
@@ -30,10 +28,7 @@ class TestMessageAttributes(TestBase):
         self.assertGreater(len(carrier), 2)
 
     def test_inject_propagation_context_too_many_attributes(self):
-        carrier = {
-            f"key{idx}": {"DataType": "String", "StringValue": f"value{idx}"}
-            for idx in range(10)
-        }
+        carrier = {f"key{idx}": {"DataType": "String", "StringValue": f"value{idx}"} for idx in range(10)}
         tracer = self.tracer_provider.get_tracer("test-tracer")
         with tracer.start_as_current_span("span"):
             inject_propagation_context(carrier)

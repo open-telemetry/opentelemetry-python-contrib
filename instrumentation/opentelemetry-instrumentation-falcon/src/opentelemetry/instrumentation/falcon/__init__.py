@@ -54,11 +54,13 @@ Usage
 
     app = falcon.App()
 
+
     class HelloWorldResource(object):
         def on_get(self, req, resp):
-            resp.text = 'Hello World'
+            resp.text = "Hello World"
 
-    app.add_route('/hello', HelloWorldResource())
+
+    app.add_route("/hello", HelloWorldResource())
 
 
 Request and Response hooks
@@ -71,11 +73,14 @@ The hooks can be configured as follows:
 
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
+
     def request_hook(span, req):
         pass
 
+
     def response_hook(span, req, resp):
         pass
+
 
     FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
@@ -173,11 +178,11 @@ API
 ---
 """
 
+from collections.abc import Collection
 from logging import getLogger
 from sys import exc_info
 from time import time_ns
 from timeit import default_timer
-from typing import Collection
 
 import falcon
 from packaging import version as package_version
@@ -298,9 +303,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         trace_middleware = _TraceMiddleware(
             self._otel_tracer,
-            otel_opts.pop(
-                "traced_request_attributes", get_traced_request_attrs("FALCON")
-            ),
+            otel_opts.pop("traced_request_attributes", get_traced_request_attrs("FALCON")),
             otel_opts.pop("request_hook", None),
             otel_opts.pop("response_hook", None),
             self._sem_conv_opt_in_mode,
@@ -346,9 +349,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = time_ns()
 
-        attributes = otel_wsgi.collect_request_attributes(
-            env, self._sem_conv_opt_in_mode
-        )
+        attributes = otel_wsgi.collect_request_attributes(env, self._sem_conv_opt_in_mode)
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
@@ -357,18 +358,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_getter=otel_wsgi.wsgi_getter,
             attributes=attributes,
         )
-        active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(
-                attributes, self._sem_conv_opt_in_mode
-            )
+        active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(
+            attributes, self._sem_conv_opt_in_mode
         )
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = (
-                    otel_wsgi.collect_custom_request_headers_attributes(env)
-                )
+                custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(env)
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
 
@@ -380,9 +377,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         exception = None
 
         def _start_response(status, response_headers, *args, **kwargs):
-            response = start_response(
-                status, response_headers, *args, **kwargs
-            )
+            response = start_response(status, response_headers, *args, **kwargs)
             return response
 
         start = default_timer()
@@ -394,19 +389,11 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         finally:
             duration_s = default_timer() - start
             if self.duration_histogram_old:
-                duration_attrs = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.DEFAULT
-                )
-                self.duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs
-                )
+                duration_attrs = otel_wsgi._parse_duration_attrs(attributes, _StabilityMode.DEFAULT)
+                self.duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs)
             if self.duration_histogram_new:
-                duration_attrs = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.HTTP
-                )
-                self.duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs
-                )
+                duration_attrs = otel_wsgi._parse_duration_attrs(attributes, _StabilityMode.HTTP)
+                self.duration_histogram_new.record(max(duration_s, 0), duration_attrs)
 
             self.active_requests_counter.add(-1, active_requests_count_attrs)
             if exception is None:
@@ -446,9 +433,7 @@ class _TraceMiddleware:
         if not span or not span.is_recording():
             return
 
-        attributes = extract_attributes_from_object(
-            req, self._traced_request_attrs
-        )
+        attributes = extract_attributes_from_object(req, self._traced_request_attrs)
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
@@ -504,11 +489,7 @@ class _TraceMiddleware:
             self._sem_conv_opt_in_mode,
         )
 
-        if (
-            _report_new(self._sem_conv_opt_in_mode)
-            and req.uri_template
-            and req_attrs is not None
-        ):
+        if _report_new(self._sem_conv_opt_in_mode) and req.uri_template and req_attrs is not None:
             req_attrs[HTTP_ROUTE] = req.uri_template
         try:
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -519,11 +500,7 @@ class _TraceMiddleware:
                 else:
                     span.update_name(f"{req.method}")
 
-                custom_attributes = (
-                    otel_wsgi.collect_custom_response_headers_attributes(
-                        response_headers.items()
-                    )
-                )
+                custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(response_headers.items())
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
         except ValueError:
@@ -549,26 +526,17 @@ class FalconInstrumentor(BaseInstrumentor):
 
     # pylint:disable=no-self-use
     def _remove_instrumented_middleware(self, app):
-        if (
-            hasattr(app, "_is_instrumented_by_opentelemetry")
-            and app._is_instrumented_by_opentelemetry
-        ):
+        if hasattr(app, "_is_instrumented_by_opentelemetry") and app._is_instrumented_by_opentelemetry:
             if _falcon_version == 3:
                 app._unprepared_middleware = [
-                    x
-                    for x in app._unprepared_middleware
-                    if not isinstance(x, _TraceMiddleware)
+                    x for x in app._unprepared_middleware if not isinstance(x, _TraceMiddleware)
                 ]
                 app._middleware = app._prepare_middleware(
                     app._unprepared_middleware,
                     independent_middleware=app._independent_middleware,
                 )
             else:
-                app._middlewares_list = [
-                    x
-                    for x in app._middlewares_list
-                    if not isinstance(x, _TraceMiddleware)
-                ]
+                app._middlewares_list = [x for x in app._middlewares_list if not isinstance(x, _TraceMiddleware)]
                 # pylint: disable=no-member
                 app._middleware = falcon.api_helpers.prepare_middleware(
                     app._middlewares_list,

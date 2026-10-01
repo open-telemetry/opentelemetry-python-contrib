@@ -141,11 +141,7 @@ def instrument_no_content(
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, _ = content_mode
     os.environ.update(
-        {
-            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
-            if latest_experimental_enabled
-            else ""
-        }
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
     )
 
     instrumentor = OpenAIInstrumentor()
@@ -162,25 +158,15 @@ def instrument_no_content(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(
-    tracer_provider, logger_provider, meter_provider, content_mode
-):
+def instrument_with_content(tracer_provider, logger_provider, meter_provider, content_mode):
     _OpenTelemetrySemanticConventionStability._initialized = False
 
     latest_experimental_enabled, content_mode_value = content_mode
 
-    os.environ.update(
-        {
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
-        }
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value})
 
     os.environ.update(
-        {
-            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
-            if latest_experimental_enabled
-            else ""
-        }
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
     )
 
     instrumentor = OpenAIInstrumentor()
@@ -197,23 +183,13 @@ def instrument_with_content(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content_unsampled(
-    span_exporter, logger_provider, meter_provider, content_mode
-):
+def instrument_with_content_unsampled(span_exporter, logger_provider, meter_provider, content_mode):
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, content_mode_value = content_mode
-    os.environ.update(
-        {
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
-        }
-    )
+    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value})
 
     os.environ.update(
-        {
-            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
-            if latest_experimental_enabled
-            else ""
-        }
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
     )
 
     tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
@@ -308,9 +284,7 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):

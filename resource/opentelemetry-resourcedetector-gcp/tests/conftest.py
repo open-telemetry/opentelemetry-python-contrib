@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import _metadata
+from opentelemetry.resourcedetector.gcp_resource_detector import _metadata
 
 
 @pytest.fixture(name="fake_get_metadata")

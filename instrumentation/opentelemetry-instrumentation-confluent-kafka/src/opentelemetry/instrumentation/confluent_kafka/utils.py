@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from logging import getLogger
-from typing import List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
@@ -33,9 +32,7 @@ class KafkaPropertiesExtractor:
             return None
         # confluent-kafka uses the dotted key "bootstrap.servers"; also accept
         # the python-style "bootstrap_servers" for robustness.
-        servers = config.get("bootstrap.servers") or config.get(
-            "bootstrap_servers"
-        )
+        servers = config.get("bootstrap.servers") or config.get("bootstrap_servers")
         if isinstance(servers, (list, tuple)):
             servers = ",".join(str(s) for s in servers)
         return servers
@@ -54,13 +51,11 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_produce_headers(args, kwargs):
         """extract headers from `produce` method arguments in Producer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "headers", 6, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("headers", 6, None, args, kwargs)
 
 
 class KafkaContextGetter(textmap.Getter):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -75,7 +70,7 @@ class KafkaContextGetter(textmap.Getter):
 
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
 
@@ -157,10 +152,10 @@ def _set_bootstrap_servers_attributes(span, bootstrap_servers):
 def _enrich_span(
     span,
     topic,
-    partition: Optional[int] = None,
-    offset: Optional[int] = None,
-    operation: Optional[MessagingOperationTypeValues] = None,
-    bootstrap_servers: Optional[str] = None,
+    partition: int | None = None,
+    offset: int | None = None,
+    operation: MessagingOperationTypeValues | None = None,
+    bootstrap_servers: str | None = None,
 ):
     if not span.is_recording():
         return

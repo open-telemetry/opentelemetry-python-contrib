@@ -23,15 +23,11 @@ class TestRedactSensitiveInfo(unittest.TestCase):
 
     def test_no_query_parameters(self):
         url = "https://www.example.com/path"
-        self.assertEqual(
-            redact_query_parameters(url), "https://www.example.com/path"
-        )
+        self.assertEqual(redact_query_parameters(url), "https://www.example.com/path")
 
     def test_empty_query_string(self):
         url = "https://www.example.com/path?"
-        self.assertEqual(
-            redact_query_parameters(url), "https://www.example.com/path?"
-        )
+        self.assertEqual(redact_query_parameters(url), "https://www.example.com/path?")
 
     def test_empty_url(self):
         url = ""
@@ -60,9 +56,7 @@ class TestRedactSensitiveInfo(unittest.TestCase):
 
     def test_url_with_at_symbol_in_path_and_query(self):
         url = "https://example.com/p@th?foo=b@r"
-        self.assertEqual(
-            redact_query_parameters(url), "https://example.com/p@th?foo=b@r"
-        )
+        self.assertEqual(redact_query_parameters(url), "https://example.com/p@th?foo=b@r")
 
     def test_aws_access_key_with_real_format(self):
         url = "https://mock.com?AWSAccessKeyId=AKIAIOSFODNN7"
@@ -72,12 +66,8 @@ class TestRedactSensitiveInfo(unittest.TestCase):
         )
 
     def test_signature_parameter(self):
-        url = (
-            "https://service.com?sig=39Up9jzHkxhuIhFE9594DJxe7w6cIRCg0V6ICGS0"
-        )
-        self.assertEqual(
-            redact_query_parameters(url), "https://service.com?sig=REDACTED"
-        )
+        url = "https://service.com?sig=39Up9jzHkxhuIhFE9594DJxe7w6cIRCg0V6ICGS0"
+        self.assertEqual(redact_query_parameters(url), "https://service.com?sig=REDACTED")
 
     def test_signature_with_url_encoding(self):
         url = "https://service.com?Signature=39Up9jzHkxhuIhFE9594DJxe7w6cIRCg0V6ICGS0%3A377"

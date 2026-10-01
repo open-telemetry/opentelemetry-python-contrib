@@ -40,6 +40,29 @@ Usage
     cursor.close()
     instrumented_cnx.close()
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 The `instrument` method accepts the following keyword args:
@@ -59,7 +82,8 @@ For example:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Collection, NamedTuple
+from collections.abc import Callable, Collection
+from typing import Any, NamedTuple
 
 import pymssql
 
@@ -109,9 +133,7 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
 
         user = kwargs.get("user") or connect_method_args.user
         if user is not None:
-            _set_db_user(
-                self.span_attributes, user, self._sem_conv_opt_in_mode_db
-            )
+            _set_db_user(self.span_attributes, user, self._sem_conv_opt_in_mode_db)
 
         port = kwargs.get("port") or connect_method_args.port
         host = kwargs.get("server") or connect_method_args.server
@@ -127,21 +149,15 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
                     if len(tokens) > 1:
                         port = tokens[1]
         if host is not None:
-            _set_http_net_peer_name_client(
-                self.span_attributes, host, self._sem_conv_opt_in_mode_http
-            )
+            _set_http_net_peer_name_client(self.span_attributes, host, self._sem_conv_opt_in_mode_http)
         if port is not None:
-            _set_http_peer_port_client(
-                self.span_attributes, port, self._sem_conv_opt_in_mode_http
-            )
+            _set_http_peer_port_client(self.span_attributes, port, self._sem_conv_opt_in_mode_http)
 
         charset = kwargs.get("charset") or connect_method_args.charset
         if charset is not None:
             self.span_attributes["db.charset"] = charset
 
-        tds_version = (
-            kwargs.get("tds_version") or connect_method_args.tds_version
-        )
+        tds_version = kwargs.get("tds_version") or connect_method_args.tds_version
         if tds_version is not None:
             self.span_attributes["db.protocol.tds.version"] = tds_version
 

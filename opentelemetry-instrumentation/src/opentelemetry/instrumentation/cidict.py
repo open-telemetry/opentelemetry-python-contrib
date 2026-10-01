@@ -3,16 +3,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
 from typing import (
     Any,
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 KT = TypeVar("KT")
@@ -22,9 +16,9 @@ VT = TypeVar("VT")
 class CIDict(MutableMapping[KT, VT]):
     def __init__(
         self,
-        data: Optional[Union[Mapping[KT, VT], Iterable[Tuple[KT, VT]]]] = None,
+        data: Mapping[KT, VT] | Iterable[tuple[KT, VT]] | None = None,
     ) -> None:
-        self._data: dict[KT, Tuple[KT, VT]] = {}
+        self._data: dict[KT, tuple[KT, VT]] = {}
         if data is None:
             data = {}
         self.update(data)
@@ -35,7 +29,7 @@ class CIDict(MutableMapping[KT, VT]):
             return key.lower()  # type: ignore
         return key
 
-    def _get_entry(self, key: KT) -> Tuple[KT, VT]:
+    def _get_entry(self, key: KT) -> tuple[KT, VT]:
         normalized_key = self._normalize_key(key)
         if normalized_key in self._data:
             return self._data[normalized_key]
@@ -44,7 +38,7 @@ class CIDict(MutableMapping[KT, VT]):
     def original_key(self, key: KT) -> KT:
         return self._get_entry(key)[0]
 
-    def normalized_items(self) -> Iterable[Tuple[KT, VT]]:
+    def normalized_items(self) -> Iterable[tuple[KT, VT]]:
         return ((key, value[1]) for key, value in self._data.items())
 
     def __setitem__(self, key: KT, value: VT, /) -> None:
@@ -68,14 +62,10 @@ class CIDict(MutableMapping[KT, VT]):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({dict(self.items())!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, CIDict):
-            return dict(self.normalized_items()) == dict(
-                other.normalized_items()
-            )
+            return dict(self.normalized_items()) == dict(other.normalized_items())
         if not isinstance(other, Mapping):
             return False
         ciother: CIDict[Any, Any] = CIDict(other)
-        return dict(self.normalized_items()) == dict(
-            ciother.normalized_items()
-        )
+        return dict(self.normalized_items()) == dict(ciother.normalized_items())

@@ -28,12 +28,8 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
         self.server = create_test_server(25565)
         self.server.start()
 
-        interceptors = aio_client_interceptors(
-            filter_=filters.method_name("NotSimpleMethod")
-        )
-        self._channel = grpc.aio.insecure_channel(
-            "localhost:25565", interceptors=interceptors
-        )
+        interceptors = aio_client_interceptors(filter_=filters.method_name("NotSimpleMethod"))
+        self._channel = grpc.aio.insecure_channel("localhost:25565", interceptors=interceptors)
 
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self._channel)
 
@@ -45,9 +41,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
         await self._channel.close()
 
     async def test_instrument_filtered(self):
-        instrumentor = GrpcAioInstrumentorClient(
-            filter_=filters.method_name("NotSimpleMethod")
-        )
+        instrumentor = GrpcAioInstrumentorClient(filter_=filters.method_name("NotSimpleMethod"))
 
         try:
             instrumentor.instrument()
@@ -66,9 +60,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
     async def test_instrument_filtered_env(self):
         with mock.patch.dict(
             os.environ,
-            {
-                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"
-            },
+            {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"},
         ):
             instrumentor = GrpcAioInstrumentorClient()
 
@@ -91,9 +83,7 @@ class TestAioClientInterceptorFiltered(TestBase, IsolatedAsyncioTestCase):
             os.environ,
             {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"},
         ):
-            instrumentor = GrpcAioInstrumentorClient(
-                filter_=filters.service_prefix("GRPCTestServer")
-            )
+            instrumentor = GrpcAioInstrumentorClient(filter_=filters.service_prefix("GRPCTestServer"))
 
         try:
             instrumentor.instrument()

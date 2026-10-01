@@ -17,17 +17,13 @@ SERVER_HOST = "localhost"
 SERVER_PORT = 1234
 SERVER_USER = "guest"
 SERVER_PASS = "guest"
-SERVER_URL = URL(
-    f"amqp://{SERVER_USER}:{SERVER_PASS}@{SERVER_HOST}:{SERVER_PORT}/"
-)
+SERVER_URL = URL(f"amqp://{SERVER_USER}:{SERVER_PASS}@{SERVER_HOST}:{SERVER_PORT}/")
 CONNECTION_7 = Namespace(connection=Namespace(url=SERVER_URL))
 CONNECTION_8 = Namespace(url=SERVER_URL)
 CHANNEL_7 = Namespace(connection=CONNECTION_7, loop=None)
 CHANNEL_8 = Namespace(connection=CONNECTION_8, loop=None)
 MESSAGE = Namespace(
-    properties=Namespace(
-        message_id=MESSAGE_ID, correlation_id=CORRELATION_ID, headers={}
-    ),
+    properties=Namespace(message_id=MESSAGE_ID, correlation_id=CORRELATION_ID, headers={}),
     exchange=EXCHANGE_NAME,
     headers={},
 )

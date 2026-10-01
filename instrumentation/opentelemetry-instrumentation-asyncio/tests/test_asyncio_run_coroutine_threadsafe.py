@@ -15,9 +15,7 @@ from opentelemetry.trace import get_tracer
 
 
 class TestRunCoroutineThreadSafe(TestBase):
-    @patch.dict(
-        "os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "coro"}
-    )
+    @patch.dict("os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "coro"})
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()

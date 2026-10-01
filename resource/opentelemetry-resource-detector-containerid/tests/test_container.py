@@ -39,9 +39,7 @@ class ContainerResourceDetectorTest(TestBase):
     )
     def test_container_id_detect_from_cgroup_file(self, mock_cgroup_file):
         actual = ContainerResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), MockContainerResourceAttributes
-        )
+        self.assertDictEqual(actual.attributes.copy(), MockContainerResourceAttributes)
 
     @patch(
         "builtins.open",
@@ -49,13 +47,9 @@ class ContainerResourceDetectorTest(TestBase):
         read_data=f"""0::/system.slice/docker-{MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID]}.scope
         """,
     )
-    def test_container_id_detect_from_cgroup_file_with_suffix(
-        self, mock_cgroup_file
-    ):
+    def test_container_id_detect_from_cgroup_file_with_suffix(self, mock_cgroup_file):
         actual = ContainerResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), MockContainerResourceAttributes
-        )
+        self.assertDictEqual(actual.attributes.copy(), MockContainerResourceAttributes)
 
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id_v1",
@@ -90,13 +84,9 @@ class ContainerResourceDetectorTest(TestBase):
             529 611 0:213 / /sys/firmware ro,relatime - tmpfs tmpfs ro
             """,
     )
-    def test_container_id_detect_from_mountinfo_file(
-        self, mock_get_container_id_v1, mock_cgroup_file
-    ):
+    def test_container_id_detect_from_mountinfo_file(self, mock_get_container_id_v1, mock_cgroup_file):
         actual = ContainerResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), MockContainerResourceAttributes
-        )
+        self.assertDictEqual(actual.attributes.copy(), MockContainerResourceAttributes)
 
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id_v1",
@@ -106,12 +96,8 @@ class ContainerResourceDetectorTest(TestBase):
         "builtins.open",
         side_effect=FileNotFoundError,
     )
-    def test_cannot_read_mountinfo_file(
-        self, mock_get_container_id_v1, mock_mountinfo_file
-    ):
-        with self.assertLogs(
-            "opentelemetry.resource.detector.containerid", level="DEBUG"
-        ) as cm:
+    def test_cannot_read_mountinfo_file(self, mock_get_container_id_v1, mock_mountinfo_file):
+        with self.assertLogs("opentelemetry.resource.detector.containerid", level="DEBUG") as cm:
             actual = ContainerResourceDetector().detect()
         self.assertFalse(actual.attributes.copy())
         self.assertIn(
@@ -127,12 +113,8 @@ class ContainerResourceDetectorTest(TestBase):
         "builtins.open",
         side_effect=FileNotFoundError,
     )
-    def test_cannot_read_cgroup_file(
-        self, mock_get_container_id_v2, mock_cgroup_file
-    ):
-        with self.assertLogs(
-            "opentelemetry.resource.detector.containerid", level="DEBUG"
-        ) as cm:
+    def test_cannot_read_cgroup_file(self, mock_get_container_id_v2, mock_cgroup_file):
+        with self.assertLogs("opentelemetry.resource.detector.containerid", level="DEBUG") as cm:
             actual = ContainerResourceDetector().detect()
         self.assertFalse(actual.attributes.copy())
         self.assertIn(
@@ -142,9 +124,7 @@ class ContainerResourceDetectorTest(TestBase):
 
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id",
-        return_value=MockContainerResourceAttributes[
-            ResourceAttributes.CONTAINER_ID
-        ],
+        return_value=MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID],
     )
     def test_container_id_as_span_attribute(self, mock_cgroup_file):
         tracer_provider, exporter = self.create_tracer_provider(
@@ -152,9 +132,7 @@ class ContainerResourceDetectorTest(TestBase):
         )
         tracer = tracer_provider.get_tracer(__name__)
 
-        with tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.SERVER
-        ) as _:
+        with tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER) as _:
             pass
 
         span_list = exporter.get_finished_spans()
@@ -165,15 +143,11 @@ class ContainerResourceDetectorTest(TestBase):
 
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id",
-        return_value=MockContainerResourceAttributes[
-            ResourceAttributes.CONTAINER_ID
-        ],
+        return_value=MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID],
     )
     def test_container_id_detect_from_cgroup(self, mock_get_container_id):
         actual = ContainerResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), MockContainerResourceAttributes
-        )
+        self.assertDictEqual(actual.attributes.copy(), MockContainerResourceAttributes)
 
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id_v1",
@@ -181,21 +155,13 @@ class ContainerResourceDetectorTest(TestBase):
     )
     @patch(
         "opentelemetry.resource.detector.containerid._get_container_id_v2",
-        return_value=MockContainerResourceAttributes[
-            ResourceAttributes.CONTAINER_ID
-        ],
+        return_value=MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID],
     )
-    def test_container_id_detect_from_mount_info(
-        self, mock_get_container_id_v1, mock_get_container_id_v2
-    ):
+    def test_container_id_detect_from_mount_info(self, mock_get_container_id_v1, mock_get_container_id_v2):
         actual = ContainerResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), MockContainerResourceAttributes
-        )
+        self.assertDictEqual(actual.attributes.copy(), MockContainerResourceAttributes)
 
     def test_container_id_entrypoint(self):
-        (entrypoint,) = entry_points(
-            group="opentelemetry_resource_detector", name="containerid"
-        )
+        (entrypoint,) = entry_points(group="opentelemetry_resource_detector", name="containerid")
         detector = entrypoint.load()()
         self.assertIsInstance(detector, ContainerResourceDetector)

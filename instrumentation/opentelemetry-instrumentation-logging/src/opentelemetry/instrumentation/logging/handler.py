@@ -7,9 +7,9 @@ import logging
 import logging.config
 import threading
 import traceback
+from collections.abc import Callable
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable, Mapping
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -20,8 +20,14 @@ from opentelemetry._logs import (
 )
 from opentelemetry.context import get_current
 from opentelemetry.instrumentation.log_utils import std_to_otel
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.semconv._incubating.attributes import (
+    event_attributes,
+)
+from opentelemetry.semconv.attributes import (
+    code_attributes,
+    exception_attributes,
+    otel_attributes,
+)
 from opentelemetry.util.types import AnyValue
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
@@ -54,7 +60,7 @@ def _setup_logging_handler(
     return handler
 
 
-def _overwrite_logging_config_fns(handler: "LoggingHandler") -> None:
+def _overwrite_logging_config_fns(handler: LoggingHandler) -> None:
     root = logging.getLogger()
 
     def wrapper(config_fn: Callable) -> Callable:
@@ -130,12 +136,19 @@ class LoggingHandler(logging.Handler):
 
         self._log_code_attributes = log_code_attributes
 
-    def _get_attributes(
-        self, record: logging.LogRecord
-    ) -> Mapping[str, AnyValue]:
-        attributes = {
-            k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
-        }
+    def _get_attributes(self, record: logging.LogRecord) -> tuple[dict[str, AnyValue], str | None]:
+        attributes = {k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS}
+
+        # Promote otel.event.name (stable) or event.name (deprecated) to the
+        # first-class LogRecord.event_name field instead of leaving it as a
+        # plain attribute.  otel.event.name takes precedence; event.name is a
+        # deprecated fallback per the OTel semantic conventions.
+        # Both keys are always popped so neither leaks into attributes.
+        event_name: str | None = attributes.pop(otel_attributes.OTEL_EVENT_NAME, None)
+        # TODO: Remove the deprecated branch path before marking logs stable
+        deprecated_event_name: str | None = attributes.pop(event_attributes.EVENT_NAME, None)
+        if event_name is None:
+            event_name = deprecated_event_name
 
         if self._log_code_attributes:
             # Add standard code attributes for logs.
@@ -146,19 +159,15 @@ class LoggingHandler(logging.Handler):
         if record.exc_info:
             exctype, value, tb = record.exc_info
             if exctype is not None:
-                attributes[exception_attributes.EXCEPTION_TYPE] = (
-                    exctype.__name__
-                )
+                attributes[exception_attributes.EXCEPTION_TYPE] = exctype.__name__
             if value is not None and value.args:
-                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(
-                    value.args[0]
-                )
+                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(value.args[0])
             if tb is not None:
                 # https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/#stacktrace-representation
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
-                    "".join(traceback.format_exception(*record.exc_info))
+                attributes[exception_attributes.EXCEPTION_STACKTRACE] = "".join(
+                    traceback.format_exception(*record.exc_info)
                 )
-        return attributes
+        return attributes, event_name
 
     def _translate(self, record: logging.LogRecord) -> LogRecord:
         timestamp = int(record.created * 1e9)
@@ -168,7 +177,7 @@ class LoggingHandler(logging.Handler):
             body = self.format(record)
         else:
             body = record.getMessage()
-        attributes = self._get_attributes(record)
+        attributes, event_name = self._get_attributes(record)
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
@@ -176,9 +185,7 @@ class LoggingHandler(logging.Handler):
             "WARNING": "WARN",
             "CRITICAL": "FATAL",
         }
-        level_name = _python_to_otel_severity_text.get(
-            record.levelname, record.levelname
-        )
+        level_name = _python_to_otel_severity_text.get(record.levelname, record.levelname)
 
         return LogRecord(
             timestamp=timestamp,
@@ -188,6 +195,7 @@ class LoggingHandler(logging.Handler):
             severity_number=severity_number,
             body=body,
             attributes=attributes,
+            event_name=event_name,
         )
 
     def emit(self, record: logging.LogRecord) -> None:
@@ -205,15 +213,11 @@ class LoggingHandler(logging.Handler):
         # See: https://github.com/open-telemetry/opentelemetry-python/issues/3858
 
         if self._is_emitting.get():
-            _internal_logger.warning(
-                "LoggingHandler.emit detected recursive logging, skipping to prevent deadlock."
-            )
+            _internal_logger.warning("LoggingHandler.emit detected recursive logging, skipping to prevent deadlock.")
             return
         token = self._is_emitting.set(True)
         try:
-            logger = get_logger(
-                record.name, logger_provider=self._logger_provider
-            )
+            logger = get_logger(record.name, logger_provider=self._logger_provider)
             if not isinstance(logger, NoOpLogger):
                 logger.emit(self._translate(record))
         finally:

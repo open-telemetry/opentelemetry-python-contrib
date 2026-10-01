@@ -23,14 +23,10 @@ def fixture_client_class(request: pytest.FixtureRequest):
     return request.param
 
 
-def test_instruments(
-    instrument_with_content: VertexAIInstrumentor, client_class
-):
+def test_instruments(instrument_with_content: VertexAIInstrumentor, client_class):
     assert hasattr(client_class.generate_content, "__wrapped__")
 
 
-def test_uninstruments(
-    instrument_with_content: VertexAIInstrumentor, client_class
-):
+def test_uninstruments(instrument_with_content: VertexAIInstrumentor, client_class):
     instrument_with_content.uninstrument()
     assert not hasattr(client_class.generate_content, "__wrapped__")

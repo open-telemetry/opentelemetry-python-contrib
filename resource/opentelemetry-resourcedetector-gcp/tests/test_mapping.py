@@ -6,12 +6,13 @@ import dataclasses
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from opentelemetry.resource.detector.gcp._mapping import (
+from opentelemetry.resourcedetector.gcp_resource_detector._mapping import (
     get_monitored_resource,
 )
 from opentelemetry.sdk.resources import Attributes, LabelValue, Resource
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize(
     "otel_attributes",
     [
@@ -219,15 +220,14 @@ from opentelemetry.sdk.resources import Attributes, LabelValue, Resource
         ),
     ],
 )
-def test_get_monitored_resource(
-    otel_attributes: Attributes, snapshot: SnapshotAssertion
-) -> None:
+def test_get_monitored_resource(otel_attributes: Attributes, snapshot: SnapshotAssertion) -> None:
     resource = Resource(otel_attributes)
     monitored_resource_data = get_monitored_resource(resource)
     as_dict = dataclasses.asdict(monitored_resource_data)
     assert as_dict == snapshot
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize(
     ("value", "expect"),
     [
@@ -241,10 +241,14 @@ def test_get_monitored_resource(
 )
 def test_non_string_values(value: LabelValue, expect: str):
     # host.id will end up in generic_node's node_id label
-    monitored_resource_data = get_monitored_resource(
-        Resource({"host.id": value})
-    )
+    monitored_resource_data = get_monitored_resource(Resource({"host.id": value}))
     assert monitored_resource_data is not None
 
     value_as_gcm_label = monitored_resource_data.labels["node_id"]
     assert value_as_gcm_label == expect
+
+
+def test_get_monitored_resource_deprecated():
+    resource = Resource({})
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        get_monitored_resource(resource)

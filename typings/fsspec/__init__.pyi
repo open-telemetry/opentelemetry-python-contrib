@@ -14,8 +14,6 @@
 
 """Handwritten stubs for fsspec usage in opentelemetry-util-genai"""
 
-from __future__ import annotations
-
 import io
 from typing import Any, Literal
 
@@ -24,9 +22,7 @@ from fsspec.spec import (
 )
 
 class AbstractFileSystem(RealAbstractFileSystem):
-    def open(
-        self, path: str, mode: Literal["w"], *args: Any, **kwargs: Any
-    ) -> io.TextIOWrapper: ...
+    def open(self, path: str, mode: Literal["w"], *args: Any, **kwargs: Any) -> io.TextIOWrapper: ...
     def exists(self, path: str) -> bool: ...
 
 def url_to_fs(url: str) -> tuple[AbstractFileSystem, str]: ...

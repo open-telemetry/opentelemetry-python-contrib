@@ -30,9 +30,7 @@ def _make_handler() -> TelemetryHandler:
 
 def test_toolcallrequest_is_message_part():
     """ToolCallRequest is for message parts only"""
-    tcr = ToolCallRequest(
-        arguments={"location": "Paris"}, name="get_weather", id="call_123"
-    )
+    tcr = ToolCallRequest(arguments={"location": "Paris"}, name="get_weather", id="call_123")
     msg = InputMessage(role="user", parts=[tcr])
     assert len(msg.parts) == 1
 
@@ -57,9 +55,7 @@ def test_toolcall_has_attributes_dict():
 
 def test_toolcallrequest_in_message_part_union():
     """ToolCallRequest (not ToolInvocation) is the correct type for message parts"""
-    tc = ToolCallRequest(
-        name="get_weather", arguments={"city": "Paris"}, id="call_123"
-    )
+    tc = ToolCallRequest(name="get_weather", arguments={"city": "Paris"}, id="call_123")
     msg = InputMessage(role="assistant", parts=[tc])
     assert len(msg.parts) == 1
     assert isinstance(msg.parts[0], ToolCallRequest)
@@ -172,7 +168,4 @@ def test_start_tool_passes_sampling_attributes_at_span_creation():
     assert captured_attributes[GenAI.GEN_AI_TOOL_NAME] == "get_weather"
     assert captured_attributes[GenAI.GEN_AI_TOOL_CALL_ID] == "call_123"
     assert captured_attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
-    assert (
-        captured_attributes[GenAI.GEN_AI_TOOL_DESCRIPTION]
-        == "Gets weather for a location"
-    )
+    assert captured_attributes[GenAI.GEN_AI_TOOL_DESCRIPTION] == "Gets weather for a location"

@@ -25,21 +25,42 @@ Run instrumented code:
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
 
+
     async def main():
-        conn = await asyncpg.connect(user='user', password='password')
+        conn = await asyncpg.connect(user="user", password="password")
 
         await conn.fetch('''SELECT 42;''')
 
         await conn.close()
 
+
     asyncio.run(main())
+
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database conventions are emitted.
 
 API
 ---
 """
 
 import re
-from typing import Collection
+from collections.abc import Collection
 
 import asyncpg
 import asyncpg.prepared_stmt
@@ -63,7 +84,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled, unwrap
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DbSystemValues,
 )
@@ -115,12 +136,8 @@ def _hydrate_span_from_args(
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        _set_http_net_peer_name_client(
-            span_attributes, addr[0], semconv_opt_in_mode
-        )
-        _set_http_peer_port_client(
-            span_attributes, addr[1], semconv_opt_in_mode
-        )
+        _set_http_net_peer_name_client(span_attributes, addr[0], semconv_opt_in_mode)
+        _set_http_peer_port_client(span_attributes, addr[1], semconv_opt_in_mode)
         _set_net_transport(
             span_attributes,
             NetTransportValues.IP_TCP.value,
@@ -128,9 +145,7 @@ def _hydrate_span_from_args(
             semconv_opt_in_mode,
         )
     elif isinstance(addr, str):
-        _set_http_net_peer_name_client(
-            span_attributes, addr, semconv_opt_in_mode
-        )
+        _set_http_net_peer_name_client(span_attributes, addr, semconv_opt_in_mode)
         _set_net_transport(
             span_attributes,
             NetTransportValues.OTHER.value,
@@ -182,9 +197,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             "Connection.fetchval",
             "Connection.fetchrow",
         ]:
-            wrapt.wrap_function_wrapper(
-                "asyncpg.connection", method, self._do_execute
-            )
+            wrapt.wrap_function_wrapper("asyncpg.connection", method, self._do_execute)
 
         for method in [
             "Cursor.fetch",
@@ -192,9 +205,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             "Cursor.fetchrow",
             "CursorIterator.__anext__",
         ]:
-            wrapt.wrap_function_wrapper(
-                "asyncpg.cursor", method, self._do_cursor_execute
-            )
+            wrapt.wrap_function_wrapper("asyncpg.cursor", method, self._do_cursor_execute)
 
         for method in _PREPARED_STMT_METHODS:
             if hasattr(asyncpg.prepared_stmt.PreparedStatement, method):
@@ -221,11 +232,12 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 unwrap(asyncpg.prepared_stmt.PreparedStatement, method_name)
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         params = getattr(instance, "_params", None)
-        name = (
-            args[0] if args[0] else getattr(params, "database", "postgresql")
-        )
+        name = args[0] if args[0] else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -241,9 +253,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
@@ -253,21 +263,18 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
                     if _report_new(self._semconv_opt_in_mode):
-                        span.set_attribute(
-                            ERROR_TYPE, type(exception).__qualname__
-                        )
+                        span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
 
         return result
 
     async def _do_cursor_execute(self, func, instance, args, kwargs):
         """Wrap cursor based functions. For every call this will generate a new span."""
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         params = getattr(instance._connection, "_params", None)
-        name = (
-            instance._query
-            if instance._query
-            else getattr(params, "database", "postgresql")
-        )
+        name = instance._query if instance._query else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -301,15 +308,16 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
                     if _report_new(self._semconv_opt_in_mode):
-                        span.set_attribute(
-                            ERROR_TYPE, type(exception).__qualname__
-                        )
+                        span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
 
         if not stop:
             return result
         raise StopAsyncIteration
 
     async def _do_prepared_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         query = instance._query or ""
 
@@ -325,9 +333,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
@@ -337,8 +343,6 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
                     if _report_new(self._semconv_opt_in_mode):
-                        span.set_attribute(
-                            ERROR_TYPE, type(exception).__qualname__
-                        )
+                        span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
 
         return result

@@ -44,9 +44,7 @@ class EmbeddingInvocation(GenAIInvocation):
             logger,
             completion_hook,
             operation_name=_operation_name,
-            span_name=f"{_operation_name} {request_model}"
-            if request_model
-            else _operation_name,
+            span_name=f"{_operation_name} {request_model}" if request_model else _operation_name,
             span_kind=SpanKind.CLIENT,
         )
         self.provider = provider  # e.g., azure.ai.openai, openai, aws.bedrock
@@ -107,11 +105,7 @@ class EmbeddingInvocation(GenAIInvocation):
         )
         attributes: dict[str, Any] = {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
-            **{
-                key: value
-                for key, value in optional_attrs
-                if value is not None
-            },
+            **{key: value for key, value in optional_attrs if value is not None},
         }
         if error is not None:
             self._apply_error_attributes(error)

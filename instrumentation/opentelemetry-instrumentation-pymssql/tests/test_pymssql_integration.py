@@ -58,9 +58,7 @@ class TestPyMSSQLIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.pymssql
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.pymssql)
         return span
 
     @patch("pymssql.connect", new=mock_connect)
@@ -133,9 +131,7 @@ class TestPyMSSQLIntegration(TestBase):
         cnx = pymssql.connect(server=r"(local)\SQLEXPRESS", database="testdb")  # pylint: disable=no-member
         span = self._execute_query_and_get_span(cnx)
 
-        self.assertEqual(
-            span.attributes["net.peer.name"], r"(local)\SQLEXPRESS"
-        )
+        self.assertEqual(span.attributes["net.peer.name"], r"(local)\SQLEXPRESS")
 
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument
@@ -196,13 +192,7 @@ class TestPyMSSQLIntegration(TestBase):
 
     def test_load_entry_point(self):
         self.assertIs(
-            next(
-                iter(
-                    entry_points(
-                        group="opentelemetry_instrumentor", name="pymssql"
-                    )
-                )
-            ).load(),
+            next(iter(entry_points(group="opentelemetry_instrumentor", name="pymssql"))).load(),
             PyMSSQLInstrumentor,
         )
 
@@ -223,12 +213,8 @@ class TestPyMSSQLIntegration(TestBase):
 
             self.assertEqual(span.attributes["db.system.name"], "mssql")
             self.assertEqual(span.attributes["db.namespace"], "testdb")
-            self.assertEqual(
-                span.attributes["db.query.text"], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes["server.address"], "dbserver.local"
-            )
+            self.assertEqual(span.attributes["db.query.text"], "SELECT * FROM test")
+            self.assertEqual(span.attributes["server.address"], "dbserver.local")
             self.assertEqual(span.attributes["server.port"], 1433)
             self.assertEqual(span.attributes["db.protocol.tds.version"], "7.1")
             self.assertNotIn("db.system", span.attributes)
@@ -256,18 +242,10 @@ class TestPyMSSQLIntegration(TestBase):
             self.assertEqual(span.attributes["db.system.name"], "mssql")
             self.assertEqual(span.attributes["db.name"], "testdb")
             self.assertEqual(span.attributes["db.namespace"], "testdb")
-            self.assertEqual(
-                span.attributes["db.statement"], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes["db.query.text"], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes["db.statement"], "SELECT * FROM test")
+            self.assertEqual(span.attributes["db.query.text"], "SELECT * FROM test")
             self.assertEqual(span.attributes["db.user"], "dbuser")
-            self.assertEqual(
-                span.attributes["net.peer.name"], "dbserver.local"
-            )
-            self.assertEqual(
-                span.attributes["server.address"], "dbserver.local"
-            )
+            self.assertEqual(span.attributes["net.peer.name"], "dbserver.local")
+            self.assertEqual(span.attributes["server.address"], "dbserver.local")
             self.assertEqual(span.attributes["net.peer.port"], 1433)
             self.assertEqual(span.attributes["server.port"], 1433)

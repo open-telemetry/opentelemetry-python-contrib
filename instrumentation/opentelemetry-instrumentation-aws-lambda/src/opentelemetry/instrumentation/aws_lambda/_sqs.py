@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
-from typing import Any, Callable
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from opentelemetry.instrumentation.cidict import CIDict
 from opentelemetry.propagate import get_global_textmap
@@ -30,14 +30,14 @@ class _SqsMessageAttributesGetter(Getter[CarrierT]):
     """Extracts W3C trace context from SQS message attribute dicts.
 
     SQS message attributes have the structure:
-    ``{"traceparent": {"DataType": "String", "StringValue": "00-..."}}``.
+    ``{"traceparent": {"dataType": "String", "stringValue": "00-..."}}``.
     """
 
     def get(self, carrier: CarrierT, key: str) -> list[str] | None:
         msg_attr = carrier.get(key)
         if not isinstance(msg_attr, Mapping):
             return None
-        value = msg_attr.get("StringValue")
+        value = msg_attr.get("stringValue")
         return [value] if isinstance(value, str) else None
 
     def keys(self, carrier: CarrierT) -> list[str]:
@@ -53,16 +53,10 @@ def _is_sqs_event(lambda_event: Any) -> bool:
             isinstance(lambda_event, dict)
             and isinstance(lambda_event.get("Records"), list)
             and lambda_event["Records"]
-            and lambda_event["Records"][0]
-            .get("eventSource", "")
-            .strip()
-            .lower()
-            == "aws:sqs"
+            and lambda_event["Records"][0].get("eventSource", "").strip().lower() == "aws:sqs"
         )
     except Exception as exc:  # pylint: disable=broad-except
-        logger.warning(
-            "An unexpected error occurred while checking SQS event: %s", exc
-        )
+        logger.warning("An unexpected error occurred while checking SQS event: %s", exc)
         return False
 
 
@@ -79,17 +73,13 @@ def _get_sqs_span_links(records: list[dict[str, Any]]) -> list[Link]:
             continue
         # Wrap in CIDict so propagation header name lookup is case-insensitive
         # (e.g. "TRACEPARENT" and "traceparent" are both found).
-        ctx = get_global_textmap().extract(
-            CIDict(msg_attrs), getter=_sqs_getter
-        )
+        ctx = get_global_textmap().extract(CIDict(msg_attrs), getter=_sqs_getter)
         span_ctx = get_current_span(ctx).get_span_context()
         if span_ctx and span_ctx.is_valid:
             links.append(
                 Link(
                     context=span_ctx,
-                    attributes={
-                        MESSAGING_MESSAGE_ID: record.get("messageId", "")
-                    },
+                    attributes={MESSAGING_MESSAGE_ID: record.get("messageId", "")},
                 )
             )
     return links

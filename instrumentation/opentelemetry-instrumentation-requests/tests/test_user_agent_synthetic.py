@@ -42,9 +42,7 @@ class TestUserAgentSynthetic(TestBase):
 
     def test_user_agent_bot_googlebot(self):
         """Test that googlebot user agent is marked as 'bot'"""
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"}
         requests.get(self.URL, headers=headers, timeout=5)
 
         span = self.assert_span()
@@ -55,9 +53,7 @@ class TestUserAgentSynthetic(TestBase):
 
     def test_user_agent_bot_bingbot(self):
         """Test that bingbot user agent is marked as 'bot'"""
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"}
         requests.get(self.URL, headers=headers, timeout=5)
 
         span = self.assert_span()
@@ -101,9 +97,7 @@ class TestUserAgentSynthetic(TestBase):
 
     def test_user_agent_normal_browser(self):
         """Test that normal browser user agents don't get synthetic type"""
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         requests.get(self.URL, headers=headers, timeout=5)
 
         span = self.assert_span()
@@ -163,9 +157,7 @@ class TestUserAgentSynthetic(TestBase):
     def test_user_agent_bytes_like_header(self):
         """Test that bytes-like user agent headers are handled."""
 
-        original_prepare_headers = (
-            requests.models.PreparedRequest.prepare_headers
-        )
+        original_prepare_headers = requests.models.PreparedRequest.prepare_headers
 
         def prepare_headers_bytes(self, headers):
             original_prepare_headers(self, headers)

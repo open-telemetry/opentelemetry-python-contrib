@@ -40,9 +40,7 @@ class TestRuleCache(TestCase):
         cache = _RuleCache(None, None, CLIENT_ID, _Clock(), Lock())
         self.assertTrue(len(cache._RuleCache__rule_appliers) == 0)
 
-        rule1 = _SamplingRule(
-            Priority=200, RuleName="only_one_rule", Version=1
-        )
+        rule1 = _SamplingRule(Priority=200, RuleName="only_one_rule", Version=1)
         rules = [rule1]
         cache.update_sampling_rules(rules)
         self.assertTrue(len(cache._RuleCache__rule_appliers) == 1)
@@ -57,44 +55,24 @@ class TestRuleCache(TestCase):
         cache.update_sampling_rules(rules)
 
         self.assertTrue(len(cache._RuleCache__rule_appliers) == 6)
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[0].sampling_rule.RuleName, "abcdef"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[1].sampling_rule.RuleName, "A"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[2].sampling_rule.RuleName, "Abc"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[3].sampling_rule.RuleName, "ab"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[4].sampling_rule.RuleName, "abc"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[5].sampling_rule.RuleName, "abcdef"
-        )
+        self.assertEqual(cache._RuleCache__rule_appliers[0].sampling_rule.RuleName, "abcdef")
+        self.assertEqual(cache._RuleCache__rule_appliers[1].sampling_rule.RuleName, "A")
+        self.assertEqual(cache._RuleCache__rule_appliers[2].sampling_rule.RuleName, "Abc")
+        self.assertEqual(cache._RuleCache__rule_appliers[3].sampling_rule.RuleName, "ab")
+        self.assertEqual(cache._RuleCache__rule_appliers[4].sampling_rule.RuleName, "abc")
+        self.assertEqual(cache._RuleCache__rule_appliers[5].sampling_rule.RuleName, "abcdef")
 
     def test_rule_cache_expiration_logic(self):
         dt = datetime
-        cache = _RuleCache(
-            None, Resource.get_empty(), CLIENT_ID, _Clock(), Lock()
-        )
+        cache = _RuleCache(None, Resource.get_empty(), CLIENT_ID, _Clock(), Lock())
         self.assertFalse(cache.expired())
-        cache._last_modified = dt.datetime.now() - dt.timedelta(
-            seconds=CACHE_TTL_SECONDS - 5
-        )
+        cache._last_modified = dt.datetime.now() - dt.timedelta(seconds=CACHE_TTL_SECONDS - 5)
         self.assertFalse(cache.expired())
-        cache._last_modified = dt.datetime.now() - dt.timedelta(
-            seconds=CACHE_TTL_SECONDS + 1
-        )
+        cache._last_modified = dt.datetime.now() - dt.timedelta(seconds=CACHE_TTL_SECONDS + 1)
         self.assertTrue(cache.expired())
 
     def test_update_cache_with_only_one_rule_changed(self):
-        cache = _RuleCache(
-            None, Resource.get_empty(), CLIENT_ID, _Clock(), Lock()
-        )
+        cache = _RuleCache(None, Resource.get_empty(), CLIENT_ID, _Clock(), Lock())
         rule1 = _SamplingRule(Priority=1, RuleName="abcdef", Version=1)
         rule2 = _SamplingRule(Priority=10, RuleName="ab", Version=1)
         rule3 = _SamplingRule(Priority=100, RuleName="Abc", Version=1)
@@ -108,26 +86,14 @@ class TestRuleCache(TestCase):
         cache.update_sampling_rules(rules)
 
         self.assertTrue(len(cache._RuleCache__rule_appliers) == 3)
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[0].sampling_rule.RuleName, "abcdef"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[1].sampling_rule.RuleName, "Abc"
-        )
-        self.assertEqual(
-            cache._RuleCache__rule_appliers[2].sampling_rule.RuleName, "ab"
-        )
+        self.assertEqual(cache._RuleCache__rule_appliers[0].sampling_rule.RuleName, "abcdef")
+        self.assertEqual(cache._RuleCache__rule_appliers[1].sampling_rule.RuleName, "Abc")
+        self.assertEqual(cache._RuleCache__rule_appliers[2].sampling_rule.RuleName, "ab")
 
         # Compare that only rule1 and rule2 objects have not changed due to new_rule3 even after sorting
-        self.assertTrue(
-            cache_rules_copy[0] is cache._RuleCache__rule_appliers[0]
-        )
-        self.assertTrue(
-            cache_rules_copy[1] is cache._RuleCache__rule_appliers[2]
-        )
-        self.assertTrue(
-            cache_rules_copy[2] is not cache._RuleCache__rule_appliers[1]
-        )
+        self.assertTrue(cache_rules_copy[0] is cache._RuleCache__rule_appliers[0])
+        self.assertTrue(cache_rules_copy[1] is cache._RuleCache__rule_appliers[2])
+        self.assertTrue(cache_rules_copy[2] is not cache._RuleCache__rule_appliers[1])
 
     def test_update_rules_removes_older_rule(self):
         cache = _RuleCache(None, None, CLIENT_ID, _Clock(), Lock())
@@ -187,9 +153,7 @@ class TestRuleCache(TestCase):
         time_now = datetime.datetime.fromtimestamp(1707551387.0)
         mock_clock = MockClock(time_now)
 
-        rule_cache = _RuleCache(
-            Resource.get_empty(), None, "", mock_clock, Lock()
-        )
+        rule_cache = _RuleCache(Resource.get_empty(), None, "", mock_clock, Lock())
         rule_cache.update_sampling_rules([sampling_rule_1, sampling_rule_2])
 
         # quota should be 1 because of borrowing=true until targets are updated
@@ -239,9 +203,7 @@ class TestRuleCache(TestCase):
             [target_1, target_2, target_3],
             [],
         )
-        refresh_rules, min_polling_interval = (
-            rule_cache.update_sampling_targets(target_response)
-        )
+        refresh_rules, min_polling_interval = rule_cache.update_sampling_targets(target_response)
         self.assertFalse(refresh_rules)
         # target_3 Interval is ignored since it's not associated with a Rule Applier
         self.assertEqual(min_polling_interval, target_2["Interval"])
@@ -279,23 +241,13 @@ class TestRuleCache(TestCase):
     def test_get_all_statistics(self):
         time_now = datetime.datetime.fromtimestamp(1707551387.0)
         mock_clock = MockClock(time_now)
-        rule_applier_1 = _SamplingRuleApplier(
-            _SamplingRule(RuleName="test"), CLIENT_ID, mock_clock
-        )
-        rule_applier_2 = _SamplingRuleApplier(
-            _SamplingRule(RuleName="default"), CLIENT_ID, mock_clock
-        )
+        rule_applier_1 = _SamplingRuleApplier(_SamplingRule(RuleName="test"), CLIENT_ID, mock_clock)
+        rule_applier_2 = _SamplingRuleApplier(_SamplingRule(RuleName="default"), CLIENT_ID, mock_clock)
 
-        rule_applier_1._SamplingRuleApplier__statistics = (
-            _SamplingStatisticsDocument(CLIENT_ID, "test", 4, 2, 2)
-        )
-        rule_applier_2._SamplingRuleApplier__statistics = (
-            _SamplingStatisticsDocument(CLIENT_ID, "default", 5, 5, 5)
-        )
+        rule_applier_1._SamplingRuleApplier__statistics = _SamplingStatisticsDocument(CLIENT_ID, "test", 4, 2, 2)
+        rule_applier_2._SamplingRuleApplier__statistics = _SamplingStatisticsDocument(CLIENT_ID, "default", 5, 5, 5)
 
-        rule_cache = _RuleCache(
-            Resource.get_empty(), None, "", mock_clock, Lock()
-        )
+        rule_cache = _RuleCache(Resource.get_empty(), None, "", mock_clock, Lock())
         rule_cache._RuleCache__rule_appliers = [rule_applier_1, rule_applier_2]
 
         mock_clock.add_time(10)

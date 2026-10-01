@@ -5,10 +5,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from itertools import count
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from .processor_interface import TracingProcessor
 from .spans import Span
@@ -20,18 +21,18 @@ SPAN_TYPE_GENERATION = "generation"
 SPAN_TYPE_RESPONSE = "response"
 
 __all__ = [
+    "AgentSpanData",
+    "FunctionSpanData",
+    "GenerationSpanData",
+    "ResponseSpanData",
     "TraceProvider",
+    "agent_span",
+    "function_span",
+    "generation_span",
     "get_trace_provider",
+    "response_span",
     "set_trace_processors",
     "trace",
-    "agent_span",
-    "generation_span",
-    "function_span",
-    "response_span",
-    "AgentSpanData",
-    "GenerationSpanData",
-    "FunctionSpanData",
-    "ResponseSpanData",
 ]
 
 
@@ -154,9 +155,7 @@ class TraceProvider:
         else:
             trace_id = f"trace_{next(self._ids)}"
             parent_id = None
-        return Span(
-            trace_id, span_id, span_data, parent_id, self._multi_processor
-        )
+        return Span(trace_id, span_id, span_data, parent_id, self._multi_processor)
 
     def shutdown(self) -> None:
         self._multi_processor.shutdown()
@@ -207,9 +206,7 @@ def agent_span(
     output_type: str | None = None,
     **kwargs: Any,
 ):
-    data = AgentSpanData(
-        name=name, handoffs=handoffs, tools=tools, output_type=output_type
-    )
+    data = AgentSpanData(name=name, handoffs=handoffs, tools=tools, output_type=output_type)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

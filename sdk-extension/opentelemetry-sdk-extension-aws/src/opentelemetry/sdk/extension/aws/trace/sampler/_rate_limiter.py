@@ -20,9 +20,7 @@ class _RateLimiter:  # pyright: ignore[reportUnusedClass]
         self._clock = clock
 
         self._quota = Decimal(quota)
-        self.__wallet_floor_millis = Decimal(
-            self._clock.now().timestamp() * 1000.0
-        )
+        self.__wallet_floor_millis = Decimal(self._clock.now().timestamp() * 1000.0)
         # current "wallet_balance" would be ceiling - floor
 
         self.__lock = Lock()
@@ -37,22 +35,12 @@ class _RateLimiter:  # pyright: ignore[reportUnusedClass]
         cost_in_millis = Decimal(cost) / quota_per_millis
 
         with self.__lock:
-            wallet_ceiling_millis = Decimal(
-                self._clock.now().timestamp() * 1000.0
-            )
-            current_balance_millis = (
-                wallet_ceiling_millis - self.__wallet_floor_millis
-            )
-            current_balance_millis = min(
-                current_balance_millis, self.MAX_BALANCE_MILLIS
-            )
-            pending_remaining_balance_millis = (
-                current_balance_millis - cost_in_millis
-            )
+            wallet_ceiling_millis = Decimal(self._clock.now().timestamp() * 1000.0)
+            current_balance_millis = wallet_ceiling_millis - self.__wallet_floor_millis
+            current_balance_millis = min(current_balance_millis, self.MAX_BALANCE_MILLIS)
+            pending_remaining_balance_millis = current_balance_millis - cost_in_millis
             if pending_remaining_balance_millis >= 0:
-                self.__wallet_floor_millis = (
-                    wallet_ceiling_millis - pending_remaining_balance_millis
-                )
+                self.__wallet_floor_millis = wallet_ceiling_millis - pending_remaining_balance_millis
                 return True
             # No changes to the wallet state
             return False

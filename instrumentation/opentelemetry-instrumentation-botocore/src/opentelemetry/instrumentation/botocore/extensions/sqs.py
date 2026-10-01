@@ -8,6 +8,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
     _BotoResultT,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.span import Span
 
@@ -22,12 +23,10 @@ class _SqsExtension(_AwsSdkExtension):
         if queue_url:
             # TODO: update when semantic conventions exist
             attributes["aws.queue_url"] = queue_url
-            attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
+            attributes[messaging_attributes.MESSAGING_SYSTEM] = "aws.sqs"
             attributes[SpanAttributes.MESSAGING_URL] = queue_url
             try:
-                attributes[SpanAttributes.MESSAGING_DESTINATION] = (
-                    queue_url.split("/")[-1]
-                )
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = queue_url.split("/")[-1]
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",
@@ -45,19 +44,17 @@ class _SqsExtension(_AwsSdkExtension):
             try:
                 if operation == "SendMessage":
                     span.set_attribute(
-                        SpanAttributes.MESSAGING_MESSAGE_ID,
+                        messaging_attributes.MESSAGING_MESSAGE_ID,
                         result.get("MessageId"),
                     )
-                elif operation == "SendMessageBatch" and result.get(
-                    "Successful"
-                ):
+                elif operation == "SendMessageBatch" and result.get("Successful"):
                     span.set_attribute(
-                        SpanAttributes.MESSAGING_MESSAGE_ID,
+                        messaging_attributes.MESSAGING_MESSAGE_ID,
                         result["Successful"][0]["MessageId"],
                     )
                 elif operation == "ReceiveMessage" and result.get("Messages"):
                     span.set_attribute(
-                        SpanAttributes.MESSAGING_MESSAGE_ID,
+                        messaging_attributes.MESSAGING_MESSAGE_ID,
                         result["Messages"][0]["MessageId"],
                     )
             except (IndexError, KeyError):

@@ -72,18 +72,14 @@ async def test_async_chat_completion_with_content(
         )
         assert_messages_attribute(
             spans[0].attributes["gen_ai.output.messages"],
-            format_simple_expected_output_message(
-                response.choices[0].message.content
-            ),
+            format_simple_expected_output_message(response.choices[0].message.content),
         )
     else:
         logs = log_exporter.get_finished_logs()
         assert len(logs) == 2
 
         user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -93,9 +89,7 @@ async def test_async_chat_completion_with_content(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -138,15 +132,11 @@ async def test_async_chat_completion_no_content(
             "finish_reason": "stop",
             "message": {"role": "assistant"},
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
-async def test_async_chat_completion_bad_endpoint(
-    span_exporter, instrument_no_content
-):
+async def test_async_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
     latest_experimental_enabled = is_experimental_mode()
     client = AsyncOpenAI(base_url="http://localhost:4242")
 
@@ -165,15 +155,11 @@ async def test_async_chat_completion_bad_endpoint(
         server_address="localhost",
     )
     assert 4242 == spans[0].attributes[ServerAttributes.SERVER_PORT]
-    assert (
-        "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
-    )
+    assert "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
 
 @pytest.mark.asyncio()
-async def test_async_chat_completion_404(
-    span_exporter, async_openai_client, instrument_no_content, vcr
-):
+async def test_async_chat_completion_404(span_exporter, async_openai_client, instrument_no_content, vcr):
     latest_experimental_enabled = is_experimental_mode()
     llm_model_value = "this-model-does-not-exist"
 
@@ -186,16 +172,12 @@ async def test_async_chat_completion_404(
 
     spans = span_exporter.get_finished_spans()
 
-    assert_all_attributes(
-        spans[0], llm_model_value, latest_experimental_enabled
-    )
+    assert_all_attributes(spans[0], llm_model_value, latest_experimental_enabled)
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
 
 @pytest.mark.asyncio()
-async def test_async_chat_completion_api_exception_propagates(
-    async_openai_client, instrument_no_content, vcr
-):
+async def test_async_chat_completion_api_exception_propagates(async_openai_client, instrument_no_content, vcr):
     with vcr.use_cassette("test_async_chat_completion_404.yaml"):
         with pytest.raises(NotFoundError):
             await async_openai_client.chat.completions.create(
@@ -205,9 +187,7 @@ async def test_async_chat_completion_api_exception_propagates(
 
 
 @pytest.mark.asyncio()
-async def test_async_chat_completion_extra_params(
-    span_exporter, async_openai_client, instrument_no_content, vcr
-):
+async def test_async_chat_completion_extra_params(span_exporter, async_openai_client, instrument_no_content, vcr):
     latest_experimental_enabled = is_experimental_mode()
 
     with vcr.use_cassette("test_async_chat_completion_extra_params.yaml"):
@@ -235,9 +215,7 @@ async def test_async_chat_completion_extra_params(
         response_service_tier=getattr(response, "service_tier", None),
     )
     assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] == 42
-    assert (
-        spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.5
-    )
+    assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.5
     assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == 50
     request_service_tier_attr_key = (
         OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
@@ -314,9 +292,7 @@ async def test_async_chat_completion_multiple_choices(
         assert len(logs) == 3  # 1 user message + 2 choice messages
 
         user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event_0 = {
             "index": 0,
@@ -326,9 +302,7 @@ async def test_async_chat_completion_multiple_choices(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event_0, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event_0, spans[0])
 
         choice_event_1 = {
             "index": 1,
@@ -338,9 +312,7 @@ async def test_async_chat_completion_multiple_choices(
                 "content": response.choices[1].message.content,
             },
         }
-        assert_message_in_logs(
-            logs[2], "gen_ai.choice", choice_event_1, spans[0]
-        )
+        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event_1, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -378,17 +350,13 @@ async def test_async_chat_completion_with_raw_response(
         )
         assert_messages_attribute(
             spans[0].attributes["gen_ai.output.messages"],
-            format_simple_expected_output_message(
-                response.choices[0].message.content
-            ),
+            format_simple_expected_output_message(response.choices[0].message.content),
         )
     else:
         assert len(logs) == 2
 
         user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -398,9 +366,7 @@ async def test_async_chat_completion_with_raw_response(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -413,9 +379,7 @@ async def test_chat_completion_with_raw_response_streaming(
 ):
     latest_experimental_enabled = is_experimental_mode()
 
-    with vcr.use_cassette(
-        "test_chat_completion_with_raw_response_streaming.yaml"
-    ):
+    with vcr.use_cassette("test_chat_completion_with_raw_response_streaming.yaml"):
         raw_response = await async_openai_client.chat.completions.with_raw_response.create(
             messages=USER_ONLY_PROMPT,
             model=DEFAULT_MODEL,
@@ -465,9 +429,7 @@ async def test_chat_completion_with_raw_response_streaming(
         assert len(logs) == 2
 
         user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -477,9 +439,7 @@ async def test_chat_completion_with_raw_response_streaming(
                 "content": message_content,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -490,9 +450,7 @@ async def test_async_chat_completion_tool_calls_with_content(
     instrument_with_content,
     vcr,
 ):
-    with vcr.use_cassette(
-        "test_async_chat_completion_tool_calls_with_content.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_tool_calls_with_content.yaml"):
         await chat_completion_tool_call(
             span_exporter,
             log_exporter,
@@ -510,9 +468,7 @@ async def test_async_chat_completion_tool_calls_no_content(
     instrument_no_content,
     vcr,
 ):
-    with vcr.use_cassette(
-        "test_async_chat_completion_tool_calls_no_content.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_tool_calls_no_content.yaml"):
         await chat_completion_tool_call(
             span_exporter,
             log_exporter,
@@ -546,9 +502,7 @@ async def chat_completion_tool_call(
     messages_value.append(
         {
             "role": "assistant",
-            "tool_calls": response_0.choices[0].message.to_dict()[
-                "tool_calls"
-            ],
+            "tool_calls": response_0.choices[0].message.to_dict()["tool_calls"],
         }
     )
 
@@ -566,9 +520,7 @@ async def chat_completion_tool_call(
     messages_value.append(tool_call_result_0)
     messages_value.append(tool_call_result_1)
 
-    response_1 = await async_openai_client.chat.completions.create(
-        messages=messages_value, model=DEFAULT_MODEL
-    )
+    response_1 = await async_openai_client.chat.completions.create(messages=messages_value, model=DEFAULT_MODEL)
 
     # sanity check
     assert "stop" in response_1.choices[0].finish_reason
@@ -612,17 +564,13 @@ async def chat_completion_tool_call(
                     "parts": [
                         {
                             "type": "tool_call",
-                            "id": response_0.choices[0]
-                            .message.tool_calls[0]
-                            .id,
+                            "id": response_0.choices[0].message.tool_calls[0].id,
                             "name": "get_current_weather",
                             "arguments": {"location": "Seattle, WA"},
                         },
                         {
                             "type": "tool_call",
-                            "id": response_0.choices[0]
-                            .message.tool_calls[1]
-                            .id,
+                            "id": response_0.choices[0].message.tool_calls[1].id,
                             "name": "get_current_weather",
                             "arguments": {"location": "San Francisco, CA"},
                         },
@@ -630,9 +578,7 @@ async def chat_completion_tool_call(
                     "finish_reason": "tool_calls",
                 }
             ]
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"], first_output
-            )
+            assert_messages_attribute(spans[0].attributes["gen_ai.output.messages"], first_output)
 
             assert_messages_attribute(
                 spans[0].attributes["gen_ai.tool.definitions"],
@@ -651,9 +597,7 @@ async def chat_completion_tool_call(
                     "parts": [
                         {
                             "type": "tool_call_response",
-                            "id": response_0.choices[0]
-                            .message.tool_calls[0]
-                            .id,
+                            "id": response_0.choices[0].message.tool_calls[0].id,
                             "response": tool_call_result_0["content"],
                         }
                     ],
@@ -663,18 +607,14 @@ async def chat_completion_tool_call(
                     "parts": [
                         {
                             "type": "tool_call_response",
-                            "id": response_0.choices[0]
-                            .message.tool_calls[1]
-                            .id,
+                            "id": response_0.choices[0].message.tool_calls[1].id,
                             "response": tool_call_result_1["content"],
                         }
                     ],
                 },
             ]
 
-            assert_messages_attribute(
-                spans[1].attributes["gen_ai.input.messages"], second_input
-            )
+            assert_messages_attribute(spans[1].attributes["gen_ai.input.messages"], second_input)
 
             assert_messages_attribute(
                 spans[1].attributes["gen_ai.output.messages"],
@@ -684,9 +624,7 @@ async def chat_completion_tool_call(
                         "parts": [
                             {
                                 "type": "text",
-                                "content": response_1.choices[
-                                    0
-                                ].message.content,
+                                "content": response_1.choices[0].message.content,
                             },
                         ],
                         "finish_reason": "stop",
@@ -697,36 +635,20 @@ async def chat_completion_tool_call(
         assert len(logs) == 9  # 3 logs for first completion, 6 for second
 
         # call one
-        system_message = (
-            {"content": messages_value[0]["content"]}
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[0], "gen_ai.system.message", system_message, spans[0]
-        )
+        system_message = {"content": messages_value[0]["content"]} if expect_content else None
+        assert_message_in_logs(logs[0], "gen_ai.system.message", system_message, spans[0])
 
-        user_message = (
-            {"content": messages_value[1]["content"]}
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[1], "gen_ai.user.message", user_message, spans[0]
-        )
+        user_message = {"content": messages_value[1]["content"]} if expect_content else None
+        assert_message_in_logs(logs[1], "gen_ai.user.message", user_message, spans[0])
 
         function_call_0 = {"name": "get_current_weather"}
         function_call_1 = {"name": "get_current_weather"}
         if expect_content:
             function_call_0["arguments"] = (
-                response_0.choices[0]
-                .message.tool_calls[0]
-                .function.arguments.replace("\n", "")
+                response_0.choices[0].message.tool_calls[0].function.arguments.replace("\n", "")
             )
             function_call_1["arguments"] = (
-                response_0.choices[0]
-                .message.tool_calls[1]
-                .function.arguments.replace("\n", "")
+                response_0.choices[0].message.tool_calls[1].function.arguments.replace("\n", "")
             )
 
         choice_event = {
@@ -748,69 +670,39 @@ async def chat_completion_tool_call(
                 ],
             },
         }
-        assert_message_in_logs(
-            logs[2], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event, spans[0])
 
         # call two
-        system_message = (
-            {"content": messages_value[0]["content"]}
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[3], "gen_ai.system.message", system_message, spans[1]
-        )
+        system_message = {"content": messages_value[0]["content"]} if expect_content else None
+        assert_message_in_logs(logs[3], "gen_ai.system.message", system_message, spans[1])
 
-        user_message = (
-            {"content": messages_value[1]["content"]}
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[4], "gen_ai.user.message", user_message, spans[1]
-        )
+        user_message = {"content": messages_value[1]["content"]} if expect_content else None
+        assert_message_in_logs(logs[4], "gen_ai.user.message", user_message, spans[1])
 
         assistant_tool_call = {"tool_calls": messages_value[2]["tool_calls"]}
         if not expect_content:
-            assistant_tool_call["tool_calls"][0]["function"]["arguments"] = (
-                None
-            )
-            assistant_tool_call["tool_calls"][1]["function"]["arguments"] = (
-                None
-            )
+            assistant_tool_call["tool_calls"][0]["function"]["arguments"] = None
+            assistant_tool_call["tool_calls"][1]["function"]["arguments"] = None
 
-        assert_message_in_logs(
-            logs[5], "gen_ai.assistant.message", assistant_tool_call, spans[1]
-        )
+        assert_message_in_logs(logs[5], "gen_ai.assistant.message", assistant_tool_call, spans[1])
 
         tool_message_0 = {
             "id": tool_call_result_0["tool_call_id"],
-            "content": tool_call_result_0["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result_0["content"] if expect_content else None,
         }
 
-        assert_message_in_logs(
-            logs[6], "gen_ai.tool.message", tool_message_0, spans[1]
-        )
+        assert_message_in_logs(logs[6], "gen_ai.tool.message", tool_message_0, spans[1])
 
         tool_message_1 = {
             "id": tool_call_result_1["tool_call_id"],
-            "content": tool_call_result_1["content"]
-            if expect_content
-            else None,
+            "content": tool_call_result_1["content"] if expect_content else None,
         }
 
-        assert_message_in_logs(
-            logs[7], "gen_ai.tool.message", tool_message_1, spans[1]
-        )
+        assert_message_in_logs(logs[7], "gen_ai.tool.message", tool_message_1, spans[1])
 
         message = {
             "role": "assistant",
-            "content": response_1.choices[0].message.content
-            if expect_content
-            else None,
+            "content": response_1.choices[0].message.content if expect_content else None,
         }
         choice = {
             "index": 0,
@@ -879,9 +771,7 @@ async def test_async_chat_completion_streaming(
         assert len(logs) == 2
 
         user_message = {"content": "Say this is a test"}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -891,9 +781,7 @@ async def test_async_chat_completion_streaming(
                 "content": response_stream_result,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -954,9 +842,7 @@ async def test_async_chat_completion_streaming_not_complete(
     response_stream_id = None
     response_stream_result = ""
 
-    with vcr.use_cassette(
-        "test_async_chat_completion_streaming_not_complete.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_streaming_not_complete.yaml"):
         response = await async_openai_client.chat.completions.create(**kwargs)
         idx = 0
         async for chunk in response:
@@ -990,17 +876,13 @@ async def test_async_chat_completion_streaming_not_complete(
         )
         assert_messages_attribute(
             spans[0].attributes["gen_ai.output.messages"],
-            format_simple_expected_output_message(
-                response_stream_result, finish_reason="error"
-            ),
+            format_simple_expected_output_message(response_stream_result, finish_reason="error"),
         )
     else:
         assert len(logs) == 2
 
         user_message = {"content": "Say this is a test"}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -1010,9 +892,7 @@ async def test_async_chat_completion_streaming_not_complete(
                 "content": response_stream_result,
             },
         }
-        assert_message_in_logs(
-            logs[1], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -1035,9 +915,7 @@ async def test_async_chat_completion_streaming_close_awaits_underlying_stream(
         "stream": True,
     }
 
-    with vcr.use_cassette(
-        "test_async_chat_completion_streaming_not_complete.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_streaming_not_complete.yaml"):
         response = await async_openai_client.chat.completions.create(**kwargs)
         assert isinstance(response, AsyncLegacyChatStreamWrapper)
 
@@ -1079,9 +957,7 @@ async def test_async_chat_completion_streaming_context_manager_awaits_close(
         "stream": True,
     }
 
-    with vcr.use_cassette(
-        "test_async_chat_completion_streaming_not_complete.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_streaming_not_complete.yaml"):
         response = await async_openai_client.chat.completions.create(**kwargs)
         assert isinstance(response, AsyncLegacyChatStreamWrapper)
 
@@ -1112,9 +988,7 @@ async def test_async_chat_completion_multiple_choices_streaming(
     latest_experimental_enabled = is_experimental_mode()
     messages_value = WEATHER_TOOL_PROMPT.copy()
 
-    with vcr.use_cassette(
-        "test_async_chat_completion_multiple_choices_streaming.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_multiple_choices_streaming.yaml"):
         response_0 = await async_openai_client.chat.completions.create(
             messages=messages_value,
             model=DEFAULT_MODEL,
@@ -1132,9 +1006,7 @@ async def test_async_chat_completion_multiple_choices_streaming(
         async for chunk in response_0:
             if chunk.choices:
                 for choice in chunk.choices:
-                    response_stream_result[choice.index] += (
-                        choice.delta.content or ""
-                    )
+                    response_stream_result[choice.index] += choice.delta.content or ""
                     if choice.finish_reason:
                         finish_reasons[choice.index] = choice.finish_reason
 
@@ -1194,16 +1066,10 @@ async def test_async_chat_completion_multiple_choices_streaming(
         assert len(logs) == 4
 
         system_message = {"content": messages_value[0]["content"]}
-        assert_message_in_logs(
-            logs[0], "gen_ai.system.message", system_message, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.system.message", system_message, spans[0])
 
-        user_message = {
-            "content": "What's the weather in Seattle and San Francisco today?"
-        }
-        assert_message_in_logs(
-            logs[1], "gen_ai.user.message", user_message, spans[0]
-        )
+        user_message = {"content": "What's the weather in Seattle and San Francisco today?"}
+        assert_message_in_logs(logs[1], "gen_ai.user.message", user_message, spans[0])
 
         choice_event_0 = {
             "index": 0,
@@ -1213,9 +1079,7 @@ async def test_async_chat_completion_multiple_choices_streaming(
                 "content": "".join(response_stream_result[0]),
             },
         }
-        assert_message_in_logs(
-            logs[2], "gen_ai.choice", choice_event_0, spans[0]
-        )
+        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event_0, spans[0])
 
         choice_event_1 = {
             "index": 1,
@@ -1225,9 +1089,7 @@ async def test_async_chat_completion_multiple_choices_streaming(
                 "content": "".join(response_stream_result[1]),
             },
         }
-        assert_message_in_logs(
-            logs[3], "gen_ai.choice", choice_event_1, spans[0]
-        )
+        assert_message_in_logs(logs[3], "gen_ai.choice", choice_event_1, spans[0])
 
 
 @pytest.mark.asyncio()
@@ -1238,9 +1100,7 @@ async def test_async_chat_completion_multiple_tools_streaming_with_content(
     instrument_with_content,
     vcr,
 ):
-    with vcr.use_cassette(
-        "test_async_chat_completion_multiple_tools_streaming_with_content.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_multiple_tools_streaming_with_content.yaml"):
         await async_chat_completion_multiple_tools_streaming(
             span_exporter,
             log_exporter,
@@ -1258,9 +1118,7 @@ async def test_async_chat_completion_multiple_tools_streaming_no_content(
     instrument_no_content,
     vcr,
 ):
-    with vcr.use_cassette(
-        "test_async_chat_completion_multiple_tools_streaming_no_content.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_multiple_tools_streaming_no_content.yaml"):
         await async_chat_completion_multiple_tools_streaming(
             span_exporter,
             log_exporter,
@@ -1288,9 +1146,7 @@ async def test_async_chat_completion_streaming_unsampled(
     }
 
     response_stream_result = ""
-    with vcr.use_cassette(
-        "test_async_chat_completion_streaming_unsampled.yaml"
-    ):
+    with vcr.use_cassette("test_async_chat_completion_streaming_unsampled.yaml"):
         response = await async_openai_client.chat.completions.create(**kwargs)
         async for chunk in response:
             if chunk.choices:
@@ -1304,9 +1160,7 @@ async def test_async_chat_completion_streaming_unsampled(
         assert len(logs) == 2
 
         user_message = {"content": "Say this is a test"}
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", user_message, None
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, None)
 
         choice_event = {
             "index": 0,
@@ -1416,9 +1270,7 @@ async def async_chat_completion_multiple_tools_streaming(
                     "finish_reason": "tool_calls",
                 }
             ]
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"], first_output
-            )
+            assert_messages_attribute(spans[0].attributes["gen_ai.output.messages"], first_output)
             assert_messages_attribute(
                 spans[0].attributes["gen_ai.tool.definitions"],
                 EXPECTED_TOOL_DEFINITIONS,
@@ -1426,25 +1278,11 @@ async def async_chat_completion_multiple_tools_streaming(
     else:
         assert len(logs) == 3
 
-        system_message = (
-            {"content": messages_value[0]["content"]}
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[0], "gen_ai.system.message", system_message, spans[0]
-        )
+        system_message = {"content": messages_value[0]["content"]} if expect_content else None
+        assert_message_in_logs(logs[0], "gen_ai.system.message", system_message, spans[0])
 
-        user_message = (
-            {
-                "content": "What's the weather in Seattle and San Francisco today?"
-            }
-            if expect_content
-            else None
-        )
-        assert_message_in_logs(
-            logs[1], "gen_ai.user.message", user_message, spans[0]
-        )
+        user_message = {"content": "What's the weather in Seattle and San Francisco today?"} if expect_content else None
+        assert_message_in_logs(logs[1], "gen_ai.user.message", user_message, spans[0])
 
         choice_event = {
             "index": 0,
@@ -1457,11 +1295,7 @@ async def async_chat_completion_multiple_tools_streaming(
                         "type": "function",
                         "function": {
                             "name": tool_names[0],
-                            "arguments": (
-                                tool_args[0].replace("\n", "")
-                                if expect_content
-                                else None
-                            ),
+                            "arguments": (tool_args[0].replace("\n", "") if expect_content else None),
                         },
                     },
                     {
@@ -1469,16 +1303,10 @@ async def async_chat_completion_multiple_tools_streaming(
                         "type": "function",
                         "function": {
                             "name": tool_names[1],
-                            "arguments": (
-                                tool_args[1].replace("\n", "")
-                                if expect_content
-                                else None
-                            ),
+                            "arguments": (tool_args[1].replace("\n", "") if expect_content else None),
                         },
                     },
                 ],
             },
         }
-        assert_message_in_logs(
-            logs[2], "gen_ai.choice", choice_event, spans[0]
-        )
+        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event, spans[0])

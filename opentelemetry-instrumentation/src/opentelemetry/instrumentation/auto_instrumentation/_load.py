@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from functools import cached_property
 from logging import getLogger
 from os import environ
@@ -30,11 +32,7 @@ SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
 class _EntryPointDistFinder:
     @cached_property
     def _mapping(self):
-        return {
-            self._key_for(ep): dist
-            for dist in distributions()
-            for ep in dist.entry_points
-        }
+        return {self._key_for(ep): dist for dist in distributions() for ep in dist.entry_points}
 
     def dist_for(self, entry_point: EntryPoint):
         dist = getattr(entry_point, "dist", None)
@@ -61,14 +59,10 @@ def _load_distro() -> BaseDistro:
                         entry_point.name,
                     )
                     continue
-                _logger.debug(
-                    "Distribution %s will be configured", entry_point.name
-                )
+                _logger.debug("Distribution %s will be configured", entry_point.name)
                 return distro
         except Exception as exc:  # pylint: disable=broad-except
-            _logger.exception(
-                "Distribution %s configuration failed", entry_point.name
-            )
+            _logger.exception("Distribution %s configuration failed", entry_point.name)
             raise exc
     return DefaultDistro()
 
@@ -89,20 +83,14 @@ def _load_instrumentors(distro):
             break
 
         if entry_point.name in package_to_exclude:
-            _logger.debug(
-                "Instrumentation skipped for library %s", entry_point.name
-            )
+            _logger.debug("Instrumentation skipped for library %s", entry_point.name)
             continue
 
         try:
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                _logger.debug(
-                    "Skipping instrumentation %s: %s",
-                    entry_point.name,
-                    conflict,
-                )
+                conflict._log(_logger, entry_point.name)
                 continue
 
             # tell instrumentation to not run dep checks again as we already did it above
@@ -113,19 +101,13 @@ def _load_instrumentors(distro):
             # returning a DependencyConflict. Keeping this error handling in case custom
             # distro and instrumentor behavior raises a DependencyConflictError later.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
-            _logger.debug(
-                "Skipping instrumentation %s: %s",
-                entry_point.name,
-                exc.conflict,
-            )
+            exc.conflict._log(_logger, entry_point.name)
             continue
         except ModuleNotFoundError as exc:
             # ModuleNotFoundError is raised when the library is not installed
             # and the instrumentation is not required to be loaded.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
-            _logger.debug(
-                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
-            )
+            _logger.debug("Skipping instrumentation %s: %s", entry_point.name, exc.msg)
             continue
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
@@ -134,9 +116,7 @@ def _load_instrumentors(distro):
             # environment regarding python version, libc, etc... In this case it's better
             # to skip the single instrumentation rather than failing to load everything
             # so treat differently ImportError than the rest of exceptions
-            _logger.exception(
-                "Importing of %s failed, skipping it", entry_point.name
-            )
+            _logger.exception("Importing of %s failed, skipping it", entry_point.name)
             continue
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception("Instrumenting of %s failed", entry_point.name)
@@ -158,13 +138,8 @@ def _load_configurators():
             )
             continue
         try:
-            if (
-                configurator_name is None
-                or configurator_name == entry_point.name
-            ):
-                entry_point.load()().configure(
-                    auto_instrumentation_version=__version__
-                )  # type: ignore
+            if configurator_name is None or configurator_name == entry_point.name:
+                entry_point.load()().configure(auto_instrumentation_version=__version__)  # type: ignore
                 configured = entry_point.name
             else:
                 _logger.warning(

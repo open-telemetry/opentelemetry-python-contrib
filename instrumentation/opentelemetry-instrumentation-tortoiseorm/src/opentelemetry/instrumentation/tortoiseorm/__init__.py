@@ -29,7 +29,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import wrapt
 
@@ -108,9 +108,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider,
-            schema_url=_get_schema_url_for_signal_types(
-                [_OpenTelemetryStabilitySignalType.DATABASE]
-            ),
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE]),
         )
         self.capture_parameters = kwargs.get("capture_parameters", False)
         if TORTOISE_SQLITE_SUPPORT:
@@ -175,35 +173,23 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         if TORTOISE_SQLITE_SUPPORT:
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_query"
-            )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_many"
-            )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_insert"
-            )
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_query")
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_many")
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_insert")
             unwrap(
                 tortoise.backends.sqlite.client.SqliteClient,
                 "execute_query_dict",
             )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_script"
-            )
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_script")
         if TORTOISE_MYSQL_SUPPORT:
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_query")
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_many")
-            unwrap(
-                tortoise.backends.mysql.client.MySQLClient, "execute_insert"
-            )
+            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_insert")
             unwrap(
                 tortoise.backends.mysql.client.MySQLClient,
                 "execute_query_dict",
             )
-            unwrap(
-                tortoise.backends.mysql.client.MySQLClient, "execute_script"
-            )
+            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_script")
         if TORTOISE_POSTGRES_SUPPORT:
             unwrap(
                 tortoise.backends.asyncpg.client.AsyncpgDBClient,
@@ -230,9 +216,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             tortoise.contrib.pydantic.base.PydanticModel,
             "from_queryset_single",
         )
-        unwrap(
-            tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset"
-        )
+        unwrap(tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset")
 
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
@@ -242,17 +226,11 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         capabilities = getattr(connection, "capabilities", None)
         if capabilities is not None:
             if capabilities.dialect == "sqlite":
-                _set_db_system(
-                    span_attributes, DbSystemValues.SQLITE.value, mode
-                )
+                _set_db_system(span_attributes, DbSystemValues.SQLITE.value, mode)
             elif capabilities.dialect == "postgres":
-                _set_db_system(
-                    span_attributes, DbSystemValues.POSTGRESQL.value, mode
-                )
+                _set_db_system(span_attributes, DbSystemValues.POSTGRESQL.value, mode)
             elif capabilities.dialect == "mysql":
-                _set_db_system(
-                    span_attributes, DbSystemValues.MYSQL.value, mode
-                )
+                _set_db_system(span_attributes, DbSystemValues.MYSQL.value, mode)
 
         dbname = getattr(connection, "filename", None)
         if dbname:
@@ -289,9 +267,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         exception = None
         name = args[0].split()[0]
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attributes = self._hydrate_span_from_args(
                     instance,

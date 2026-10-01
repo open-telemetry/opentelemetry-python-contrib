@@ -83,9 +83,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         response = client.get("/generator")
         self.assertEqual(response.status_code, 200)
-        expected = b"".join(
-            f"Chunk {chunk_idx}\n".encode() for chunk_idx in range(5)
-        )
+        expected = b"".join(f"Chunk {chunk_idx}\n".encode() for chunk_idx in range(5))
         self.assertEqual(response.data, expected)
 
     def test_file_response_context_cleanup(self):
@@ -97,9 +95,7 @@ class TestFlaskCompatibility(WsgiTestBase):
         def file_endpoint():
             # Simulate file response using io.BytesIO
             file_data = io.BytesIO(b"File content here")
-            return flask.send_file(
-                file_data, as_attachment=True, download_name="test.txt"
-            )
+            return flask.send_file(file_data, as_attachment=True, download_name="test.txt")
 
         client = app.test_client()
 
@@ -176,9 +172,7 @@ class TestFlaskCompatibility(WsgiTestBase):
             try:
                 client = app.test_client()
                 response = client.get(f"/slow_stream/{request_id}")
-                results.append(
-                    (request_id, response.status_code, response.data)
-                )
+                results.append((request_id, response.status_code, response.data))
             except (RuntimeError, ValueError) as exc:
                 errors.append((request_id, exc))
 
@@ -199,10 +193,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         for request_id, status_code, data in results:
             self.assertEqual(status_code, 200)
-            expected = b"".join(
-                f"Request {request_id} - Chunk {chunk_idx}\n".encode()
-                for chunk_idx in range(3)
-            )
+            expected = b"".join(f"Request {request_id} - Chunk {chunk_idx}\n".encode() for chunk_idx in range(3))
             self.assertEqual(data, expected)
 
     def test_flask_version_compatibility(self):
@@ -256,9 +247,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         # Mock the cleanup functions to raise exceptions
         with (
-            mock.patch(
-                "opentelemetry.instrumentation.flask.context.detach"
-            ) as mock_detach,
+            mock.patch("opentelemetry.instrumentation.flask.context.detach") as mock_detach,
             mock.patch("opentelemetry.trace.use_span") as mock_use_span,
         ):
             # Make detach raise an exception
@@ -267,12 +256,8 @@ class TestFlaskCompatibility(WsgiTestBase):
             # Make the span activation __exit__ raise an exception
             mock_span_instance = mock.Mock()
             mock_span_instance.is_recording.return_value = True
-            mock_span_instance.__exit__ = mock.Mock(
-                side_effect=RuntimeError("Exit error")
-            )
-            mock_use_span.return_value.__enter__ = mock.Mock(
-                return_value=mock_span_instance
-            )
+            mock_span_instance.__exit__ = mock.Mock(side_effect=RuntimeError("Exit error"))
+            mock_use_span.return_value.__enter__ = mock.Mock(return_value=mock_span_instance)
 
             @app.route("/stream_cleanup_error")
             def stream_cleanup_error_endpoint():
@@ -336,9 +321,7 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         # Mix of streaming requests
         for request_idx in range(10):
-            endpoint = (
-                "/stream_flask31" if request_idx % 2 == 0 else "/stream_normal"
-            )
+            endpoint = "/stream_flask31" if request_idx % 2 == 0 else "/stream_normal"
             response = client.get(endpoint)
             self.assertEqual(response.status_code, 200)
 
@@ -363,12 +346,8 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         @app.teardown_request
         def check_cleanup(exc):
-            cleaned_up["activation_present"] = (
-                _ENVIRON_ACTIVATION_KEY in flask.request.environ
-            )
-            cleaned_up["token_present"] = (
-                _ENVIRON_TOKEN in flask.request.environ
-            )
+            cleaned_up["activation_present"] = _ENVIRON_ACTIVATION_KEY in flask.request.environ
+            cleaned_up["token_present"] = _ENVIRON_TOKEN in flask.request.environ
 
         FlaskInstrumentor().instrument_app(app)
 

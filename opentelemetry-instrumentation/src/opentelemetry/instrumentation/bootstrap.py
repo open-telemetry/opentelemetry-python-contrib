@@ -11,7 +11,6 @@ from subprocess import (
     SubprocessError,
     check_call,
 )
-from typing import Optional
 
 from packaging.requirements import Requirement
 
@@ -75,9 +74,7 @@ def _pip_check(libraries):
     'opentelemetry-instrumentation-flask 1.0.1 has requirement opentelemetry-sdk<2.0,>=1.0, but you have opentelemetry-sdk 0.5.'
     To not be too restrictive, we'll only check for relevant packages.
     """
-    with Popen(
-        [sys.executable, "-m", "pip", "check"], stdout=PIPE
-    ) as check_pipe:
+    with Popen([sys.executable, "-m", "pip", "check"], stdout=PIPE) as check_pipe:
         pip_check = check_pipe.communicate()[0].decode()
         pip_check_lower = pip_check.lower()
     for package_tup in libraries:
@@ -96,8 +93,7 @@ def _is_installed(req):
 
     if not req.specifier.filter(dist_version):
         logger.warning(
-            "instrumentation for package %s is available"
-            " but version %s is installed. Skipping.",
+            "instrumentation for package %s is available but version %s is installed. Skipping.",
             req,
             dist_version,
         )
@@ -115,11 +111,7 @@ def _find_installed_libraries(default_instrumentations, libraries):
 
 def _run_requirements(default_instrumentations, libraries):
     logger.setLevel(logging.ERROR)
-    print(
-        "\n".join(
-            _find_installed_libraries(default_instrumentations, libraries)
-        )
-    )
+    print("\n".join(_find_installed_libraries(default_instrumentations, libraries)))
 
 
 def _run_install(default_instrumentations, libraries):
@@ -129,8 +121,8 @@ def _run_install(default_instrumentations, libraries):
 
 
 def run(
-    default_instrumentations: Optional[list] = None,
-    libraries: Optional[list] = None,
+    default_instrumentations: list | None = None,
+    libraries: list | None = None,
 ) -> None:
     action_install = "install"
     action_requirements = "requirements"

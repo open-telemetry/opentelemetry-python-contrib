@@ -27,9 +27,7 @@ from opentelemetry.util.genai.types import (
 
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
 _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
@@ -67,9 +65,7 @@ class AgentInvocation(GenAIInvocation):
             logger,
             completion_hook,
             operation_name=_operation_name,
-            span_name=f"{_operation_name} {agent_name}"
-            if agent_name
-            else _operation_name,
+            span_name=f"{_operation_name} {agent_name}" if agent_name else _operation_name,
             span_kind=span_kind,
         )
         self.provider = provider

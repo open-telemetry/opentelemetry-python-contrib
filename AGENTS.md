@@ -34,7 +34,8 @@ comment - not in the PR description.
 ## Structure
 
 - `instrumentation/` - instrumentation packages (Flask, Django, FastAPI, gRPC, databases, etc.)
-- `instrumentation-genai/` - GenAI instrumentations (Anthropic, Vertex AI, LangChain, etc.)
+- `instrumentation-genai/` - GenAI instrumentations; deprecated and no longer developed here, see
+  [instrumentation-genai/AGENTS.md](instrumentation-genai/AGENTS.md)
 - `util/` - shared utilities (`util-http`, `util-genai`)
 - `exporter/` - custom exporters
 - `propagator/` - context propagators

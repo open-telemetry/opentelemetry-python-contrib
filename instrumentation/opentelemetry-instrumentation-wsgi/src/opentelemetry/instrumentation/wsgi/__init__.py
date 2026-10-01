@@ -15,9 +15,11 @@ Usage (Flask)
     app = Flask(__name__)
     app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
 
+
     @app.route("/")
     def hello():
         return "Hello!"
+
 
     if __name__ == "__main__":
         app.run(debug=True)
@@ -34,7 +36,7 @@ Modify the application's ``wsgi.py`` file as shown below.
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from django.core.wsgi import get_wsgi_application
 
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'application.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "application.settings")
 
     application = get_wsgi_application()
     application = OpenTelemetryMiddleware(application)
@@ -48,11 +50,10 @@ Usage (Web.py)
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from cheroot import wsgi
 
-    urls = ('/', 'index')
+    urls = ("/", "index")
 
 
     class index:
-
         def GET(self):
             return "Hello, world!"
 
@@ -63,9 +64,7 @@ Usage (Web.py)
 
         func = OpenTelemetryMiddleware(func)
 
-        server = wsgi.WSGIServer(
-            ("localhost", 5100), func, server_name="localhost"
-        )
+        server = wsgi.WSGIServer(("localhost", 5100), func, server_name="localhost")
         server.start()
 
 Configuration
@@ -90,17 +89,29 @@ For example,
     from wsgiref.types import WSGIEnvironment, StartResponse
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
+
     def app(environ: WSGIEnvironment, start_response: StartResponse):
-        start_response("200 OK", [("Content-Type", "text/plain"), ("Content-Length", "13")])
+        start_response(
+            "200 OK",
+            [("Content-Type", "text/plain"), ("Content-Length", "13")],
+        )
         return [b"Hello, World!"]
+
 
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def response_hook(span: Span, environ: WSGIEnvironment, status: str, response_headers: list[tuple[str, str]]):
+
+    def response_hook(
+        span: Span,
+        environ: WSGIEnvironment,
+        status: str,
+        response_headers: list[tuple[str, str]],
+    ):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+
 
     OpenTelemetryMiddleware(app, request_hook=request_hook, response_hook=response_hook)
 
@@ -208,8 +219,9 @@ from __future__ import annotations
 
 import functools
 import wsgiref.util as wsgiref_util
+from collections.abc import Callable, Iterable
 from timeit import default_timer
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -277,16 +289,14 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 RequestHook = Callable[[trace.Span, "WSGIEnvironment"], None]
-ResponseHook = Callable[
-    [trace.Span, "WSGIEnvironment", str, "list[tuple[str, str]]"], None
-]
+ResponseHook = Callable[[trace.Span, "WSGIEnvironment", str, "list[tuple[str, str]]"], None]
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class WSGIGetter(Getter[Dict[str, Any]]):
+class WSGIGetter(Getter[dict[str, Any]]):
     def get(self, carrier: dict[str, Any], key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the
              PEP3333-conforming WSGI environ
@@ -377,9 +387,7 @@ def collect_request_attributes(
 
     remote_host = environ.get("REMOTE_HOST")
     if remote_host and remote_host != remote_addr:
-        _set_http_net_peer_name_server(
-            result, remote_host, sem_conv_opt_in_mode
-        )
+        _set_http_net_peer_name_server(result, remote_host, sem_conv_opt_in_mode)
 
     _apply_user_agent_attributes(result, environ, sem_conv_opt_in_mode)
 
@@ -418,11 +426,7 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     See also https://peps.python.org/pep-3333/
     """
 
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
     headers = {
         key[_CARRIER_KEY_PREFIX_LEN:].replace("_", "-"): val
         for key, val in environ.items()
@@ -431,9 +435,7 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
 
     return sanitize.sanitize_header_values(
         headers,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-        ),
+        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
         normalise_request_header_name,
     )
 
@@ -446,11 +448,7 @@ def collect_custom_response_headers_attributes(
     https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
 
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
     response_headers_dict: dict[str, str] = {}
     if response_headers:
         for key, val in response_headers:
@@ -462,9 +460,7 @@ def collect_custom_response_headers_attributes(
 
     return sanitize.sanitize_header_values(
         response_headers_dict,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-        ),
+        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE),
         normalise_response_header_name,
     )
 
@@ -478,9 +474,7 @@ def _parse_status_code(resp_status: str) -> int | None:
         return None
 
 
-def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT
-):
+def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
@@ -539,9 +533,7 @@ def get_default_span_name(environ: WSGIEnvironment) -> str:
     Returns:
         The span name.
     """
-    method = sanitize_method(
-        cast(str, environ.get("REQUEST_METHOD", "")).strip()
-    )
+    method = sanitize_method(cast(str, environ.get("REQUEST_METHOD", "")).strip())
     if method == "_OTHER":
         return "HTTP"
     path = cast(str, environ.get("PATH_INFO", "")).strip()
@@ -644,9 +636,7 @@ class OpenTelemetryMiddleware:
                 sem_conv_opt_in_mode,
             )
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = collect_custom_response_headers_attributes(
-                    response_headers
-                )
+                custom_attributes = collect_custom_response_headers_attributes(response_headers)
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
             if response_hook:
@@ -657,18 +647,14 @@ class OpenTelemetryMiddleware:
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
-    def __call__(
-        self, environ: WSGIEnvironment, start_response: StartResponse
-    ):
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse):
         """The WSGI application
 
         Args:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        req_attrs = collect_request_attributes(
-            environ, self._sem_conv_opt_in_mode
-        )
+        req_attrs = collect_request_attributes(environ, self._sem_conv_opt_in_mode)
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
             self._sem_conv_opt_in_mode,
@@ -683,9 +669,7 @@ class OpenTelemetryMiddleware:
             attributes=req_attrs,
         )
         if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-            custom_attributes = collect_custom_request_headers_attributes(
-                environ
-            )
+            custom_attributes = collect_custom_request_headers_attributes(environ)
             if len(custom_attributes) > 0:
                 span.set_attributes(custom_attributes)
 
@@ -723,18 +707,14 @@ class OpenTelemetryMiddleware:
             duration_s = default_timer() - start
             active_metric_ctx = trace.set_span_in_context(span)
             if self.duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    req_attrs, _StabilityMode.DEFAULT
-                )
+                duration_attrs_old = _parse_duration_attrs(req_attrs, _StabilityMode.DEFAULT)
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
                     context=active_metric_ctx,
                 )
             if self.duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    req_attrs, _StabilityMode.HTTP
-                )
+                duration_attrs_new = _parse_duration_attrs(req_attrs, _StabilityMode.HTTP)
                 self.duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
@@ -746,9 +726,7 @@ class OpenTelemetryMiddleware:
 # Put this in a subfunction to not delay the call to the wrapped
 # WSGI application (instrumentation should change the application
 # behavior as little as possible).
-def _end_span_after_iterating(
-    iterable: Iterable[T], span: trace.Span, token: object
-) -> Iterable[T]:
+def _end_span_after_iterating(iterable: Iterable[T], span: trace.Span, token: object) -> Iterable[T]:
     try:
         with trace.use_span(span):
             yield from iterable

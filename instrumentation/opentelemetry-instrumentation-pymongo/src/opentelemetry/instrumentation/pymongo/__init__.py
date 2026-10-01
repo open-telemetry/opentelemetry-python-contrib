@@ -21,6 +21,25 @@ Usage
     collection = db["MongoDB_Collection"]
     collection.find_one()
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database conventions are emitted.
+
 API
 ---
 The `instrument` method accepts the following keyword args:
@@ -63,8 +82,9 @@ for example:
 
 from __future__ import annotations
 
+from collections.abc import Callable, Collection
 from logging import getLogger
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, TypeVar
 
 from pymongo import monitoring
 
@@ -182,13 +202,13 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.start_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
 
             # Add Span to dictionary
             self._span_dict[_get_span_dict_key(event)] = span
-        except Exception as ex:  # noqa pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-exception-caught
             if span is not None and span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
                 if _report_new(self._semconv_opt_in_mode):
@@ -207,8 +227,8 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.success_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()
 
@@ -227,23 +247,19 @@ class CommandTracer(monitoring.CommandListener):
                 )
             )
             if _report_new(self._semconv_opt_in_mode):
-                span.set_attribute(
-                    ERROR_TYPE, event.failure.get("codeName", "UnknownError")
-                )
+                span.set_attribute(ERROR_TYPE, event.failure.get("codeName", "UnknownError"))
             try:
                 self.failed_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()
 
     def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(
-        self, command_name: str, event: CommandEvent
-    ) -> str:
+    def _get_statement_by_command_name(self, command_name: str, event: CommandEvent) -> str:
         statement = command_name
         command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
         command = event.command.get(command_attribute)
@@ -303,9 +319,7 @@ class PymongoInstrumentor(BaseInstrumentor):
                 __name__,
                 __version__,
                 tracer_provider,
-                schema_url=_get_schema_url_for_signal_types(
-                    [_OpenTelemetryStabilitySignalType.DATABASE]
-                ),
+                schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE]),
             )
 
             self._commandtracer_instance = CommandTracer(

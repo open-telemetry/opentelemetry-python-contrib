@@ -16,6 +16,18 @@ Usage
     DjangoInstrumentor().instrument()
 
 
+ASGI support
+------------
+When running a Django application through ASGI, install the optional ASGI
+dependency so this instrumentation can use the ASGI context helpers:
+
+.. code:: console
+
+    pip install "opentelemetry-instrumentation-django[asgi]"
+
+Then instrument Django the same way as a WSGI application.
+
+
 Configuration
 -------------
 
@@ -288,9 +300,9 @@ API
 
 """
 
+from collections.abc import Collection
 from logging import getLogger
 from os import environ
-from typing import Collection
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -328,9 +340,7 @@ _django_middleware_setting = "MIDDLEWARE"
 _logger = getLogger(__name__)
 
 
-def _get_django_otel_middleware_position(
-    middleware_length, default_middleware_position=0
-):
+def _get_django_otel_middleware_position(middleware_length, default_middleware_position=0):
     otel_position = environ.get("OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION")
     try:
         middleware_position = int(otel_position)
@@ -358,9 +368,7 @@ class DjangoInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    _opentelemetry_middleware = ".".join(
-        [_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__]
-    )
+    _opentelemetry_middleware = ".".join([_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__])
 
     _sql_commenter_middleware = "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
 
@@ -398,14 +406,10 @@ class DjangoInstrumentor(BaseInstrumentor):
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
+            _excluded_urls_from_env if _excluded_urls is None else parse_excluded_urls(_excluded_urls)
         )
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
-        _DjangoMiddleware._otel_response_hook = kwargs.pop(
-            "response_hook", None
-        )
+        _DjangoMiddleware._otel_response_hook = kwargs.pop("response_hook", None)
         _DjangoMiddleware._duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
             _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
@@ -421,9 +425,7 @@ class DjangoInstrumentor(BaseInstrumentor):
                 unit="s",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        _DjangoMiddleware._active_request_counter = (
-            create_http_server_active_requests(meter)
-        )
+        _DjangoMiddleware._active_request_counter = create_http_server_active_requests(meter)
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
         # on that:
@@ -432,27 +434,21 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         settings_middleware = []
         try:
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
         except ImproperlyConfigured as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
         except ModuleNotFoundError as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -466,29 +462,21 @@ class DjangoInstrumentor(BaseInstrumentor):
         )
 
         if is_sql_commentor_enabled:
-            settings_middleware.insert(
-                middleware_position, self._sql_commenter_middleware
-            )
+            settings_middleware.insert(middleware_position, self._sql_commenter_middleware)
 
-        settings_middleware.insert(
-            middleware_position, self._opentelemetry_middleware
-        )
+        settings_middleware.insert(middleware_position, self._opentelemetry_middleware)
 
         setattr(settings, _django_middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        settings_middleware = getattr(
-            settings, _django_middleware_setting, None
-        )
+        settings_middleware = getattr(settings, _django_middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
         # BaseInstrumentor and another one implemented in _instrument. Both
         # stop _instrument from running and thus, settings_middleware not being
         # set.
-        if settings_middleware is None or (
-            self._opentelemetry_middleware not in settings_middleware
-        ):
+        if settings_middleware is None or (self._opentelemetry_middleware not in settings_middleware):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)

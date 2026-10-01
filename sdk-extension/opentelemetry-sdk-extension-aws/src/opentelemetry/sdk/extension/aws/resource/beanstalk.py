@@ -24,9 +24,7 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         if os.name == "nt":
-            conf_file_path = (
-                "C:\\Program Files\\Amazon\\XRay\\environment.conf"
-            )
+            conf_file_path = "C:\\Program Files\\Amazon\\XRay\\environment.conf"
         else:
             conf_file_path = "/var/elasticbeanstalk/xray/environment.conf"
 
@@ -42,15 +40,9 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
                     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
                     ResourceAttributes.SERVICE_NAME: CloudPlatformValues.AWS_ELASTIC_BEANSTALK.value,
-                    ResourceAttributes.SERVICE_INSTANCE_ID: parsed_data[
-                        "deployment_id"
-                    ],
-                    ResourceAttributes.SERVICE_NAMESPACE: parsed_data[
-                        "environment_name"
-                    ],
-                    ResourceAttributes.SERVICE_VERSION: parsed_data[
-                        "version_label"
-                    ],
+                    ResourceAttributes.SERVICE_INSTANCE_ID: parsed_data["deployment_id"],
+                    ResourceAttributes.SERVICE_NAMESPACE: parsed_data["environment_name"],
+                    ResourceAttributes.SERVICE_VERSION: parsed_data["version_label"],
                 }
             )
         # pylint: disable=broad-except
