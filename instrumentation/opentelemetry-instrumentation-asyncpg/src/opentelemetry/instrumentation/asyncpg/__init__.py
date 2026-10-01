@@ -36,6 +36,25 @@ Run instrumented code:
 
     asyncio.run(main())
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database conventions are emitted.
+
 API
 ---
 """
@@ -65,7 +84,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled, unwrap
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DbSystemValues,
 )
@@ -213,6 +232,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 unwrap(asyncpg.prepared_stmt.PreparedStatement, method_name)
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         params = getattr(instance, "_params", None)
         name = args[0] if args[0] else getattr(params, "database", "postgresql")
@@ -247,6 +269,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     async def _do_cursor_execute(self, func, instance, args, kwargs):
         """Wrap cursor based functions. For every call this will generate a new span."""
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         params = getattr(instance._connection, "_params", None)
         name = instance._query if instance._query else getattr(params, "database", "postgresql")
@@ -290,6 +315,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         raise StopAsyncIteration
 
     async def _do_prepared_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         query = instance._query or ""
 
