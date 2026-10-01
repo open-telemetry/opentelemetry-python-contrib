@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-http`: add package scaffolding for HTTP instrumentations
+`opentelemetry-instrumentation-http`: add package scaffolding for generic HTTP instrumentor package
