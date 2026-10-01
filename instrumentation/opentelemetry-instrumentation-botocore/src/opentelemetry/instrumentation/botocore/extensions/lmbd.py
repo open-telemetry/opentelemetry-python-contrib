@@ -5,7 +5,6 @@ import abc
 import inspect
 import json
 import re
-from typing import Dict
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -87,10 +86,16 @@ class _OpInvoke(_LambdaOperation):
 # Lambda extension
 ################################################################################
 
-_OPERATION_MAPPING: Dict[str, _LambdaOperation] = {
-    op.operation_name(): op
-    for op in globals().values()
-    if inspect.isclass(op) and issubclass(op, _LambdaOperation) and not inspect.isabstract(op)
+
+def _is_operation(op: object) -> bool:
+    try:
+        return inspect.isclass(op) and issubclass(op, _LambdaOperation) and not inspect.isabstract(op)
+    except TypeError:
+        return False
+
+
+_OPERATION_MAPPING: dict[str, _LambdaOperation] = {
+    op.operation_name(): op for op in globals().values() if _is_operation(op)
 }
 
 

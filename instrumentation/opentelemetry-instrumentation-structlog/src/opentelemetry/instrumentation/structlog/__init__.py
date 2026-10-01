@@ -21,9 +21,10 @@ context including trace context, custom attributes, and exception information.
 
 import sys
 import traceback
+from collections.abc import Callable, Collection
 from datetime import datetime
 from time import time_ns
-from typing import Any, Callable, Collection, Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -75,7 +76,7 @@ _STRUCTLOG_TO_OTEL_SEVERITY_TEXT = {
 }
 
 
-def _parse_structlog_timestamp(value: Any) -> Optional[int]:
+def _parse_structlog_timestamp(value: Any) -> int | None:
     """
     Convert a structlog timestamp value to nanoseconds since epoch, or None.
 
@@ -191,7 +192,7 @@ class StructlogProcessor:
 
         return attributes
 
-    def _translate(self, event_dict: dict, method_name: Optional[str] = None) -> LogRecord:
+    def _translate(self, event_dict: dict, method_name: str | None = None) -> LogRecord:
         """
         Translate a structlog event dictionary into an OpenTelemetry LogRecord.
 

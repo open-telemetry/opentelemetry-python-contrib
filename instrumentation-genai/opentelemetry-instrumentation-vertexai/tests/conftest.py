@@ -7,12 +7,10 @@ import asyncio
 import json
 import os
 import re
+from collections.abc import Callable, Generator, Mapping, MutableMapping
 from typing import (
     Any,
-    Callable,
-    Generator,
-    Mapping,
-    MutableMapping,
+    Concatenate,
     Protocol,
     TypeVar,
 )
@@ -25,7 +23,7 @@ from google.auth.aio.credentials import (
 )
 from google.auth.credentials import AnonymousCredentials
 from google.cloud.aiplatform.initializer import _set_async_rest_credentials
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import ParamSpec
 from vcr import VCR
 from vcr.record_mode import RecordMode
 from vcr.request import Request

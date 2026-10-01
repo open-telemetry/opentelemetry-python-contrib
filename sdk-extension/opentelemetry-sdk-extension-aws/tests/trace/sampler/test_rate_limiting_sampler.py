@@ -25,35 +25,35 @@ class TestRateLimitingSampler(TestCase):
 
         # Essentially the same tests as test_rate_limiter.py
         sampled = 0
-        for _ in range(0, 100):
+        for _ in range(100):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         sampled = 0
         clock.add_time(0.5)
-        for _ in range(0, 100):
+        for _ in range(100):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 15)
 
         sampled = 0
         clock.add_time(1.0)
-        for _ in range(0, 100):
+        for _ in range(100):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 30)
 
         sampled = 0
         clock.add_time(2.5)
-        for _ in range(0, 100):
+        for _ in range(100):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 30)
 
         sampled = 0
         clock.add_time(1000)
-        for _ in range(0, 100):
+        for _ in range(100):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 30)
@@ -64,28 +64,28 @@ class TestRateLimitingSampler(TestCase):
         sampler = _RateLimitingSampler(1, clock)
 
         sampled = 0
-        for _ in range(0, 50):
+        for _ in range(50):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         sampled = 0
         clock.add_time(0.5)
-        for _ in range(0, 50):
+        for _ in range(50):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 0)
 
         sampled = 0
         clock.add_time(0.5)
-        for _ in range(0, 50):
+        for _ in range(50):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 1)
 
         sampled = 0
         clock.add_time(1000)
-        for _ in range(0, 50):
+        for _ in range(50):
             if sampler.should_sample(None, 1234, "name").decision != Decision.DROP:
                 sampled += 1
         self.assertEqual(sampled, 1)

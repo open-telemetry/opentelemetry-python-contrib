@@ -8,7 +8,8 @@ import logging
 import queue
 import random
 import threading
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
