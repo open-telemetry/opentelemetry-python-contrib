@@ -1,5 +1,8 @@
-OpenTelemetry Python Instrumentor
-=================================
+.. include:: ../../../opentelemetry-instrumentation/README.rst
+    :end-before: References
+
+API
+---
 
 .. automodule:: opentelemetry.instrumentation
     :members:
