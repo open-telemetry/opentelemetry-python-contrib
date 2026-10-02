@@ -1,0 +1,40 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Semantic-convention conformance for this repository's own requests
+# instrumentation. Collected and run by the conformance pytest plugin
+# (opentelemetry-conformance[pytest]); a semantic-convention violation is a
+# test failure, which is what turns non-compliance into a red CI run.
+#
+# requests is an HTTP client, so unlike the Flask (server) scenario this
+# declares a mock server for the client to call: the runner starts
+# http-mock-server, publishes its address as MOCK_SERVER_URL, and the client
+# scenario drives the shared workload at it.
+#
+# The tooling (opentelemetry-conformance, http-conformance,
+# otel-http-mock-server, otel-http-test-client) is installed from a pinned git
+# ref of the semantic-conventions-conformance repository; see this package's
+# test-requirements.txt. The Weaver binary and the pinned registry are
+# provisioned on demand by conftest.py.
+
+runner: http-conformance
+instrumented_library: requests
+instrumentation_library: opentelemetry-instrumentation-requests
+
+env:
+  # Python's HTTP instrumentations still emit the pre-stable attributes by
+  # default, so without this a run measures the old conventions.
+  OTEL_SEMCONV_STABILITY_OPT_IN: http
+
+server:
+  # The runner substitutes ${PORT} and publishes the base URL as
+  # MOCK_SERVER_URL for the client scenario.
+  run: http-mock-server --port ${PORT}
+
+scenarios:
+  client:
+    # No `uv run --frozen` here, unlike the upstream conformance-repo scenario:
+    # the command runs in the same environment as the requests test suite, which
+    # has this repository's working-tree requests instrumentation installed
+    # editable, so that in-development instrumentation is the one measured.
+    run: otel-conformance-python scenario.py
