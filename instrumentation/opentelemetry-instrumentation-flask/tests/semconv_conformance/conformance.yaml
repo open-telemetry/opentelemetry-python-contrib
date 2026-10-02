@@ -1,0 +1,33 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Semantic-convention conformance for this repository's own Flask
+# instrumentation. Collected and run by the conformance pytest plugin
+# (opentelemetry-conformance[pytest]); a semantic-convention violation is a
+# test failure, which is what turns non-compliance into a red CI run.
+#
+# The tooling (opentelemetry-conformance, http-conformance,
+# otel-http-mock-server, otel-http-test-client) is installed from a pinned git
+# ref of the semantic-conventions-conformance repository; see this package's
+# test-requirements-3.txt. The Weaver binary and the pinned registry are
+# provisioned on demand by conftest.py.
+
+runner: http-conformance
+instrumented_library: flask
+instrumentation_library: opentelemetry-instrumentation-flask
+
+env:
+  # Python's HTTP instrumentations still emit the pre-stable attributes by
+  # default, so without this a run measures the old conventions.
+  OTEL_SEMCONV_STABILITY_OPT_IN: http
+
+scenarios:
+  server:
+    # No `uv run --frozen` here, unlike the upstream conformance-repo scenario:
+    # the command runs in the same environment as the flask test suite, which
+    # has this repository's working-tree Flask instrumentation installed
+    # editable, so that in-development instrumentation is the one measured. The
+    # requests are sent from outside the scenario, so a server run holds server
+    # telemetry only; the driver starts this command, chooses the port it binds,
+    # and closes its standard input when it is done.
+    run: otel-http-drive --serve otel-conformance-python scenario.py
