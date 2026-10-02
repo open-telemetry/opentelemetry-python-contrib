@@ -166,14 +166,15 @@ class AsyncioInstrumentor(BaseInstrumentor):
             # we decorate it with a span and return the task.
             if args and len(args) > 0:
                 first_arg = args[0]
-                # Check if it's a coroutine or future and wrap it
-                if asyncio.iscoroutine(first_arg) or futures.isfuture(first_arg):
-                    args = (self.trace_item(first_arg),) + args[1:]
                 # wait/as_completed accept any iterable of awaitables (set,
                 # tuple, generator, ...) and materialize it themselves, so
                 # replacing it with a list of wrapped items is safe.
-                elif isinstance(first_arg, Iterable) and not isinstance(first_arg, (str, bytes)):
-                    args = ([self.trace_item(item) for item in first_arg],) + args[1:]
+                if method_name in ("wait", "as_completed"):
+                    if isinstance(first_arg, Iterable) and not isinstance(first_arg, (str, bytes)):
+                        args = ([self.trace_item(item) for item in first_arg],) + args[1:]
+                # Check if it's a coroutine or future and wrap it
+                elif asyncio.iscoroutine(first_arg) or futures.isfuture(first_arg):
+                    args = (self.trace_item(first_arg),) + args[1:]
             return method(*args, **kwargs)
 
         _wrap(asyncio, method_name, wrap_coro_or_future)
