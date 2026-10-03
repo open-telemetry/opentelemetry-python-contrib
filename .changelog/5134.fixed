@@ -1,1 +1,1 @@
-`opentelemetry-exporter-prometheus-remote-write`: fix inverted `insecure_skip_verify` TLS option
+`opentelemetry-exporter-prometheus-remote-write`: fix inverted `insecure_skip_verify` TLS option; `True` now skips certificate verification
