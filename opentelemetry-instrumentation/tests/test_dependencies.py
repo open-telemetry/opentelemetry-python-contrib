@@ -59,6 +59,36 @@ class TestDependencyConflicts(TestBase):
             f'This instrumentation only instruments "pytest == 5000", but currently installed version ("pytest {pytest.__version__}") falls outside of that range, so nothing can be instrumented.',
         )
 
+    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
+    @patch("opentelemetry.instrumentation.dependencies.version", return_value="1.0-SNAPSHOT")
+    def test_get_dependency_conflicts_invalid_version(self, _):
+        conflict = get_dependency_conflicts(["foo >= 1.0"])
+        self.assertIsInstance(conflict, DependencyConflict)
+        self.assertEqual(
+            str(conflict),
+            'This instrumentation only instruments "foo >= 1.0", but currently installed version ("foo 1.0-SNAPSHOT") falls outside of that range, so nothing can be instrumented.',
+        )
+
+    # version() returns None for a dist-info without a Version field
+    @patch("opentelemetry.instrumentation.dependencies.version", return_value=None)
+    def test_get_dependency_conflicts_missing_version(self, _):
+        conflict = get_dependency_conflicts(["foo >= 1.0"])
+        self.assertIsInstance(conflict, DependencyConflict)
+        self.assertEqual(conflict.found, "foo None")
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_get_dependency_conflicts_any_invalid_version(self, version_mock):
+        version_mock.side_effect = {"foo": "1.0-SNAPSHOT", "bar": "1.0.0"}.get
+        self.assertIsNone(get_dependency_conflicts([], ["foo ~= 1.0", "bar ~= 1.0"]))
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_get_dependency_conflicts_any_only_invalid_version(self, version_mock):
+        version_mock.side_effect = {"foo": "1.0-SNAPSHOT"}.get
+        conflict = get_dependency_conflicts([], ["foo ~= 1.0"])
+        self.assertIsInstance(conflict, DependencyConflict)
+        self.assertEqual(conflict.required_any, ["foo ~= 1.0"])
+        self.assertEqual(conflict.found_any, ["foo 1.0-SNAPSHOT"])
+
     def test_get_dist_dependency_conflicts(self):
         class MockDistribution(Distribution):
             def locate_file(self, path):
