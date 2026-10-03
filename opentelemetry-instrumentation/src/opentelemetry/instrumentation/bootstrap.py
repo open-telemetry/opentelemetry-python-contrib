@@ -93,9 +93,10 @@ def _is_installed(req):
         return False
 
     try:
-        version_matches = req.specifier.contains(dist_version)
+        # dist_version is None for a dist-info without a Version field, and
+        # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
+        version_matches = dist_version is not None and req.specifier.contains(dist_version)
     except InvalidVersion:
-        # packaging 22 to 25 raise for non PEP 440 versions
         version_matches = False
 
     if not version_matches:
