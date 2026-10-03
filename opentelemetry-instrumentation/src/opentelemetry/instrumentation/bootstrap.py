@@ -13,6 +13,7 @@ from subprocess import (
 )
 
 from packaging.requirements import Requirement
+from packaging.version import InvalidVersion
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations as gen_default_instrumentations,
@@ -91,7 +92,13 @@ def _is_installed(req):
     except PackageNotFoundError:
         return False
 
-    if not req.specifier.filter(dist_version):
+    try:
+        version_matches = req.specifier.contains(dist_version)
+    except InvalidVersion:
+        # packaging 22 to 25 raise for non PEP 440 versions
+        version_matches = False
+
+    if not version_matches:
         logger.warning(
             "instrumentation for package %s is available but version %s is installed. Skipping.",
             req,
