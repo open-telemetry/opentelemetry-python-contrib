@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: report invalid library versions as dependency conflicts instead of raising
