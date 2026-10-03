@@ -413,6 +413,19 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_shared_middleware_list_not_modified(self):
+        middleware = []
+        for _ in range(2):
+            self.app = make_app(middleware=middleware)
+            self.client().simulate_get(path="/hello")
+        self.assertEqual(middleware, [])
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2)
+
+    def test_tuple_middleware(self):
+        self.app = make_app(middleware=())
+        self.client().simulate_get(path="/hello")
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
     def test_no_op_tracer_provider(self):
         FalconInstrumentor().uninstrument()
 

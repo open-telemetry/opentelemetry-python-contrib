@@ -264,7 +264,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         tracer_provider = otel_opts.pop("tracer_provider", None)
         meter_provider = otel_opts.pop("meter_provider", None)
-        if not isinstance(self._middlewares_list, (list, tuple)):
+        if isinstance(self._middlewares_list, (list, tuple)):
+            # copy, as the caller's list may be shared with other apps
+            self._middlewares_list = list(self._middlewares_list)
+        else:
             self._middlewares_list = [self._middlewares_list]
 
         self._otel_tracer = trace.get_tracer(
