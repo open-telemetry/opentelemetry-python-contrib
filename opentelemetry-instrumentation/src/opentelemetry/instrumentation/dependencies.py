@@ -22,8 +22,16 @@ def _format_deps(deps: Collection[str]) -> str:
     return ", ".join(str(dep) for dep in deps)
 
 
+def _installed_version(name: str) -> str | None:
+    # For a dist-info without a Version field, Python 3.10-3.14 return None,
+    # while 3.15+ raise KeyError (or MetadataNotFound, a FileNotFoundError)
+    try:
+        return version(name)
+    except (KeyError, FileNotFoundError):
+        return None
+
+
 def _version_matches(req: Requirement, dist_version: str | None) -> bool:
-    # dist_version is None for a dist-info without a Version field, and
     # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
     try:
         return dist_version is not None and req.specifier.contains(dist_version)
@@ -161,7 +169,7 @@ def get_dependency_conflicts(
                 return DependencyConflict(dep)
 
         try:
-            dist_version = version(req.name)
+            dist_version = _installed_version(req.name)
         except PackageNotFoundError:
             return DependencyConflict(dep)
 
@@ -198,7 +206,7 @@ def _get_dependency_conflicts_any(
                 return DependencyConflict(dep)
 
         try:
-            dist_version = version(req.name)
+            dist_version = _installed_version(req.name)
         except PackageNotFoundError:
             required_any.append(str(dep))
             continue
