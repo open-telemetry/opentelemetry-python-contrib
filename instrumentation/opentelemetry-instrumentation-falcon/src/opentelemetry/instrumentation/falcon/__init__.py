@@ -250,7 +250,8 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
     _instrumented_falcon_apps = set()
 
     def __init__(self, *args, **kwargs):
-        otel_opts = kwargs.pop("_otel_opts", {})
+        # copy, as the same options are passed to every instrumented app
+        otel_opts = dict(kwargs.pop("_otel_opts", {}))
 
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
