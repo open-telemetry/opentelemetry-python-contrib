@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-falcon`: apply `instrument()` options to every app, not just the first one
+`opentelemetry-instrumentation-falcon`: apply `instrument()` options to every app and stop modifying the caller's `middleware` list
