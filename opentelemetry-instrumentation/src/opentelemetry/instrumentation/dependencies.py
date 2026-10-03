@@ -7,6 +7,7 @@ from collections.abc import Collection
 from logging import Logger, getLogger
 
 from packaging.requirements import InvalidRequirement, Requirement
+from packaging.version import InvalidVersion
 
 from opentelemetry.util._importlib_metadata import (
     Distribution,
@@ -19,6 +20,24 @@ _logger = getLogger(__name__)
 
 def _format_deps(deps: Collection[str]) -> str:
     return ", ".join(str(dep) for dep in deps)
+
+
+def _installed_version(name: str) -> str | None:
+    # For a dist-info without a Version field, Python 3.10-3.14 return None,
+    # while 3.15+ raise KeyError (or MetadataNotFound, a FileNotFoundError)
+    try:
+        return version(name)
+    except (KeyError, FileNotFoundError):
+        return None
+
+
+def _version_matches(req: Requirement, dist_version: str | None) -> bool:
+    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions,
+    # which still satisfy a requirement without a version range
+    try:
+        return dist_version is not None and req.specifier.contains(dist_version)
+    except InvalidVersion:
+        return not req.specifier
 
 
 class DependencyConflict:
@@ -151,11 +170,11 @@ def get_dependency_conflicts(
                 return DependencyConflict(dep)
 
         try:
-            dist_version = version(req.name)
+            dist_version = _installed_version(req.name)
         except PackageNotFoundError:
             return DependencyConflict(dep)
 
-        if not req.specifier.contains(dist_version):
+        if not _version_matches(req, dist_version):
             return DependencyConflict(dep, f"{req.name} {dist_version}")
 
     # If all the dependencies in "instruments" are present, check "instruments-any" for conflicts.
@@ -188,12 +207,12 @@ def _get_dependency_conflicts_any(
                 return DependencyConflict(dep)
 
         try:
-            dist_version = version(req.name)
+            dist_version = _installed_version(req.name)
         except PackageNotFoundError:
             required_any.append(str(dep))
             continue
 
-        if req.specifier.contains(dist_version):
+        if _version_matches(req, dist_version):
             # Since only one of the instrumentation_any dependencies is required, there is no dependency conflict.
             is_dependency_conflict = False
             break
