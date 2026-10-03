@@ -97,6 +97,21 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
             **kwargs,
         )
 
+    @staticmethod
+    def add_error_details_to_span(span: trace.Span, exc: Exception) -> None:
+        if isinstance(exc, grpc.RpcError):
+            span.set_attribute(
+                RPC_GRPC_STATUS_CODE,
+                exc.code().value[0],
+            )
+        span.set_status(
+            Status(
+                status_code=StatusCode.ERROR,
+                description=f"{type(exc).__name__}: {exc}",
+            )
+        )
+        span.record_exception(exc)
+
     # pylint:disable=no-self-use
     def _trace_result(self, span, rpc_info, result):
         # If the RPC is called asynchronously, add a callback to end the span
@@ -211,10 +226,9 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
 
             try:
                 yield from invoker(request_or_iterator, metadata)
-            except grpc.RpcError as err:
-                span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
-                raise err
+            except Exception as err:
+                self.add_error_details_to_span(span, err)
+                raise
         finally:
             span.end()
 
