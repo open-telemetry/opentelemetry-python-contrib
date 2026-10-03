@@ -72,19 +72,25 @@ class TestDependencyConflicts(TestBase):
             'This instrumentation only instruments "foo >= 1.0", but currently installed version ("foo 1.0-SNAPSHOT") falls outside of that range, so nothing can be instrumented.',
         )
 
-    # version() returns None for a dist-info without a Version field
-    @patch("opentelemetry.instrumentation.dependencies.version", return_value=None)
-    def test_get_dependency_conflicts_missing_version(self, _):
-        conflict = get_dependency_conflicts(["foo >= 1.0"])
-        self.assertIsInstance(conflict, DependencyConflict)
-        self.assertEqual(conflict.found, "foo None")
+    @patch("opentelemetry.instrumentation.dependencies.version", return_value="1.0-SNAPSHOT")
+    @patch("packaging.specifiers.SpecifierSet.contains", side_effect=InvalidVersion)
+    def test_get_dependency_conflicts_invalid_version_no_range(self, mock_contains, _):
+        self.assertIsNone(get_dependency_conflicts(["foo"]))
+        mock_contains.assert_called_once()
 
-    # Python 3.15+ raise instead of returning None for missing version metadata
-    def test_get_dependency_conflicts_missing_version_raises(self):
-        for exc in (KeyError("Version"), FileNotFoundError("No package metadata was found.")):
-            with self.subTest(exc=exc):
-                with patch("opentelemetry.instrumentation.dependencies.version", side_effect=exc):
-                    conflict = get_dependency_conflicts(["foo >= 1.0"])
+    # For a dist-info without a Version field, version() returns None on
+    # Python 3.10-3.14, while 3.15+ raise KeyError or MetadataNotFound
+    def test_get_dependency_conflicts_missing_version(self):
+        for kwargs in (
+            {"return_value": None},
+            {"side_effect": KeyError("Version")},
+            {"side_effect": FileNotFoundError("No package metadata was found.")},
+        ):
+            with (
+                self.subTest(**kwargs),
+                patch("opentelemetry.instrumentation.dependencies.version", **kwargs),
+            ):
+                conflict = get_dependency_conflicts(["foo >= 1.0"])
                 self.assertIsInstance(conflict, DependencyConflict)
                 self.assertEqual(conflict.found, "foo None")
 

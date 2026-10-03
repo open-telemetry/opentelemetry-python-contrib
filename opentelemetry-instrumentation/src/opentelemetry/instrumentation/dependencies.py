@@ -32,11 +32,12 @@ def _installed_version(name: str) -> str | None:
 
 
 def _version_matches(req: Requirement, dist_version: str | None) -> bool:
-    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
+    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions,
+    # which still satisfy a requirement without a version range
     try:
         return dist_version is not None and req.specifier.contains(dist_version)
     except InvalidVersion:
-        return False
+        return not req.specifier
 
 
 class DependencyConflict:
