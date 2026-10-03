@@ -91,6 +91,10 @@ def _is_installed(req):
         dist_version = version(req.name)
     except PackageNotFoundError:
         return False
+    except (KeyError, FileNotFoundError):
+        # Python 3.15+ raise instead of returning None for a dist-info
+        # without a Version field (or MetadataNotFound without METADATA)
+        dist_version = None
 
     try:
         # dist_version is None for a dist-info without a Version field, and

@@ -128,9 +128,18 @@ class TestIsInstalled(TestCase):
         mock_contains.assert_called_once()
         self.assertIn("version 1.0-SNAPSHOT is installed", logs.output[0])
 
-    # version() returns None for a dist-info without a Version field
-    @patch("opentelemetry.instrumentation.bootstrap.version", return_value=None)
-    def test_missing_version(self, _):
-        with self.assertLogs(bootstrap.logger, level="WARNING") as logs:
-            self.assertFalse(bootstrap._is_installed("foo >= 1.0, < 2.0"))
-        self.assertIn("version None is installed", logs.output[0])
+    # For a dist-info without a Version field, version() returns None on
+    # Python 3.10-3.14, while 3.15+ raise KeyError or MetadataNotFound
+    def test_missing_version(self):
+        for kwargs in (
+            {"return_value": None},
+            {"side_effect": KeyError("Version")},
+            {"side_effect": FileNotFoundError("No package metadata was found.")},
+        ):
+            with (
+                self.subTest(**kwargs),
+                patch("opentelemetry.instrumentation.bootstrap.version", **kwargs),
+                self.assertLogs(bootstrap.logger, level="WARNING") as logs,
+            ):
+                self.assertFalse(bootstrap._is_installed("foo >= 1.0, < 2.0"))
+            self.assertIn("version None is installed", logs.output[0])
