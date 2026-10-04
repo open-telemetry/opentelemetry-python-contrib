@@ -72,10 +72,5 @@
         // Disable Renovate for the python version used in GitHub Actions workflows. The version is generated based on tox envs.
         enabled: false,
       },
-      {
-        matchManagers: ["github-actions"],
-        matchDepNames: ["open-telemetry/opentelemetry-python-contrib"],
-        enabled: false,
-      },
     ],
 }
