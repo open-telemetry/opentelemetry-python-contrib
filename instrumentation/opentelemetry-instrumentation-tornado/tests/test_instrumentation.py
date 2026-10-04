@@ -656,6 +656,20 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         self.memory_exporter.clear()
 
+    def test_invalid_request_uri_does_not_break_request(self):
+        # `request.uri` comes straight off the request line and need not be a
+        # parsable URL. Instrumentation must not change the outcome of such a
+        # request; this target matches no route, so the app answers 404. It
+        # previously became a 500 from urlparse raising in _parse_url_query.
+        response = self.fetch("//exa[mple", raise_error=False)
+
+        self.assertEqual(response.code, 404)
+
+        spans = self.memory_exporter.get_finished_spans()
+        server = next(span for span in spans if span.kind is SpanKind.SERVER)
+        self.assertEqual(server.attributes[HTTP_TARGET], "//exa[mple")
+        self.assertEqual(server.attributes[HTTP_STATUS_CODE], 404)
+
 
 class TestTornadoInstrumentationWithXHeaders(TornadoTest):
     def get_httpserver_options(self):  # pylint: disable=no-self-use

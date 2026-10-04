@@ -145,6 +145,29 @@ To capture query parameters in the span attribute `db.statement.parameters`, ena
         capture_parameters=True,
     )
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -155,8 +178,9 @@ import logging
 import threading
 import typing
 import weakref
+from collections.abc import Collection
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Any, Collection
+from typing import Any
 
 import psycopg2
 from psycopg2.extensions import (
@@ -244,7 +268,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_connection(
         connection: PgConnection,
-        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        tracer_provider: trace_api.TracerProvider | None = None,
         enable_commenter: bool = False,
         commenter_options: dict[Any, Any] | None = None,
         enable_attribute_commenter: bool = False,
@@ -307,8 +331,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -331,8 +355,11 @@ class CursorTracer(dbapi.CursorTracer):
             statement = statement.as_string(cursor)
 
         if isinstance(statement, str):
-            # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", statement).split()[0]
+            # Strip leading comments so we get the operation name. A statement that
+            # is truthy but has no tokens left (comment-only or whitespace-only)
+            # must not raise IndexError; return an empty operation name instead.
+            tokens = self._leading_comment_remover.sub("", statement).split()
+            return tokens[0] if tokens else ""
 
         return ""
 
@@ -348,8 +375,8 @@ class CursorTracer(dbapi.CursorTracer):
 
 def _new_cursor_factory(
     db_api: dbapi.DatabaseApiIntegration = None,
-    base_factory: typing.Optional[typing.Type[pg_cursor]] = None,
-    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    base_factory: type[pg_cursor] | None = None,
+    tracer_provider: trace_api.TracerProvider | None = None,
     enable_commenter: bool = False,
     commenter_options: dict[Any, Any] | None = None,
     enable_attribute_commenter: bool = False,

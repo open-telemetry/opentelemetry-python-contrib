@@ -46,7 +46,6 @@ API
 """
 
 import logging
-import typing
 from os import environ
 
 from opentelemetry import trace
@@ -103,7 +102,7 @@ class AwsXRayPropagator(TextMapPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Context | None = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
         if context is None:
@@ -261,7 +260,7 @@ class AwsXRayPropagator(TextMapPropagator):
     def inject(
         self,
         carrier: CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Context | None = None,
         setter: Setter[CarrierT] = default_setter,
     ) -> None:
         span = trace.get_current_span(context=context)
@@ -318,7 +317,7 @@ class AwsXRayLambdaPropagator(AwsXRayPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Context | None = None,
         getter: Getter[CarrierT] = default_getter,
     ) -> Context:
         xray_context = super().extract(carrier, context=context, getter=getter)

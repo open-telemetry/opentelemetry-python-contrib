@@ -9,6 +9,7 @@ from kafka.errors import TopicAlreadyExistsError
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.kafka import KafkaInstrumentor
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -60,7 +61,10 @@ class TestFunctionalKafka(TestBase):
         for span, metadata in zip(spans, metadatas):
             self.assertEqual(span.name, f"{KAFKA_TOPIC} send")
             self.assertIs(span.kind, trace_api.SpanKind.PRODUCER)
-            self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "kafka")
+            self.assertEqual(
+                span.attributes[messaging_attributes.MESSAGING_SYSTEM],
+                "kafka",
+            )
             self.assertEqual(
                 span.attributes[SpanAttributes.MESSAGING_DESTINATION],
                 KAFKA_TOPIC,

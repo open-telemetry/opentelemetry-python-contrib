@@ -273,7 +273,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         mock_trace.configure_mock(
             **{
                 "get_current_span.return_value": Mock(
-                    **{"get_span_context.return_value": Mock(**{"is_valid": True, "trace_id": 1, "span_id": 1})}
+                    **{"get_span_context.return_value": Mock(is_valid=True, trace_id=1, span_id=1)}
                 )
             }
         )
