@@ -19,13 +19,13 @@ concurrency:
 
 jobs:
   misc:
-    uses: ./.github/workflows/misc.yml
+    uses: ./.github/workflows/misc.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   lint:
-    uses: ./.github/workflows/lint.yml
+    uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   rust:
-    uses: ./.github/workflows/rust.yml
+    uses: ./.github/workflows/rust.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   tests:
-    uses: ./.github/workflows/test.yml
+    uses: ./.github/workflows/test.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
 
   check:
     if: always()
@@ -37,6 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}

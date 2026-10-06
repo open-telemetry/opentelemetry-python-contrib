@@ -133,6 +133,29 @@ will also be configured by this setting.
 Warning:
     Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -341,7 +364,11 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
-            return self._leading_comment_remover.sub("", statement).split()[0] if statement else ""
+            # A statement that is truthy but has no tokens after leading-comment
+            # or whitespace stripping (e.g. a comment-only Composed) must not
+            # raise IndexError; return an empty operation name instead.
+            tokens = self._leading_comment_remover.sub("", statement).split()
+            return tokens[0] if tokens else ""
         return super().get_operation_name(cursor, args)
 
     def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
