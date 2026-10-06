@@ -22,6 +22,10 @@ from ._constants import (
 
 
 class AzureFunctionsResourceDetector(ResourceDetector):
+    # pylint: disable=no-self-use
+    def is_process_dependent(self) -> bool:
+        return True
+
     def detect(self) -> Resource:
         attributes = {}
         if _is_on_functions():
