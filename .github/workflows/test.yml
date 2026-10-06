@@ -4056,8 +4056,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-dbapi-wrapt2 -- -ra
 
-  py310-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.10 Ubuntu
+  py310-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4075,10 +4075,31 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asyncclick -- -ra
+        run: tox -e py310-test-instrumentation-asyncclick-oldest -- -ra
 
-  py311-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.11 Ubuntu
+  py310-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-asyncclick-latest -- -ra
+
+  py311-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4096,10 +4117,31 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-asyncclick -- -ra
+        run: tox -e py311-test-instrumentation-asyncclick-oldest -- -ra
 
-  py312-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.12 Ubuntu
+  py311-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-asyncclick-latest -- -ra
+
+  py312-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4117,10 +4159,31 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-asyncclick -- -ra
+        run: tox -e py312-test-instrumentation-asyncclick-oldest -- -ra
 
-  py313-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.13 Ubuntu
+  py312-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-asyncclick-latest -- -ra
+
+  py313-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4138,10 +4201,31 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-asyncclick -- -ra
+        run: tox -e py313-test-instrumentation-asyncclick-oldest -- -ra
 
-  py314-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.14 Ubuntu
+  py313-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-asyncclick-latest -- -ra
+
+  py314-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4159,10 +4243,31 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-instrumentation-asyncclick -- -ra
+        run: tox -e py314-test-instrumentation-asyncclick-oldest -- -ra
 
-  pypy3-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick pypy-3.10 Ubuntu
+  py314-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-asyncclick-latest -- -ra
+
+  pypy3-test-instrumentation-asyncclick-oldest_ubuntu-latest:
+    name: instrumentation-asyncclick-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -4180,7 +4285,28 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-asyncclick -- -ra
+        run: tox -e pypy3-test-instrumentation-asyncclick-oldest -- -ra
+
+  pypy3-test-instrumentation-asyncclick-latest_ubuntu-latest:
+    name: instrumentation-asyncclick-latest pypy-3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python pypy-3.10
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "pypy-3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-asyncclick-latest -- -ra
 
   py310-test-instrumentation-click_ubuntu-latest:
     name: instrumentation-click 3.10 Ubuntu
