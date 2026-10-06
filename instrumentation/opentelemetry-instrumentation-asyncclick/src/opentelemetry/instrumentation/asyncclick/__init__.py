@@ -50,7 +50,7 @@ from typing import (
 import asyncclick
 from typing_extensions import ParamSpec, Unpack
 from wrapt import (
-    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+    wrap_function_wrapper,
 )
 
 from opentelemetry import trace
