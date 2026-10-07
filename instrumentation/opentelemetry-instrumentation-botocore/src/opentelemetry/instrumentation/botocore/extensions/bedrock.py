@@ -149,6 +149,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
         )
 
+    # pylint: disable=too-many-branches
     def _extract_metrics_attributes(self) -> _AttributeMapT:
         attributes = {
             GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value,
