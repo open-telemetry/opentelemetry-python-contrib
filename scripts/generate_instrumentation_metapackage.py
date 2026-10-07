@@ -21,7 +21,7 @@ base_instrumentation_path = os.path.join(root_path, "instrumentation")
 packages_to_exclude = [
     # Valkey instrumentation is currently a PyPI boilerplate package.
     # Include it in the metapackage once its implementation is available.
-    "opentelemetry-instrumentation-valkey",
+    "opentelemetry-instrumentation-valkey-py",
 ]
 
 
