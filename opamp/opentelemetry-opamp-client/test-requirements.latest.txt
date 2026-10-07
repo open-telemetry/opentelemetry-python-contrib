@@ -16,8 +16,6 @@ idna==3.10
     # via
     #   requests
     #   yarl
-importlib-metadata==8.7.0
-    # via opentelemetry-api
 iniconfig==2.1.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
@@ -53,6 +51,7 @@ requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   opentelemetry-opamp-client
 tomli==2.2.1
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
@@ -83,8 +82,6 @@ yarl==1.20.1
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   vcrpy
-zipp==3.23.0
-    # via importlib-metadata
 
 # The following packages were excluded from the output:
 # opentelemetry-api
