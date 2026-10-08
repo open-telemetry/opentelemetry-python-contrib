@@ -652,8 +652,10 @@ def _instrument(
         kwargs["trace_configs"] = client_trace_configs
         return wrapped(*args, **kwargs)
 
-    wrapt.wrap_function_wrapper(  # type: ignore[reportUnknownVariableType]
-        aiohttp.ClientSession, "__init__", instrumented_init
+    wrapt.wrap_function_wrapper(
+        aiohttp.ClientSession,
+        "__init__",
+        instrumented_init,  # pyright: ignore[reportArgumentType]
     )
 
 
