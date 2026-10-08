@@ -1,10 +1,39 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import partial, wraps
+
 from django.http import HttpResponse
+from django.views.generic import View
 
 
 def traced(request):  # pylint: disable=unused-argument
+    return HttpResponse()
+
+
+class TracedClassView(View):
+    # pylint: disable=no-self-use
+    def get(self, request):  # pylint: disable=unused-argument
+        return HttpResponse()
+
+
+def traced_with_arg(request, extra=None):  # pylint: disable=unused-argument
+    return HttpResponse()
+
+
+traced_partial = partial(traced_with_arg, extra="partial")
+
+
+def _pass_through_decorator(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        return func(request, *args, **kwargs)
+
+    return wrapper
+
+
+@_pass_through_decorator
+def traced_decorated(request):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
