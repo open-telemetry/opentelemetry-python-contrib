@@ -26,6 +26,7 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
   - [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
   - [Development](#development)
     - [Virtual Environment](#virtual-environment)
+      - [Virtual Environment Including Local Core Repository](#virtual-environment-including-local-core-repository)
     - [Troubleshooting](#troubleshooting)
     - [Benchmarks](#benchmarks)
   - [Pull Requests](#pull-requests)
@@ -121,6 +122,26 @@ uv sync
 ```
 
 This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
+
+#### Virtual Environment Including Local Core Repository
+
+If you also have a local clone of [`opentelemetry-python`](https://github.com/open-telemetry/opentelemetry-python) and want `uv` to use your local clone to resolve core dependencies, you can run the following commands after **activating the virtual environment created in the previous step**. 
+
+Note you may have to replace `../opentelemetry-python` with the path to your local clone.
+
+```sh
+uv sync --project ../opentelemetry-python --active --inexact
+```
+
+How you activate the virtual environment is platform specific. Some examples:
+```sh
+source .venv/bin/activate # Linux
+```
+
+```ps1
+.venv\Scripts\activate.ps1 # Windows Powershell
+.venv\Scripts\activate.bat # Windows CMD
+```
 
 ### Troubleshooting
 
