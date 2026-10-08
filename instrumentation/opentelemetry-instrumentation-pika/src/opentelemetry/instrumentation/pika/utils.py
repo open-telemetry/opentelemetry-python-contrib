@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from logging import getLogger
 from typing import Any
@@ -14,13 +16,22 @@ from pika.spec import Basic, BasicProperties
 from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetryStabilitySignalType,
+    _get_semconv_opt_in_modes,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv._incubating.attributes import (
     messaging_attributes,
     server_attributes,
 )
-from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.semconv.trace import (
+    MessagingOperationValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
 
@@ -70,7 +81,9 @@ def _decorate_callback(
             tracer,
             channel,
             properties,
-            destination=(method.exchange if method.exchange else method.routing_key),
+            destination=(
+                method.exchange if method.exchange else method.routing_key
+            ),
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,
@@ -117,7 +130,9 @@ def _decorate_basic_publish(
             operation=None,
         )
         if not span:
-            return original_function(exchange, routing_key, body, properties, mandatory)
+            return original_function(
+                exchange, routing_key, body, properties, mandatory
+            )
         with trace.use_span(span, end_on_exit=True):
             propagate.inject(properties.headers)
             try:
@@ -168,40 +183,73 @@ def _enrich_span(
     task_destination: str,
     operation: MessagingOperationValues | None = None,
 ) -> None:
-    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq")
-    if operation:
-        span.set_attribute(messaging_attributes.MESSAGING_OPERATION, operation.value)
-    else:
-        span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_TEMPORARY, True)
+    signal = _OpenTelemetryStabilitySignalType.MESSAGING
+    mode = _get_semconv_opt_in_modes((signal,))[signal]
+
     span.set_attribute(
-        messaging_attributes.MESSAGING_DESTINATION_NAME, task_destination
+        messaging_attributes.MESSAGING_SYSTEM,
+        messaging_attributes.MessagingSystemValues.RABBITMQ.value,
     )
+    if operation is not None:
+        span.set_attribute(
+            messaging_attributes.MESSAGING_OPERATION,
+            operation.value,
+        )
     if properties.message_id:
         span.set_attribute(
             messaging_attributes.MESSAGING_MESSAGE_ID,
             properties.message_id,
         )
-    if properties.correlation_id:
+
+    if _report_old(mode):
         span.set_attribute(
-            messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
-            properties.correlation_id,
+            SpanAttributes.MESSAGING_DESTINATION,
+            task_destination,
         )
-    if not channel:
+        if operation is None:
+            span.set_attribute(
+                SpanAttributes.MESSAGING_TEMP_DESTINATION,
+                True,
+            )
+        if properties.correlation_id:
+            span.set_attribute(
+                SpanAttributes.MESSAGING_CONVERSATION_ID,
+                properties.correlation_id,
+            )
+
+    if _report_new(mode):
+        span.set_attribute(
+            messaging_attributes.MESSAGING_DESTINATION_NAME,
+            task_destination,
+        )
+        if operation is None:
+            span.set_attribute(
+                messaging_attributes.MESSAGING_DESTINATION_TEMPORARY,
+                True,
+            )
+        if properties.correlation_id:
+            span.set_attribute(
+                messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+                properties.correlation_id,
+            )
+
+    if channel is None:
         return
-    if not hasattr(channel.connection, "params"):
-        span.set_attribute(
-            server_attributes.SERVER_ADDRESS, channel.connection._impl.params.host
-        )
-        span.set_attribute(
-            server_attributes.SERVER_PORT, channel.connection._impl.params.port
-        )
-    else:
-        span.set_attribute(
-            server_attributes.SERVER_ADDRESS, channel.connection.params.host
-        )
-        span.set_attribute(
-            server_attributes.SERVER_PORT, channel.connection.params.port
-        )
+
+    connection = channel.connection
+    params = (
+        connection.params
+        if hasattr(connection, "params")
+        else connection._impl.params
+    )
+
+    if _report_old(mode):
+        span.set_attribute(SpanAttributes.NET_PEER_NAME, params.host)
+        span.set_attribute(SpanAttributes.NET_PEER_PORT, params.port)
+
+    if _report_new(mode):
+        span.set_attribute(server_attributes.SERVER_ADDRESS, params.host)
+        span.set_attribute(server_attributes.SERVER_PORT, params.port)
 
 
 # pylint:disable=abstract-method
@@ -245,7 +293,9 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     None,
                     properties,
                     destination=(
-                        method.exchange if method.exchange else method.routing_key
+                        method.exchange
+                        if method.exchange
+                        else method.routing_key
                     ),
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,

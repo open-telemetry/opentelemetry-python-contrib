@@ -19,6 +19,14 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Span, SpanKind, Tracer
 
+import os
+from unittest import mock
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.instrumentation.environment_variables import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+)
 
 class TestUtils(TestCase):
     @staticmethod
@@ -97,24 +105,22 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq"),
-                mock.call(messaging_attributes.MESSAGING_DESTINATION_TEMPORARY, True),
-                mock.call(
-                    messaging_attributes.MESSAGING_DESTINATION_NAME, task_destination
-                ),
+                mock.call("messaging.temp_destination", True),
+                mock.call("messaging.destination", task_destination),
                 mock.call(
                     messaging_attributes.MESSAGING_MESSAGE_ID,
                     properties.message_id,
                 ),
                 mock.call(
-                    messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+                    "messaging.conversation_id",
                     properties.correlation_id,
                 ),
                 mock.call(
-                    server_attributes.SERVER_ADDRESS,
+                    "net.peer.name",
                     channel.connection.params.host,
                 ),
                 mock.call(
-                    server_attributes.SERVER_PORT,
+                    "net.peer.port",
                     channel.connection.params.port,
                 ),
             ],
@@ -145,7 +151,7 @@ class TestUtils(TestCase):
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[
-                mock.call(messaging_attributes.MESSAGING_DESTINATION_TEMPORARY, True)
+                mock.call("messaging.temp_destination", True)
             ],
         )
 
@@ -161,15 +167,131 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(
-                    server_attributes.SERVER_ADDRESS,
+                    "net.peer.name",
                     channel.connection._impl.params.host,
                 ),
                 mock.call(
-                    server_attributes.SERVER_PORT,
+                    "net.peer.port",
                     channel.connection._impl.params.port,
                 ),
             ],
         )
+
+    def test_enrich_span_legacy_default(self) -> None:
+        span = mock.MagicMock()
+        channel = mock.MagicMock()
+        channel.connection.params.host = "localhost"
+        channel.connection.params.port = 5672
+        properties = mock.MagicMock()
+        properties.message_id = "123"
+        properties.correlation_id = "456"
+
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_initialized",
+                False,
+            ),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING",
+                {},
+            ),
+        ):
+            utils._enrich_span(
+                span,
+                channel,
+                properties,
+                "my_queue",
+                None,
+            )
+
+        attributes = {
+            call.args[0]: call.args[1] for call in span.set_attribute.call_args_list
+        }
+        self.assertEqual(attributes.get("messaging.destination"), "my_queue")
+        self.assertEqual(attributes.get("net.peer.name"), "localhost")
+        self.assertNotIn("messaging.destination.name", attributes)
+
+    def test_enrich_span_new_opt_in(self) -> None:
+        span = mock.MagicMock()
+        channel = mock.MagicMock()
+        channel.connection.params.host = "localhost"
+        channel.connection.params.port = 5672
+        properties = mock.MagicMock()
+        properties.message_id = "123"
+        properties.correlation_id = "456"
+
+        with (
+            mock.patch.dict(
+                os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "messaging"}
+            ),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_initialized",
+                False,
+            ),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING",
+                {},
+            ),
+        ):
+            utils._enrich_span(
+                span,
+                channel,
+                properties,
+                "my_queue",
+                None,
+            )
+
+        attributes = {
+            call.args[0]: call.args[1] for call in span.set_attribute.call_args_list
+        }
+        self.assertEqual(attributes.get("messaging.destination.name"), "my_queue")
+        self.assertEqual(attributes.get("server.address"), "localhost")
+        self.assertNotIn("messaging.destination", attributes)
+
+    def test_enrich_span_dual_emission(self) -> None:
+        span = mock.MagicMock()
+        channel = mock.MagicMock()
+        channel.connection.params.host = "localhost"
+        channel.connection.params.port = 5672
+        properties = mock.MagicMock()
+        properties.message_id = "123"
+        properties.correlation_id = "456"
+
+        with (
+            mock.patch.dict(
+                os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "messaging/dup"}
+            ),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_initialized",
+                False,
+            ),
+            mock.patch.object(
+                _OpenTelemetrySemanticConventionStability,
+                "_OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING",
+                {},
+            ),
+        ):
+            utils._enrich_span(
+                span,
+                channel,
+                properties,
+                "my_queue",
+                None,
+            )
+
+        attributes = {
+            call.args[0]: call.args[1] for call in span.set_attribute.call_args_list
+        }
+        self.assertEqual(attributes.get("messaging.destination"), "my_queue")
+        self.assertEqual(attributes.get("messaging.destination.name"), "my_queue")
+        self.assertEqual(attributes.get("net.peer.name"), "localhost")
+        self.assertEqual(attributes.get("server.address"), "localhost")
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.extract")
