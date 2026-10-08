@@ -53,7 +53,24 @@ class TestAzureAppServiceResourceDetector(unittest.TestCase):
 
         self.assertEqual(attributes["cloud.region"], TEST_REGION_NAME)
         self.assertEqual(attributes["faas.instance"], TEST_WEBSITE_INSTANCE_ID)
-        self.assertEqual(attributes["faas.max_memory"], 1024)
+        self.assertEqual(attributes["faas.max_memory"], 1073741824)
+        self.assertIs(type(attributes["faas.max_memory"]), int)
+
+    def test_memory_limit_in_bytes(self) -> None:
+        for memory_mb, expected_bytes in (("128", 134217728), ("1536", 1610612736)):
+            with self.subTest(memory_mb=memory_mb):
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "FUNCTIONS_WORKER_RUNTIME": "1",
+                        "WEBSITE_MEMORY_LIMIT_MB": memory_mb,
+                    },
+                    clear=True,
+                ):
+                    attributes = AzureFunctionsResourceDetector().detect().attributes
+
+                self.assertEqual(attributes["faas.max_memory"], expected_bytes)
+                self.assertIs(type(attributes["faas.max_memory"]), int)
 
     @patch.dict(
         "os.environ",
