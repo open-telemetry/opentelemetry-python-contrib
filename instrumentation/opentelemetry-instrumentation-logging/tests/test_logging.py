@@ -320,6 +320,50 @@ class TestLoggingInstrumentor(TestBase):
             root_logger.handlers = orig_handlers
             root_logger.setLevel(orig_level)
 
+    def test_uninstrument_preserves_level_changed_by_application(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+
+        try:
+            root_logger.handlers = []
+            root_logger.setLevel(logging.WARNING)
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            self.assertEqual(root_logger.level, logging.INFO)
+
+            root_logger.setLevel(logging.ERROR)
+            LoggingInstrumentor().uninstrument()
+
+            self.assertEqual(root_logger.level, logging.ERROR)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
+    def test_uninstrument_does_not_restore_level_when_basicconfig_is_no_op(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+        custom_handler = logging.StreamHandler()
+
+        try:
+            root_logger.handlers = [custom_handler]
+            root_logger.setLevel(logging.WARNING)
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            root_logger.setLevel(logging.ERROR)
+            LoggingInstrumentor().uninstrument()
+
+            self.assertEqual(root_logger.level, logging.ERROR)
+            self.assertIn(custom_handler, root_logger.handlers)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
     @mock.patch("logging.basicConfig")
     def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()

@@ -170,6 +170,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             LoggingInstrumentor._old_handlers_state = {
                 "old_level": old_level,
                 "added_handlers": added_handlers,
+                # basicConfig is a no-op when the root logger already has a
+                # handler. Only restore a level that instrumentation changed.
+                "configured_level": (log_level if added_handlers and old_level != log_level else None),
             }
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
@@ -265,7 +268,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             LoggingInstrumentor._old_handlers_state = None
 
             root = logging.getLogger()
-            root.setLevel(state["old_level"])
+            if state["configured_level"] is not None and root.level == state["configured_level"]:
+                root.setLevel(state["old_level"])
 
             for h in list(root.handlers):
                 if h in state["added_handlers"]:
