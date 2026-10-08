@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: do not append the database name to `db.operation.name` and `db.operation`; the span name keeps the `<operation> <target>` form

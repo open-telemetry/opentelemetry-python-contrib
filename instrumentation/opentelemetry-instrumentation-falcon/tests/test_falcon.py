@@ -558,6 +558,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
 
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def test_falcon_active_requests_unit_new_semconv(self):
+        # The semantic conventions define http.server.active_requests with the
+        # UCUM annotation unit {request}.
+        self.client().simulate_get("/hello/756")
+        metrics = self.get_sorted_metrics(SCOPE)
+
+        active_requests = [metric for metric in metrics if metric.name == "http.server.active_requests"]
+        self.assertEqual(len(active_requests), 1)
+        self.assertEqual(active_requests[0].unit, "{request}")
+
     def test_falcon_metric_values_both_semconv(self):
         number_data_point_seen = False
         histogram_data_point_seen = False

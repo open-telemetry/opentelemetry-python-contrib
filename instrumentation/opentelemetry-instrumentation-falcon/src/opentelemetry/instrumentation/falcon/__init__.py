@@ -301,7 +301,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
+            unit="{request}",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
