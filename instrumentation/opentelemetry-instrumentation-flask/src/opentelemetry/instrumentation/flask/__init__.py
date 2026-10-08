@@ -301,6 +301,7 @@ _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
+_ENVIRON_STREAMING_KEY = "opentelemetry-flask.streaming"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -394,14 +395,67 @@ def _rewrapped_app(
                     )
                 if response_hook is not None:
                     response_hook(span, status, response_headers)
+
+                # Detect a streaming response from its headers before Flask tears
+                # down the request context. SSE and other streamed bodies must keep
+                # the server span open until the body is fully sent
+                # (open-telemetry/opentelemetry-python-contrib#3401). The flag is
+                # read by the teardown handler (to skip ending the span) and the
+                # response body is wrapped in _wrapped_app to end the span on
+                # completion.
+                header_map = {key.lower(): value for key, value in response_headers}
+                content_type = header_map.get("content-type", "")
+                transfer_encoding = header_map.get("transfer-encoding", "").lower()
+                if (
+                    content_type.startswith("text/event-stream")
+                    or "chunked" in transfer_encoding
+                ):
+                    flask.request.environ[_ENVIRON_STREAMING_KEY] = True
             return start_response(status, response_headers, *args, **kwargs)
 
         try:
             result = wsgi_app(wrapped_app_environ, _start_response)
 
-            # Note: Streaming response context cleanup is now handled in the Flask teardown function
-            # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
-            # for OpenTelemetry generator context management
+            # If the response was detected as streaming (see _start_response), the
+            # request context has already been torn down without ending the span
+            # (the teardown handler skips it). Wrap the WSGI result iterable so the
+            # span ends only after the body is fully consumed/closed, mirroring the
+            # WSGI middleware's _end_span_after_iterating (fixes
+            # open-telemetry/opentelemetry-python-contrib#3401).
+            if wrapped_app_environ.get(_ENVIRON_STREAMING_KEY):
+                streaming_activation = wrapped_app_environ.get(_ENVIRON_ACTIVATION_KEY)
+                streaming_token = wrapped_app_environ.get(_ENVIRON_TOKEN)
+                if streaming_activation is not None:
+
+                    def _end_span_after_streaming(
+                        iterable=result,
+                        activation=streaming_activation,
+                        token=streaming_token,
+                    ):
+                        try:
+                            yield from iterable
+                        finally:
+                            # End the span and detach context once the stream is
+                            # fully consumed. Cleanup failures must not break the
+                            # response, mirroring the previous teardown behavior.
+                            try:
+                                close = getattr(iterable, "close", None)
+                                if close:
+                                    close()
+                            except Exception as close_exc:  # pylint: disable=broad-except
+                                _logger.debug("Streaming response close failed: %s", close_exc)
+                            try:
+                                if hasattr(activation, "__exit__"):
+                                    activation.__exit__(None, None, None)
+                            except Exception as exit_exc:  # pylint: disable=broad-except
+                                _logger.debug("Streaming span end failed: %s", exit_exc)
+                            if token is not None:
+                                try:
+                                    context.detach(token)
+                                except Exception as detach_exc:  # pylint: disable=broad-except
+                                    _logger.debug("Streaming context detach failed: %s", detach_exc)
+
+                    result = _end_span_after_streaming()
 
             if should_trace:
                 duration_s = default_timer() - start
@@ -537,48 +591,9 @@ def _wrapped_teardown_request(
             return
 
         try:
-            # For Flask 3.1+, check if this is a streaming response that might
-            # have already been cleaned up to prevent double cleanup
-            is_streaming = False
-            if _IS_FLASK_31_PLUS:
-                try:
-                    # Additional safety check: verify we're in a Flask request context
-                    if hasattr(flask, "request") and hasattr(flask.request, "response"):
-                        is_streaming = (
-                            hasattr(flask.request, "response")
-                            and flask.request.response
-                            and hasattr(flask.request.response, "stream")
-                            and flask.request.response.stream
-                        )
-                except (RuntimeError, AttributeError):
-                    # Not in a proper Flask request context, don't check for streaming
-                    is_streaming = False
-
-            if _IS_FLASK_31_PLUS and is_streaming:
-                # For Flask 3.1+ streaming responses, ensure OpenTelemetry contexts are cleaned up
-                # This addresses the generator context leak issues documented by Logfire
-                # (open-telemetry/opentelemetry-python#2606)
-                try:
-                    context.detach(token)
-                    if hasattr(activation, "__exit__"):
-                        activation.__exit__(None, None, None)
-
-                    # Mark as cleaned up
-                    flask.request.environ[_ENVIRON_ACTIVATION_KEY] = None
-                    flask.request.environ[_ENVIRON_TOKEN] = None
-
-                    _logger.debug("Streaming response context cleanup completed in teardown function")
-
-                except (
-                    RuntimeError,
-                    ValueError,
-                    TypeError,
-                    AttributeError,
-                ) as cleanup_exc:
-                    _logger.debug(
-                        "Teardown streaming context cleanup failed: %s",
-                        cleanup_exc,
-                    )
+            if flask.request.environ.get(_ENVIRON_STREAMING_KEY):
+                # Streaming response: span end is owned by the response-iterable
+                # wrapper in _wrapped_app (#3401). Do not end it here.
                 return
 
             if exc is None:

@@ -381,3 +381,51 @@ class TestFlaskCompatibility(WsgiTestBase):
             cleaned_up.get("token_present", True),
             "_ENVIRON_TOKEN should be cleaned up after teardown",
         )
+
+    def test_streaming_response_span_covers_full_stream(self):
+        """Regression test for #3401.
+
+        The server span for a streaming (e.g. SSE) response must stay open
+        until the response body is fully consumed. Before the fix the span was
+        ended in ``teardown_request`` -- which runs before the WSGI server
+        iterates the streaming body -- so the span finished almost immediately
+        and its duration did not reflect the real response time.
+        """
+        app = flask.Flask(__name__)
+        FlaskInstrumentor().instrument_app(app)
+
+        chunk_delay = 0.05
+        num_chunks = 3
+
+        @app.route("/sse")
+        def sse_endpoint():
+            def generate():
+                for i in range(num_chunks):
+                    time.sleep(chunk_delay)
+                    yield f"data: {i}\n\n"
+
+            return flask.Response(
+                flask.stream_with_context(generate()),
+                mimetype="text/event-stream",
+            )
+
+        client = app.test_client()
+        response = client.get("/sse")
+        # Fully consume the streaming body.
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("data: 2", body)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        duration_s = (span.end_time - span.start_time) / 1e9
+        # The stream takes at least num_chunks * chunk_delay to produce; the
+        # span must cover it. Use a conservative fraction to avoid flakiness.
+        self.assertGreaterEqual(
+            duration_s,
+            chunk_delay * num_chunks * 0.5,
+            "streaming server span ended before the stream was consumed (#3401)",
+        )
+
+        FlaskInstrumentor().uninstrument_app(app)
