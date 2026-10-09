@@ -1,0 +1,7 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+packaging>=21.0
+pytest~=7.4
+wrapt>=1.16.0,<3.0.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-dbapi
+-e instrumentation/opentelemetry-instrumentation-oracledb[instruments]
