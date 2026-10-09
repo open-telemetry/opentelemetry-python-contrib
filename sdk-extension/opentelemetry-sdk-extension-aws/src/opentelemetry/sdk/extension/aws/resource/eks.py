@@ -106,7 +106,12 @@ class AwsEksResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
     Elastic Kubernetes Service (EKS) and returns them in a Resource.
 
-    NOTE: Uses a `cluster-info` configmap in the `amazon-cloudwatch` namespace. See more here: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-quickstart.html#Container-Insights-setup-EKS-quickstart-Fluentd
+    Workloads running on EKS require:
+    1. Mounted Kubernetes service account token and CA certificate (do not disable ``automountServiceAccountToken``).
+    2. Read permission (GET) for the ``cluster-info`` ConfigMap in the ``amazon-cloudwatch`` namespace.
+    3. A ConfigMap named ``cluster-info`` in the ``amazon-cloudwatch`` namespace containing ``data.cluster.name``.
+
+    See more here: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-quickstart.html#Container-Insights-setup-EKS-quickstart-Fluentd
     """
 
     def detect(self) -> "Resource":
