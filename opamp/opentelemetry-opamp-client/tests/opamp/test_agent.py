@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import threading
 from time import sleep
 from unittest import mock
 
@@ -145,6 +146,54 @@ def test_agent_stops_after_max_attempts(caplog):
     assert cb.on_connect_failed.call_count == 2
     cb.on_connect_failed.assert_any_call(agent, client_mock, exc1)
     cb.on_connect_failed.assert_any_call(agent, client_mock, exc2)
+
+
+def test_agent_does_not_enable_scheduler_after_initial_connection_fails():
+    enable_scheduler = mock.Mock()
+    client_mock = mock.Mock()
+    client_mock.send.side_effect = RuntimeError("connection failed")
+    agent = OpAMPAgent(
+        interval=30,
+        client=client_mock,
+        callbacks=_NoOpCallbacks(),
+        max_retries=0,
+        initial_backoff=0,
+    )
+    agent._enable_scheduler = enable_scheduler
+
+    agent.start()
+    agent._queue.join()
+
+    assert agent._schedule is False
+    enable_scheduler.assert_not_called()
+    agent.stop()
+
+
+def test_agent_does_not_enable_scheduler_when_initial_retry_is_interrupted():
+    enable_scheduler = mock.Mock()
+    first_attempt = threading.Event()
+    client_mock = mock.Mock()
+
+    def fail_connection(_payload: object) -> None:
+        first_attempt.set()
+        raise RuntimeError("connection failed")
+
+    client_mock.send.side_effect = fail_connection
+    agent = OpAMPAgent(
+        interval=30,
+        client=client_mock,
+        callbacks=_NoOpCallbacks(),
+        max_retries=1,
+        initial_backoff=60,
+    )
+    agent._enable_scheduler = enable_scheduler
+
+    agent.start()
+    assert first_attempt.wait(timeout=1)
+    agent.stop()
+
+    assert agent._schedule is False
+    enable_scheduler.assert_not_called()
 
 
 def test_agent_send_enqueues_job():
