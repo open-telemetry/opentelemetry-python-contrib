@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-http`: add library agnostic base for HTTP client instrumentations

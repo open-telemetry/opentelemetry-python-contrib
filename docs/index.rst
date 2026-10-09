@@ -64,6 +64,14 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. toctree::
     :maxdepth: 2
+    :caption: OpenTelemetry Instrumentation Frameworks
+    :name: Instrumentation Frameworks
+    :glob:
+
+    instrumentation-frameworks/*/index
+
+.. toctree::
+    :maxdepth: 2
     :caption: OpenTelemetry Generative AI Instrumentations
     :name: Generative AI Instrumentations
     :glob:
