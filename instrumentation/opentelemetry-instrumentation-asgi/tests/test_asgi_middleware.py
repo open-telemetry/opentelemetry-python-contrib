@@ -3,11 +3,14 @@
 
 # pylint: disable=too-many-lines
 
+import asyncio
 import sys
 import time
 import unittest
 from timeit import default_timer
 from unittest import mock
+
+from asgiref.testing import ApplicationCommunicator
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
@@ -177,6 +180,41 @@ async def long_response_asgi(scope, receive, send):
         )
         await send({"type": "http.response.body", "body": b"*", "more_body": True})
         await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": True})
+        await send({"type": "http.response.body", "body": b"*", "more_body": False})
+
+
+async def sized_or_streaming_asgi(scope, receive, send):
+    """Serve a sized response on /sized and a streaming one elsewhere.
+
+    A streaming response carries no Content-Length header, which is the case
+    an ASGI server produces for chunked transfer.
+    """
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    message = await receive()
+    if message.get("type") != "http.request":
+        return
+    if scope["path"] == "/sized":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+    else:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"Content-Type", b"text/plain"]],
+            }
+        )
         await send({"type": "http.response.body", "body": b"*", "more_body": True})
         await send({"type": "http.response.body", "body": b"*", "more_body": False})
 
@@ -1773,6 +1811,145 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     )
                     assertions += 1
         self.assertEqual(assertions, 3)
+
+    async def test_response_size_not_carried_into_next_request(self):
+        """A response without Content-Length must not report the previous size.
+
+        One middleware instance serves every request, so per-request state
+        held on the instance is still there when the next request is served.
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(sized_or_streaming_asgi)
+
+        self.scope["path"] = "/sized"
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self.scope["path"] = "/streaming"
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        # only the first request sent a Content-Length
+        self.assertEqual(sum(point.count for point in points), 1)
+        self.assertEqual(sum(point.sum for point in points), 1024)
+
+    async def test_response_size_isolated_between_concurrent_requests(self):
+        """Response-size state must not leak across interleaved requests.
+
+        A single middleware instance is driven by two requests concurrently.
+        The sized request reaches its ``finally`` only after the streaming
+        request has started sending, i.e. while the two calls share the
+        middleware instance but must keep independent per-request state.
+        """
+
+        sized_reached_send = asyncio.Event()
+        sized_release = asyncio.Event()
+
+        async def interleaved_asgi(scope, receive, send):
+            await receive()
+            if scope["path"] == "/sized":
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [[b"content-length", b"1024"]],
+                    }
+                )
+                await send({"type": "http.response.body", "body": b"*"})
+                sized_reached_send.set()
+                await sized_release.wait()
+            else:
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [[b"Content-Type", b"text/plain"]],
+                    }
+                )
+                # Wait until the other request has populated response-size
+                # state before yielding to this request's own finally.
+                await sized_reached_send.wait()
+                await send({"type": "http.response.body", "body": b"*"})
+
+        app = otel_asgi.OpenTelemetryMiddleware(interleaved_asgi)
+
+        async def one_request(path):
+            scope = {}
+            setup_testing_defaults(scope)
+            scope["path"] = path
+            communicator = ApplicationCommunicator(app, scope)
+            await communicator.send_input({"type": "http.request", "body": b""})
+            while True:
+                try:
+                    await communicator.receive_output(0.01)
+                except asyncio.TimeoutError:
+                    break
+            await communicator.wait()
+
+        sized_task = asyncio.ensure_future(one_request("/sized"))
+        await sized_reached_send.wait()
+        streaming_task = asyncio.ensure_future(one_request("/streaming"))
+        # Let the streaming request progress into and through its send.
+        await asyncio.sleep(0.05)
+        sized_release.set()
+        await asyncio.gather(sized_task, streaming_task)
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        # Only /sized recorded a response size; /streaming (no
+        # Content-Length) must not inherit 1024 from the interleaved request.
+        self.assertEqual(sum(point.count for point in points), 1)
+        self.assertEqual(sum(point.sum for point in points), 1024)
+
+    async def test_response_size_per_request_with_stacked_middleware(self):
+        """Two middleware instances on one app each record their own size."""
+
+        app = otel_asgi.OpenTelemetryMiddleware(otel_asgi.OpenTelemetryMiddleware(sized_or_streaming_asgi))
+        self.scope["path"] = "/sized"
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        # Identical attributes aggregate into one data point, but both
+        # middleware layers recorded the size exactly once.
+        self.assertEqual(sum(point.count for point in points), 2)
+        self.assertEqual(sum(point.sum for point in points), 2048)
+
+    async def test_response_size_holder_initialized_before_try(self):
+        """An early failure must propagate, not be masked by finally."""
+
+        async def dummy_asgi(_scope, _receive, _send):
+            raise AssertionError("app must not be reached")
+
+        async def dummy_receive():
+            return {}
+
+        async def dummy_send(_message):
+            return None
+
+        app = otel_asgi.OpenTelemetryMiddleware(dummy_asgi)
+        scope = {}
+        setup_testing_defaults(scope)
+        with mock.patch.object(app, "_get_otel_receive", side_effect=RuntimeError("boom before send")):
+            with self.assertRaisesRegex(RuntimeError, "boom before send"):
+                await app(scope, dummy_receive, dummy_send)
 
     async def test_no_metric_for_websockets(self):
         self.scope = {
