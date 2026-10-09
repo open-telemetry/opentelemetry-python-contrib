@@ -13,6 +13,7 @@ from subprocess import (
 )
 
 from packaging.requirements import Requirement
+from packaging.version import InvalidVersion
 
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations as gen_default_instrumentations,
@@ -90,8 +91,19 @@ def _is_installed(req):
         dist_version = version(req.name)
     except PackageNotFoundError:
         return False
+    except (KeyError, FileNotFoundError):
+        # Python 3.15+ raise instead of returning None for a dist-info
+        # without a Version field (or MetadataNotFound without METADATA)
+        dist_version = None
 
-    if not req.specifier.filter(dist_version):
+    try:
+        # dist_version is None for a dist-info without a Version field, and
+        # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
+        version_matches = dist_version is not None and req.specifier.contains(dist_version)
+    except InvalidVersion:
+        version_matches = False
+
+    if not version_matches:
         logger.warning(
             "instrumentation for package %s is available but version %s is installed. Skipping.",
             req,
