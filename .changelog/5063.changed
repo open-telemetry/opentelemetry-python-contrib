@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: emit `db.client.connection.count`, replacing the deprecated `db.client.connections.usage` metric
