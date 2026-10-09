@@ -2747,8 +2747,8 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-grpc-1-wrapt2 -- -ra
 
-  py310-test-instrumentation-sqlalchemy-1:
-    name: instrumentation-sqlalchemy-1 
+  py310-test-instrumentation-sqlalchemy-oldest:
+    name: instrumentation-sqlalchemy-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2777,10 +2777,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py310-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py310-test-instrumentation-sqlalchemy-2:
-    name: instrumentation-sqlalchemy-2 
+  py310-test-instrumentation-sqlalchemy-latest:
+    name: instrumentation-sqlalchemy-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2809,7 +2809,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py310-test-instrumentation-sqlalchemy-latest -- -ra
 
   py310-test-instrumentation-redis:
     name: instrumentation-redis 
