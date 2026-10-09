@@ -728,6 +728,10 @@ def _get_full_handler_name(handler):
 
 def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     attributes = _get_attributes_from_request(handler.request, sem_conv_opt_in_mode)
+    # Captured request headers are only added to SERVER spans, which
+    # _start_internal_or_server_span creates when there is no current span.
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        attributes.update(_collect_custom_request_headers_attributes(handler.request.headers))
     span, token = _start_internal_or_server_span(
         tracer=tracer,
         span_name=_get_default_span_name(handler),
@@ -739,10 +743,6 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
 
     if span.is_recording():
         span.set_attribute("tornado.handler", _get_full_handler_name(handler))
-        if span.kind == trace.SpanKind.SERVER:
-            custom_attributes = _collect_custom_request_headers_attributes(handler.request.headers)
-            if len(custom_attributes) > 0:
-                span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=unnecessary-dunder-call
