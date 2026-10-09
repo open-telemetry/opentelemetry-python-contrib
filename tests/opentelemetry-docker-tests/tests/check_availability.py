@@ -10,6 +10,7 @@ import psycopg2
 import pymongo
 import pyodbc
 import redis
+import urllib3
 
 MONGODB_COLLECTION_NAME = "test"
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "opentelemetry-tests")
@@ -27,6 +28,7 @@ POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
 POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
+JAEGER_SAMPLING_ENDPOINT = os.getenv("JAEGER_SAMPLING_ENDPOINT", "http://localhost:5778/sampling")
 MSSQL_DB_NAME = os.getenv("MSSQL_DB_NAME", "opentelemetry-tests")
 MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
@@ -103,6 +105,16 @@ def check_redis_connection():
 
 
 @retryable
+def check_jaeger_connection():
+    urllib3.PoolManager().request(
+        "GET",
+        JAEGER_SAMPLING_ENDPOINT,
+        fields={"service": "healthcheck"},
+        timeout=2,
+    )
+
+
+@retryable
 def check_kafka_connection():
     client = kafka.KafkaAdminClient(bootstrap_servers=[f"{KAFKA_HOST}:{KAFKA_PORT}"])
     client.close()
@@ -137,6 +149,7 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
+    check_jaeger_connection()
     check_kafka_connection()
 
     # make accepting EULA for ms sql odbc driver optional
