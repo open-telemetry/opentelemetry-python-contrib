@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+
 import collections
+import os
 from unittest import TestCase, mock
 
 from pika.adapters.blocking_connection import (
@@ -11,22 +13,16 @@ from pika.adapters.blocking_connection import (
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
-from opentelemetry.instrumentation.pika import utils
-from opentelemetry.semconv._incubating.attributes import (
-    messaging_attributes,
-    server_attributes,
-)
-from opentelemetry.semconv.trace import MessagingOperationValues
-from opentelemetry.trace import Span, SpanKind, Tracer
-
-import os
-from unittest import mock
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
 )
+from opentelemetry.instrumentation.pika import utils
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.trace import Span, SpanKind, Tracer
 
 class TestUtils(TestCase):
     @staticmethod
