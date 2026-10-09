@@ -32,10 +32,12 @@ def _installed_version(name: str) -> str | None:
 
 
 def _version_matches(req: Requirement, dist_version: str | None) -> bool:
-    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions,
-    # which still satisfy a requirement without a version range
+    # Missing or non-PEP 440 version metadata (which packaging 22-25 reject
+    # with InvalidVersion) still satisfies a requirement without a version range
+    if dist_version is None:
+        return not req.specifier
     try:
-        return dist_version is not None and req.specifier.contains(dist_version)
+        return req.specifier.contains(dist_version)
     except InvalidVersion:
         return not req.specifier
 

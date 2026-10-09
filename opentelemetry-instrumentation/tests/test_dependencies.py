@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 from packaging.requirements import Requirement
-from packaging.version import InvalidVersion
 
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
@@ -62,10 +61,8 @@ class TestDependencyConflicts(TestBase):
 
     # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
     @patch("opentelemetry.instrumentation.dependencies.version", return_value="1.0-SNAPSHOT")
-    @patch("packaging.specifiers.SpecifierSet.contains", side_effect=InvalidVersion)
-    def test_get_dependency_conflicts_invalid_version(self, mock_contains, _):
+    def test_get_dependency_conflicts_invalid_version(self, _):
         conflict = get_dependency_conflicts(["foo >= 1.0"])
-        mock_contains.assert_called_once()
         self.assertIsInstance(conflict, DependencyConflict)
         self.assertEqual(
             str(conflict),
@@ -73,13 +70,13 @@ class TestDependencyConflicts(TestBase):
         )
 
     @patch("opentelemetry.instrumentation.dependencies.version", return_value="1.0-SNAPSHOT")
-    @patch("packaging.specifiers.SpecifierSet.contains", side_effect=InvalidVersion)
-    def test_get_dependency_conflicts_invalid_version_no_range(self, mock_contains, _):
+    def test_get_dependency_conflicts_invalid_version_no_range(self, _):
         self.assertIsNone(get_dependency_conflicts(["foo"]))
-        mock_contains.assert_called_once()
 
     # For a dist-info without a Version field, version() returns None on
     # Python 3.10-3.14, while 3.15+ raise KeyError or MetadataNotFound
+    # TODO: exercise the KeyError and MetadataNotFound cases without mocks
+    # once Python 3.15 is in the test matrix
     def test_get_dependency_conflicts_missing_version(self):
         for kwargs in (
             {"return_value": None},
@@ -93,6 +90,8 @@ class TestDependencyConflicts(TestBase):
                 conflict = get_dependency_conflicts(["foo >= 1.0"])
                 self.assertIsInstance(conflict, DependencyConflict)
                 self.assertEqual(conflict.found, "foo None")
+                # a requirement without a version range only needs the package
+                self.assertIsNone(get_dependency_conflicts(["foo"]))
 
     @patch("opentelemetry.instrumentation.dependencies.version")
     def test_get_dependency_conflicts_any_invalid_version(self, version_mock):
@@ -100,11 +99,9 @@ class TestDependencyConflicts(TestBase):
         self.assertIsNone(get_dependency_conflicts([], ["foo ~= 1.0", "bar ~= 1.0", "baz ~= 1.0"]))
 
     @patch("opentelemetry.instrumentation.dependencies.version")
-    @patch("packaging.specifiers.SpecifierSet.contains", side_effect=InvalidVersion)
-    def test_get_dependency_conflicts_any_only_invalid_version(self, mock_contains, version_mock):
+    def test_get_dependency_conflicts_any_only_invalid_version(self, version_mock):
         version_mock.side_effect = {"foo": "1.0-SNAPSHOT"}.get
         conflict = get_dependency_conflicts([], ["foo ~= 1.0"])
-        mock_contains.assert_called_once()
         self.assertIsInstance(conflict, DependencyConflict)
         self.assertEqual(conflict.required_any, ["foo ~= 1.0"])
         self.assertEqual(conflict.found_any, ["foo 1.0-SNAPSHOT"])
