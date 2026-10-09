@@ -699,6 +699,16 @@ class OpenTelemetryMiddleware:
         self.exclude_receive_span = "receive" in exclude_spans if exclude_spans else False
         self.exclude_send_span = "send" in exclude_spans if exclude_spans else False
 
+    def _collect_custom_request_headers_attributes(self, scope) -> dict[str, list[str]]:
+        if not self.http_capture_headers_server_request:
+            return {}
+        return collect_custom_headers_attributes(
+            scope,
+            self.http_capture_headers_sanitize_fields,
+            self.http_capture_headers_server_request,
+            normalise_request_header_name,
+        )
+
     # pylint: disable=too-many-statements
     async def __call__(
         self,
@@ -728,6 +738,10 @@ class OpenTelemetryMiddleware:
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
         attributes.update(additional_attributes)
+        # Captured request headers are only added to SERVER spans, which
+        # _start_internal_or_server_span creates when there is no current span.
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            attributes.update(self._collect_custom_request_headers_attributes(scope))
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
             span_name=span_name,
@@ -748,20 +762,6 @@ class OpenTelemetryMiddleware:
                 if current_span.is_recording():
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
-
-                    if current_span.kind == trace.SpanKind.SERVER:
-                        custom_attributes = (
-                            collect_custom_headers_attributes(
-                                scope,
-                                self.http_capture_headers_sanitize_fields,
-                                self.http_capture_headers_server_request,
-                                normalise_request_header_name,
-                            )
-                            if self.http_capture_headers_server_request
-                            else {}
-                        )
-                        if len(custom_attributes) > 0:
-                            current_span.set_attributes(custom_attributes)
 
                 if callable(self.server_request_hook):
                     self.server_request_hook(current_span, scope)
