@@ -1,5 +1,8 @@
 components:
 
+  opentelemetry-process-context:
+    - herin049
+
   instrumentation/opentelemetry-instrumentation-aiohttp-client:
     - herin049
 

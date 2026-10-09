@@ -614,6 +614,18 @@ def update_version_files(targets, version, packages):
         f'__version__ = "{version}"',
     )
 
+    # Maturin uses the static project version in pyproject.toml as its package
+    # metadata source, so keep it synchronized with version.py.
+    for target in targets:
+        if target.name != "opentelemetry-process-context":
+            continue
+        update_files(
+            [target],
+            "pyproject.toml",
+            r'(?m)^version = ".*"$',
+            f'version = "{version}"',
+        )
+
 
 def update_dependencies(targets, version, packages):
     print("updating dependencies")

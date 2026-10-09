@@ -1,0 +1,43 @@
+# This file is not auto-generated. See generate_workflows_lib for generated CI files.
+
+name: Rust
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  fmt-process-context:
+    name: cargo fmt (opentelemetry-process-context)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Rust toolchain
+        run: rustup update stable && rustup default stable
+      - name: cargo fmt
+        run: cargo fmt --check --manifest-path opentelemetry-process-context/rust/Cargo.toml
+
+  clippy-process-context:
+    name: cargo clippy (opentelemetry-process-context)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Rust toolchain
+        run: rustup update stable && rustup default stable
+      - name: cargo clippy
+        run: cargo clippy --manifest-path opentelemetry-process-context/rust/Cargo.toml -- -D warnings
+
+  test-process-context:
+    name: cargo test (opentelemetry-process-context)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Rust toolchain
+        run: rustup update stable && rustup default stable
+      - name: cargo test
+        run: cargo test --manifest-path opentelemetry-process-context/rust/Cargo.toml
