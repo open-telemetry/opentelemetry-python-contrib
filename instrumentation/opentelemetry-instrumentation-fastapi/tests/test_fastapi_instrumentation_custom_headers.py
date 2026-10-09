@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from unittest.mock import patch
 
 import fastapi
+import pytest
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
@@ -16,6 +17,11 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+)
+
+pytestmark = pytest.mark.skipif(
+    otel_fastapi.telemetry is not None,
+    reason="FastAPI provides native OpenTelemetry instrumentation",
 )
 
 
