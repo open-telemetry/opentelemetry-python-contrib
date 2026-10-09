@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-ibmmq`: Add IBM MQ instrumentation for the ibmmq and pymqi clients.
