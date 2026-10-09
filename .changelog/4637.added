@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: add `messaging.consumer.group.name` attribute to consumer spans
