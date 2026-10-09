@@ -16,10 +16,6 @@ from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
 
-# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
-# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
-_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
-
 
 def _get_cluster_metadata(instance):
     """Return the kafka-python ``ClusterMetadata`` for a producer or consumer.
@@ -148,7 +144,7 @@ def _enrich_span(
             span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
         span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
         if cluster_id:
-            span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+            span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
 
 def _get_span_name(operation: str, topic: str):

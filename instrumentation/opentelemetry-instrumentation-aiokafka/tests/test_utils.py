@@ -10,7 +10,6 @@ import aiokafka
 
 from opentelemetry.instrumentation.aiokafka import _fetch_and_cache_cluster_id
 from opentelemetry.instrumentation.aiokafka.utils import (
-    _MESSAGING_KAFKA_CLUSTER_ID,
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
     _aiokafka_getter,
@@ -22,6 +21,9 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
+)
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_KAFKA_CLUSTER_ID,
 )
 from opentelemetry.trace import SpanKind
 
@@ -327,7 +329,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
         self.assertEqual(
-            set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID),
+            set_attribute_calls.get(MESSAGING_KAFKA_CLUSTER_ID),
             "test-cluster-uuid",
         )
 
@@ -361,7 +363,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
 
         set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
-        self.assertEqual(set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID), "recovered-cluster")
+        self.assertEqual(set_attribute_calls.get(MESSAGING_KAFKA_CLUSTER_ID), "recovered-cluster")
         self.assertEqual(producer.client._otel_cluster_id, "recovered-cluster")
 
     async def test_cluster_id_attribute_absent_when_not_resolved(self) -> None:
@@ -386,7 +388,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
 
         attribute_keys = [call.args[0] for call in span.set_attribute.call_args_list]
-        self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
+        self.assertNotIn(MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
 
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
         client = mock.MagicMock()

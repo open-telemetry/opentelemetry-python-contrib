@@ -10,6 +10,7 @@ from typing import Any
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_KAFKA_CLUSTER_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
@@ -26,10 +27,6 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
-
-# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
-# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
-_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
 
 def _get_real_instance(instance: Any) -> Any:
@@ -291,7 +288,7 @@ def _enrich_span(
 
     cluster_id = _extract_cluster_id(instance, bootstrap_servers, topic)
     if cluster_id:
-        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+        span.set_attribute(MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
