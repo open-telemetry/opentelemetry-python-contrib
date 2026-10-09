@@ -580,10 +580,10 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
         self._original_app = web.Application
 
         _InstrumentedApplication = create_instrumented_application(tracer_provider=tracer_provider)
-        setattr(web, "Application", _InstrumentedApplication)
+        web.Application = _InstrumentedApplication
 
     def _uninstrument(self, **kwargs):
-        setattr(web, "Application", self._original_app)
+        web.Application = self._original_app
 
     def instrumentation_dependencies(self):
         return _instruments

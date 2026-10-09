@@ -236,6 +236,50 @@ class TestAiobotocoreInstrumentor(TestBase):
         self.assertIn(EXCEPTION_TYPE, event.attributes)
         self.assertIn(EXCEPTION_MESSAGE, event.attributes)
 
+    def test_client_error_with_http_error_status(self):
+        """ClientError with HTTP 4xx sets span status to ERROR."""
+
+        async def _test():
+            async with self._make_client("s3") as client:
+                with botocore.stub.Stubber(client) as stubber:
+                    stubber.add_client_error(
+                        "get_object",
+                        service_error_code="NoSuchBucket",
+                        service_message="The specified bucket does not exist.",
+                        http_status_code=404,
+                    )
+                    with self.assertRaises(ClientError):
+                        await client.get_object(Bucket="non-existent-bucket", Key="key")
+
+        asyncio.run(_test())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+
+    def test_client_error_304_not_modified(self):
+        """ClientError with HTTP 304 leaves span status as UNSET."""
+
+        async def _test():
+            async with self._make_client("s3") as client:
+                with botocore.stub.Stubber(client) as stubber:
+                    stubber.add_client_error(
+                        "get_object",
+                        service_error_code="304",
+                        service_message="Not Modified",
+                        http_status_code=304,
+                    )
+                    with self.assertRaises(ClientError):
+                        await client.get_object(Bucket="test-bucket", Key="key")
+
+        asyncio.run(_test())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
     def test_suppress_instrumentation(self):
         """Test that instrumentation can be suppressed."""
 

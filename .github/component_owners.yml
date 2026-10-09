@@ -34,6 +34,10 @@ components:
   propagator/opentelemetry-propagator-aws-xray:
     - jj22ee
 
+  resource/opentelemetry-resource-detector-azure:
+    - JacksonWeber
+    - rads-1996
+
   sdk-extension/opentelemetry-sdk-extension-aws:
     - srprash
     - jj22ee

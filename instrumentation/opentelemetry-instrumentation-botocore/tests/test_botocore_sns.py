@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import botocore.session
@@ -10,6 +10,7 @@ from botocore.awsrequest import AWSResponse
 from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.aws_attributes import (
     AWS_SNS_TOPIC_ARN,
 )
@@ -66,11 +67,11 @@ class TestSnsExtension(TestBase):
 
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(name, span.name)
-        self.assertEqual("aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM])
+        self.assertEqual("aws.sns", span.attributes[messaging_attributes.MESSAGING_SYSTEM])
 
         return span
 
-    def assert_injected_span(self, message_attrs: Dict[str, Any], span: Span):
+    def assert_injected_span(self, message_attrs: dict[str, Any], span: Span):
         # traceparent: <ver>-<trace-id>-<span-id>-<flags>
         trace_parent = message_attrs["traceparent"]["StringValue"].split("-")
         span_context = span.get_span_context()

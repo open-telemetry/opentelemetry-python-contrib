@@ -12,6 +12,7 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
@@ -95,10 +96,13 @@ class TestUtils(TestCase):
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[
-                mock.call(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq"),
+                mock.call(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq"),
                 mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True),
                 mock.call(SpanAttributes.MESSAGING_DESTINATION, task_destination),
-                mock.call(SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id),
+                mock.call(
+                    messaging_attributes.MESSAGING_MESSAGE_ID,
+                    properties.message_id,
+                ),
                 mock.call(
                     SpanAttributes.MESSAGING_CONVERSATION_ID,
                     properties.correlation_id,

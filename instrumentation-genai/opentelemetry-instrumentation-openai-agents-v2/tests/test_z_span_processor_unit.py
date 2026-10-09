@@ -146,7 +146,7 @@ def test_operation_and_span_naming(processor_setup):
     assert processor._get_operation_name(completion) == sp.GenAIOperationName.TEXT_COMPLETION
 
     embeddings = GenerationSpanData(input=None)
-    setattr(embeddings, "embedding_dimension", 128)
+    embeddings.embedding_dimension = 128
     assert processor._get_operation_name(embeddings) == sp.GenAIOperationName.EMBEDDINGS
 
     # AgentSpanData always maps to invoke_agent (no operation field in OpenAI Agents SDK)

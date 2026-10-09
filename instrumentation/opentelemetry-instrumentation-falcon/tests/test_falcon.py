@@ -141,7 +141,7 @@ class TestFalconBase(TestBase):
     def _has_fixed_http_target(self):
         # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
         # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156
         return _parsed_falcon_version < package_version.parse("3.1.2")
 
     def client(self):
@@ -257,7 +257,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(span, expected_attributes)
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
         self.memory_exporter.clear()
@@ -285,7 +285,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
@@ -327,7 +327,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
@@ -544,6 +544,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                     )
 
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_active_requests_unit_new_semconv(self):
+        # The semantic conventions define http.server.active_requests with the
+        # UCUM annotation unit {request}.
+        self.client().simulate_get("/hello/756")
+        metrics = self.get_sorted_metrics(SCOPE)
+
+        active_requests = [metric for metric in metrics if metric.name == "http.server.active_requests"]
+        self.assertEqual(len(active_requests), 1)
+        self.assertEqual(active_requests[0].unit, "{request}")
 
     def test_falcon_metric_values_both_semconv(self):
         number_data_point_seen = False

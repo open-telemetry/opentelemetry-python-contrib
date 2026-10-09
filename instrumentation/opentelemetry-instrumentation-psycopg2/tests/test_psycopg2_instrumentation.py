@@ -40,7 +40,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
 
         def _distribution(name):
             if name == "psycopg2":
-                return None
+                return
             raise PackageNotFoundError
 
         mock_distribution.side_effect = _distribution
@@ -61,7 +61,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
 
         def _distribution(name):
             if name == "psycopg2-binary":
-                return None
+                return
             raise PackageNotFoundError
 
         mock_distribution.side_effect = _distribution

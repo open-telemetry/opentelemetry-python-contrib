@@ -28,7 +28,7 @@ API
 # pylint: disable=no-value-for-parameter
 
 import logging
-from typing import Collection
+from collections.abc import Collection
 
 import pymemcache
 from wrapt import wrap_function_wrapper as _wrap
@@ -46,7 +46,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled, unwrap
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NetTransportValues,
 )
@@ -110,6 +110,9 @@ def _with_tracer_wrapper(func):
 
 @_with_tracer_wrapper
 def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs):
+    if not is_instrumentation_enabled():
+        return wrapped(*args, **kwargs)
+
     with tracer.start_as_current_span(cmd, kind=SpanKind.CLIENT, attributes={}) as span:
         try:
             if span.is_recording():

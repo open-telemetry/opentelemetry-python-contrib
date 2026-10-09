@@ -46,9 +46,9 @@ try:
     )
 except ImportError:  # pragma: no cover - support older/newer SDK layouts
     from opentelemetry.sdk.trace.export import (
-        SimpleSpanProcessor,  # noqa: E402
+        SimpleSpanProcessor,
     )
-    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E402
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
         InMemorySpanExporter,
     )
 from opentelemetry.semconv._incubating.attributes import (  # noqa: E402

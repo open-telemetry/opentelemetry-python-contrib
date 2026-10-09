@@ -13,7 +13,8 @@ import http.client
 import logging
 import socket  # pylint:disable=unused-import # Used for typing
 import typing
-from typing import Any, Callable, Collection, TypedDict, cast
+from collections.abc import Callable, Collection
+from typing import Any, TypedDict, cast
 
 import wrapt
 
@@ -73,7 +74,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG) ->
     state = _getstate()
     if not state:
         return True
-    spanlist: typing.List[Span] = state.get("need_ip")
+    spanlist: list[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -84,7 +85,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG) ->
     sock = "<property not accessed>"
     ip = None
     try:
-        sock: typing.Optional[socket.socket] = conn.sock
+        sock: socket.socket | None = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False

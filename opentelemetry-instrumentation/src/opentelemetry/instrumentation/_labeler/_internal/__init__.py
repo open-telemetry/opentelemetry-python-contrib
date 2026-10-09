@@ -3,8 +3,9 @@
 
 import logging
 import threading
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Dict, Mapping, Optional, Union
+from typing import Any
 
 from opentelemetry.context import attach, create_key, get_value, set_value
 from opentelemetry.util.types import AttributeValue
@@ -33,7 +34,7 @@ class Labeler:
                 String values exceeding this length will be truncated.
         """
         self._lock = threading.Lock()
-        self._attributes: dict[str, Union[str, int, float, bool]] = {}
+        self._attributes: dict[str, str | int | float | bool] = {}
         self._max_custom_attrs = max_custom_attrs
         self._max_attr_value_length = max_attr_value_length
 
@@ -64,7 +65,7 @@ class Labeler:
 
             self._attributes[key] = value
 
-    def add_attributes(self, attributes: Dict[str, Any]) -> None:
+    def add_attributes(self, attributes: dict[str, Any]) -> None:
         """
         Add multiple attributes to the labeler, subject to the labeler's limits:
         - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
@@ -93,7 +94,7 @@ class Labeler:
 
                 self._attributes[key] = value
 
-    def get_attributes(self) -> Mapping[str, Union[str, int, float, bool]]:
+    def get_attributes(self) -> Mapping[str, str | int | float | bool]:
         """
         Return a read-only mapping view of attributes in this labeler.
         """
@@ -109,7 +110,7 @@ class Labeler:
             return len(self._attributes)
 
 
-def _attach_context_value(value: Optional[Labeler]) -> None:
+def _attach_context_value(value: Labeler | None) -> None:
     """
     Attach a new OpenTelemetry context containing the given labeler value.
 
@@ -178,7 +179,7 @@ def clear_labeler() -> None:
     _attach_context_value(None)
 
 
-def get_labeler_attributes() -> Mapping[str, Union[str, int, float, bool]]:
+def get_labeler_attributes() -> Mapping[str, str | int | float | bool]:
     """
     Get attributes from the current labeler, if any.
 
@@ -186,7 +187,7 @@ def get_labeler_attributes() -> Mapping[str, Union[str, int, float, bool]]:
         Read-only mapping of custom attributes, or an empty read-only mapping
         if no labeler exists.
     """
-    empty_attributes: Dict[str, Union[str, int, float, bool]] = {}
+    empty_attributes: dict[str, str | int | float | bool] = {}
     try:
         current_value = get_value(LABELER_CONTEXT_KEY)
     except Exception:  # pylint: disable=broad-exception-caught
@@ -199,9 +200,9 @@ def get_labeler_attributes() -> Mapping[str, Union[str, int, float, bool]]:
 
 
 def enrich_metric_attributes(
-    base_attributes: Dict[str, Any],
+    base_attributes: dict[str, Any],
     enrich_enabled: bool = True,
-) -> Dict[str, AttributeValue]:
+) -> dict[str, AttributeValue]:
     """
     Combines base_attributes with custom attributes from the current labeler,
     returning a new dictionary of attributes according to the labeler configuration:
