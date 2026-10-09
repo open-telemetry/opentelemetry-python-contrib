@@ -17,6 +17,48 @@ from opentelemetry.trace.span import Span
 _LOG = getLogger(__name__)
 
 
+def _get_cluster_metadata(instance):
+    """Return the kafka-python ``ClusterMetadata`` for a producer or consumer.
+
+    ``KafkaProducer`` exposes it as ``_metadata``; ``KafkaConsumer`` as
+    ``_client.cluster``.
+    """
+    cluster = getattr(instance, "_metadata", None)
+    if cluster is not None:
+        return cluster
+    return getattr(getattr(instance, "_client", None), "cluster", None)
+
+
+def _patch_cluster_id_capture(instance) -> None:
+    """Capture the cluster id from the client's own metadata responses.
+
+    Reads from the client's already-resolved metadata; opens no extra broker
+    connection. kafka-python < 2.1 does not persist ``cluster_id`` on
+    ``ClusterMetadata``, but the ``MetadataResponse`` (v2+) passed to
+    ``update_metadata`` carries it, so wrap ``update_metadata`` to store it.
+    Guarded so each client's metadata object is patched at most once.
+    """
+    cluster = _get_cluster_metadata(instance)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata):
+        result = original_update(metadata)
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        return result
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
+
+
+def _extract_cluster_id(instance) -> str | None:
+    cluster_id = getattr(_get_cluster_metadata(instance), "cluster_id", None)
+    return cluster_id if cluster_id else None
+
+
 class KafkaPropertiesExtractor:
     @staticmethod
     def extract_bootstrap_servers(instance):
@@ -93,6 +135,7 @@ def _enrich_span(
     bootstrap_servers: list[str],
     topic: str,
     partition: int | None,
+    cluster_id: str | None = None,
 ):
     if span.is_recording():
         span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "kafka")
@@ -100,6 +143,8 @@ def _enrich_span(
         if partition is not None:
             span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
         span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
+        if cluster_id:
+            span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
 
 def _get_span_name(operation: str, topic: str):
@@ -130,7 +175,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
 
             future = func(*args, **kwargs)
             partition = KafkaPropertiesExtractor.extract_send_partition(future)
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            cluster_id = _extract_cluster_id(instance)
+            _enrich_span(span, bootstrap_servers, topic, partition, cluster_id)
             return future
 
     return _traced_send
@@ -142,6 +188,7 @@ def _create_consumer_span(
     record,
     extracted_context,
     bootstrap_servers,
+    cluster_id,
     args,
     kwargs,
 ):
@@ -153,7 +200,13 @@ def _create_consumer_span(
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        _enrich_span(
+            span,
+            bootstrap_servers,
+            record.topic,
+            record.partition,
+            cluster_id,
+        )
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)
@@ -172,7 +225,7 @@ def _wrap_next(
 
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-
+            cluster_id = _extract_cluster_id(instance)
             extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
                 tracer,
@@ -180,6 +233,7 @@ def _wrap_next(
                 record,
                 extracted_context,
                 bootstrap_servers,
+                cluster_id,
                 args,
                 kwargs,
             )
