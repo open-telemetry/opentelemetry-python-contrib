@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tortoiseorm`: avoid `IndexError` in `_do_execute` for empty or whitespace-only statements
