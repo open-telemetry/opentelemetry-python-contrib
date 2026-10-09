@@ -335,11 +335,15 @@ def collect_request_attributes(
 def collect_request_headers_attributes(
     request: web.Request,
 ) -> dict[str, list[str]]:
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+    if not captured_headers:
+        return {}
+
     sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
 
     return sanitize.sanitize_header_values(
         request.headers,
-        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
+        captured_headers,
         normalise_request_header_name,
     )
 
@@ -423,6 +427,7 @@ def create_aiohttp_middleware(
         span_name = get_default_span_name(request)
 
         request_attrs = collect_request_attributes(request, _sem_conv_opt_in_mode)
+        request_attrs.update(collect_request_headers_attributes(request))
         active_requests_count_attrs = _parse_active_request_count_attrs(
             request_attrs,
             _sem_conv_opt_in_mode,
@@ -436,8 +441,6 @@ def create_aiohttp_middleware(
             set_status_on_exception=False,
             record_exception=False,
         ) as span:
-            if span.is_recording():
-                span.set_attributes(collect_request_headers_attributes(request))
             start = default_timer()
             active_requests_counter.add(1, active_requests_count_attrs)
             try:
