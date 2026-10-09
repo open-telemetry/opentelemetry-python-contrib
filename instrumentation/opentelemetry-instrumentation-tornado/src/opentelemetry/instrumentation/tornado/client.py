@@ -97,8 +97,7 @@ def fetch_async(  # pylint: disable=too-many-locals
             sem_conv_opt_in_mode,
         )
 
-        for key, value in attributes.items():
-            span.set_attribute(key, value)
+        span.set_attributes(attributes)
 
     with trace.use_span(span):
         inject(request.headers)

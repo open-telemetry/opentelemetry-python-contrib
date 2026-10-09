@@ -478,8 +478,7 @@ def _wrapped_before_request(
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
+            span.set_attributes(attributes)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(flask_request_environ)
                 if len(custom_attributes) > 0:

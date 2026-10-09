@@ -272,8 +272,7 @@ def _traced_execute_factory(
                 span_attrs["db.redis.args_length"] = len(args)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -332,8 +331,7 @@ def _traced_execute_pipeline_factory(
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -393,8 +391,7 @@ def _async_traced_execute_factory(
                 span_attrs["db.redis.args_length"] = len(args)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -450,8 +447,7 @@ def _async_traced_execute_pipeline_factory(
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
