@@ -197,7 +197,13 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         else:
             yield
 
-    def _start_span(self, handler_call_details, context, set_status_on_exception=False):
+    def _start_span(
+        self,
+        handler_call_details,
+        context,
+        set_status_on_exception=False,
+        record_exception=False,
+    ):
         # standard attributes
         attributes = {
             RPC_SYSTEM: "grpc",
@@ -225,7 +231,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # * ipv4:127.0.0.1:57284
         # * ipv4:10.2.1.1:57284,127.0.0.1:57284
         #
-        if not context.peer().startswith("unix:"):
+        if not (context.peer().startswith("unix:") or context.peer().startswith("unix-abstract:")):
             try:
                 ip, port = context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
                 ip = unquote(ip)
@@ -240,7 +246,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                 if ip in ("[::1]", "127.0.0.1"):
                     attributes[NET_PEER_NAME] = "localhost"
 
-            except IndexError:
+            except (IndexError, ValueError):
                 logger.warning("Failed to parse peer address '%s'", context.peer())
 
         return self._tracer.start_as_current_span(
@@ -248,6 +254,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             kind=trace.SpanKind.SERVER,
             attributes=attributes,
             set_status_on_exception=set_status_on_exception,
+            record_exception=record_exception,
         )
 
     def intercept_service(self, continuation, handler_call_details):
