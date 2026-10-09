@@ -465,6 +465,10 @@ def _wrapped_before_request(
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
             attributes[HTTP_ROUTE] = flask.request.url_rule.rule
+        # Captured request headers are only added to SERVER spans, which
+        # _start_internal_or_server_span creates when there is no current span.
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            attributes.update(otel_wsgi.collect_custom_request_headers_attributes(flask_request_environ))
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
@@ -480,10 +484,6 @@ def _wrapped_before_request(
         if span.is_recording():
             for key, value in attributes.items():
                 span.set_attribute(key, value)
-            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(flask_request_environ)
-                if len(custom_attributes) > 0:
-                    span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
