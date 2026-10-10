@@ -501,13 +501,17 @@ def test_job_is_dropped_when_its_message_cannot_be_built(caplog):
     agent.start()
 
     broken = mock.Mock(side_effect=ValueError("boom"))
-    agent.send(broken)
-    agent.send(client.build_heartbeat_message)
+    broken_callback = mock.Mock()
+    heartbeat_callback = mock.Mock()
+    agent.send(broken, callback=broken_callback)
+    agent.send(client.build_heartbeat_message, callback=heartbeat_callback)
     _wait_until_idle(agent)
     agent.stop()
 
     # not retried, and nothing was sent for it: connection, heartbeat, disconnect
     broken.assert_called_once_with()
+    broken_callback.assert_not_called()
+    heartbeat_callback.assert_called_once_with()
     assert transport.sequence_nums() == [0, 1, 2]
     cb.on_connect_failed.assert_not_called()
     assert "Failed to build message" in caplog.text

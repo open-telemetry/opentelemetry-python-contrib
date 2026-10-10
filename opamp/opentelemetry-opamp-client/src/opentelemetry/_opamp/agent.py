@@ -137,10 +137,14 @@ class OpAMPAgent:
         """
         Enqueue an on-demand request.
 
-        :param payload: the message to send, or a function that builds it. A function is
-            called when the message is about to be sent, so the message is built from the
-            state at that point. Bytes are sent as they are, with the sequence number they got
-            when they were built.
+        :param payload: the message to send, or a function that builds it. Prefer a function:
+            it is called when the message is about to be sent, so the message is built from
+            the state at that point and takes its sequence number in the order it is sent.
+            Bytes are supported for backwards compatibility and are sent as they are, with the
+            sequence number they got when they were built, so bytes built while other jobs
+            are waiting in the queue are sent with a lower sequence number than those jobs.
+        :param callback: called after the message has been sent, or sending it has failed,
+            and the response has been handled. Not called if the message could not be built.
         """
         if not self._worker.is_alive():
             logger.warning("Called send() but worker thread is not alive. Worker threads is started with start()")
@@ -181,13 +185,16 @@ class OpAMPAgent:
             except queue.Empty:
                 continue
 
-            message = None
             try:
                 data = job.build()
             except Exception:
+                # nothing was sent, so the job's callback is not called either
                 logger.exception("Failed to build message for job %r, dropping it", job.payload)
-                data = None
-            while data is not None and job.should_retry() and not self._stop.is_set():
+                self._queue.task_done()
+                continue
+
+            message = None
+            while job.should_retry() and not self._stop.is_set():
                 try:
                     message = self._client.send(data)
                     _safe_invoke(self._callbacks.on_connect, self, self._client)
