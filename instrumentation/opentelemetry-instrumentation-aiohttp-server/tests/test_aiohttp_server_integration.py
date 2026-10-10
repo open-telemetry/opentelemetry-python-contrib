@@ -10,7 +10,9 @@ import aiohttp
 import pytest
 import pytest_asyncio
 from multidict import CIMultiDict
+from pytest_aiohttp.plugin import AiohttpClient
 
+from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -23,6 +25,8 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
+    create_aiohttp_middleware,
+    middleware,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk.metrics.export import (
@@ -63,6 +67,8 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
@@ -154,6 +160,114 @@ def test_checking_instrumentor_pkg_installed():
     (instrumentor_entrypoint,) = entry_points(group="opentelemetry_instrumentor", name="aiohttp-server")
     instrumentor = instrumentor_entrypoint.load()()
     assert isinstance(instrumentor, AioHttpServerInstrumentor)
+
+
+@pytest.mark.asyncio
+async def test_legacy_middleware(test_base: TestBase, aiohttp_client: AiohttpClient) -> None:
+    app = aiohttp.web.Application(middlewares=[middleware])
+    app.router.add_get("/test-path", default_handler)
+
+    AioHttpServerInstrumentor().instrument()
+    try:
+        client = await aiohttp_client(app)
+        response = await client.get("/test-path")
+
+        assert response.status == HTTPStatus.OK
+        spans = test_base.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "GET /test-path"
+        assert spans[0].kind == trace.SpanKind.SERVER
+        assert spans[0].attributes[HTTP_METHOD] == "GET"
+        assert spans[0].attributes[HTTP_STATUS_CODE] == HTTPStatus.OK
+        assert isinstance(spans[0].attributes[HTTP_STATUS_CODE], int)
+        metrics = test_base.get_sorted_metrics(SCOPE)
+        assert len(metrics) == 2
+        assert metrics[0].name == MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS
+        assert metrics[0].data.data_points[0].value == 0
+        assert metrics[1].name == MetricInstruments.HTTP_SERVER_DURATION
+        assert metrics[1].data.data_points[0].count == 1
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_legacy_middleware_after_reinstrumenting(test_base: TestBase, aiohttp_client: AiohttpClient) -> None:
+    app = aiohttp.web.Application(middlewares=[middleware])
+    app.router.add_get("/test-path", default_handler)
+    provider, exporter = TestBase.create_tracer_provider()
+
+    AioHttpServerInstrumentor().instrument()
+    try:
+        client = await aiohttp_client(app)
+        assert (await client.get("/test-path")).status == HTTPStatus.OK
+        assert len(test_base.get_finished_spans()) == 1
+
+        AioHttpServerInstrumentor().uninstrument()
+        reset_trace_globals()
+        trace.set_tracer_provider(provider)
+        AioHttpServerInstrumentor().instrument()
+
+        assert (await client.get("/test-path")).status == HTTPStatus.OK
+        assert len(test_base.get_finished_spans()) == 1
+        assert len(exporter.get_finished_spans()) == 1
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+        provider.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("explicit_provider", [False, True])
+async def test_middleware_factory_keeps_tracer_provider(
+    test_base: TestBase, aiohttp_client: AiohttpClient, explicit_provider: bool
+) -> None:
+    provider, exporter = TestBase.create_tracer_provider()
+    AioHttpServerInstrumentor().instrument()
+    selected_provider = provider if explicit_provider else None
+    bound_middleware = create_aiohttp_middleware(tracer_provider=selected_provider)
+    AioHttpServerInstrumentor().uninstrument()
+
+    app = aiohttp.web.Application(middlewares=[bound_middleware])
+    app.router.add_get("/test-path", default_handler)
+    reset_trace_globals()
+    trace.set_tracer_provider(trace.NoOpTracerProvider())
+    AioHttpServerInstrumentor().instrument()
+    try:
+        client = await aiohttp_client(app)
+        assert (await client.get("/test-path")).status == HTTPStatus.OK
+        assert len(exporter.get_finished_spans()) == int(explicit_provider)
+        assert len(test_base.get_finished_spans()) == int(not explicit_provider)
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+        provider.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_legacy_middleware_without_sdk(test_base: TestBase, aiohttp_client: AiohttpClient) -> None:
+    app = aiohttp.web.Application(middlewares=[middleware])
+    app.router.add_get("/test-path", default_handler)
+    reset_trace_globals()
+
+    AioHttpServerInstrumentor().instrument()
+    try:
+        client = await aiohttp_client(app)
+        assert (await client.get("/test-path")).status == HTTPStatus.OK
+        assert len(test_base.get_finished_spans()) == 0
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_suppressed_legacy_middleware_without_instrumenting(
+    test_base: TestBase, aiohttp_client: AiohttpClient
+) -> None:
+    app = aiohttp.web.Application(middlewares=[middleware])
+    app.router.add_get("/test-path", default_handler)
+    with suppress_http_instrumentation():
+        client = await aiohttp_client(app)
+
+    assert (await client.get("/test-path")).status == HTTPStatus.OK
+    assert len(test_base.get_finished_spans()) == 0
+    assert len(test_base.get_sorted_metrics(SCOPE)) == 0
 
 
 @pytest.mark.asyncio
