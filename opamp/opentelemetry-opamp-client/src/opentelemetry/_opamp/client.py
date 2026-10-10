@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Generator, Mapping
 from logging import getLogger
 from typing import Any, Final
@@ -81,14 +82,23 @@ class OpAMPClient:
             non_identifying_attributes=agent_non_identifying_attributes,
         )
         self._sequence_num: int = 0
+        self._sequence_num_lock = threading.Lock()
         self._instance_uid: bytes = uuid7().bytes
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
         self._effective_config: opamp_pb2.EffectiveConfig | None = None
 
+    def _next_sequence_num(self) -> int:
+        # A message takes its sequence number when it is built and keeps it if it is sent
+        # again, so the server sees a gap only when a message never reached it.
+        with self._sequence_num_lock:
+            sequence_num = self._sequence_num
+            self._sequence_num += 1
+        return sequence_num
+
     def build_agent_disconnect_message(self) -> bytes:
         message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,
-            sequence_num=self._sequence_num,
+            sequence_num=self._next_sequence_num(),
             capabilities=self._capabilities,
         )
         data = messages.encode_message(message)
@@ -97,7 +107,7 @@ class OpAMPClient:
     def build_heartbeat_message(self) -> bytes:
         message = messages.build_heartbeat_message(
             instance_uid=self._instance_uid,
-            sequence_num=self._sequence_num,
+            sequence_num=self._next_sequence_num(),
             capabilities=self._capabilities,
         )
         data = messages.encode_message(message)
@@ -143,7 +153,7 @@ class OpAMPClient:
     def build_remote_config_status_response_message(self, remote_config_status: opamp_pb2.RemoteConfigStatus) -> bytes:
         message = messages.build_remote_config_status_response_message(
             instance_uid=self._instance_uid,
-            sequence_num=self._sequence_num,
+            sequence_num=self._next_sequence_num(),
             capabilities=self._capabilities,
             remote_config_status=remote_config_status,
         )
@@ -155,7 +165,7 @@ class OpAMPClient:
             instance_uid=self._instance_uid,
             agent_description=self._agent_description,
             remote_config_status=self._remote_config_status,
-            sequence_num=self._sequence_num,
+            sequence_num=self._next_sequence_num(),
             effective_config=self._effective_config,
             capabilities=self._capabilities,
         )
@@ -176,7 +186,6 @@ class OpAMPClient:
             )
             return response
         finally:
-            self._sequence_num += 1
             detach(token)
 
     @staticmethod

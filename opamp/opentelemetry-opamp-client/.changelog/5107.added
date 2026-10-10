@@ -1,0 +1,1 @@
+`opentelemetry-opamp-client`: accept a message builder in `OpAMPAgent.send()`
