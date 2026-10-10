@@ -1,1 +1,1 @@
-`opentelemetry-resource-detector-azure`: report `faas.max_memory` in bytes
+`opentelemetry-resource-detector-azure`: report `faas.max_memory` in bytes instead of megabytes, increasing reported values by a factor of 1,048,576; update dashboards, alerts and processors that interpret this attribute as megabytes
