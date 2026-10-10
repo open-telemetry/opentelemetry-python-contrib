@@ -428,7 +428,9 @@ def create_aiohttp_middleware(
             _sem_conv_opt_in_mode,
         )
 
-        with _tracer.start_as_current_span(
+        # The backwards-compatible middleware is created before instrumentation.
+        request_tracer = _tracer if _tracer is not None else tracer
+        with request_tracer.start_as_current_span(
             span_name,
             context=extract(request, getter=getter),
             kind=trace.SpanKind.SERVER,
