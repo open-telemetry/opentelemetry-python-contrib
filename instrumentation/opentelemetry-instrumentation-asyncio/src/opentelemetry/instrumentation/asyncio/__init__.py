@@ -180,7 +180,12 @@ class AsyncioInstrumentor(BaseInstrumentor):
         def wrap_coros_or_futures(method, instance, args, kwargs):
             if args and len(args) > 0:
                 # Check if it's a coroutine or future and wrap it
-                wrapped_args = tuple(self.trace_item(item) for item in args)
+                # Preserve gather's deduplication of repeated awaitables.
+                traced_items = {}
+                for item in args:
+                    if item not in traced_items:
+                        traced_items[item] = self.trace_item(item)
+                wrapped_args = tuple(traced_items[item] for item in args)
                 return method(*wrapped_args, **kwargs)
             return method(*args, **kwargs)
 
