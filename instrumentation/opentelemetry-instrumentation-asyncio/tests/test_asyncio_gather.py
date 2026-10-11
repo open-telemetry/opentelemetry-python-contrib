@@ -40,3 +40,45 @@ class TestAsyncioGather(TestBase):
         self.assertEqual(spans[0].name, "asyncio coro-factorial")
         self.assertEqual(spans[1].name, "asyncio coro-factorial")
         self.assertEqual(spans[2].name, "asyncio coro-factorial")
+
+    def test_asyncio_gather_duplicate_coroutines(self) -> None:
+        async def gather_factorial() -> list[int]:
+            immediate = factorial(1)
+            yielding = factorial(3)
+            return await asyncio.gather(immediate, yielding, immediate, yielding)
+
+        self.assertEqual(asyncio.run(gather_factorial()), [1, 6, 1, 6])
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        self.assertTrue(all(span.name == "asyncio coro-factorial" for span in spans))
+
+    def test_asyncio_gather_duplicate_coroutine_exception(self) -> None:
+        error = ValueError("failed operation")
+
+        async def fail() -> None:
+            await asyncio.sleep(0)
+            raise error
+
+        async def gather_errors() -> None:
+            coro = fail()
+            results = await asyncio.gather(coro, coro, return_exceptions=True)
+            self.assertEqual(results, [error, error])
+
+            coro = fail()
+            with self.assertRaises(ValueError) as raised:
+                await asyncio.gather(coro, coro)
+            self.assertIs(raised.exception, error)
+
+        asyncio.run(gather_errors())
+
+    def test_asyncio_gather_duplicate_tasks_and_futures(self) -> None:
+        async def gather_results() -> list[int]:
+            task = asyncio.create_task(factorial(3))
+            future = asyncio.get_running_loop().create_future()
+            future.set_result(42)
+            return await asyncio.gather(task, future, task, future)
+
+        self.assertEqual(asyncio.run(gather_results()), [6, 42, 6, 42])
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "asyncio coro-factorial")
