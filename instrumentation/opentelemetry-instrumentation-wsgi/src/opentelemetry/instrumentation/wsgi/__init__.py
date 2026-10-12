@@ -224,6 +224,7 @@ import wsgiref.util as wsgiref_util
 from collections.abc import Callable, Iterable
 from timeit import default_timer
 from typing import TYPE_CHECKING, Any, TypeVar, cast
+from urllib.parse import quote
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -382,7 +383,7 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
+            result[HTTP_URL] = redact_url(_get_request_uri(environ))
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
@@ -408,6 +409,36 @@ def collect_request_attributes(
         result.update(collect_custom_request_headers_attributes(environ))
 
     return result
+
+
+def _get_request_uri(environ: WSGIEnvironment) -> str:
+    """Return the request URI built from ``environ``.
+
+    ``wsgiref.util.request_uri`` quotes ``SCRIPT_NAME`` and ``PATH_INFO`` with
+    the latin-1 codec, as PEP 3333 requires. Some servers and frameworks hand
+    over values that cannot be encoded that way (Django stores the UTF-8
+    decoded ``PATH_INFO`` in ``request.META``), which makes it raise a
+    ``UnicodeEncodeError`` and turns every request for such a URL into a 500.
+    Those values are quoted with the utf-8 codec instead, so that the URI still
+    matches the request target the client sent.
+    """
+    try:
+        return wsgiref_util.request_uri(environ)
+    except UnicodeEncodeError:
+        pass
+
+    # Mirrors ``wsgiref.util.request_uri``, but quotes the path with utf-8.
+    # ``application_uri`` ends with "/" while ``SCRIPT_NAME`` is empty, so the
+    # leading "/" of the joined path is dropped to avoid a double slash.
+    request_uri = wsgiref_util.application_uri({**environ, "SCRIPT_NAME": ""})
+    path = (environ.get("SCRIPT_NAME") or "") + (environ.get("PATH_INFO") or "")
+    request_uri += quote(path.removeprefix("/"), safe="/;=,", encoding="utf-8")
+
+    query_string = environ.get("QUERY_STRING")
+    if query_string:
+        request_uri += "?" + query_string
+
+    return request_uri
 
 
 def _apply_user_agent_attributes(

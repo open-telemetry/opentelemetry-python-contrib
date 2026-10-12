@@ -591,6 +591,31 @@ class TestWsgiAttributes(unittest.TestCase):
             },
         )
 
+    def test_request_attributes_non_latin1_path_info(self):
+        # PATH_INFO cannot always be latin-1 encoded: PEP 3333 expects latin-1
+        # decoded values, but some servers and frameworks (Django stores the
+        # UTF-8 decoded PATH_INFO in request.META) do not follow that. The
+        # instrumentation must not crash and the recorded URL must still match
+        # the request target that the client sent.
+        self.environ["PATH_INFO"] = "/\U0001f604"
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ)
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/%F0%9F%98%84")
+
+    def test_request_attributes_non_latin1_path_info_with_query_string(self):
+        self.environ["PATH_INFO"] = "/\U0001f604"
+        self.environ["QUERY_STRING"] = "foo=bar"
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ)
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/%F0%9F%98%84?foo=bar")
+
+    def test_request_attributes_non_latin1_script_name(self):
+        self.environ["SCRIPT_NAME"] = "/\U0001f604"
+        self.environ["PATH_INFO"] = "/hello"
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ)
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/%F0%9F%98%84/hello")
+
     def test_request_attributes_new_semconv(self):
         self.environ["QUERY_STRING"] = "foo=bar"
         self.environ["REQUEST_URI"] = "http://127.0.0.1/?foo=bar"
