@@ -468,6 +468,16 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self.assertFalse(old_duration_found, "Old semconv metric should not be present")
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
+    def test_server_active_requests_unit_new_semconv(self):
+        """http.server.active_requests must use the semconv unit {request}."""
+        response = self.fetch("/")
+        self.assertEqual(response.code, 201)
+        metrics = self.get_sorted_metrics(SCOPE)
+
+        active_requests = [metric for metric in metrics if metric.name == "http.server.active_requests"]
+        self.assertEqual(len(active_requests), 1)
+        self.assertEqual(active_requests[0].unit, "{request}")
+
     def test_url_query_attribute_new_semconv(self):
         """Test that URL_QUERY is set when request has query string."""
         response = self.fetch("/?foo=bar&baz=qux")
