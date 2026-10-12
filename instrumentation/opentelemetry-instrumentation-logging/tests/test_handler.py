@@ -307,7 +307,7 @@ class TestLoggingHandler(unittest.TestCase):
             mock_context = set_span_in_context(span)
 
             with patch(
-                "opentelemetry.sdk._logs._internal.get_current",
+                "opentelemetry.instrumentation.logging.handler.get_current",
                 return_value=mock_context,
             ):
                 with self.assertLogs(level=logging.CRITICAL):
