@@ -18,6 +18,7 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -267,6 +268,27 @@ class TestUtils(TestCase):
 
         recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
         self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+
+    def test_cluster_id_set_on_span_when_known(self) -> None:
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["broker1:9092"], "topic-1", 0, cluster_id="kp-cluster-uuid")
+
+        calls = {c.args[0]: c.args[1] for c in span.set_attribute.call_args_list}
+        self.assertEqual(calls.get(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID), "kp-cluster-uuid")
+
+    def test_cluster_id_omitted_from_span_when_unresolved(self) -> None:
+        """Omitted, never set as an empty string."""
+        for unresolved in (None, ""):
+            with self.subTest(cluster_id=unresolved):
+                span = mock.MagicMock()
+                span.is_recording.return_value = True
+
+                _enrich_span(span, ["broker1:9092"], "topic-1", 0, cluster_id=unresolved)
+
+                keys = [c.args[0] for c in span.set_attribute.call_args_list]
+                self.assertNotIn(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, keys)
 
     def test_extract_cluster_id_from_producer_metadata(self) -> None:
         producer = mock.MagicMock()

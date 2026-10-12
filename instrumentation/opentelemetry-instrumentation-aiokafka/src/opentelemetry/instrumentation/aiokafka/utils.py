@@ -298,7 +298,7 @@ def _enrich_base_span(
     if key is not None:
         span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key)
 
-    if cluster_id is not None:
+    if cluster_id:
         span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
 
@@ -396,7 +396,7 @@ def _enrich_getmany_poll_span(
     span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
 
-    if cluster_id is not None:
+    if cluster_id:
         span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     if consumer_group is not None:
@@ -498,7 +498,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
             # After send(), broker has responded — refresh cluster ID in case
             # metadata was not yet populated before the send started.
             cluster_id = _extract_cluster_id_from_client(instance.client)
-            if cluster_id is not None and span.is_recording():
+            if cluster_id and span.is_recording():
                 span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
             return result
 

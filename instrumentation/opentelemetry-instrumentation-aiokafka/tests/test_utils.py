@@ -15,6 +15,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _aiokafka_getter,
     _aiokafka_setter,
     _create_consumer_span,
+    _enrich_getmany_poll_span,
     _extract_cluster_id_from_client,
     _extract_send_partition,
     _get_span_name,
@@ -306,6 +307,42 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
         consume_hook.assert_awaited_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
+
+    def test_cluster_id_attribute_set_on_consumer_poll_span(self) -> None:
+        """Cluster ID is added to the consumer poll span when it is known."""
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_getmany_poll_span(
+            span,
+            bootstrap_servers="broker1:9092",
+            client_id="c1",
+            consumer_group="g1",
+            message_count=3,
+            cluster_id="consumer-cluster-uuid",
+        )
+
+        calls = {c.args[0]: c.args[1] for c in span.set_attribute.call_args_list}
+        self.assertEqual(calls.get(MESSAGING_KAFKA_CLUSTER_ID), "consumer-cluster-uuid")
+
+    def test_cluster_id_attribute_absent_on_consumer_poll_span(self) -> None:
+        """Unresolved or empty cluster id is omitted, never set as an empty string."""
+        for unresolved in (None, ""):
+            with self.subTest(cluster_id=unresolved):
+                span = mock.MagicMock()
+                span.is_recording.return_value = True
+
+                _enrich_getmany_poll_span(
+                    span,
+                    bootstrap_servers="broker1:9092",
+                    client_id="c1",
+                    consumer_group="g1",
+                    message_count=3,
+                    cluster_id=unresolved,
+                )
+
+                keys = [c.args[0] for c in span.set_attribute.call_args_list]
+                self.assertNotIn(MESSAGING_KAFKA_CLUSTER_ID, keys)
 
     async def test_cluster_id_attribute_set_on_send_span(self) -> None:
         """Cluster ID is added to producer span when client metadata is available."""
