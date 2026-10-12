@@ -47,9 +47,10 @@ jobs:
     {%- endif %}
     steps:
       - name: Checkout repo @ SHA - ${% raw %}{{ github.sha }}{% endraw %}
-        uses: actions/checkout@v4
-      {%- if job_data == "public-symbols-check" %}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
+      {%- if job_data == "public-symbols-check" %}
           fetch-depth: 0
 
       - name: Checkout main
@@ -63,7 +64,7 @@ jobs:
       {%- endif %}
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 

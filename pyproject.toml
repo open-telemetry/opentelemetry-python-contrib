@@ -188,7 +188,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]
-"instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/*" = ["TID252"]
 
 [tool.ruff.lint.isort]
 detect-same-package = false # to not consider instrumentation packages as first-party

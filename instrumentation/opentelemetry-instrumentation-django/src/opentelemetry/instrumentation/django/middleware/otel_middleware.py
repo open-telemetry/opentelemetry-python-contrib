@@ -54,7 +54,13 @@ from opentelemetry.semconv.attributes.code_attributes import (
     CODE_LINE_NUMBER,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import Span, SpanKind, use_span
+from opentelemetry.trace import (
+    INVALID_SPAN,
+    Span,
+    SpanKind,
+    get_current_span,
+    use_span,
+)
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -126,13 +132,14 @@ def _collect_code_attributes(
         target: Any = view_func
         while isinstance(target, functools.partial):
             target = target.func
-        # View.as_view() returns a wrapper exposing the original class
-        target = getattr(target, "view_class", target)
+        # View.as_view() exposes the class; dispatch is its request entry point.
+        view_class = getattr(target, "view_class", None)
+        if view_class is not None:
+            target = view_class.dispatch
         # follow decorator chains (functools.wraps sets __wrapped__)
         target = inspect.unwrap(target)
         if not (inspect.isroutine(target) or inspect.isclass(target)):
-            # callable instances: report the class implementing __call__
-            target = type(target)
+            target = type(target).__call__
 
         qual_name = getattr(target, "__qualname__", None)
         if qual_name:
@@ -180,6 +187,7 @@ class _DjangoMiddleware:
     _duration_histogram_new = None
     _active_request_counter = None
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+    _collect_view_code_attributes = False
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = None
@@ -214,6 +222,20 @@ class _DjangoMiddleware:
         except Resolver404:
             return request.method
 
+    @staticmethod
+    def _collect_custom_request_headers_attributes(carrier, is_asgi_request: bool) -> dict[str, list[str]]:
+        captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+        if not captured_headers:
+            return {}
+        if is_asgi_request:
+            return asgi_collect_custom_headers_attributes(
+                carrier,
+                SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)),
+                captured_headers,
+                normalise_request_header_name,
+            )
+        return wsgi_collect_custom_request_headers_attributes(carrier)
+
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-branches
     def process_request(self, request):
@@ -245,6 +267,10 @@ class _DjangoMiddleware:
             carrier,
             self._sem_conv_opt_in_mode,
         )
+        # Captured request headers are only added to SERVER spans, which
+        # _start_internal_or_server_span creates when there is no current span.
+        if get_current_span() is INVALID_SPAN:
+            attributes.update(self._collect_custom_request_headers_attributes(carrier, is_asgi_request))
         span, token = _start_internal_or_server_span(
             tracer=self._tracer,
             span_name=self._get_span_name(request),
@@ -277,22 +303,6 @@ class _DjangoMiddleware:
                     self._traced_request_attrs,
                     attributes,
                 )
-                if span.is_recording() and span.kind == SpanKind.SERVER:
-                    attributes.update(
-                        asgi_collect_custom_headers_attributes(
-                            carrier,
-                            SanitizeValue(
-                                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
-                            ),
-                            get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
-                            normalise_request_header_name,
-                        )
-                    )
-            else:
-                if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_attributes = wsgi_collect_custom_request_headers_attributes(carrier)
-                    if len(custom_attributes) > 0:
-                        span.set_attributes(custom_attributes)
 
             for key, value in attributes.items():
                 span.set_attribute(key, value)
@@ -326,7 +336,7 @@ class _DjangoMiddleware:
         if self._environ_activation_key in request.META.keys() and self._environ_span_key in request.META.keys():
             span = request.META[self._environ_span_key]
 
-            if span.is_recording():
+            if self._collect_view_code_attributes and span.is_recording():
                 code_attributes = _collect_code_attributes(view_func)
                 if code_attributes:
                     span.set_attributes(code_attributes)

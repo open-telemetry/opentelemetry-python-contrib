@@ -4,6 +4,7 @@
 # pylint: disable=E0611
 # pylint: disable=too-many-lines
 
+from os import environ
 from sys import modules
 from timeit import default_timer
 from unittest.mock import Mock, patch
@@ -40,8 +41,13 @@ from opentelemetry.semconv.attributes.code_attributes import (
     CODE_FUNCTION_NAME,
     CODE_LINE_NUMBER,
 )
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
+)
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import (
+    INVALID_SPAN,
     SpanKind,
     StatusCode,
     format_span_id,
@@ -101,6 +107,14 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 SCOPE = "opentelemetry.instrumentation.django"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 # pylint: disable=too-many-public-methods
@@ -245,6 +259,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes["http.status_code"], 200)
 
     def test_code_attributes_function_view(self):
+        self._enable_code_attributes()
         Client().get("/traced/")
 
         spans = self.memory_exporter.get_finished_spans()
@@ -265,6 +280,7 @@ class TestMiddleware(WsgiTestBase):
         )
 
     def test_code_attributes_class_based_view(self):
+        self._enable_code_attributes()
         Client().get("/traced_class/")
 
         spans = self.memory_exporter.get_finished_spans()
@@ -273,16 +289,19 @@ class TestMiddleware(WsgiTestBase):
         span = spans[0]
         self.assertEqual(
             span.attributes[CODE_FUNCTION_NAME],
-            f"{TracedClassView.__module__}.TracedClassView",
+            f"{TracedClassView.dispatch.__module__}.{TracedClassView.dispatch.__qualname__}",
         )
         self.assertEqual(
             span.attributes[CODE_FILE_PATH],
-            traced.__code__.co_filename,
+            TracedClassView.dispatch.__code__.co_filename,
         )
-        # line numbers are not resolved for class-based views
-        self.assertNotIn(CODE_LINE_NUMBER, span.attributes)
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            TracedClassView.dispatch.__code__.co_firstlineno,
+        )
 
     def test_code_attributes_partial_view(self):
+        self._enable_code_attributes()
         Client().get("/traced_partial/")
 
         spans = self.memory_exporter.get_finished_spans()
@@ -303,6 +322,7 @@ class TestMiddleware(WsgiTestBase):
         )
 
     def test_code_attributes_decorated_view(self):
+        self._enable_code_attributes()
         Client().get("/traced_decorated/")
 
         spans = self.memory_exporter.get_finished_spans()
@@ -322,6 +342,57 @@ class TestMiddleware(WsgiTestBase):
             span.attributes[CODE_LINE_NUMBER],
             wrapped.__code__.co_firstlineno,
         )
+
+    def _enable_code_attributes(self):
+        _django_instrumentor.uninstrument()
+        with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "true"}):
+            _django_instrumentor.instrument()
+
+    def test_code_attributes_disabled(self):
+        for value in (None, "false"):
+            with self.subTest(value=value), patch.dict("os.environ"):
+                if value is None:
+                    environ.pop("OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES", None)
+                else:
+                    environ["OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES"] = value
+                _django_instrumentor.uninstrument()
+                _django_instrumentor.instrument()
+                with patch(
+                    "opentelemetry.instrumentation.django.middleware.otel_middleware._collect_code_attributes"
+                ) as collect:
+                    Client().get("/traced/")
+                collect.assert_not_called()
+                span = self.memory_exporter.get_finished_spans()[0]
+                for key in (CODE_FUNCTION_NAME, CODE_FILE_PATH, CODE_LINE_NUMBER):
+                    self.assertNotIn(key, span.attributes)
+                self.memory_exporter.clear()
+
+    def test_code_attributes_internal_span(self):
+        self._enable_code_attributes()
+        tracer = self.tracer_provider.get_tracer(__name__)
+        with tracer.start_as_current_span("outer", kind=SpanKind.SERVER):
+            Client().get("/traced/")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        self.assertEqual(spans[0].kind, SpanKind.INTERNAL)
+        self.assertEqual(spans[0].attributes[CODE_FUNCTION_NAME], f"{traced.__module__}.traced")
+        self.assertNotIn(CODE_FUNCTION_NAME, spans[1].attributes)
+
+    def test_code_attributes_non_recording_span(self):
+        self._enable_code_attributes()
+        request = HttpRequest()
+        request.META.update(
+            HTTP_HOST="testserver",
+            **{
+                _DjangoMiddleware._environ_activation_key: object(),
+                _DjangoMiddleware._environ_span_key: INVALID_SPAN,
+            },
+        )
+        with patch(
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._collect_code_attributes"
+        ) as collect:
+            _DjangoMiddleware(lambda _: None).process_view(request, traced)
+        collect.assert_not_called()
 
     def test_traced_get_new_semconv(self):
         Client().get("/traced/")
@@ -1087,6 +1158,75 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
         self.memory_exporter.clear()
+
+    def _instrument_with_sampler(self, sampler):
+        _django_instrumentor.uninstrument()
+        tracer_provider, exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        _django_instrumentor.instrument(tracer_provider=tracer_provider)
+        return tracer_provider, exporter
+
+    def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+            "http.request.header.my_secret_header": ["[REDACTED]"],
+        }
+        sampler = CapturingSampler()
+        _, exporter = self._instrument_with_sampler(sampler)
+
+        response = Client(
+            HTTP_CUSTOM_TEST_HEADER_1="test-header-value-1",
+            HTTP_REGEX_TEST_HEADER_1="Regex Test Value 1",
+            HTTP_MY_SECRET_HEADER="My Secret Value",
+            HTTP_UNCAPTURED_HEADER="Uncaptured Value",
+        ).get("/traced/")
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.SERVER)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter = self._instrument_with_sampler(sampler)
+
+                response = Client(HTTP_CUSTOM_TEST_HEADER_1=value).get("/traced/")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        tracer_provider, exporter = self._instrument_with_sampler(sampler)
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
+            Client(HTTP_CUSTOM_TEST_HEADER_1="test-header-value-1").get("/traced/")
+
+        self.assertEqual(sampler.kind, SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        span = spans[0]
+        self.assertEqual(span.kind, SpanKind.INTERNAL)
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
