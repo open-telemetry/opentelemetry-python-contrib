@@ -206,7 +206,6 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
-    _report_new,
     _set_db_name,
     _set_db_statement,
     _set_db_system,
@@ -236,6 +235,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -526,18 +526,14 @@ class DatabaseApiIntegration:
                 ]
             ),
         )
-        self._meter = None
-        self._duration_histogram = None
-        self._returned_rows_histogram = None
-        if _report_new(self._sem_conv_opt_in_mode_db):
-            self._meter = get_meter(
-                self._name,
-                self._version,
-                meter_provider,
-                schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE]),
-            )
-            self._duration_histogram = create_db_client_operation_duration(self._meter)
-            self._returned_rows_histogram = create_db_client_response_returned_rows(self._meter)
+        self._meter = get_meter(
+            self._name,
+            self._version,
+            meter_provider,
+            schema_url=Schemas.V1_33_0.value,
+        )
+        self._duration_histogram = create_db_client_operation_duration(self._meter)
+        self._returned_rows_histogram = create_db_client_response_returned_rows(self._meter)
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
@@ -852,9 +848,6 @@ class CursorTracer(Generic[CursorT]):
         start_time: float,
         error: Exception | None,
     ) -> None:
-        if not _report_new(self._db_api_integration._sem_conv_opt_in_mode_db):
-            # DB Metrics are not supported without Database semconv opt-in
-            return
         elapsed = time.perf_counter() - start_time
         attributes = self._get_metric_attributes(operation_name, error)
         self._db_api_integration._duration_histogram.record(elapsed, attributes=attributes)

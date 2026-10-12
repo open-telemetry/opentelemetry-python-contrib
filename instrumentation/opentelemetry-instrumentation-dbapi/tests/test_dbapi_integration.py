@@ -137,6 +137,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(result, "result")
         execute.assert_awaited_once_with("SELECT 1")
         self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     def test_span_succeeded_new_semconv(self):
         with use_semconv_opt_in("database,http"):
@@ -492,6 +493,7 @@ class TestDBApiIntegration(TestBase):
         cursor.executemany("Test query")
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+        self.assertIsNotNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
 
     def test_suppress_instrumentation(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -505,6 +507,7 @@ class TestDBApiIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     def _get_metric(self, name):
         return next(
@@ -512,17 +515,42 @@ class TestDBApiIntegration(TestBase):
             None,
         )
 
-    def test_metrics_not_emitted_in_default_mode(self):
-        # Without OTEL_SEMCONV_STABILITY_OPT_IN=database, no metrics are exported
-        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
-        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
-        cursor = mock_connection.cursor()
-        cursor.execute("SELECT 1", rowcount=3)
+    def test_metrics_emitted_in_all_semconv_modes(self) -> None:
+        for mode in ("", "database", "database/dup", "http"):
+            with self.subTest(mode=mode), use_semconv_opt_in(mode):
+                meter_provider, metrics_reader = self.create_meter_provider()
+                self.addCleanup(meter_provider.shutdown)
+                db_integration = dbapi.DatabaseApiIntegration(
+                    "instrumenting_module_test_name",
+                    "testcomponent",
+                    meter_provider=meter_provider,
+                )
+                mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
+                cursor = mock_connection.cursor()
+                cursor.execute("SELECT 1", rowcount=3)
 
-        self.assertIsNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
-        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+                metrics_data = metrics_reader.get_metrics_data()
+                self.assertIsNotNone(metrics_data)
+                scope_metrics = metrics_data.resource_metrics[0].scope_metrics
+                self.assertEqual(len(scope_metrics), 1)
+                self.assertEqual(scope_metrics[0].schema_url, "https://opentelemetry.io/schemas/1.33.0")
+                metrics = {metric.name: metric for metric in scope_metrics[0].metrics}
+                self.assertEqual(set(metrics), {DB_CLIENT_OPERATION_DURATION, DB_CLIENT_RESPONSE_RETURNED_ROWS})
+                for metric in metrics.values():
+                    points = list(metric.data.data_points)
+                    self.assertEqual(len(points), 1)
+                    self.assertEqual(points[0].count, 1)
+                    self.assertEqual(
+                        dict(points[0].attributes),
+                        {DB_SYSTEM_NAME: "testcomponent", DB_OPERATION_NAME: "SELECT"},
+                    )
+                    for value in points[0].attributes.values():
+                        self.assertIs(type(value), str)
+                self.assertEqual(metrics[DB_CLIENT_OPERATION_DURATION].unit, "s")
+                self.assertGreaterEqual(metrics[DB_CLIENT_OPERATION_DURATION].data.data_points[0].sum, 0.0)
+                self.assertEqual(metrics[DB_CLIENT_RESPONSE_RETURNED_ROWS].unit, "{row}")
+                self.assertEqual(metrics[DB_CLIENT_RESPONSE_RETURNED_ROWS].data.data_points[0].sum, 3)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_operation_duration_recorded(self):
         connection_props = {
             "database": "testdatabase",
@@ -556,11 +584,13 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
         self.assertEqual(attributes[SERVER_ADDRESS], "testhost")
         self.assertEqual(attributes[SERVER_PORT], 123)
+        self.assertIs(type(attributes[SERVER_PORT]), int)
+        for key in (DB_SYSTEM_NAME, DB_NAMESPACE, DB_OPERATION_NAME, SERVER_ADDRESS):
+            self.assertIs(type(attributes[key]), str)
         self.assertNotIn(ERROR_TYPE, attributes)
         self.assertEqual(points[0].count, 1)
         self.assertGreaterEqual(points[0].sum, 0.0)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_operation_duration_error_type(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
@@ -580,7 +610,6 @@ class TestDBApiIntegration(TestBase):
         rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
         self.assertIsNone(rows_metric)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_recorded(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
@@ -595,7 +624,6 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(points[0].sum, 3)
         self.assertEqual(points[0].count, 1)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_skipped_when_rowcount_unknown(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
@@ -608,7 +636,6 @@ class TestDBApiIntegration(TestBase):
         # duration is still recorded
         self.assertIsNotNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_custom_meter_provider(self):
         meter_provider, metrics_reader = self.create_meter_provider()
         db_integration = dbapi.DatabaseApiIntegration(
@@ -625,7 +652,6 @@ class TestDBApiIntegration(TestBase):
         self.assertIn(DB_CLIENT_OPERATION_DURATION, names)
         self.assertIn(DB_CLIENT_RESPONSE_RETURNED_ROWS, names)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_async_operation_duration_recorded(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         cursor_tracer = dbapi.CursorTracer(db_integration)
@@ -646,6 +672,26 @@ class TestDBApiIntegration(TestBase):
         self.assertIsNotNone(rows_metric)
         rows_points = list(rows_metric.data.data_points)
         self.assertEqual(rows_points[0].sum, 5)
+
+    def test_async_operation_duration_error_type(self) -> None:
+        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+        cursor_tracer = dbapi.CursorTracer(db_integration)
+        error = RuntimeError("query failed")
+
+        async def async_execute(_query: str) -> None:
+            raise error
+
+        with self.assertRaises(RuntimeError) as raised:
+            asyncio.run(cursor_tracer.traced_execution_async(MockCursor(), async_execute, "SELECT 1"))
+        self.assertIs(raised.exception, error)
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0].count, 1)
+        self.assertEqual(dict(points[0].attributes)[ERROR_TYPE], "RuntimeError")
+        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
 
     def test_commenter_options_propagation(self):
         db_integration = dbapi.DatabaseApiIntegration(

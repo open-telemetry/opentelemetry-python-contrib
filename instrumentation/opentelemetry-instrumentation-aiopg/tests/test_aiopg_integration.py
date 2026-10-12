@@ -680,16 +680,30 @@ class TestAiopgMetrics(TestBase):
             None,
         )
 
-    def test_metrics_not_emitted_in_default_mode(self):
+    def test_metrics_emitted_in_default_mode(self) -> None:
         db_integration = AiopgIntegration(__name__, "testcomponent")
         mock_connection = async_call(db_integration.wrapped_connection(mock_connect, (), {}))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("SELECT 1", rowcount=3))
 
-        self.assertIsNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
-        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        for metric in (duration_metric, rows_metric):
+            self.assertIsNotNone(metric)
+            points = list(metric.data.data_points)
+            self.assertEqual(len(points), 1)
+            self.assertEqual(points[0].count, 1)
+            self.assertEqual(
+                dict(points[0].attributes),
+                {DB_SYSTEM_NAME: "testcomponent", DB_OPERATION_NAME: "SELECT"},
+            )
+            for value in points[0].attributes.values():
+                self.assertIs(type(value), str)
+        self.assertEqual(duration_metric.unit, "s")
+        self.assertGreaterEqual(duration_metric.data.data_points[0].sum, 0.0)
+        self.assertEqual(rows_metric.unit, "{row}")
+        self.assertEqual(rows_metric.data.data_points[0].sum, 3)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_operation_duration_recorded(self):
         connection_props = {
             "database": "testdatabase",
@@ -723,7 +737,6 @@ class TestAiopgMetrics(TestBase):
         self.assertEqual(points[0].count, 1)
         self.assertGreaterEqual(points[0].sum, 0.0)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_operation_duration_error_type(self):
         db_integration = AiopgIntegration(__name__, "testcomponent")
         mock_connection = async_call(db_integration.wrapped_connection(mock_connect, (), {}))
@@ -740,7 +753,6 @@ class TestAiopgMetrics(TestBase):
         self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
         self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_recorded_for_executemany(self):
         db_integration = AiopgIntegration(__name__, "testcomponent")
         mock_connection = async_call(db_integration.wrapped_connection(mock_connect, (), {}))
@@ -755,7 +767,6 @@ class TestAiopgMetrics(TestBase):
         self.assertEqual(points[0].sum, 3)
         self.assertEqual(points[0].count, 1)
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_returned_rows_skipped_when_rowcount_unknown(self):
         db_integration = AiopgIntegration(__name__, "testcomponent")
         mock_connection = async_call(db_integration.wrapped_connection(mock_connect, (), {}))
