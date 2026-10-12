@@ -428,7 +428,7 @@ def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> dic
     if active_meter is not None:
         histograms["active_requests"] = active_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
+            unit="{request}",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
