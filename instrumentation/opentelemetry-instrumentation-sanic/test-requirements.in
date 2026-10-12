@@ -2,6 +2,8 @@
 pytest~=7.4
 sanic-testing~=24.6
 httpx~=0.28
+packaging>=21.0
+wrapt>=1.16.0,<3.0.0
 -e opentelemetry-instrumentation
 -e util/opentelemetry-util-http
 -e instrumentation/opentelemetry-instrumentation-sanic[instruments]
