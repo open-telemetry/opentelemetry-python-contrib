@@ -18,6 +18,8 @@ jobs:
           fi
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set environment variables
         run: |
@@ -64,9 +66,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
+          persist-credentials: false
 
         # back to the release branch
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
         # next few steps publish to pypi
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -91,14 +96,14 @@ jobs:
         env:
           TWINE_USERNAME: '__token__'
           TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-        run: |
+        run: | # zizmor: ignore[use-trusted-publishing] publishing uses the repository-managed TestPyPI token
           twine upload --repository testpypi --skip-existing --verbose dist/*
 
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: '__token__'
           TWINE_PASSWORD: ${{ secrets.pypi_password }}
-        run: |
+        run: | # zizmor: ignore[use-trusted-publishing] publishing uses the repository-managed PyPI token
           twine upload --skip-existing --verbose dist/*
 
       - name: Generate release notes
@@ -122,4 +127,5 @@ jobs:
         with:
           # the step below is creating a pull request against main
           ref: main
+          persist-credentials: false
 
