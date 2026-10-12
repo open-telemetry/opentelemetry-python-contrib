@@ -619,7 +619,8 @@ def _log_exception(
     if len(args) == 3:
         error = args[1]
 
-    _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in_mode)
+    if handler._headers_written or isinstance(handler, tornado.websocket.WebSocketHandler):
+        _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in_mode)
 
     _finish_span(tracer, handler, error, sem_conv_opt_in_mode)
     return func(*args, **kwargs)

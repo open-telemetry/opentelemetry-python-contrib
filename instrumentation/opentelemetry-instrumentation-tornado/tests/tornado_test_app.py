@@ -147,6 +147,11 @@ class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
             time.sleep(0.05)
 
 
+class RejectWebSocketHandler(tornado.websocket.WebSocketHandler):
+    def prepare(self) -> None:
+        raise tornado.web.HTTPError(403)
+
+
 def make_app(tracer):
     app = tornado.web.Application(
         [
@@ -162,6 +167,7 @@ def make_app(tracer):
             (r"/raise_after_finish", RaiseAfterFinishHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
+            (r"/ws_reject", RejectWebSocketHandler),
             (r"/parametrized/(.*)/", ParametrizedHandler),
             (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
