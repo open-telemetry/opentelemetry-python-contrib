@@ -400,9 +400,9 @@ class TestFlaskCompatibility(WsgiTestBase):
         @app.route("/sse")
         def sse_endpoint():
             def generate():
-                for i in range(num_chunks):
+                for chunk_index in range(num_chunks):
                     time.sleep(chunk_delay)
-                    yield f"data: {i}\n\n"
+                    yield f"data: {chunk_index}\n\n"
 
             return flask.Response(
                 flask.stream_with_context(generate()),

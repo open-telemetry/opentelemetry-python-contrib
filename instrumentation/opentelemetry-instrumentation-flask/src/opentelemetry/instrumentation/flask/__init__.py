@@ -341,7 +341,7 @@ def _rewrapped_app(
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
-    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements,too-many-locals
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -406,10 +406,7 @@ def _rewrapped_app(
                 header_map = {key.lower(): value for key, value in response_headers}
                 content_type = header_map.get("content-type", "")
                 transfer_encoding = header_map.get("transfer-encoding", "").lower()
-                if (
-                    content_type.startswith("text/event-stream")
-                    or "chunked" in transfer_encoding
-                ):
+                if content_type.startswith("text/event-stream") or "chunked" in transfer_encoding:
                     flask.request.environ[_ENVIRON_STREAMING_KEY] = True
             return start_response(status, response_headers, *args, **kwargs)
 
