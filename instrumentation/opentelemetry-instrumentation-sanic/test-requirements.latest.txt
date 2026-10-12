@@ -48,6 +48,7 @@ multidict==6.9.1
     # via sanic
 packaging==26.3
     # via
+    #   -r instrumentation/opentelemetry-instrumentation-sanic/test-requirements.in
     #   opentelemetry-instrumentation
     #   pytest
 pluggy==1.6.0
@@ -85,7 +86,9 @@ websockets==16.1.1 ; python_full_version < '3.11'
 websockets==17.2 ; python_full_version >= '3.11'
     # via sanic
 wrapt==2.5.0
-    # via opentelemetry-instrumentation
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-sanic/test-requirements.in
+    #   opentelemetry-instrumentation
 
 # The following packages were excluded from the output:
 # opentelemetry-api

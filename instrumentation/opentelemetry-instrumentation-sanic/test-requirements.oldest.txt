@@ -46,8 +46,9 @@ iniconfig==2.3.1
     # via pytest
 multidict==6.9.1
     # via sanic
-packaging==18.0
+packaging==21.0
     # via
+    #   -r instrumentation/opentelemetry-instrumentation-sanic/test-requirements.in
     #   opentelemetry-instrumentation
     #   pytest
 pluggy==1.6.0
@@ -64,8 +65,6 @@ sanic-routing==23.12.0
     # via sanic
 sanic-testing==24.6.0
     # via -r instrumentation/opentelemetry-instrumentation-sanic/test-requirements.in
-six==1.17.0
-    # via packaging
 tomli==2.5.0 ; python_full_version < '3.11'
     # via pytest
 tracerite==2.6.5
@@ -86,8 +85,10 @@ websockets==16.1.1 ; python_full_version < '3.11'
     # via sanic
 websockets==17.2 ; python_full_version >= '3.11'
     # via sanic
-wrapt==1.0.0
-    # via opentelemetry-instrumentation
+wrapt==1.16.0
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-sanic/test-requirements.in
+    #   opentelemetry-instrumentation
 
 # The following packages were excluded from the output:
 # opentelemetry-api
