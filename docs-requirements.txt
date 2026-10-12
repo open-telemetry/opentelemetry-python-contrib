@@ -46,6 +46,7 @@ pyramid>=1.7
 redis>=2.6
 remoulade[limits]>=5.0.0 ; python_version >= "3.12"
 remoulade>=0.50.0 ; python_version < "3.12"
+sanic~=25.12
 sqlalchemy>=1.0
 starlette~=0.50
 structlog>=21.1

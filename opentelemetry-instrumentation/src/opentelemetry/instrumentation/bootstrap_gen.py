@@ -52,6 +52,7 @@ libraries = [
     {"library": "redis >= 2.6", "instrumentation": "opentelemetry-instrumentation-redis==0.67b0.dev"},
     {"library": "remoulade >= 0.50", "instrumentation": "opentelemetry-instrumentation-remoulade==0.67b0.dev"},
     {"library": "requests ~= 2.0", "instrumentation": "opentelemetry-instrumentation-requests==0.67b0.dev"},
+    {"library": "sanic >= 23.12, < 26", "instrumentation": "opentelemetry-instrumentation-sanic==0.67b0.dev"},
     {
         "library": "sqlalchemy >= 1.0.0, < 2.1.0",
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.67b0.dev",
