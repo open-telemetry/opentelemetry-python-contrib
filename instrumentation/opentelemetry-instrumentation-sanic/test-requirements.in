@@ -1,0 +1,7 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+sanic-testing~=24.6
+httpx~=0.28
+-e opentelemetry-instrumentation
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-sanic[instruments]
