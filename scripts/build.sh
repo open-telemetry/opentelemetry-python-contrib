@@ -36,8 +36,8 @@ DISTDIR=dist
     if echo "$x" | grep -Eq "^opentelemetry_(resource_detector_azure|util_genai).*(\.tar\.gz|\.whl)$"; then
       echo "Skipping $x because of manual upload by Azure maintainers."
       rm $x
-    # opentelemetry-instrumentation-valkey is released independently via package-release.yml
-    elif echo "$x" | grep -Eq "^opentelemetry_instrumentation_valkey.*(\.tar\.gz|\.whl)$"; then
+    # opentelemetry-instrumentation-valkey-py is released independently via package-release.yml
+    elif echo "$x" | grep -Eq "^opentelemetry_instrumentation_valkey_py-.*(\.tar\.gz|\.whl)$"; then
       echo "Skipping $x because it is released independently via package-release.yml."
       rm $x
     # NOTE: We filter beta vs 1.0 package at this point because we can read the

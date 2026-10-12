@@ -68,7 +68,7 @@ members = [
     "opentelemetry-instrumentation-tortoiseorm",
     "opentelemetry-instrumentation-urllib",
     "opentelemetry-instrumentation-urllib3",
-    "opentelemetry-instrumentation-valkey",
+    "opentelemetry-instrumentation-valkey-py",
     "opentelemetry-instrumentation-vertexai",
     "opentelemetry-instrumentation-wsgi",
     "opentelemetry-propagator-aws-xray",
@@ -2663,7 +2663,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<10.0.0" },
+    { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<11.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
@@ -2826,7 +2826,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "typing-extensions", specifier = "~=4.12" },
-    { name = "wrapt", specifier = "~=1.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3918,8 +3918,8 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-valkey"
-source = { editable = "instrumentation/opentelemetry-instrumentation-valkey" }
+name = "opentelemetry-instrumentation-valkey-py"
+source = { editable = "instrumentation/opentelemetry-instrumentation-valkey-py" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },

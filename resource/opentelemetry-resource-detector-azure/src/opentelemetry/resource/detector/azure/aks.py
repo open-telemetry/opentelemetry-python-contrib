@@ -1,0 +1,86 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+from logging import getLogger
+from os import environ
+from pathlib import Path
+
+from opentelemetry.sdk.resources import Resource, ResourceDetector
+
+from ._constants import (
+    _AKS_CLUSTER_RESOURCE_ID,
+    _AKS_CLUSTER_RESOURCE_ID_KEY,
+    _AKS_METADATA_FILE_PATH,
+)
+
+_logger = getLogger(__name__)
+
+_CLOUD_ACCOUNT_ID = "cloud.account.id"
+_CLOUD_PLATFORM = "cloud.platform"
+_CLOUD_PROVIDER = "cloud.provider"
+_CLOUD_RESOURCE_ID = "cloud.resource_id"
+
+
+def _extract_subscription_id(resource_id: str) -> str | None:
+    segments = resource_id.split("/")
+    for index, segment in enumerate(segments):
+        if segment.lower() == "subscriptions" and index < len(segments) - 1:
+            return segments[index + 1] or None
+    return None
+
+
+def _parse_aks_metadata(content: str) -> str | None:
+    keyed_resource_id: str | None = None
+    bare_values: list[str] = []
+
+    for line in content.splitlines():
+        stripped_line = line.strip().lstrip("\ufeff")
+        if not stripped_line or stripped_line.startswith("#"):
+            continue
+
+        key, separator, value = stripped_line.partition("=")
+        if not separator:
+            bare_values.append(stripped_line)
+        elif key.strip() == _AKS_CLUSTER_RESOURCE_ID_KEY and value.strip():
+            keyed_resource_id = value.strip()
+
+    if keyed_resource_id:
+        return keyed_resource_id
+    if len(bare_values) == 1:
+        return bare_values[0]
+    return None
+
+
+def _get_aks_metadata_from_file() -> str | None:
+    metadata_path = Path(_AKS_METADATA_FILE_PATH)
+    try:
+        if metadata_path.is_dir():
+            metadata_path = metadata_path / _AKS_CLUSTER_RESOURCE_ID_KEY
+        content = metadata_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        _logger.debug(
+            "Failed to read AKS metadata from %s",
+            metadata_path,
+            exc_info=True,
+        )
+        return None
+
+    return _parse_aks_metadata(content)
+
+
+class AzureAKSResourceDetector(ResourceDetector):
+    def detect(self) -> Resource:
+        resource_id = environ.get(_AKS_CLUSTER_RESOURCE_ID) or _get_aks_metadata_from_file()
+        if not resource_id:
+            return Resource({})
+
+        attributes = {
+            _CLOUD_PROVIDER: "azure",
+            _CLOUD_PLATFORM: "azure.aks",
+            _CLOUD_RESOURCE_ID: resource_id,
+        }
+        subscription_id = _extract_subscription_id(resource_id)
+        if subscription_id:
+            attributes[_CLOUD_ACCOUNT_ID] = subscription_id
+
+        return Resource(attributes)
