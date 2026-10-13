@@ -219,6 +219,7 @@ import typing
 import urllib
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from functools import wraps
 from timeit import default_timer
 from typing import Any
@@ -300,6 +301,12 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+# The response size of the request that is currently being served. A context
+# variable keeps it per request instead of per middleware instance, so nested
+# layers and tasks spawned while the request is in flight share it, and the value
+# cannot outlive the request in the calling context.
+_response_size_holder: ContextVar[dict[str, int]] = ContextVar("_response_size_holder")
 
 
 class ASGIGetter(Getter[dict]):
@@ -743,11 +750,19 @@ class OpenTelemetryMiddleware:
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
 
-        # Initialize before the try block: the holder is read unconditionally in
+        # The response size is per request, not per middleware instance: one
+        # instance serves every request. The holder lives in a context variable
+        # so that nested middleware layers and tasks spawned while the request
+        # is in flight share it. An outer layer's holder is reused, if there is
+        # one, so that every layer records the same size.
+        #
+        # Set it before the try block: the holder is read unconditionally in
         # finally, so it must exist even if the wrapped block raises before
-        # otel_send is constructed (otherwise finally would mask the original
-        # exception with an UnboundLocalError).
-        response_size_holder: dict[str, int] = {}
+        # otel_send is constructed.
+        response_size_holder: dict[str, int] | None = _response_size_holder.get(None)
+        if response_size_holder is None:
+            response_size_holder = {}
+        response_size_token = _response_size_holder.set(response_size_holder)
         try:
             with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
@@ -779,7 +794,6 @@ class OpenTelemetryMiddleware:
                     scope,
                     send,
                     attributes,
-                    response_size_holder,
                 )
 
                 await self.app(scope, otel_receive, otel_send)
@@ -852,6 +866,7 @@ class OpenTelemetryMiddleware:
                 context.detach(token)
             if span.is_recording():
                 span.end()
+            _response_size_holder.reset(response_size_token)
 
     # pylint: enable=too-many-branches
     def _get_otel_receive(self, server_span_name, scope, receive):
@@ -938,7 +953,6 @@ class OpenTelemetryMiddleware:
         scope,
         send,
         duration_attrs,
-        response_size_holder,
     ):
         expecting_trailers = False
 
@@ -972,8 +986,9 @@ class OpenTelemetryMiddleware:
                     setter=asgi_setter,
                 )
 
+            response_size_holder = _response_size_holder.get(None)
             content_length = asgi_getter.get(message, "content-length")
-            if content_length:
+            if content_length and response_size_holder is not None:
                 try:
                     response_size_holder["content_length"] = int(content_length[0])
                 except ValueError:

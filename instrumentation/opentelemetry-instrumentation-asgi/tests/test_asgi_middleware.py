@@ -1951,6 +1951,145 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             with self.assertRaisesRegex(RuntimeError, "boom before send"):
                 await app(scope, dummy_receive, dummy_send)
 
+    async def test_response_size_holder_reset_between_requests(self):
+        """The holder must not outlive the request that created it.
+
+        Both requests run in the context of this test, so a missing reset
+        leaves the first request's holder behind: the second request reuses
+        it and reports the first response's size again.
+        """
+        app = otel_asgi.OpenTelemetryMiddleware(sized_or_streaming_asgi)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(_message):
+            return None
+
+        sized_scope = {}
+        setup_testing_defaults(sized_scope)
+        sized_scope["path"] = "/sized"
+        await app(sized_scope, receive, send)
+        self.assertIsNone(otel_asgi._response_size_holder.get(None))
+
+        streaming_scope = {}
+        setup_testing_defaults(streaming_scope)
+        streaming_scope["path"] = "/streaming"
+        await app(streaming_scope, receive, send)
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        # /streaming sends no Content-Length and must not report 1024.
+        self.assertEqual(sum(point.count for point in points), 1)
+        self.assertEqual(sum(point.sum for point in points), 1024)
+
+    async def test_response_size_holder_reset_on_exception(self):
+        """An exception out of the wrapped app must still reset the holder."""
+
+        async def failing_asgi(_scope, _receive, _send):
+            raise ValueError("boom after start")
+
+        app = otel_asgi.OpenTelemetryMiddleware(failing_asgi)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(_message):
+            return None
+
+        scope = {}
+        setup_testing_defaults(scope)
+        with self.assertRaisesRegex(ValueError, "boom after start"):
+            await app(scope, receive, send)
+        self.assertIsNone(otel_asgi._response_size_holder.get(None))
+
+    async def test_response_size_holder_reset_on_cancellation(self):
+        """A cancelled request must still reset the holder.
+
+        The middleware runs in this test's task, so the cancellation is
+        delivered inside ``__call__`` and the assertion below observes the
+        very context the middleware set the holder in.
+        """
+        started = asyncio.Event()
+
+        async def hanging_asgi(_scope, _receive, _send):
+            started.set()
+            await asyncio.Event().wait()
+
+        app = otel_asgi.OpenTelemetryMiddleware(hanging_asgi)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(_message):
+            return None
+
+        scope = {}
+        setup_testing_defaults(scope)
+        current = asyncio.current_task()
+
+        async def cancel_once_started():
+            await started.wait()
+            current.cancel()
+
+        canceller = asyncio.ensure_future(cancel_once_started())
+        try:
+            with self.assertRaises(asyncio.CancelledError):
+                await app(scope, receive, send)
+        finally:
+            await canceller
+        self.assertIsNone(otel_asgi._response_size_holder.get(None))
+
+    async def test_response_size_holder_shared_with_subtask_send(self):
+        """A task started by the app sends through the request's holder.
+
+        The response start (the message carrying Content-Length) is sent from
+        a task started inside the request while the app's own ``send`` only
+        sends the body, so the recorded size proves the subtask inherited the
+        holder from the context instead of looking one up of its own.
+        """
+
+        async def subtask_asgi(_scope, receive, send):
+            await receive()
+
+            async def start_response():
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [[b"content-length", b"1024"]],
+                    }
+                )
+
+            subtask = asyncio.ensure_future(start_response())
+            await subtask
+            await send({"type": "http.response.body", "body": b"*"})
+
+        app = otel_asgi.OpenTelemetryMiddleware(subtask_asgi)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(_message):
+            return None
+
+        scope = {}
+        setup_testing_defaults(scope)
+        await app(scope, receive, send)
+
+        points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == "http.server.response.size"
+            for point in metric.data.data_points
+        ]
+        self.assertEqual(sum(point.count for point in points), 1)
+        self.assertEqual(sum(point.sum for point in points), 1024)
+
     async def test_no_metric_for_websockets(self):
         self.scope = {
             "type": "websocket",
