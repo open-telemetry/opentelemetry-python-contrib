@@ -19,6 +19,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
@@ -96,6 +97,28 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         self.check_spans(spans, 1, ["set key"])
+
+    def test_suppressed_commands(self) -> None:
+        client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n", b"STORED\r\n"])
+
+        with suppress_instrumentation():
+            self.assertTrue(client.set(b"key", b"value", noreply=False))
+            self.assertEqual(client.get_many([b"key"]), {b"key": b"value"})
+
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+
+        self.assertTrue(client.set(b"key", b"value", noreply=False))
+        self.check_spans(self.memory_exporter.get_finished_spans(), 1, ["set key"])
+
+    def test_suppressed_command_error(self) -> None:
+        error = MemcacheServerError(b"server unavailable")
+        client = self.make_client([error])
+
+        with suppress_instrumentation(), self.assertRaises(MemcacheServerError) as raised:
+            client.get(b"key")
+
+        self.assertIs(raised.exception, error)
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
 
     def test_set_not_recording(self):
         mock_tracer = mock.Mock()
