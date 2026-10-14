@@ -368,24 +368,51 @@ def test_report_full_state_flag_triggers_full_state_send():
     client_mock.build_full_state_message.assert_called()
 
 
-def test_heartbeats_queued_behind_a_slow_request_are_built_when_sent():
+def test_heartbeats_queued_behind_a_slow_request_are_numbered_when_sent():
     transport = _RecordingTransport(hold=2)
     client = _client(transport)
     agent = OpAMPAgent(interval=0.01, client=client, callbacks=_NoOpCallbacks())
-    with mock.patch.object(client, "build_heartbeat_message", wraps=client.build_heartbeat_message) as build:
-        agent.start()
-        assert transport.held.wait(5)
-        # the first heartbeat is in flight: let a few more queue up behind it
-        _wait_for(lambda: agent._queue.qsize() >= 2)
-        agent._schedule = False
-        sleep(0.05)
-        assert build.call_count == 1
-        transport.release.set()
-        _wait_until_idle(agent)
+    agent.start()
+    assert transport.held.wait(5)
+    # the first heartbeat is in flight: let a few more queue up behind it
+    _wait_for(lambda: agent._queue.qsize() >= 2)
+    agent._schedule = False
+    transport.release.set()
+    _wait_until_idle(agent)
     agent.stop()
 
     assert len(transport.sent) >= 5
     assert transport.sequence_nums() == list(range(len(transport.sent)))
+
+
+def test_message_sent_from_on_message_behind_queued_heartbeats_is_numbered_when_sent():
+    # As distros do: answer a remote config with a status message from on_message.
+    class Callbacks(OpAMPCallbacks):
+        def on_message(self, agent, client, message):
+            if message.remote_config is None:
+                return
+            status = client.update_remote_config_status(
+                remote_config_hash=message.remote_config.config_hash,
+                status=opamp_pb2.RemoteConfigStatuses_APPLIED,
+            )
+            if status is not None:
+                agent.send(client.build_remote_config_status_response_message(status))
+
+    remote_config = opamp_pb2.ServerToAgent(remote_config=opamp_pb2.AgentRemoteConfig(config_hash=b"1234"))
+    transport = _RecordingTransport(hold=2, responses=[opamp_pb2.ServerToAgent(), remote_config])
+    agent = OpAMPAgent(interval=0.01, client=_client(transport), callbacks=Callbacks())
+    agent.start()
+    assert transport.held.wait(5)
+    # the first heartbeat is in flight and its reply carries a remote config: let more
+    # heartbeats queue up before the status message is queued behind them
+    _wait_for(lambda: agent._queue.qsize() >= 2)
+    agent._schedule = False
+    transport.release.set()
+    _wait_until_idle(agent)
+    agent.stop()
+
+    assert transport.sequence_nums() == list(range(len(transport.sent)))
+    assert any(message.HasField("remote_config_status") for message in transport.sent[3:])
 
 
 def test_retried_message_keeps_its_sequence_num():
@@ -412,8 +439,8 @@ def test_dropped_message_leaves_a_gap_in_sequence_nums():
     client = _client(transport)
     agent = OpAMPAgent(interval=30, client=client, callbacks=_NoOpCallbacks(), initial_backoff=0)
     agent.start()
-    agent.send(client.build_heartbeat_message, max_retries=1)
-    agent.send(client.build_heartbeat_message)
+    agent.send(client.build_heartbeat_message(), max_retries=1)
+    agent.send(client.build_heartbeat_message())
     _wait_until_idle(agent)
     agent.stop()
 
@@ -421,31 +448,22 @@ def test_dropped_message_leaves_a_gap_in_sequence_nums():
     assert transport.sequence_nums() == [0, 2, 3]
 
 
-def test_send_builds_callable_payload_when_sent():
+def test_queued_message_takes_the_instance_uid_when_sent():
     transport = _RecordingTransport(hold=1)
     client = _client(transport)
     agent = OpAMPAgent(interval=30, client=client, callbacks=_NoOpCallbacks())
     agent.start()
     assert transport.held.wait(5)
-    # queued while the connection message is in flight, then the state changes
-    agent.send(client.build_full_state_message)
-    client.update_remote_config_status(remote_config_hash=b"1234", status=opamp_pb2.RemoteConfigStatuses_APPLIED)
+    # queued while the connection message is in flight, then the instance UID changes
+    agent.send(client.build_heartbeat_message())
+    client._instance_uid = b"\x01" * 16
     transport.release.set()
     _wait_until_idle(agent)
     agent.stop()
 
     assert transport.sequence_nums() == [0, 1, 2]
-    assert transport.sent[1].remote_config_status.last_remote_config_hash == b"1234"
-
-
-def test_full_state_report_is_queued_as_a_builder():
-    client_mock = mock.Mock()
-    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=_NoOpCallbacks())
-
-    agent._process_message(opamp_pb2.ServerToAgent(flags=opamp_pb2.ServerToAgentFlags_ReportFullState))
-
-    client_mock.build_full_state_message.assert_not_called()
-    assert agent._queue.get_nowait().payload == client_mock.build_full_state_message
+    assert transport.sent[0].instance_uid != b"\x01" * 16
+    assert transport.sent[1].instance_uid == b"\x01" * 16
 
 
 def test_full_state_report_follows_messages_sent_from_on_message():
@@ -472,16 +490,20 @@ def test_full_state_report_follows_messages_sent_from_on_message():
     assert transport.sent[2].remote_config_status.last_remote_config_hash == b"1234"
 
 
-def test_send_passes_bytes_payload_unchanged():
-    client_mock = mock.Mock()
-    client_mock.send.return_value = opamp_pb2.ServerToAgent()
-    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=_NoOpCallbacks())
+def test_send_numbers_bytes_payload_when_sent():
+    transport = _RecordingTransport()
+    client = _client(transport)
+    agent = OpAMPAgent(interval=30, client=client, callbacks=_NoOpCallbacks())
     agent.start()
-    agent.send(b"prebuilt")
+    stale = opamp_pb2.AgentToServer(instance_uid=b"\x02" * 16, sequence_num=41, capabilities=client._capabilities)
+    agent.send(stale.SerializeToString())
     _wait_until_idle(agent)
     agent.stop()
 
-    client_mock.send.assert_any_call(b"prebuilt")
+    # connection, the bytes, disconnect
+    assert transport.sequence_nums() == [0, 1, 2]
+    assert transport.sent[1].instance_uid == client._instance_uid
+    assert transport.sent[1].capabilities == client._capabilities
 
 
 def test_start_raises_if_the_connection_message_cannot_be_built():
@@ -493,28 +515,26 @@ def test_start_raises_if_the_connection_message_cannot_be_built():
     agent.stop()
 
 
-def test_job_is_dropped_when_its_message_cannot_be_built(caplog):
+def test_job_is_dropped_when_its_payload_is_not_a_message(caplog):
     cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     transport = _RecordingTransport()
     client = _client(transport)
     agent = OpAMPAgent(interval=30, client=client, callbacks=cb)
     agent.start()
 
-    broken = mock.Mock(side_effect=ValueError("boom"))
     broken_callback = mock.Mock()
     heartbeat_callback = mock.Mock()
-    agent.send(broken, callback=broken_callback)
-    agent.send(client.build_heartbeat_message, callback=heartbeat_callback)
+    agent.send(b"not a message", callback=broken_callback)
+    agent.send(client.build_heartbeat_message(), callback=heartbeat_callback)
     _wait_until_idle(agent)
     agent.stop()
 
     # not retried, and nothing was sent for it: connection, heartbeat, disconnect
-    broken.assert_called_once_with()
     broken_callback.assert_not_called()
     heartbeat_callback.assert_called_once_with()
     assert transport.sequence_nums() == [0, 1, 2]
     cb.on_connect_failed.assert_not_called()
-    assert "Failed to build message" in caplog.text
+    assert "Failed to prepare message" in caplog.text
 
 
 def test_safe_invoke_logs_error(caplog):

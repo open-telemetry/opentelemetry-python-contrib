@@ -1,1 +1,1 @@
-`opentelemetry-opamp-client`: accept a message builder in `OpAMPAgent.send()`
+`opentelemetry-opamp-client`: accept an `AgentToServer` message in `OpAMPAgent.send()` and `OpAMPClient.send()`, and add `OpAMPClient.prepare_message()`
