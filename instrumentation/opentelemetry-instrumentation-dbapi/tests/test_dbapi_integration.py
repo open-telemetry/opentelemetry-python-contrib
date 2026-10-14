@@ -633,7 +633,6 @@ class TestDBApiIntegration(TestBase):
 
         async def async_execute(_query, rowcount=-1):
             mock_cursor.rowcount = rowcount
-            return None
 
         asyncio.run(cursor_tracer.traced_execution_async(mock_cursor, async_execute, "SELECT 1", rowcount=5))
 

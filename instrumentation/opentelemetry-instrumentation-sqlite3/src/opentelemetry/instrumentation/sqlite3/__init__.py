@@ -41,6 +41,29 @@ Usage
     cursor.close()
     instrumented_connection.close()
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -48,8 +71,9 @@ API
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Collection
 from sqlite3 import dbapi2
-from typing import Any, Collection, TypeVar, Union
+from typing import Any, TypeVar
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -63,7 +87,7 @@ _CONNECTION_ATTRIBUTES = {}
 _DATABASE_SYSTEM = "sqlite"
 
 SQLite3Connection = TypeVar(  # pylint: disable=invalid-name
-    "SQLite3Connection", bound=Union[sqlite3.Connection, None]
+    "SQLite3Connection", bound=sqlite3.Connection | None
 )
 
 

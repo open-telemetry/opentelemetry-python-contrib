@@ -152,6 +152,29 @@ will also be configured by this setting.
     )
 
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -163,8 +186,8 @@ import logging
 import re
 import sys
 import time
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generic, TypeVar
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
 

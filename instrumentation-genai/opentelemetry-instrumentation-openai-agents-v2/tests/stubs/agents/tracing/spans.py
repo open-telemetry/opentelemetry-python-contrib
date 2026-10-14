@@ -37,7 +37,7 @@ class Span:
         self.ended_at = datetime.utcnow().isoformat() + "Z"
         self._processor.on_span_end(self)
 
-    def __enter__(self) -> "Span":
+    def __enter__(self) -> Span:
         self.start()
         return self
 

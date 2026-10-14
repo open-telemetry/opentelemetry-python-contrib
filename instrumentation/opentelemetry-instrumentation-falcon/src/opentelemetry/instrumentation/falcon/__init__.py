@@ -178,11 +178,11 @@ API
 ---
 """
 
+from collections.abc import Collection
 from logging import getLogger
 from sys import exc_info
 from time import time_ns
 from timeit import default_timer
-from typing import Collection
 
 import falcon
 from packaging import version as package_version
@@ -297,7 +297,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
+            unit="{request}",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 

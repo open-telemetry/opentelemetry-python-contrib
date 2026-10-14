@@ -53,6 +53,7 @@ requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   opentelemetry-opamp-client
 setuptools==16.0
     # via opentelemetry-api
 tomli==1.1.0

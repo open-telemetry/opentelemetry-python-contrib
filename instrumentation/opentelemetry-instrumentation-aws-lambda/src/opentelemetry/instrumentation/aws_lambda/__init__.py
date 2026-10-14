@@ -63,9 +63,10 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Callable, Collection
 from enum import Enum
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
@@ -176,18 +177,30 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     Returns:
         A Context with configuration found in the event.
     """
-    headers = None
-    try:
-        headers = lambda_event["headers"]
-    except (TypeError, KeyError):
-        logger.debug(
-            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
-        )
-    if not isinstance(headers, dict):
-        headers = {}
     return get_global_textmap().extract(
-        CIDict(headers),
+        CIDict(_extract_http_headers(lambda_event)),
     )
+
+
+def _extract_http_headers(lambda_event: Any) -> dict[str, Any]:
+    if not isinstance(lambda_event, dict):
+        return {}
+
+    headers = lambda_event.get("headers")
+    multi_value_headers = lambda_event.get("multiValueHeaders")
+    normalized_multi_value_headers = {}
+    if isinstance(multi_value_headers, dict):
+        normalized_multi_value_headers = {
+            key: values[0] for key, values in multi_value_headers.items() if isinstance(values, list) and values
+        }
+
+    if not isinstance(headers, dict):
+        return normalized_multi_value_headers
+
+    return {
+        **headers,
+        **normalized_multi_value_headers,
+    }
 
 
 def _determine_parent_context(
@@ -227,8 +240,8 @@ def _get_api_gateway_v1_proxy_attributes(
     attributes = {}
     attributes[HTTP_METHOD] = lambda_event.get("httpMethod")
 
-    if lambda_event.get("headers"):
-        headers = CIDict(lambda_event["headers"])
+    if headers := _extract_http_headers(lambda_event):
+        headers = CIDict(headers)
         if "User-Agent" in headers:
             attributes[HTTP_USER_AGENT] = headers["User-Agent"]
         if "X-Forwarded-Proto" in headers:
@@ -326,9 +339,8 @@ def _instrument(
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
-    def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
-        call_wrapped, instance, args, kwargs
-    ):
+    # pylint: disable=too-many-branches
+    def _instrumented_lambda_handler_call(call_wrapped, instance, args, kwargs):
         lambda_event: Any = args[0]
         lambda_context: LambdaContext = args[1]
 

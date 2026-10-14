@@ -10,7 +10,7 @@
 
 import logging
 from collections import OrderedDict
-from typing import Callable, MutableMapping
+from collections.abc import Callable, MutableMapping
 
 import grpc
 
