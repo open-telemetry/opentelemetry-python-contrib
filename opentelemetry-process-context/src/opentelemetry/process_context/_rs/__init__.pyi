@@ -20,6 +20,7 @@ def publish_context(resource: Resource, attributes: Attributes = None) -> None:
     :param attributes: Optional supplementary attributes to share with external
         readers.
     :raises OSError: If the memory mapping or clock could not be initialized.
+    :raises ValueError: If the encoded context exceeds 4 GiB.
     """
 
 def unpublish_context() -> None:
