@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use nix::sys::mman::{MapFlags, ProtFlags, mmap_anonymous};
 use nix::time::{ClockId, clock_gettime};
 use pyo3::PyErr;
-use pyo3::exceptions::{PyOSError, PyRuntimeError};
+use pyo3::exceptions::{PyOSError, PyRuntimeError, PyValueError};
 
 #[cfg(target_os = "linux")]
 use nix::sys::memfd::{MFdFlags, memfd_create};
@@ -101,6 +101,8 @@ pub enum PublishError {
     Munmap,
     /// `unpublish()` was called before any context was published.
     NotPublished,
+    /// The encoded payload exceeds the header's `u32` size field.
+    PayloadTooLarge,
 }
 
 impl From<PublishError> for PyErr {
@@ -121,6 +123,9 @@ impl From<PublishError> for PyErr {
             PublishError::NotPublished => {
                 PyRuntimeError::new_err("no process context has been published yet")
             }
+            PublishError::PayloadTooLarge => {
+                PyValueError::new_err("process context payload exceeds u32::MAX bytes")
+            }
         }
     }
 }
@@ -130,6 +135,7 @@ impl From<PublishError> for PyErr {
 fn publish_new(
     guard: &mut Option<Region>,
     payload: Vec<u8>,
+    payload_size: u32,
     owner_pid: u32,
 ) -> Result<(), PublishError> {
     let timestamp = get_boottime_ns()?;
@@ -154,7 +160,7 @@ fn publish_new(
 
         std::ptr::addr_of_mut!((*header).signature).write(SIGNATURE);
         std::ptr::addr_of_mut!((*header).version).write(VERSION);
-        std::ptr::addr_of_mut!((*header).payload_size).write(payload.len() as u32);
+        std::ptr::addr_of_mut!((*header).payload_size).write(payload_size);
         std::ptr::addr_of_mut!((*header).payload).write(payload.as_ptr() as u64);
 
         // Write the timestamp last with release ordering, ensuring that
@@ -182,7 +188,11 @@ fn publish_new(
 /// that an update is in progress, rewrites the payload fields, then publishes
 /// the new timestamp. The old payload buffer is dropped after the new timestamp
 /// is live.
-fn publish_existing(region: &mut Region, payload: Vec<u8>) -> Result<(), PublishError> {
+fn publish_existing(
+    region: &mut Region,
+    payload: Vec<u8>,
+    payload_size: u32,
+) -> Result<(), PublishError> {
     let timestamp = get_boottime_ns()?;
 
     // SAFETY: `region.ptr` points to the live header mapping with exactly
@@ -199,7 +209,7 @@ fn publish_existing(region: &mut Region, payload: Vec<u8>) -> Result<(), Publish
         std::sync::atomic::fence(Ordering::Release);
 
         // Rewrite payload fields between the two Release stores.
-        std::ptr::addr_of_mut!((*header).payload_size).write(payload.len() as u32);
+        std::ptr::addr_of_mut!((*header).payload_size).write(payload_size);
         std::ptr::addr_of_mut!((*header).payload).write(payload.as_ptr() as u64);
 
         // Publish new timestamp with Release ensuring the new payload fields
@@ -220,6 +230,7 @@ fn publish_existing(region: &mut Region, payload: Vec<u8>) -> Result<(), Publish
 /// Creates the named memory mapping on the first call. On subsequent calls the
 /// existing mapping is updated in-place using the spec's Updating Protocol
 pub fn publish(payload: Vec<u8>) -> Result<(), PublishError> {
+    let payload_size = u32::try_from(payload.len()).map_err(|_| PublishError::PayloadTooLarge)?;
     let current_pid = std::process::id();
     let mut guard = lock_mapping();
 
@@ -230,9 +241,9 @@ pub fn publish(payload: Vec<u8>) -> Result<(), PublishError> {
     }
 
     if let Some(region) = guard.as_mut() {
-        publish_existing(region, payload)
+        publish_existing(region, payload, payload_size)
     } else {
-        publish_new(&mut guard, payload, current_pid)
+        publish_new(&mut guard, payload, payload_size, current_pid)
     }
 }
 
