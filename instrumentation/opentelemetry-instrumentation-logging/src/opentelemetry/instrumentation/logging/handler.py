@@ -7,7 +7,7 @@ import logging
 import logging.config
 import threading
 import traceback
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from contextvars import ContextVar
 from functools import lru_cache
 from time import time_ns
@@ -30,7 +30,7 @@ from opentelemetry.semconv.attributes import (
     exception_attributes,
     otel_attributes,
 )
-from opentelemetry.util.types import AnyValue
+from opentelemetry.util.types import AnyValue, Attributes
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
 _internal_logger.propagate = False
@@ -132,7 +132,7 @@ class LoggingHandler(logging.Handler):
         level: int = logging.NOTSET,
         logger_provider: LoggerProvider | None = None,
         log_code_attributes: bool = False,
-        scope_attributes: Mapping[str, AnyValue] | None = None,
+        scope_attributes: Attributes | None = None,
     ) -> None:
         super().__init__(level=level)
         self._logger_provider = logger_provider or get_logger_provider()
