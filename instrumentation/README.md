@@ -1,7 +1,7 @@
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
-| [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 10.0.0 | No | development
+| [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 11.0.0 | No | development
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-aiokafka](./opentelemetry-instrumentation-aiokafka) | aiokafka >= 0.8, < 1.0 | No | development
@@ -41,7 +41,7 @@
 | [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No | migration
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No | development
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes | migration
-| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.0.0, < 2.1.0 | Yes | migration
+| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.4.3, < 2.2.0 | Yes | migration
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | migration
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette >= 0.13 | Yes | development
 | [opentelemetry-instrumentation-structlog](./opentelemetry-instrumentation-structlog) | structlog >= 21.1 | No | development
