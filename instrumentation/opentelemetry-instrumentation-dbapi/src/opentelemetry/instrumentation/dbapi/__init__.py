@@ -789,11 +789,7 @@ class CursorTracer(Generic[CursorT]):
         # Set all collected attributes
         span.set_attributes(span_attrs)
 
-        for (
-            attribute_key,
-            attribute_value,
-        ) in self._db_api_integration.span_attributes.items():
-            span.set_attribute(attribute_key, attribute_value)
+        span.set_attributes(self._db_api_integration.span_attributes)
 
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))

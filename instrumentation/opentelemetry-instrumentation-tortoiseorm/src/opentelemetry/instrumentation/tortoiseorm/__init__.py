@@ -274,8 +274,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                     args[0],
                     args[1:],
                 )
-                for attribute, value in span_attributes.items():
-                    span.set_attribute(attribute, value)
+                span.set_attributes(span_attributes)
 
             try:
                 result = await func(*args, **kwargs)
@@ -312,8 +311,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                     if model_title:
                         span_attributes["pydantic.model"] = model_title
 
-                for attribute, value in span_attributes.items():
-                    span.set_attribute(attribute, value)
+                span.set_attributes(span_attributes)
 
             try:
                 result = await func(*args, **kwargs)
