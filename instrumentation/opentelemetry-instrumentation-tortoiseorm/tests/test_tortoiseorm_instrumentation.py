@@ -242,3 +242,17 @@ class TestTortoiseORMInstrumentor(TestBase):
         self.assertEqual(len(fallback_named), 2)
         for span in fallback_named:
             self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+
+    def test_span_name_strips_leading_comment(self):
+        async def run():
+            await self._init_tortoise()
+            conn = Tortoise.get_connection("default")
+            await conn.execute_query("/* c */ SELECT 1")
+            await conn.execute_query("/* c */")
+
+        self._async_call(run())
+
+        span_names = [s.name for s in self.memory_exporter.get_finished_spans()]
+        self.assertIn("SELECT", span_names)
+        self.assertIn(":memory:", span_names)
+        self.assertNotIn("/*", span_names)

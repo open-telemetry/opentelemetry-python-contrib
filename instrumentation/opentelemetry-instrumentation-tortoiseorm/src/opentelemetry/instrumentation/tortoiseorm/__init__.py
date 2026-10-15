@@ -29,6 +29,7 @@ API
 ---
 """
 
+import re
 from collections.abc import Collection
 
 import wrapt
@@ -86,6 +87,8 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
     """An instrumentor for Tortoise-ORM
     See `BaseInstrumentor`
     """
+
+    _leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -265,10 +268,10 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             return await func(*args, **kwargs)
 
         exception = None
-        # A statement that is empty or whitespace-only has no tokens; must not
-        # raise IndexError. Fall back to the database name or dialect instead,
-        # as the dbapi instrumentation does.
-        tokens = args[0].split()
+        # Strip a leading comment so we get the operation name. A statement
+        # with no tokens left must not raise IndexError. Fall back to the
+        # database name or dialect instead, as the dbapi instrumentation does.
+        tokens = self._leading_comment_remover.sub("", args[0]).split()
         name = tokens[0] if tokens else ""
         if not name:
             name = (
