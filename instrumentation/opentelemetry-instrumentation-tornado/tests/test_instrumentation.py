@@ -37,6 +37,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_excluded_urls,
@@ -875,6 +876,55 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        },
+    )
+    def test_custom_request_headers_regex_match_and_sanitize_in_server_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
+            "Dont-Capture-Me": "test-value",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _ = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+        self.assertNotIn("http.request.header.dont_capture_me", tornado_span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,my-custom-regex-header-.*,invalid-header,.*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        },
+    )
+    def test_custom_response_headers_regex_match_and_sanitize_in_server_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _ = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        expected = {
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+        self.assertNotIn("http.response.header.dont_capture_me", tornado_span.attributes)
 
 
 class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(TornadoTest):
