@@ -42,11 +42,12 @@ def get_tox_envs(tox_ini_path: Path) -> list:
 def _get_pr_tox_envs(tox_envs: list) -> set:
     """Return the test envs that run on pull requests.
 
-    For each test variant (the tox env without its Python factor), only the
-    oldest and newest CPython versions run on pull requests. PyPy and the
+    For each test variant (the tox env without its Python factor), only PyPy
+    and the oldest and newest CPython versions run on pull requests. The
     remaining CPython versions only run in the merge queue.
     """
     variant_tox_envs = defaultdict(list)
+    pr_tox_envs = set()
 
     for tox_env in tox_envs:
         tox_test_env_match = _tox_test_env_regex.match(tox_env)
@@ -55,12 +56,11 @@ def _get_pr_tox_envs(tox_envs: list) -> set:
 
         python_version = tox_test_env_match.group("python_version")
         if python_version == "pypy3":
+            pr_tox_envs.add(tox_env)
             continue
 
         variant = tox_env.split("-", 1)[1]
         variant_tox_envs[variant].append((int(python_version[2:]), tox_env))
-
-    pr_tox_envs = set()
 
     for versioned_tox_envs in variant_tox_envs.values():
         pr_tox_envs.add(min(versioned_tox_envs)[1])

@@ -243,7 +243,6 @@ jobs:
   pypy3-test-instrumentation-openai-v2-oldest_ubuntu-latest:
     name: instrumentation-openai-v2-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -265,7 +264,6 @@ jobs:
   pypy3-test-instrumentation-openai-v2-latest_ubuntu-latest:
     name: instrumentation-openai-v2-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -827,7 +825,6 @@ jobs:
   pypy3-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1065,7 +1062,6 @@ jobs:
   pypy3-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1087,7 +1083,6 @@ jobs:
   pypy3-test-resource-detector-azure-1_ubuntu-latest:
     name: resource-detector-azure-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1325,7 +1320,6 @@ jobs:
   pypy3-test-resourcedetector-gcp-0_ubuntu-latest:
     name: resourcedetector-gcp-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1347,7 +1341,6 @@ jobs:
   pypy3-test-resourcedetector-gcp-1_ubuntu-latest:
     name: resourcedetector-gcp-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1585,7 +1578,6 @@ jobs:
   pypy3-test-sdk-extension-aws-0_ubuntu-latest:
     name: sdk-extension-aws-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1607,7 +1599,6 @@ jobs:
   pypy3-test-sdk-extension-aws-1_ubuntu-latest:
     name: sdk-extension-aws-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1737,7 +1728,6 @@ jobs:
   pypy3-test-distro_ubuntu-latest:
     name: distro pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -1975,7 +1965,6 @@ jobs:
   pypy3-test-opentelemetry-instrumentation-wrapt2_ubuntu-latest:
     name: opentelemetry-instrumentation-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2105,7 +2094,6 @@ jobs:
   pypy3-test-instrumentation-aiohttp-client_ubuntu-latest:
     name: instrumentation-aiohttp-client pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2235,7 +2223,6 @@ jobs:
   pypy3-test-instrumentation-aiohttp-server_ubuntu-latest:
     name: instrumentation-aiohttp-server pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -2581,7 +2568,6 @@ jobs:
   pypy3-test-instrumentation-aws-lambda_ubuntu-latest:
     name: instrumentation-aws-lambda pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3251,7 +3237,6 @@ jobs:
   pypy3-test-instrumentation-botocore-1-wrapt2_ubuntu-latest:
     name: instrumentation-botocore-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3273,7 +3258,6 @@ jobs:
   pypy3-test-instrumentation-botocore-3_ubuntu-latest:
     name: instrumentation-botocore-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3403,7 +3387,6 @@ jobs:
   pypy3-test-instrumentation-boto3sqs_ubuntu-latest:
     name: instrumentation-boto3sqs pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3725,7 +3708,6 @@ jobs:
   pypy3-test-instrumentation-django-0_ubuntu-latest:
     name: instrumentation-django-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3747,7 +3729,6 @@ jobs:
   pypy3-test-instrumentation-django-1_ubuntu-latest:
     name: instrumentation-django-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3769,7 +3750,6 @@ jobs:
   pypy3-test-instrumentation-django-2_ubuntu-latest:
     name: instrumentation-django-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -3791,7 +3771,6 @@ jobs:
   pypy3-test-instrumentation-django-3_ubuntu-latest:
     name: instrumentation-django-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4029,7 +4008,6 @@ jobs:
   pypy3-test-instrumentation-dbapi-wrapt2_ubuntu-latest:
     name: instrumentation-dbapi-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4072,7 +4050,6 @@ jobs:
   py310-test-instrumentation-asyncclick-latest_ubuntu-latest:
     name: instrumentation-asyncclick-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4094,6 +4071,7 @@ jobs:
   py311-test-instrumentation-asyncclick-oldest_ubuntu-latest:
     name: instrumentation-asyncclick-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4137,6 +4115,7 @@ jobs:
   py312-test-instrumentation-asyncclick-oldest_ubuntu-latest:
     name: instrumentation-asyncclick-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4180,6 +4159,7 @@ jobs:
   py313-test-instrumentation-asyncclick-oldest_ubuntu-latest:
     name: instrumentation-asyncclick-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4201,6 +4181,7 @@ jobs:
   py313-test-instrumentation-asyncclick-latest_ubuntu-latest:
     name: instrumentation-asyncclick-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4243,7 +4224,6 @@ jobs:
   py314-test-instrumentation-asyncclick-latest_ubuntu-latest:
     name: instrumentation-asyncclick-latest 3.14 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4415,7 +4395,6 @@ jobs:
   pypy3-test-instrumentation-click_ubuntu-latest:
     name: instrumentation-click pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4737,7 +4716,6 @@ jobs:
   pypy3-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4759,7 +4737,6 @@ jobs:
   pypy3-test-instrumentation-falcon-2_ubuntu-latest:
     name: instrumentation-falcon-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4781,7 +4758,6 @@ jobs:
   pypy3-test-instrumentation-falcon-3_ubuntu-latest:
     name: instrumentation-falcon-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -4803,7 +4779,6 @@ jobs:
   pypy3-test-instrumentation-falcon-4_ubuntu-latest:
     name: instrumentation-falcon-4 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5041,7 +5016,6 @@ jobs:
   pypy3-test-instrumentation-fastapi-oldest_ubuntu-latest:
     name: instrumentation-fastapi-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5063,7 +5037,6 @@ jobs:
   pypy3-test-instrumentation-fastapi-latest_ubuntu-latest:
     name: instrumentation-fastapi-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5517,7 +5490,6 @@ jobs:
   pypy3-test-instrumentation-flask-0_ubuntu-latest:
     name: instrumentation-flask-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5539,7 +5511,6 @@ jobs:
   pypy3-test-instrumentation-flask-1_ubuntu-latest:
     name: instrumentation-flask-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5669,7 +5640,6 @@ jobs:
   pypy3-test-instrumentation-urllib_ubuntu-latest:
     name: instrumentation-urllib pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5907,7 +5877,6 @@ jobs:
   pypy3-test-instrumentation-urllib3-0_ubuntu-latest:
     name: instrumentation-urllib3-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -5929,7 +5898,6 @@ jobs:
   pypy3-test-instrumentation-urllib3-1_ubuntu-latest:
     name: instrumentation-urllib3-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6275,7 +6243,6 @@ jobs:
   pypy3-test-instrumentation-starlette-oldest_ubuntu-latest:
     name: instrumentation-starlette-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6297,7 +6264,6 @@ jobs:
   pypy3-test-instrumentation-starlette-latest_ubuntu-latest:
     name: instrumentation-starlette-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6535,7 +6501,6 @@ jobs:
   pypy3-test-instrumentation-structlog-oldest_ubuntu-latest:
     name: instrumentation-structlog-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6557,7 +6522,6 @@ jobs:
   pypy3-test-instrumentation-structlog-latest_ubuntu-latest:
     name: instrumentation-structlog-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6687,7 +6651,6 @@ jobs:
   pypy3-test-instrumentation-jinja2_ubuntu-latest:
     name: instrumentation-jinja2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6817,7 +6780,6 @@ jobs:
   pypy3-test-instrumentation-logging_ubuntu-latest:
     name: instrumentation-logging pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -6947,7 +6909,6 @@ jobs:
   pypy3-test-instrumentation-exceptions_ubuntu-latest:
     name: instrumentation-exceptions pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7077,7 +7038,6 @@ jobs:
   pypy3-test-exporter-richconsole_ubuntu-latest:
     name: exporter-richconsole pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7207,7 +7167,6 @@ jobs:
   pypy3-test-exporter-prometheus-remote-write_ubuntu-latest:
     name: exporter-prometheus-remote-write pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7553,7 +7512,6 @@ jobs:
   pypy3-test-instrumentation-mysql-0_ubuntu-latest:
     name: instrumentation-mysql-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7575,7 +7533,6 @@ jobs:
   pypy3-test-instrumentation-mysql-1_ubuntu-latest:
     name: instrumentation-mysql-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7597,7 +7554,6 @@ jobs:
   pypy3-test-instrumentation-mysql-2_ubuntu-latest:
     name: instrumentation-mysql-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -7727,7 +7683,6 @@ jobs:
   pypy3-test-instrumentation-mysqlclient_ubuntu-latest:
     name: instrumentation-mysqlclient pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8073,7 +8028,6 @@ jobs:
   pypy3-test-instrumentation-psycopg_ubuntu-latest:
     name: instrumentation-psycopg pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8635,7 +8589,6 @@ jobs:
   pypy3-test-instrumentation-pymemcache-0_ubuntu-latest:
     name: instrumentation-pymemcache-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8657,7 +8610,6 @@ jobs:
   pypy3-test-instrumentation-pymemcache-1_ubuntu-latest:
     name: instrumentation-pymemcache-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8679,7 +8631,6 @@ jobs:
   pypy3-test-instrumentation-pymemcache-2_ubuntu-latest:
     name: instrumentation-pymemcache-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8701,7 +8652,6 @@ jobs:
   pypy3-test-instrumentation-pymemcache-3_ubuntu-latest:
     name: instrumentation-pymemcache-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8723,7 +8673,6 @@ jobs:
   pypy3-test-instrumentation-pymemcache-4_ubuntu-latest:
     name: instrumentation-pymemcache-4 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8853,7 +8802,6 @@ jobs:
   pypy3-test-instrumentation-pymongo_ubuntu-latest:
     name: instrumentation-pymongo pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -8983,7 +8931,6 @@ jobs:
   pypy3-test-instrumentation-pymysql_ubuntu-latest:
     name: instrumentation-pymysql pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -9221,7 +9168,6 @@ jobs:
   pypy3-test-instrumentation-pyramid_ubuntu-latest:
     name: instrumentation-pyramid pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -9351,7 +9297,6 @@ jobs:
   pypy3-test-instrumentation-asgi_ubuntu-latest:
     name: instrumentation-asgi pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -9697,7 +9642,6 @@ jobs:
   pypy3-test-instrumentation-sqlite3_ubuntu-latest:
     name: instrumentation-sqlite3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -9827,7 +9771,6 @@ jobs:
   pypy3-test-instrumentation-wsgi_ubuntu-latest:
     name: instrumentation-wsgi pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10387,7 +10330,6 @@ jobs:
   pypy3-test-instrumentation-sqlalchemy-1_ubuntu-latest:
     name: instrumentation-sqlalchemy-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10409,7 +10351,6 @@ jobs:
   pypy3-test-instrumentation-sqlalchemy-2_ubuntu-latest:
     name: instrumentation-sqlalchemy-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10539,7 +10480,6 @@ jobs:
   pypy3-test-instrumentation-redis_ubuntu-latest:
     name: instrumentation-redis pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10777,7 +10717,6 @@ jobs:
   pypy3-test-instrumentation-celery_ubuntu-latest:
     name: instrumentation-celery pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10907,7 +10846,6 @@ jobs:
   pypy3-test-instrumentation-system-metrics_ubuntu-latest:
     name: instrumentation-system-metrics pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -11037,7 +10975,6 @@ jobs:
   pypy3-test-instrumentation-threading_ubuntu-latest:
     name: instrumentation-threading pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -11167,7 +11104,6 @@ jobs:
   pypy3-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -11297,7 +11233,6 @@ jobs:
   pypy3-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12095,7 +12030,6 @@ jobs:
   pypy3-test-instrumentation-httpx-0-wrapt2_ubuntu-latest:
     name: instrumentation-httpx-0-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12117,7 +12051,6 @@ jobs:
   pypy3-test-instrumentation-httpx-1-wrapt2_ubuntu-latest:
     name: instrumentation-httpx-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12247,7 +12180,6 @@ jobs:
   pypy3-test-util-http_ubuntu-latest:
     name: util-http pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12485,7 +12417,6 @@ jobs:
   pypy3-test-util-genai_ubuntu-latest:
     name: util-genai pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12723,7 +12654,6 @@ jobs:
   pypy3-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12745,7 +12675,6 @@ jobs:
   pypy3-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -12875,7 +12804,6 @@ jobs:
   pypy3-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13329,7 +13257,6 @@ jobs:
   pypy3-test-instrumentation-sio-pika-0-wrapt2_ubuntu-latest:
     name: instrumentation-sio-pika-0-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13351,7 +13278,6 @@ jobs:
   pypy3-test-instrumentation-sio-pika-1-wrapt2_ubuntu-latest:
     name: instrumentation-sio-pika-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13589,7 +13515,6 @@ jobs:
   pypy3-test-instrumentation-aio-pika-oldest_ubuntu-latest:
     name: instrumentation-aio-pika-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13611,7 +13536,6 @@ jobs:
   pypy3-test-instrumentation-aio-pika-latest_ubuntu-latest:
     name: instrumentation-aio-pika-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13741,7 +13665,6 @@ jobs:
   pypy3-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -13979,7 +13902,6 @@ jobs:
   pypy3-test-instrumentation-kafka-python-oldest_ubuntu-latest:
     name: instrumentation-kafka-python-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -14001,7 +13923,6 @@ jobs:
   pypy3-test-instrumentation-kafka-python-latest_ubuntu-latest:
     name: instrumentation-kafka-python-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -14455,7 +14376,6 @@ jobs:
   pypy3-test-instrumentation-cassandra-scylla_ubuntu-latest:
     name: instrumentation-cassandra-scylla pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -14585,7 +14505,6 @@ jobs:
   pypy3-test-processor-baggage_ubuntu-latest:
     name: processor-baggage pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
