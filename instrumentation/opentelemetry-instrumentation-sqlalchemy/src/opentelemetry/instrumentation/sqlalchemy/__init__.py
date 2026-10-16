@@ -148,7 +148,6 @@ API
 from collections.abc import Collection, Sequence
 
 import sqlalchemy
-from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
@@ -257,36 +256,33 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_attribute_commenter,
             ),
         )
-        # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            _w(
-                "sqlalchemy.engine.create",
-                "create_engine",
-                _wrap_create_engine(
-                    tracer,
-                    connections_usage,
-                    enable_commenter,
-                    commenter_options,
-                    enable_attribute_commenter,
-                ),
-            )
+        _w(
+            "sqlalchemy.engine.create",
+            "create_engine",
+            _wrap_create_engine(
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
+            ),
+        )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
             _wrap_connect(tracer),
         )
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            _w(
-                "sqlalchemy.ext.asyncio",
-                "create_async_engine",
-                _wrap_create_async_engine(
-                    tracer,
-                    connections_usage,
-                    enable_commenter,
-                    commenter_options,
-                    enable_attribute_commenter,
-                ),
-            )
+        _w(
+            "sqlalchemy.ext.asyncio",
+            "create_async_engine",
+            _wrap_create_async_engine(
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
+            ),
+        )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 tracer,
@@ -314,9 +310,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            unwrap(sqlalchemy.engine.create, "create_engine")
+        unwrap(sqlalchemy.engine.create, "create_engine")
         unwrap(Engine, "connect")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
+        unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
         EngineTracer.remove_all_event_listeners()

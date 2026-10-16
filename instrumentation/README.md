@@ -42,7 +42,7 @@
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No | development
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes | migration
 | [opentelemetry-instrumentation-sanic](./opentelemetry-instrumentation-sanic) | sanic >= 23.12, < 26 | Yes | migration
-| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.0.0, < 2.1.0 | Yes | migration
+| [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.4.3, < 2.2.0 | Yes | migration
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | migration
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette >= 0.13 | Yes | development
 | [opentelemetry-instrumentation-structlog](./opentelemetry-instrumentation-structlog) | structlog >= 21.1 | No | development
