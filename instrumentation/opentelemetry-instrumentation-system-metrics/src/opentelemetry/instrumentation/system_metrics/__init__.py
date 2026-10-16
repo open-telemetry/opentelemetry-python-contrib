@@ -18,7 +18,7 @@ following metrics are configured:
         "system.swap.utilization": ["used", "free"],
         "system.disk.io": ["read", "write"],
         "system.disk.operations": ["read", "write"],
-        "system.disk.time": ["read", "write"],
+        "system.disk.operation.time": ["read", "write"],
         "system.network.dropped.packets": ["transmit", "receive"],
         "system.network.packets": ["transmit", "receive"],
         "system.network.errors": ["transmit", "receive"],
@@ -122,7 +122,7 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "system.swap.utilization": ["used", "free"],
     "system.disk.io": ["read", "write"],
     "system.disk.operations": ["read", "write"],
-    "system.disk.time": ["read", "write"],
+    "system.disk.operation.time": ["read", "write"],
     "system.network.dropped.packets": ["transmit", "receive"],
     "system.network.packets": ["transmit", "receive"],
     "system.network.errors": ["transmit", "receive"],
@@ -321,10 +321,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="operations",
             )
 
-        # FIXME: this has been replaced by system.disk.operation.time
-        if "system.disk.time" in self._config:
+        if "system.disk.operation.time" in self._config:
             self._meter.create_observable_counter(
-                name="system.disk.time",
+                name="system.disk.operation.time",
                 callbacks=[self._get_system_disk_time],
                 description="System disk time",
                 unit="s",
@@ -668,7 +667,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     def _get_system_disk_time(self, options: CallbackOptions) -> Iterable[Observation]:
         """Observer callback for disk time"""
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
-            for metric in self._config["system.disk.time"]:
+            for metric in self._config["system.disk.operation.time"]:
                 if hasattr(counters, f"{metric}_time"):
                     self._system_disk_time_labels["device"] = device
                     self._system_disk_time_labels["direction"] = metric
@@ -684,7 +683,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         # operations or the value type should be Double
 
         for device, counters in psutil.disk_io_counters(perdisk=True).items():
-            for metric in self._config["system.disk.time"]:
+            for metric in self._config["system.disk.operation.time"]:
                 if hasattr(counters, f"{metric}_merged_count"):
                     self._system_disk_merged_labels["device"] = device
                     self._system_disk_merged_labels["direction"] = metric
