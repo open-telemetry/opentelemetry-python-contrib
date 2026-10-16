@@ -10,12 +10,15 @@ from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
     _enrich_span,
+    _extract_cluster_id,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
+    _patch_cluster_id_capture,
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -31,6 +34,7 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._extract_cluster_id")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -39,6 +43,7 @@ class TestUtils(TestCase):
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -46,12 +51,14 @@ class TestUtils(TestCase):
             inject,
             set_span_in_context,
             enrich_span,
+            extract_cluster_id,
             extract_send_partition,
             extract_bootstrap_servers,
         )
 
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._extract_cluster_id")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -60,6 +67,7 @@ class TestUtils(TestCase):
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -69,15 +77,18 @@ class TestUtils(TestCase):
             inject,
             set_span_in_context,
             enrich_span,
+            extract_cluster_id,
             extract_send_partition,
             extract_bootstrap_servers,
         )
 
+    # pylint: disable=too-many-locals
     def wrap_send_helper(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -102,6 +113,7 @@ class TestUtils(TestCase):
             extract_bootstrap_servers.return_value,
             self.topic_name,
             extract_send_partition.return_value,
+            extract_cluster_id.return_value,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -113,6 +125,7 @@ class TestUtils(TestCase):
         original_send_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(retval, original_send_callback.return_value)
 
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._extract_cluster_id")
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
@@ -121,6 +134,7 @@ class TestUtils(TestCase):
         extract_bootstrap_servers: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
@@ -145,6 +159,7 @@ class TestUtils(TestCase):
             record,
             context,
             bootstrap_servers,
+            extract_cluster_id.return_value,
             self.args,
             self.kwargs,
         )
@@ -165,6 +180,7 @@ class TestUtils(TestCase):
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+        cluster_id = mock.MagicMock()
 
         _create_consumer_span(
             tracer,
@@ -172,6 +188,7 @@ class TestUtils(TestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            cluster_id,
             self.args,
             self.kwargs,
         )
@@ -187,7 +204,7 @@ class TestUtils(TestCase):
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
+        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition, cluster_id)
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
@@ -251,6 +268,67 @@ class TestUtils(TestCase):
 
         recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
         self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+
+    def test_cluster_id_set_on_span_when_known(self) -> None:
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["broker1:9092"], "topic-1", 0, cluster_id="kp-cluster-uuid")
+
+        calls = {c.args[0]: c.args[1] for c in span.set_attribute.call_args_list}
+        self.assertEqual(calls.get(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID), "kp-cluster-uuid")
+
+    def test_cluster_id_omitted_from_span_when_unresolved(self) -> None:
+        """Omitted, never set as an empty string."""
+        for unresolved in (None, ""):
+            with self.subTest(cluster_id=unresolved):
+                span = mock.MagicMock()
+                span.is_recording.return_value = True
+
+                _enrich_span(span, ["broker1:9092"], "topic-1", 0, cluster_id=unresolved)
+
+                keys = [c.args[0] for c in span.set_attribute.call_args_list]
+                self.assertNotIn(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, keys)
+
+    def test_extract_cluster_id_from_producer_metadata(self) -> None:
+        producer = mock.MagicMock()
+        producer._metadata.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(producer), "test-cluster-id")
+
+    def test_extract_cluster_id_from_consumer_client(self) -> None:
+        consumer = mock.MagicMock(spec=["_client"])
+        consumer._client.cluster.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(consumer), "test-cluster-id")
+
+    def test_extract_cluster_id_absent_returns_none(self) -> None:
+        instance = mock.MagicMock(spec=[])
+        self.assertIsNone(_extract_cluster_id(instance))
+
+    def test_patch_cluster_id_capture_captures_and_is_idempotent(
+        self,
+    ) -> None:
+        class FakeCluster:
+            def __init__(self) -> None:
+                self.update_calls = 0
+
+            def update_metadata(self, metadata) -> None:
+                self.update_calls += 1
+
+        class FakeMetadataResponse:
+            cluster_id = "test-cluster-id"
+
+        cluster = FakeCluster()
+        instance = mock.MagicMock()
+        instance._metadata = cluster
+
+        _patch_cluster_id_capture(instance)
+        # Second call must not double-wrap update_metadata.
+        _patch_cluster_id_capture(instance)
+
+        cluster.update_metadata(FakeMetadataResponse())
+
+        self.assertEqual(cluster.update_calls, 1)
+        self.assertEqual(_extract_cluster_id(instance), "test-cluster-id")
 
 
 @mock.patch(
