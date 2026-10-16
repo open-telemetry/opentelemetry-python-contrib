@@ -349,11 +349,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = time_ns()
 
-        attributes = otel_wsgi.collect_request_attributes(env, self._sem_conv_opt_in_mode)
-        # Captured request headers are only added to SERVER spans, which
-        # _start_internal_or_server_span creates when there is no current span.
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            attributes.update(otel_wsgi.collect_custom_request_headers_attributes(env))
+        attributes = otel_wsgi.collect_request_attributes(
+            env,
+            self._sem_conv_opt_in_mode,
+            # Custom headers are only recorded on SERVER spans, which are
+            # created when there is no current span.
+            capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
