@@ -1,0 +1,10 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+# 1.4.3 is the first release with the sqlite+aiosqlite dialect used by the async tests
+sqlalchemy>=1.4.3,<2.2.0
+aiosqlite>=0.20.0
+# 3.2.4 is the first release supporting Python 3.14
+greenlet>=3.2.4
+wrapt>=1.16.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-sqlalchemy[instruments]
