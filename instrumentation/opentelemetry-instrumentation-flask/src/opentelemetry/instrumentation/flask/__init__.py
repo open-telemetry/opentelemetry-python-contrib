@@ -460,15 +460,14 @@ def _wrapped_before_request(
         attributes = otel_wsgi.collect_request_attributes(
             flask_request_environ,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+            # Custom headers are only recorded on SERVER spans, which are
+            # created when there is no current span.
+            capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
         )
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
             attributes[HTTP_ROUTE] = flask.request.url_rule.rule
-        # Captured request headers are only added to SERVER spans, which
-        # _start_internal_or_server_span creates when there is no current span.
-        if trace.get_current_span() is trace.INVALID_SPAN:
-            attributes.update(otel_wsgi.collect_custom_request_headers_attributes(flask_request_environ))
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
