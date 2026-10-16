@@ -13,7 +13,7 @@ from opentelemetry.instrumentation.logging import (
 )
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
+from opentelemetry.trace import INVALID_SPAN, NoOpTracerProvider, ProxyTracer, get_tracer
 
 
 class FakeTracerProvider:
@@ -203,6 +203,18 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
                 self.assertEqual(record.custom_user_attribute_from_log_hook, "some-value")
+
+    def test_log_hook_without_span(self):
+        LoggingInstrumentor().uninstrument()
+        hook = mock.Mock()
+        LoggingInstrumentor().instrument(log_hook=hook)
+
+        with self.caplog.at_level(level=logging.INFO):
+            logger = logging.getLogger("test logger")
+            logger.info("hello")
+
+        self.assertEqual(len(self.caplog.records), 1)
+        hook.assert_called_once_with(INVALID_SPAN, self.caplog.records[0])
 
     @mock.patch("logging.basicConfig")
     def test_log_hook_with_set_logging_format(self, basic_config_mock):
