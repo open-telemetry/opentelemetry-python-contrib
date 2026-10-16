@@ -394,6 +394,48 @@ class TestBoto3SQSInstrumentation(TestBase):
 
             self.memory_exporter.clear()
 
+    def test_delete_message_batch_ends_every_entry(self):
+        msg_def = {"1": "01", "2": "02"}
+        mock_response = {
+            "Messages": [self._make_message(msg_id, f"hello {msg_id}", receipt) for msg_id, receipt in msg_def.items()]
+        }
+
+        with self._mocked_endpoint(mock_response):
+            response = self._client.receive_message(QueueUrl=self._queue_url)
+
+        for _ in response["Messages"]:
+            pass  # the application processes each message
+
+        self.memory_exporter.clear()
+
+        with self._mocked_endpoint({"Successful": [], "Failed": []}):
+            self._client.delete_message_batch(
+                QueueUrl=self._queue_url,
+                Entries=[{"Id": msg_id, "ReceiptHandle": receipt} for msg_id, receipt in msg_def.items()],
+            )
+
+        spans = self.get_finished_spans()
+        self.assertEqual(
+            [f"{self._queue_name} process"] * len(msg_def),
+            [span.name for span in spans],
+        )
+        self.assertEqual(
+            set(msg_def),
+            {span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID] for span in spans},
+        )
+        self.assertEqual({}, Boto3SQSInstrumentor.received_messages_spans)
+        self.assertIsNone(Boto3SQSInstrumentor.current_context_token)
+        with self.tracer_provider.get_tracer("app").start_as_current_span("after-delete") as later:
+            pass
+        self.assertIsNone(later.parent)
+
+    def test_delete_message_batch_calls_the_api_for_an_empty_batch(self):
+        with self._mocked_endpoint({"Successful": [], "Failed": []}):
+            retval = self._client.delete_message_batch(QueueUrl=self._queue_url, Entries=[])
+
+        self.assertIsNotNone(retval)
+        self.assertEqual([], retval["Failed"])
+
     def test_uninstrument(self):
         mock_response = {
             "MessageId": "123456789",
