@@ -34,7 +34,7 @@ prompt-toolkit==3.0.43
 psycopg==3.3.4
 psycopg2==2.9.12
 psycopg2-binary==2.9.12
-pymongo==4.6.3
+pymongo==4.18.2
 PyMySQL==1.1.1
 # prerequisite: install unixodbc
 pyodbc==5.3.0
