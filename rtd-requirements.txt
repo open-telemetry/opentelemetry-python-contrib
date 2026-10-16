@@ -3,5 +3,6 @@ opentelemetry-api @ git+https://github.com/open-telemetry/opentelemetry-python.g
 opentelemetry-semantic-conventions @ git+https://github.com/open-telemetry/opentelemetry-python.git@main#egg=opentelemetry-semantic-conventions&subdirectory=opentelemetry-semantic-conventions
 opentelemetry-sdk @ git+https://github.com/open-telemetry/opentelemetry-python.git@main#egg=opentelemetry-sdk&subdirectory=opentelemetry-sdk
 ./opentelemetry-instrumentation
+./opentelemetry-instrumentation-http
 ./util/opentelemetry-util-http
 -r ./docs-requirements.txt
