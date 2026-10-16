@@ -3,13 +3,13 @@
 import os
 import re
 import weakref
-from sqlalchemy.exc import InvalidRequestError
 
 import sqlalchemy
 from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
 )
+from sqlalchemy.exc import InvalidRequestError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
