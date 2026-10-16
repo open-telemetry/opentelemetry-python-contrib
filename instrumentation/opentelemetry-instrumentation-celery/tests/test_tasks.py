@@ -4,6 +4,8 @@
 import threading
 import time
 
+from celery.signals import after_task_publish, before_task_publish
+from kombu import Exchange
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import baggage, context
@@ -25,6 +27,31 @@ from .celery_test_tasks import (
     task_raises,
     task_returns_baggage,
 )
+
+
+class TestCeleryPublishSignal(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        CeleryInstrumentor().uninstrument()
+
+    def test_before_task_publish_with_kombu_exchange(self):
+        CeleryInstrumentor().instrument()
+
+        headers = {"id": "task-id"}
+        signal_kwargs = {
+            "sender": task_add.name,
+            "headers": headers,
+            "body": None,
+            "exchange": Exchange("celery_delayed_27", type="topic"),
+            "routing_key": "celery",
+        }
+
+        before_task_publish.send(**signal_kwargs)
+        after_task_publish.send(**signal_kwargs)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes["celery.exchange"], "celery_delayed_27")
 
 
 class TestCeleryInstrumentation(TestBase):
