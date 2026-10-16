@@ -239,6 +239,19 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+View code attributes
+********************
+Set ``OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES=true`` to add ``code.function.name``,
+``code.file.path`` and, when available, ``code.line.number`` to the existing
+Django request span. This is disabled by default. It does not create additional
+spans or add code attributes to metrics. With an outer WSGI or ASGI
+instrumentation, the Django span may be an internal span.
+
+The attributes identify the resolved function, or the dispatch method for a
+class-based view. Extraction is best effort and does not affect request handling.
+File paths may reveal the layout of the application's source code; enable this
+option only when that information is appropriate for your telemetry destination.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
@@ -316,6 +329,7 @@ from opentelemetry.instrumentation._semconv import (
     _report_old,
 )
 from opentelemetry.instrumentation.django.environment_variables import (
+    OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES,
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
 from opentelemetry.instrumentation.django.middleware.otel_middleware import (
@@ -403,6 +417,9 @@ class DjangoInstrumentor(BaseInstrumentor):
             schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
         _DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        _DjangoMiddleware._collect_view_code_attributes = (
+            environ.get(OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES, "false").lower() == "true"
+        )
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (
