@@ -6,6 +6,7 @@
 import logging
 import os
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from importlib import import_module, reload
 from typing import Any
@@ -19,6 +20,7 @@ from opentelemetry.instrumentation.aws_lambda import (
     _X_AMZN_TRACE_ID,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
     AwsLambdaInstrumentor,
+    _default_event_context_extractor,
 )
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
@@ -177,6 +179,14 @@ class TestAwsLambdaInstrumentorBase(TestBase):
 
 
 class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
+    def test_default_event_context_extractor_does_not_log_for_missing_headers(
+        self,
+    ):
+        with mock.patch("opentelemetry.instrumentation.aws_lambda.logger.debug") as debug_mock:
+            _default_event_context_extractor({})
+
+        self.assertEqual(debug_mock.call_count, 0)
+
     def test_active_tracing(self):
         test_env_patch = mock.patch.dict(
             "os.environ",
@@ -648,6 +658,29 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
 # pylint: disable-next=too-many-public-methods
 class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
+    def test_http_response_status_sets_server_span_status(self) -> None:
+        for code, expected_status in [
+            (200, StatusCode.UNSET),
+            (404, StatusCode.UNSET),
+            (500, StatusCode.ERROR),
+            (503, StatusCode.ERROR),
+        ]:
+            with self.subTest(code=code):
+                self.memory_exporter.clear()
+                response = {"statusCode": code, "body": "response"}
+                with mock.patch("tests.mocks.lambda_function.handler", autospec=True, return_value=response):
+                    AwsLambdaInstrumentor().instrument()
+                    try:
+                        result = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
+                    finally:
+                        AwsLambdaInstrumentor().uninstrument()
+                self.assertIs(result, response)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes[HTTP_STATUS_CODE], code)
+                self.assertEqual(spans[0].status.status_code, expected_status)
+                self.assertEqual(len(spans[0].events), 0)
+
     def test_api_gateway_proxy_event_sets_attributes(self):
         handler_patch = mock.patch.dict(
             "os.environ",
@@ -675,7 +708,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
                 HTTP_METHOD: "POST",
                 HTTP_ROUTE: "/{proxy+}",
                 HTTP_TARGET: "/{proxy+}?foo=bar",
-                NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
+                NET_HOST_NAME: "0123456789.execute-api.us-east-1.amazonaws.com",
                 HTTP_USER_AGENT: "Custom User Agent String",
                 HTTP_SCHEME: "https",
                 HTTP_STATUS_CODE: 200,
@@ -749,8 +782,154 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
             {
                 FAAS_TRIGGER: "http",
                 HTTP_METHOD: "GET",
+                HTTP_SCHEME: "https",
+                HTTP_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)",
+                NET_HOST_NAME: "lambda-846800462-us-east-2.elb.amazonaws.com",
             },
         )
+
+    def test_alb_mixed_header_event_sets_attributes(self):
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["headers"] = {"accept": "text/html,application/xhtml+xml"}
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                HTTP_SCHEME: "https",
+                HTTP_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)",
+                NET_HOST_NAME: "lambda-846800462-us-east-2.elb.amazonaws.com",
+            },
+        )
+
+    def test_alb_mixed_header_event_prefers_multi_value_headers(self):
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["headers"] = {
+            "host": "wrong.example.com",
+            "user-agent": "wrong-agent",
+            "x-forwarded-proto": "http",
+        }
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertSpanHasAttributes(
+            span,
+            {
+                HTTP_SCHEME: "https",
+                HTTP_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)",
+                NET_HOST_NAME: "lambda-846800462-us-east-2.elb.amazonaws.com",
+            },
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            OTEL_PROPAGATORS: "tracecontext",
+        },
+    )
+    def test_alb_multi_value_header_event_extracts_parent_context(self):
+        reload(propagate)
+
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
+
+        parent_context = span.parent
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+        self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
+        self.assertTrue(parent_context.is_remote)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            OTEL_PROPAGATORS: "tracecontext",
+        },
+    )
+    def test_alb_mixed_header_event_extracts_parent_context(self):
+        reload(propagate)
+
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["headers"] = {"accept": "text/html,application/xhtml+xml"}
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
+
+        parent_context = span.parent
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+        self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
+        self.assertTrue(parent_context.is_remote)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            OTEL_PROPAGATORS: "tracecontext",
+        },
+    )
+    def test_alb_mixed_header_event_prefers_multi_value_traceparent(self):
+        reload(propagate)
+
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["headers"] = {
+            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME: (
+                "00-11111111111111111111111111111111-2222222222222222-01"
+            )
+        }
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
+
+        parent_context = span.parent
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+        self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
+        self.assertTrue(parent_context.is_remote)
 
     def test_dynamo_db_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()
