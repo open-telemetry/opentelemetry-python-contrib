@@ -28,8 +28,19 @@ This instrumentation captures uncaught process exceptions, uncaught thread
 exceptions, and unhandled asyncio task exceptions and emits them as OpenTelemetry
 logs.
 
+Emitted records follow the exception log semantic conventions: the event name is
+``exception``, and the exception instance is passed to the Logs API so the
+configured OpenTelemetry SDK derives ``exception.type``, ``exception.message``
+and ``exception.stacktrace`` as log record attributes.
+
+The record body keeps carrying the stringified exception, so both
+representations stay supported. It duplicates the ``exception.message``
+attribute, but existing consumers reading the body are not broken.
+
 References
 ----------
+
+* `Semantic conventions for exceptions in logs <https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-logs/>`_
 
 * `OpenTelemetry Python Contrib repository <https://github.com/open-telemetry/opentelemetry-python-contrib>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
