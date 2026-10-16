@@ -110,13 +110,15 @@ def _before_traversal(event):
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
-    attributes = otel_wsgi.collect_request_attributes(request_environ, _sem_conv_opt_in_mode)
+    attributes = otel_wsgi.collect_request_attributes(
+        request_environ,
+        _sem_conv_opt_in_mode,
+        # Custom headers are only recorded on SERVER spans, which are
+        # created when there is no current span.
+        capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
+    )
     if request.matched_route:
         attributes[HTTP_ROUTE] = request.matched_route.pattern
-    # Captured request headers are only added to SERVER spans, which
-    # _start_internal_or_server_span creates when there is no current span.
-    if trace.get_current_span() is trace.INVALID_SPAN:
-        attributes.update(otel_wsgi.collect_custom_request_headers_attributes(request_environ))
 
     span, token = _start_internal_or_server_span(
         tracer=tracer,
