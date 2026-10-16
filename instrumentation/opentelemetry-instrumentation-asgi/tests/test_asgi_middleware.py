@@ -2034,6 +2034,23 @@ class TestAsgiAttributes(unittest.TestCase):
             "HTTP_TARGET values is not None",
         )
 
+    def test_collect_target_attribute_prefers_http_route_attribute(self):
+        class TestRoute:
+            path_format = "/{id}"
+
+        self.scope["route"] = TestRoute()
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope, "/api/foo/bar/{id}"),
+            "/api/foo/bar/{id}",
+        )
+
+    def test_collect_target_attribute_http_route_with_root_path(self):
+        self.scope["root_path"] = "/sub"
+        self.assertEqual(
+            otel_asgi._collect_target_attribute(self.scope, "/home"),
+            "/sub/home",
+        )
+
 
 class TestWrappedApplication(AsyncAsgiTestBase):
     async def test_mark_span_internal_in_presence_of_span_from_other_framework(
