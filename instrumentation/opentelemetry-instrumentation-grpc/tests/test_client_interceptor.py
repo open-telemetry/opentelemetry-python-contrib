@@ -140,6 +140,37 @@ class TestClientProto(TestBase):
             },
         )
 
+    def test_unary_stream_does_not_restore_ended_parent(self):
+        tracer = trace.get_tracer(__name__)
+        request = Request(client_id=1, request_data="data")
+
+        with tracer.start_as_current_span("request") as request_span:
+            with tracer.start_as_current_span("library.query") as library_span:
+                stream = self._stub.ServerStreamingMethod(request, metadata=(("key", "value"),))
+                next(stream)
+
+            self.assertEqual(
+                trace.get_current_span().get_span_context().span_id,
+                request_span.get_span_context().span_id,
+            )
+
+            list(stream)
+
+            self.assertEqual(
+                trace.get_current_span().get_span_context().span_id,
+                request_span.get_span_context().span_id,
+            )
+
+            with tracer.start_as_current_span("next.operation"):
+                pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        rpc_span = next(span for span in spans if span.name == "/GRPCTestServer/ServerStreamingMethod")
+        next_operation_span = next(span for span in spans if span.name == "next.operation")
+
+        self.assertEqual(rpc_span.parent.span_id, library_span.get_span_context().span_id)
+        self.assertEqual(next_operation_span.parent.span_id, request_span.get_span_context().span_id)
+
     def test_stream_unary(self):
         client_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
@@ -272,6 +303,39 @@ class TestClientProto(TestBase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        self.assertIn("server stream error", span.status.description)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertIn("server stream error", span.events[0].attributes["exception.message"])
+
+    def test_error_unary_stream_unexpected_exception(self):
+        interceptor = OpenTelemetryClientInterceptor(trace.get_tracer(__name__))
+        client_info = mock.Mock(
+            full_method="/GRPCTestServer/ServerStreamingMethod",
+            timeout=None,
+            is_client_stream=False,
+        )
+        response_iter = mock.MagicMock()
+        response_iter.__iter__.side_effect = ValueError("stream failed")
+
+        with self.assertRaisesRegex(ValueError, "stream failed"):
+            list(
+                interceptor._intercept_server_stream(
+                    Request(client_id=1, request_data="data"),
+                    (),
+                    client_info,
+                    mock.Mock(return_value=response_iter),
+                )
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertEqual(span.status.description, "ValueError: stream failed")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+        self.assertEqual(span.events[0].attributes["exception.message"], "stream failed")
 
     def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
