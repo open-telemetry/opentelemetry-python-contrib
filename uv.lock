@@ -71,6 +71,7 @@ members = [
     "opentelemetry-instrumentation-valkey-py",
     "opentelemetry-instrumentation-vertexai",
     "opentelemetry-instrumentation-wsgi",
+    "opentelemetry-process-context",
     "opentelemetry-propagator-aws-xray",
     "opentelemetry-propagator-ot-trace",
     "opentelemetry-python-contrib",
@@ -3987,6 +3988,21 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-process-context"
+version = "0.66b0.dev0"
+source = { editable = "opentelemetry-process-context" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
+]
+
+[[package]]
 name = "opentelemetry-propagator-aws-xray"
 source = { editable = "propagator/opentelemetry-propagator-aws-xray" }
 dependencies = [
@@ -4077,6 +4093,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-urllib3", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-vertexai", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-wsgi" },
+    { name = "opentelemetry-process-context" },
     { name = "opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace" },
     { name = "opentelemetry-sdk" },
@@ -4151,6 +4168,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-urllib3", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-urllib3" },
     { name = "opentelemetry-instrumentation-vertexai", extras = ["instruments"], editable = "instrumentation-genai/opentelemetry-instrumentation-vertexai" },
     { name = "opentelemetry-instrumentation-wsgi", editable = "instrumentation/opentelemetry-instrumentation-wsgi" },
+    { name = "opentelemetry-process-context", editable = "opentelemetry-process-context" },
     { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace", editable = "propagator/opentelemetry-propagator-ot-trace" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
