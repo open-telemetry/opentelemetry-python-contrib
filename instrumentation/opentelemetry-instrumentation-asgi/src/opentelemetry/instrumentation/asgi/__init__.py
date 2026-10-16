@@ -279,6 +279,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_request_body_size,
     create_http_server_response_body_size,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -777,6 +778,23 @@ class OpenTelemetryMiddleware:
                 )
 
                 await self.app(scope, otel_receive, otel_send)
+        except Exception as exc:
+            # When an error status was already sent, _set_status has derived
+            # error.type from it ("500"), and the conventions accept either that
+            # or the exception type. Keep the status-derived value rather than
+            # overwriting it, so a streaming response that sends 5xx and then
+            # fails keeps reporting the code its consumers already query on.
+            #
+            # Cancellation is not reported: asyncio.CancelledError derives from
+            # BaseException, so `except Exception` never sees it, which is the
+            # same line trace.use_span draws for what counts as an error
+            # (open-telemetry/opentelemetry-python#4484).
+            if _report_new(self._sem_conv_opt_in_mode) and ERROR_TYPE not in attributes:
+                error_type = type(exc).__qualname__
+                attributes[ERROR_TYPE] = error_type
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, error_type)
+            raise
         finally:
             if scope["type"] == "http":
                 target = _collect_target_attribute(scope)
