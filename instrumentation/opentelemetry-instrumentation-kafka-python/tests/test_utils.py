@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=unnecessary-dunder-call
 
+from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
@@ -16,6 +17,12 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -115,10 +122,12 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_consumer_group")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     def test_wrap_next(
         self,
         extract_bootstrap_servers: mock.MagicMock,
+        extract_consumer_group: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
     ) -> None:
@@ -133,6 +142,9 @@ class TestUtils(TestCase):
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
+        extract_consumer_group.assert_called_once_with(kafka_consumer)
+        consumer_group = extract_consumer_group.return_value
+
         original_next_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(record, original_next_callback.return_value)
 
@@ -145,6 +157,7 @@ class TestUtils(TestCase):
             record,
             context,
             bootstrap_servers,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -165,6 +178,7 @@ class TestUtils(TestCase):
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+        consumer_group = "test-consumer-group"
 
         _create_consumer_span(
             tracer,
@@ -172,6 +186,7 @@ class TestUtils(TestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -188,10 +203,16 @@ class TestUtils(TestCase):
         attach.assert_called_once_with(set_span_in_context.return_value)
 
         enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
+        span.set_attribute.assert_called_once_with(
+            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+            consumer_group,
+        )
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
-    def test_extract_send_partition_reads_actual_partition_from_future(self):
+    def test_extract_send_partition_reads_actual_partition_from_future(
+        self,
+    ) -> None:
         """The partition is read back from the future returned by ``send()``,
         which reflects where the message was actually routed.
 
@@ -205,7 +226,7 @@ class TestUtils(TestCase):
 
         self.assertEqual(partition, 7)
 
-    def test_extract_send_partition_zero(self):
+    def test_extract_send_partition_zero(self) -> None:
         """Partition ``0`` is falsy but valid and must not be dropped."""
         future = mock.MagicMock()
         future._produce_future.topic_partition = ("test_topic", 0)
@@ -214,7 +235,7 @@ class TestUtils(TestCase):
 
         self.assertEqual(partition, 0)
 
-    def test_extract_send_partition_matches_real_kafka_future(self):
+    def test_extract_send_partition_matches_real_kafka_future(self) -> None:
         """Guards against kafka-python changing the internal attribute the
         extractor relies on."""
         produce_future = FutureProduceResult(("test_topic", 4))
@@ -224,7 +245,7 @@ class TestUtils(TestCase):
 
         self.assertEqual(partition, 4)
 
-    def test_extract_send_partition_returns_none_when_unavailable(self):
+    def test_extract_send_partition_returns_none_when_unavailable(self) -> None:
         """If the future does not expose the expected internals, the attribute
         is omitted rather than raising."""
 
@@ -235,7 +256,7 @@ class TestUtils(TestCase):
 
         self.assertIsNone(partition)
 
-    def test_enrich_span_records_partition_when_present(self):
+    def test_enrich_span_records_partition_when_present(self) -> None:
         span = mock.MagicMock()
         span.is_recording.return_value = True
 
@@ -243,7 +264,7 @@ class TestUtils(TestCase):
 
         span.set_attribute.assert_any_call(SpanAttributes.MESSAGING_KAFKA_PARTITION, 2)
 
-    def test_enrich_span_omits_partition_when_none(self):
+    def test_enrich_span_omits_partition_when_none(self) -> None:
         span = mock.MagicMock()
         span.is_recording.return_value = True
 
@@ -251,6 +272,54 @@ class TestUtils(TestCase):
 
         recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
         self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+
+    def test_extract_consumer_group(self) -> None:
+        consumer = SimpleNamespace(config={"group_id": "billing-service"})
+        self.assertEqual(
+            KafkaPropertiesExtractor.extract_consumer_group(consumer),
+            "billing-service",
+        )
+
+        consumer = SimpleNamespace(config={})
+        self.assertIsNone(KafkaPropertiesExtractor.extract_consumer_group(consumer))
+
+        self.assertIsNone(KafkaPropertiesExtractor.extract_consumer_group(object()))
+
+    def _finished_consumer_span(self, consumer_group: str | None):
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer(__name__)
+        record = SimpleNamespace(topic="test_topic", partition=0, headers=[])
+
+        _create_consumer_span(
+            tracer,
+            None,
+            record,
+            None,
+            ["localhost:9092"],
+            consumer_group,
+            self.args,
+            self.kwargs,
+        )
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        return spans[0]
+
+    def test_consumer_group_attribute_recorded(self) -> None:
+        span = self._finished_consumer_span("billing-service")
+        key = messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME
+        self.assertEqual(key, "messaging.consumer.group.name")
+        self.assertEqual(span.attributes[key], "billing-service")
+        self.assertIsInstance(span.attributes[key], str)
+
+    def test_consumer_group_attribute_absent_when_none(self) -> None:
+        span = self._finished_consumer_span(None)
+        self.assertNotIn(
+            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+            span.attributes,
+        )
 
 
 @mock.patch(
