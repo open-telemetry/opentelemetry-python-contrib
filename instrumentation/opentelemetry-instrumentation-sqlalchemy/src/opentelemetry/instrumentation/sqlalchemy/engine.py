@@ -302,7 +302,7 @@ class EngineTracer:
             if target is None:
                 continue
             try:
-                event.remove(target, identifier, fn)
+                remove(target, identifier, fn)
             except InvalidRequestError:
                 pass
         cls._remove_event_listener_params.clear()
