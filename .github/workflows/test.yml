@@ -10652,6 +10652,7 @@ jobs:
   py311-test-instrumentation-sanic-oldest_ubuntu-latest:
     name: instrumentation-sanic-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10673,6 +10674,7 @@ jobs:
   py312-test-instrumentation-sanic-oldest_ubuntu-latest:
     name: instrumentation-sanic-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10736,6 +10738,7 @@ jobs:
   py311-test-instrumentation-sanic-latest_ubuntu-latest:
     name: instrumentation-sanic-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10757,6 +10760,7 @@ jobs:
   py312-test-instrumentation-sanic-latest_ubuntu-latest:
     name: instrumentation-sanic-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -10778,6 +10782,7 @@ jobs:
   py313-test-instrumentation-sanic-latest_ubuntu-latest:
     name: instrumentation-sanic-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
