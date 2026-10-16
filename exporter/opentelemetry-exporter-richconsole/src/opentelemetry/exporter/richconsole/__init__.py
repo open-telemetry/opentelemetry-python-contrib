@@ -21,6 +21,11 @@ with the related spans and properties as children of that tree. For the tree vie
 Console Exporter should be used with a BatchSpanProcessor. If used within a SimpleSpanProcessor,
 all spans will be printed in a list.
 
+Every span node lists its kind, status, events, attributes and resource properties. The
+``db.statement`` attribute is the single exception among the attributes: it is rendered as
+highlighted SQL through Rich's ``Syntax`` renderer. Pass ``suppress_resource=True`` to the
+exporter to leave the resource properties out of the output.
+
 .. code:: python
 
     from opentelemetry import trace
