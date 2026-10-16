@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: fix `disable_next_message_compression`
