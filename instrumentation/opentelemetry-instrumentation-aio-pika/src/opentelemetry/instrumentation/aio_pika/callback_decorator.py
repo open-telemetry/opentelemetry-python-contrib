@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from aio_pika import Queue
 from aio_pika.abc import AbstractIncomingMessage
@@ -17,7 +18,7 @@ class CallbackDecorator:
         self._tracer = tracer
         self._queue = queue
 
-    def _get_span(self, message: AbstractIncomingMessage) -> Optional[Span]:
+    def _get_span(self, message: AbstractIncomingMessage) -> Span | None:
         builder = SpanBuilder(self._tracer)
         builder.set_as_consumer()
         builder.set_operation(MessagingOperationValues.RECEIVE)
@@ -26,9 +27,7 @@ class CallbackDecorator:
         builder.set_message(message)
         return builder.build()
 
-    def decorate(
-        self, callback: Callable[[AbstractIncomingMessage], Any]
-    ) -> Callable[[AbstractIncomingMessage], Any]:
+    def decorate(self, callback: Callable[[AbstractIncomingMessage], Any]) -> Callable[[AbstractIncomingMessage], Any]:
         async def decorated(message: AbstractIncomingMessage):
             if not is_instrumentation_enabled():
                 return await callback(message)

@@ -74,9 +74,7 @@ class TestPymongo(TestBase):
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
-        patch = mock.patch(
-            "pymongo.monitoring.register", side_effect=mock_register
-        )
+        patch = mock.patch("pymongo.monitoring.register", side_effect=mock_register)
         with patch:
             PymongoInstrumentor().instrument()
         self.assertTrue(mock_register.called)
@@ -85,12 +83,8 @@ class TestPymongo(TestBase):
         command_attrs = {
             "command_name": "find",
         }
-        command_tracer = CommandTracer(
-            self.tracer, request_hook=self.start_callback
-        )
-        mock_event = MockEvent(
-            command_attrs, ("test.com", "1234"), "test_request_id"
-        )
+        command_tracer = CommandTracer(self.tracer, request_hook=self.start_callback)
+        mock_event = MockEvent(command_attrs, ("test.com", "1234"), "test_request_id")
         command_tracer.started(event=mock_event)
         # the memory exporter can't be used here because the span isn't ended
         # yet
@@ -324,9 +318,7 @@ class TestPymongo(TestBase):
             with self.subTest(command_attrs=command_attrs, expected=expected):
                 mock_event = MockEvent(command_attrs)
 
-                command_tracer = CommandTracer(
-                    self.tracer, capture_statement=True
-                )
+                command_tracer = CommandTracer(self.tracer, capture_statement=True)
                 command_tracer.started(event=mock_event)
                 command_tracer.succeeded(event=mock_event)
 
@@ -363,9 +355,7 @@ class TestPymongo(TestBase):
         )
 
     def test_started_new_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE)
         mock_event = MockEvent({"command_name": "find"}, ("testhost", 1234))
         command_tracer.started(event=mock_event)
         span = command_tracer._pop_span(mock_event)  # pylint: disable=protected-access
@@ -376,9 +366,7 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 1234)
 
     def test_started_both_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         mock_event = MockEvent({"command_name": "find"}, ("testhost", 1234))
         command_tracer.started(event=mock_event)
         span = command_tracer._pop_span(mock_event)  # pylint: disable=protected-access
@@ -405,9 +393,7 @@ class TestPymongo(TestBase):
         self.assertNotIn(DB_COLLECTION_NAME, span.attributes)
 
     def test_collection_name_new_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE)
         mock_event = MockEvent({"command_name": "find", "find": "test_coll"})
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
@@ -418,9 +404,7 @@ class TestPymongo(TestBase):
         self.assertNotIn(DB_MONGODB_COLLECTION, span.attributes)
 
     def test_collection_name_both_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         mock_event = MockEvent({"command_name": "find", "find": "test_coll"})
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
@@ -443,9 +427,7 @@ class TestPymongo(TestBase):
         self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_failed_error_type_set_on_new_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE)
         mock_event = MockEvent({})
         command_tracer.started(event=mock_event)
         mock_event.failure = {
@@ -460,9 +442,7 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[ERROR_TYPE], "OperationFailed")
 
     def test_failed_error_type_set_on_both_semconv(self):
-        command_tracer = CommandTracer(
-            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        command_tracer = CommandTracer(self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         mock_event = MockEvent({})
         command_tracer.started(event=mock_event)
         mock_event.failure = {

@@ -26,13 +26,9 @@ class MessageData:
     remote_config: opamp_pb2.AgentRemoteConfig | None = None
 
     @classmethod
-    def from_server_message(
-        cls, message: opamp_pb2.ServerToAgent
-    ) -> MessageData:
+    def from_server_message(cls, message: opamp_pb2.ServerToAgent) -> MessageData:
         return cls(
-            remote_config=message.remote_config
-            if message.HasField("remote_config")
-            else None,
+            remote_config=message.remote_config if message.HasField("remote_config") else None,
         )
 
 

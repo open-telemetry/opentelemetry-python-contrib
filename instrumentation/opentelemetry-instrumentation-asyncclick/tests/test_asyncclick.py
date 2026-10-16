@@ -180,9 +180,7 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(result.exit_code, 0)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(
-            len(spans), 1
-        )  # Only the leaf command should be instrumented
+        self.assertEqual(len(spans), 1)  # Only the leaf command should be instrumented
         span = spans[0]
         self.assertEqual(span.name, "sub2")
         self.assertEqual(
@@ -200,17 +198,13 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         """Test instrumentation of commands with callbacks."""
         callback_called = False
 
-        def callback_func(
-            ctx: asyncclick.Context, param: asyncclick.Parameter, value: bool
-        ) -> bool:
+        def callback_func(ctx: asyncclick.Context, param: asyncclick.Parameter, value: bool) -> bool:
             nonlocal callback_called
             callback_called = True
             return value
 
         @asyncclick.command()
-        @asyncclick.option(
-            "--option", callback=callback_func, default="default"
-        )
+        @asyncclick.option("--option", callback=callback_func, default="default")
         async def command(option: str) -> None:
             pass
 
@@ -340,9 +334,7 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         async def command2() -> None:
             pass
 
-        async def run_both() -> tuple[
-            asyncclick.testing.Result, asyncclick.testing.Result
-        ]:
+        async def run_both() -> tuple[asyncclick.testing.Result, asyncclick.testing.Result]:
             runner = CliRunner()
             task1 = asyncio.create_task(runner.invoke(command1))
             task2 = asyncio.create_task(runner.invoke(command2))

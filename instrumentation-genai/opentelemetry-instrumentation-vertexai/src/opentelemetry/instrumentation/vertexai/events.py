@@ -13,8 +13,9 @@ schematized in YAML and the Weaver tool supports it.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -136,9 +137,7 @@ class ChoiceToolCall:
     type: Literal["function"] = "function"
 
 
-FinishReason = Literal[
-    "content_filter", "error", "length", "stop", "tool_calls"
-]
+FinishReason = Literal["content_filter", "error", "length", "stop", "tool_calls"]
 
 
 def choice_event(
@@ -157,9 +156,7 @@ def choice_event(
         "message": _asdict_filter_nulls(message),
     }
 
-    tool_calls_list = [
-        _asdict_filter_nulls(tool_call) for tool_call in tool_calls
-    ]
+    tool_calls_list = [_asdict_filter_nulls(tool_call) for tool_call in tool_calls]
     if tool_calls_list:
         body["tool_calls"] = tool_calls_list
 

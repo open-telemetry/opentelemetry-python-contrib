@@ -65,9 +65,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
     def test_decorate_callback(self):
         queue = Queue(CHANNEL_7, QUEUE_NAME, False, False, False, None)
         callback = mock.MagicMock(return_value=asyncio.sleep(0))
-        with mock.patch.object(
-            CallbackDecorator, "_get_span"
-        ) as mocked_get_callback_span:
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
             callback_decorator = CallbackDecorator(self.tracer, queue)
             decorated_callback = callback_decorator.decorate(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))
@@ -105,9 +103,7 @@ class TestInstrumentedQueueAioRmq8(TestCase):
     def test_decorate_callback(self):
         queue = Queue(CHANNEL_8, QUEUE_NAME, False, False, False, None)
         callback = mock.MagicMock(return_value=asyncio.sleep(0))
-        with mock.patch.object(
-            CallbackDecorator, "_get_span"
-        ) as mocked_get_callback_span:
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
             callback_decorator = CallbackDecorator(self.tracer, queue)
             decorated_callback = callback_decorator.decorate(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))

@@ -45,9 +45,7 @@ def _add_sql_comment(sql: str | Template, **meta: Any) -> str | Template:
         else:
             last += comment
         args = [
-            *itertools.chain.from_iterable(
-                zip(sql.strings[:-1], sql.interpolations)
-            ),
+            *itertools.chain.from_iterable(zip(sql.strings[:-1], sql.interpolations)),
             last,
         ]
         return _Template(*args)
@@ -75,9 +73,7 @@ def _generate_sql_comment(**meta) -> str:
     return (
         " /*"
         + key_value_delimiter.join(
-            f"{_url_quote(key)}={_url_quote(value)!r}"
-            for key, value in sorted(meta.items())
-            if value is not None
+            f"{_url_quote(key)}={_url_quote(value)!r}" for key, value in sorted(meta.items()) if value is not None
         )
         + "*/"
     )

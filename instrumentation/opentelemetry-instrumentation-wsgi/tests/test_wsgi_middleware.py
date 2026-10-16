@@ -3,6 +3,8 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 import sys
 import unittest
 import wsgiref.util as wsgiref_util
@@ -10,6 +12,7 @@ from unittest import mock
 from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
+from opentelemetry import baggage
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -45,6 +48,7 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
@@ -64,6 +68,7 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
@@ -181,12 +186,8 @@ _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
     "http.server.request.duration": _server_duration_attrs_new,
 }
-_server_active_requests_count_attrs_both = (
-    _server_active_requests_count_attrs_old
-)
-_server_active_requests_count_attrs_both.extend(
-    _server_active_requests_count_attrs_new
-)
+_server_active_requests_count_attrs_both = _server_active_requests_count_attrs_old
+_server_active_requests_count_attrs_both.extend(_server_active_requests_count_attrs_new)
 _recommended_metrics_attrs_both = {
     "http.server.active_requests": _server_active_requests_count_attrs_both,
     "http.server.duration": _server_duration_attrs_old,
@@ -196,6 +197,7 @@ _recommended_metrics_attrs_both = {
 SCOPE = "opentelemetry.instrumentation.wsgi"
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
         super().setUp()
@@ -335,6 +337,29 @@ class TestWsgiApplication(WsgiTestBase):
         response = app(self.environ, self.start_response)
         self.validate_response(response, old_sem_conv=True, new_sem_conv=True)
 
+    def test_baggage_extracted_and_active_in_wrapped_app(self):
+        baggage_in_wrapped_app = {}
+
+        def wsgi_capture_baggage(environ, start_response):
+            baggage_in_wrapped_app.update(baggage.get_all())
+            return simple_wsgi(environ, start_response)
+
+        self.environ["HTTP_BAGGAGE"] = "key1=value1,key2=value2,key3=1%2F3"
+        app = otel_wsgi.OpenTelemetryMiddleware(wsgi_capture_baggage)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(
+            baggage_in_wrapped_app,
+            {"key1": "value1", "key2": "value2", "key3": "1/3"},
+        )
+
+    def test_baggage_detached_after_response_is_consumed(self):
+        self.environ["HTTP_BAGGAGE"] = "key1=value1"
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(dict(baggage.get_all()), {})
+
     def test_hooks(self):
         hook_headers = (
             "hook_attr",
@@ -348,9 +373,7 @@ class TestWsgiApplication(WsgiTestBase):
             span.set_attribute("hook_attr", "hello world")
             response_headers.append(hook_headers)
 
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            simple_wsgi, request_hook, response_hook
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, request_hook, response_hook)
         response = app(self.environ, self.start_response)
         self.validate_response(
             response,
@@ -449,9 +472,7 @@ class TestWsgiApplication(WsgiTestBase):
             # exhaust response iterable
             for _ in response:
                 pass
-        self._assert_exemplars_present(
-            {"http.server.duration"}, context="old semconv"
-        )
+        self._assert_exemplars_present({"http.server.duration"}, context="old semconv")
 
     def test_wsgi_metrics_exemplars_expected_new_semconv(self):  # type: ignore[func-returns-value]
         """Failing test asserting exemplars should be present for request duration histogram (new semconv)."""
@@ -460,9 +481,7 @@ class TestWsgiApplication(WsgiTestBase):
             response = app(self.environ, self.start_response)
             for _ in response:
                 pass
-        self._assert_exemplars_present(
-            {"http.server.request.duration"}, context="new semconv"
-        )
+        self._assert_exemplars_present({"http.server.request.duration"}, context="new semconv")
 
     def test_wsgi_metrics_exemplars_expected_both_semconv(self):  # type: ignore[func-returns-value]
         """Failing test asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
@@ -549,9 +568,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"] = "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(
-            response, span_name="HTTP", http_method="_OTHER"
-        )
+        self.validate_response(response, span_name="HTTP", http_method="_OTHER")
 
     @mock.patch.dict(
         "os.environ",
@@ -563,9 +580,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.environ["REQUEST_METHOD"] = "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
-        self.validate_response(
-            response, span_name="NONSTANDARD /", http_method="NONSTANDARD"
-        )
+        self.validate_response(response, span_name="NONSTANDARD /", http_method="NONSTANDARD")
 
     def test_default_span_name_missing_path_info(self):
         """Test that default span_names with missing path info."""
@@ -633,8 +648,7 @@ class TestWsgiAttributes(unittest.TestCase):
         parts = urlsplit(expected_url)
         expected_old = {
             HTTP_SCHEME: parts.scheme,
-            NET_HOST_PORT: parts.port
-            or (80 if parts.scheme == "http" else 443),
+            NET_HOST_PORT: parts.port or (80 if parts.scheme == "http" else 443),
             HTTP_SERVER_NAME: parts.hostname,  # Not true in the general case, but for all tests.
         }
         expected_new = {
@@ -645,9 +659,7 @@ class TestWsgiAttributes(unittest.TestCase):
         }
         if old_semconv:
             if raw:
-                expected_old[HTTP_TARGET] = expected_url.split(
-                    parts.netloc, 1
-                )[1]
+                expected_old[HTTP_TARGET] = expected_url.split(parts.netloc, 1)[1]
             else:
                 expected_old[HTTP_URL] = expected_url
             if has_host:
@@ -656,18 +668,14 @@ class TestWsgiAttributes(unittest.TestCase):
             if raw:
                 expected_new[URL_PATH] = expected_url.split(parts.path, 1)[1]
                 if parts.query:
-                    expected_new[URL_QUERY] = expected_url.split(
-                        parts.query, 1
-                    )[1]
+                    expected_new[URL_QUERY] = expected_url.split(parts.query, 1)[1]
             else:
                 expected_new[URL_FULL] = expected_url
             if has_host:
                 expected_new[SERVER_ADDRESS] = parts.hostname
 
         attrs = otel_wsgi.collect_request_attributes(self.environ)
-        self.assertGreaterEqual(
-            attrs.items(), expected_old.items(), expected_url + " expected."
-        )
+        self.assertGreaterEqual(attrs.items(), expected_old.items(), expected_url + " expected.")
 
     def test_request_attributes_with_partial_raw_uri(self):
         self.environ["RAW_URI"] = "/?foo=bar/#top"
@@ -776,9 +784,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.validate_url("http://127.0.0.1:443/", has_host=False)
 
     def test_request_attributes_with_conflicting_nonstandard_port(self):
-        self.environ["HTTP_HOST"] += (
-            ":8080"  # Note that we do not correct SERVER_PORT
-        )
+        self.environ["HTTP_HOST"] += ":8080"  # Note that we do not correct SERVER_PORT
         expected = {
             HTTP_HOST: "127.0.0.1:8080",
             HTTP_URL: "http://127.0.0.1:8080/",
@@ -795,9 +801,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
-        self.assertIsNone(
-            otel_wsgi.collect_request_attributes(self.environ).get(HTTP_TARGET)
-        )
+        self.assertIsNone(otel_wsgi.collect_request_attributes(self.environ).get(HTTP_TARGET))
 
     def test_request_attributes_with_full_request_uri(self):
         self.environ["HTTP_HOST"] = "127.0.0.1:8080"
@@ -938,9 +942,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
     def test_http_user_agent_synthetic_new_semconv(self):
         """Test synthetic user agent detection with new semantic conventions"""
-        self.environ["HTTP_USER_AGENT"] = (
-            "Mozilla/5.0 (compatible; Googlebot/2.1)"
-        )
+        self.environ["HTTP_USER_AGENT"] = "Mozilla/5.0 (compatible; Googlebot/2.1)"
         attributes = otel_wsgi.collect_request_attributes(
             self.environ,
             _StabilityMode.HTTP,
@@ -974,9 +976,7 @@ class TestWsgiAttributes(unittest.TestCase):
         mock_span.is_recording.return_value = False
 
         attrs = {}
-        otel_wsgi.add_response_attributes(
-            mock_span, "404 Not Found", {}, duration_attrs=attrs
-        )
+        otel_wsgi.add_response_attributes(mock_span, "404 Not Found", {}, duration_attrs=attrs)
 
         self.assertEqual(mock_span.set_attribute.call_count, 0)
         self.assertEqual(mock_span.is_recording.call_count, 2)
@@ -1016,25 +1016,19 @@ class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].name, span_name)
         self.assertEqual(span_list[0].kind, trace_api.SpanKind.SERVER)
-        self.assertEqual(
-            span_list[0].resource.attributes["service-key"], "service-value"
-        )
+        self.assertEqual(span_list[0].resource.attributes["service-key"], "service-value")
 
     def test_basic_wsgi_call(self):
         resource = Resource.create({"service-key": "service-value"})
         result = TestBase.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
 
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            simple_wsgi, tracer_provider=tracer_provider
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
         response = app(self.environ, self.start_response)
         self.validate_response(response, exporter)
 
     def test_no_op_tracer_provider(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            simple_wsgi, tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=trace_api.NoOpTracerProvider())
 
         response = app(self.environ, self.start_response)
         while True:
@@ -1052,12 +1046,8 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
         tracer_provider, exporter = TestBase.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
 
-        with tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.SERVER
-        ) as parent_span:
-            app = otel_wsgi.OpenTelemetryMiddleware(
-                simple_wsgi, tracer_provider=tracer_provider
-            )
+        with tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER) as parent_span:
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
             response = app(self.environ, self.start_response)
             while True:
                 try:
@@ -1072,9 +1062,10 @@ class TestWsgiMiddlewareWrappedWithAnotherFramework(WsgiTestBase):
             self.assertEqual(trace_api.SpanKind.SERVER, parent_span.kind)
 
             # internal span should be child of the parent span we have provided
-            self.assertEqual(
-                parent_span.context.span_id, span_list[0].parent.span_id
-            )
+            self.assertEqual(parent_span.context.span_id, span_list[0].parent.span_id)
+
+
+_CUSTOM_REQUEST_HEADER = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
 
 
 class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
@@ -1089,6 +1080,42 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
                 self.assertEqual(value, b"*")
             except StopIteration:
                 break
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,My-Secret-Header",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header",
+        },
+    )
+    def test_request_attributes_capture_custom_headers_only_when_enabled(self) -> None:
+        self.environ.update(
+            {
+                "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
+                "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                "HTTP_UNCAPTURED_HEADER": "Uncaptured Value",
+            }
+        )
+        for mode in (_StabilityMode.DEFAULT, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP):
+            with self.subTest(mode=mode):
+                environ = mock.MagicMock(wraps=self.environ)
+                environ.__getitem__.side_effect = self.environ.__getitem__
+                attributes = otel_wsgi.collect_request_attributes(environ, mode)
+                self.assertFalse(any(key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.") for key in attributes))
+                environ.items.assert_not_called()
+
+                attributes = otel_wsgi.collect_request_attributes(self.environ, mode, capture_custom_headers=True)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    {
+                        _CUSTOM_REQUEST_HEADER: ["Test Value 1"],
+                        f"{HTTP_REQUEST_HEADER_TEMPLATE}.my_secret_header": ["[REDACTED]"],
+                    },
+                )
 
     @mock.patch.dict(
         "os.environ",
@@ -1109,9 +1136,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
                     "HTTP_MY_SECRET_HEADER": "My Secret Value",
                 }
             )
-            app = otel_wsgi.OpenTelemetryMiddleware(
-                simple_wsgi, tracer_provider=tracer_provider
-            )
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
         except Exception as exc:  # pylint: disable=W0703
@@ -1124,7 +1149,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
         },
     )
-    def test_custom_request_headers_added_in_server_span(self):
+    def test_custom_request_headers_added_in_server_span(self) -> None:
         self.environ.update(
             {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
@@ -1132,50 +1157,126 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
                 "HTTP_REGEX_TEST_HEADER_1": "Regex Test Value 1",
                 "HTTP_REGEX_TEST_HEADER_2": "RegexTestValue2,RegexTestValue3",
                 "HTTP_MY_SECRET_HEADER": "My Secret Value",
+                "HTTP_UNCAPTURED_HEADER": "Uncaptured Value",
             }
         )
-        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
-        response = app(self.environ, self.start_response)
-        self.iterate_response(response)
-        span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
-                "TestValue2,TestValue3",
-            ),
+            "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
-        self.assertSpanHasAttributes(span, expected)
+        for remote_parent in (False, True):
+            with self.subTest(remote_parent=remote_parent):
+                if remote_parent:
+                    self.environ["HTTP_TRACEPARENT"] = "00-11111111111111111111111111111111-2222222222222222-01"
+                sampler = CapturingSampler()
+                tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+                self.addCleanup(tracer_provider.shutdown)
+                app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+                response = app(self.environ, self.start_response)
+                self.iterate_response(response)
+                self.assertEqual(sampler.kind, trace_api.SpanKind.SERVER)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in sampler.attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    {key: list(value) for key, value in expected.items()},
+                )
+                spans = exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].kind, trace_api.SpanKind.SERVER)
+                if remote_parent:
+                    self.assertEqual(spans[0].parent.span_id, 0x2222222222222222)
+                    self.assertTrue(spans[0].parent.is_remote)
+                else:
+                    self.assertIsNone(spans[0].parent)
+                self.assertEqual(
+                    {
+                        key: value
+                        for key, value in spans[0].attributes.items()
+                        if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+                    },
+                    expected,
+                )
+                metrics = self.get_sorted_metrics(SCOPE)
+                self.assertTrue(metrics)
+                for metric in metrics:
+                    for point in metric.data.data_points:
+                        self.assertTrue(set(expected).isdisjoint(point.attributes))
 
     @mock.patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
     )
-    def test_custom_request_headers_not_added_in_internal_span(self):
+    def test_custom_request_headers_not_added_in_internal_span(self) -> None:
         self.environ.update(
             {
                 "HTTP_CUSTOM_TEST_HEADER_1": "Test Value 1",
             }
         )
 
-        with self.tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.SERVER
-        ):
-            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        sampler = CapturingSampler()
+        tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        with self.tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER) as parent_span:
+            app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
-            span = self.memory_exporter.get_finished_spans()[0]
+            span = exporter.get_finished_spans()[0]
+            self.assertEqual(sampler.kind, trace_api.SpanKind.INTERNAL)
+            self.assertEqual(span.kind, trace_api.SpanKind.INTERNAL)
+            self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
             }
             for key, _ in not_expected.items():
+                self.assertNotIn(key, sampler.attributes)
                 self.assertNotIn(key, span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: ""},
+    )
+    def test_custom_request_headers_not_captured_without_configuration(self) -> None:
+        self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = "Test Value 1"
+        sampler = CapturingSampler()
+        tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+        self.iterate_response(app(self.environ, self.start_response))
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER, sampler.attributes)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER, exporter.get_finished_spans()[0].attributes)
+
+    def test_custom_request_headers_skip_environ_without_configuration(self) -> None:
+        for configuration in ({}, {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: ""}):
+            with (
+                self.subTest(configuration=configuration),
+                mock.patch.dict("os.environ", configuration, clear=True),
+            ):
+                environ = mock.Mock(wraps=self.environ)
+                self.assertEqual(otel_wsgi.collect_custom_request_headers_attributes(environ), {})
+                environ.items.assert_not_called()
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
+    )
+    def test_custom_request_headers_control_sampling(self) -> None:
+        for value, expected_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                self.environ["HTTP_CUSTOM_TEST_HEADER_1"] = value
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER: ["sample"]})
+                tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+                self.addCleanup(tracer_provider.shutdown)
+                app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, tracer_provider=tracer_provider)
+                self.iterate_response(app(self.environ, self.start_response))
+                self.assertEqual(len(exporter.get_finished_spans()), expected_count)
+                self.assertEqual(self.status, "200 OK")
+                self.assertIsNone(self.exc_info)
 
     @mock.patch.dict(
         "os.environ",
@@ -1185,50 +1286,32 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         },
     )
     def test_custom_response_headers_added_in_server_span(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            wsgi_with_custom_response_headers
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(wsgi_with_custom_response_headers)
         response = app(self.environ, self.start_response)
         self.iterate_response(response)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
             "http.response.header.content_length": ("100",),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(span, expected)
 
     @mock.patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "my-custom-header"},
     )
     def test_custom_response_headers_not_added_in_internal_span(self):
-        with self.tracer.start_as_current_span(
-            "test", kind=trace_api.SpanKind.INTERNAL
-        ):
-            app = otel_wsgi.OpenTelemetryMiddleware(
-                wsgi_with_custom_response_headers
-            )
+        with self.tracer.start_as_current_span("test", kind=trace_api.SpanKind.INTERNAL):
+            app = otel_wsgi.OpenTelemetryMiddleware(wsgi_with_custom_response_headers)
             response = app(self.environ, self.start_response)
             self.iterate_response(response)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
+                "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
             }
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
@@ -1240,16 +1323,12 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         },
     )
     def test_repeat_custom_response_headers_added_in_server_span(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(
-            wsgi_with_repeat_custom_response_headers
-        )
+        app = otel_wsgi.OpenTelemetryMiddleware(wsgi_with_repeat_custom_response_headers)
         response = app(self.environ, self.start_response)
         self.iterate_response(response)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-value-2",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-value-2",),
         }
         self.assertSpanHasAttributes(span, expected)
 

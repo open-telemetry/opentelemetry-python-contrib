@@ -27,10 +27,7 @@ class SQLAlchemyInstrumentTestCase(TestBase):
         super().setUp()
         # create a traced engine with the given arguments
         SQLAlchemyInstrumentor().instrument()
-        dsn = (
-            "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s"
-            % POSTGRES_CONFIG
-        )
+        dsn = "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s" % POSTGRES_CONFIG
         self.engine = sqlalchemy.create_engine(dsn)
 
         # prepare a connection

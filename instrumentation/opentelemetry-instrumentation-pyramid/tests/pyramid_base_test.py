@@ -52,9 +52,7 @@ class InstrumentationTest:
         config.add_view(excluded_endpoint, route_name="excluded")
         config.add_route("excluded2", "/excluded_noarg2")
         config.add_view(excluded2_endpoint, route_name="excluded2")
-        config.add_route(
-            "custom_response_headers", "/test_custom_response_headers"
-        )
+        config.add_route("custom_response_headers", "/test_custom_response_headers")
         config.add_view(
             self._custom_response_header_endpoint,
             route_name="custom_response_headers",

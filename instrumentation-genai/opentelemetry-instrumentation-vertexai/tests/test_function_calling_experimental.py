@@ -194,16 +194,12 @@ def test_tool_events(
                 "parts": (
                     {
                         "type": "tool_call_response",
-                        "response": {
-                            "content": '{"temperature": 35, "unit": "C"}'
-                        },
+                        "response": {"content": '{"temperature": 35, "unit": "C"}'},
                         "id": "get_current_weather_0",
                     },
                     {
                         "type": "tool_call_response",
-                        "response": {
-                            "content": '{"temperature": 25, "unit": "C"}'
-                        },
+                        "response": {"content": '{"temperature": 25, "unit": "C"}'},
                         "id": "get_current_weather_1",
                     },
                 ),
@@ -341,16 +337,12 @@ def test_tool_events_with_completion_hook(
                 "parts": [
                     {
                         "id": "get_current_weather_0",
-                        "response": {
-                            "content": '{"temperature": 35, "unit": "C"}'
-                        },
+                        "response": {"content": '{"temperature": 35, "unit": "C"}'},
                         "type": "tool_call_response",
                     },
                     {
                         "id": "get_current_weather_1",
-                        "response": {
-                            "content": '{"temperature": 25, "unit": "C"}'
-                        },
+                        "response": {"content": '{"temperature": 25, "unit": "C"}'},
                         "type": "tool_call_response",
                     },
                 ],

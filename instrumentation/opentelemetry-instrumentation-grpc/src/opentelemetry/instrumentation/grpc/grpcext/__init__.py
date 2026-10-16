@@ -64,9 +64,7 @@ class StreamClientInterceptor(abc.ABC):
     """Affords intercepting stream RPCs on the invocation-side."""
 
     @abc.abstractmethod
-    def intercept_stream(
-        self, request_or_iterator, metadata, client_info, invoker
-    ):
+    def intercept_stream(self, request_or_iterator, metadata, client_info, invoker):
         """Intercepts stream RPCs on the invocation-side.
 
         Args:
@@ -107,8 +105,8 @@ def intercept_channel(channel, *interceptors):
 
 
 __all__ = (
-    "UnaryClientInterceptor",
     "StreamClientInfo",
     "StreamClientInterceptor",
+    "UnaryClientInterceptor",
     "intercept_channel",
 )

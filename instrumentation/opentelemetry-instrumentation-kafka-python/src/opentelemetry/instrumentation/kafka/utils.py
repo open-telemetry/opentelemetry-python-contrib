@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Callable
 from logging import getLogger
-from typing import Callable, Dict, List, Optional
 
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
@@ -30,72 +31,34 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "topic", 0, "unknown", args, kwargs
-        )
-
-    @staticmethod
-    def extract_send_value(args, kwargs):
-        """extract value from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "value", 1, None, args, kwargs
-        )
-
-    @staticmethod
-    def extract_send_key(args, kwargs):
-        """extract key from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "key", 2, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("topic", 0, "unknown", args, kwargs)
 
     @staticmethod
     def extract_send_headers(args, kwargs):
         """extract headers from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "headers", 3, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("headers", 3, None, args, kwargs)
 
     @staticmethod
-    def extract_send_partition(instance, args, kwargs):
-        """extract partition `send` method arguments, using the `_partition` method in KafkaProducer class"""
+    def extract_send_partition(future) -> int | None:
+        """Extract the assigned partition from the future returned by `send`.
+
+        `send()` resolves the partition internally (randomly for keyless
+        messages), so it must be read back from the future rather than
+        recomputed with the partitioner.
+        """
         try:
-            topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-            key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
-            value = KafkaPropertiesExtractor.extract_send_value(args, kwargs)
-            partition = KafkaPropertiesExtractor._extract_argument(
-                "partition", 4, None, args, kwargs
-            )
-            key_bytes = instance._serialize(
-                instance.config["key_serializer"], topic, key
-            )
-            value_bytes = instance._serialize(
-                instance.config["value_serializer"], topic, value
-            )
-            valid_types = (bytes, bytearray, memoryview, type(None))
-            if (
-                type(key_bytes) not in valid_types
-                or type(value_bytes) not in valid_types
-            ):
-                return None
-
-            instance._wait_on_metadata(
-                topic, instance.config["max_block_ms"] / 1000.0
-            )
-
-            return instance._partition(
-                topic, partition, key, value, key_bytes, value_bytes
-            )
-        except Exception as exception:  # pylint: disable=W0703
+            return future._produce_future.topic_partition[1]
+        except (AttributeError, IndexError, TypeError) as exception:
             _LOG.debug("Unable to extract partition: %s", exception)
             return None
 
 
-ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
-ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
+ProduceHookT = Callable[[Span, list, dict], None] | None
+ConsumeHookT = Callable[[Span, ABCRecord, list, dict], None] | None
 
 
 class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -105,7 +68,7 @@ class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
                     return [value.decode()]
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
         return [key for (key, value) in carrier]
@@ -126,15 +89,17 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
+    span,
+    bootstrap_servers: list[str],
+    topic: str,
+    partition: int | None,
 ):
     if span.is_recording():
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
+        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-        span.set_attribute(
-            SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
-        )
+        if partition is not None:
+            span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
 
 
 def _get_span_name(operation: str, topic: str):
@@ -149,17 +114,9 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             kwargs["headers"] = headers
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            instance
-        )
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            instance, args, kwargs
-        )
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.PRODUCER
-        ) as span:
-            _enrich_span(span, bootstrap_servers, topic, partition)
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -171,7 +128,10 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
-        return func(*args, **kwargs)
+            future = func(*args, **kwargs)
+            partition = KafkaPropertiesExtractor.extract_send_partition(future)
+            _enrich_span(span, bootstrap_servers, topic, partition)
+            return future
 
     return _traced_send
 
@@ -211,13 +171,9 @@ def _wrap_next(
         record = func(*args, **kwargs)
 
         if record:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_kafka_getter
-            )
+            extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
                 tracer,
                 consume_hook,

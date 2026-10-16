@@ -27,14 +27,10 @@ class TestBootstrap(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.installed_libraries = sample_packages(
-            [lib["instrumentation"] for lib in libraries], 0.6
-        )
+        cls.installed_libraries = sample_packages([lib["instrumentation"] for lib in libraries], 0.6)
 
         # treat 50% of sampled packages as pre-installed
-        cls.installed_instrumentations = sample_packages(
-            cls.installed_libraries, 0.5
-        )
+        cls.installed_instrumentations = sample_packages(cls.installed_libraries, 0.5)
 
         cls.pkg_patcher = patch(
             "opentelemetry.instrumentation.bootstrap._find_installed_libraries",

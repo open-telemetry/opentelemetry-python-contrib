@@ -48,9 +48,7 @@ def test_detects_host_name(fake_get_metadata: MagicMock) -> None:
 
 
 def test_detects_zone_and_region(fake_get_metadata: MagicMock) -> None:
-    fake_get_metadata.return_value = {
-        "instance": {"zone": "projects/233510669999/zones/us-east4-b"}
-    }
+    fake_get_metadata.return_value = {"instance": {"zone": "projects/233510669999/zones/us-east4-b"}}
     zone_and_region = _gce.availability_zone_and_region()
 
     assert zone_and_region.zone == "us-east4-b"
@@ -60,7 +58,5 @@ def test_detects_zone_and_region(fake_get_metadata: MagicMock) -> None:
 def test_throws_for_invalid_zone(fake_get_metadata: MagicMock) -> None:
     fake_get_metadata.return_value = {"instance": {"zone": ""}}
 
-    with pytest.raises(
-        ValueError, match="zone was not in the expected format"
-    ):
+    with pytest.raises(ValueError, match="zone was not in the expected format"):
         _gce.availability_zone_and_region()

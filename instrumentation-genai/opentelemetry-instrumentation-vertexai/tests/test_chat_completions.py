@@ -160,11 +160,7 @@ def test_generate_content_empty_model(
     try:
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
         )
     except ValueError:
         pass
@@ -193,11 +189,7 @@ def test_generate_content_missing_model(
     try:
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
         )
     except NotFound:
         pass
@@ -227,11 +219,7 @@ def test_generate_content_invalid_temperature(
         # Temperature out of range causes error
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
             generation_config=GenerationConfig(temperature=1000),
         )
     except BadRequest:
@@ -354,9 +342,7 @@ def test_generate_content_all_events(
     generate_content_all_input_events(
         GenerativeModel(
             "gemini-2.5-pro",
-            system_instruction=Part.from_text(
-                "You are a clever language model"
-            ),
+            system_instruction=Part.from_text("You are a clever language model"),
         ),
         log_exporter,
         instrument_with_content,
@@ -372,9 +358,7 @@ def test_preview_generate_content_all_input_events(
     generate_content_all_input_events(
         PreviewGenerativeModel(
             "gemini-2.5-pro",
-            system_instruction=Part.from_text(
-                "You are a clever language model"
-            ),
+            system_instruction=Part.from_text("You are a clever language model"),
         ),
         log_exporter,
         instrument_with_content,
@@ -388,30 +372,20 @@ def generate_content_all_input_events(
 ):
     model.generate_content(
         [
-            Content(
-                role="user", parts=[Part.from_text("My name is OpenTelemetry")]
-            ),
-            Content(
-                role="model", parts=[Part.from_text("Hello OpenTelemetry!")]
-            ),
+            Content(role="user", parts=[Part.from_text("My name is OpenTelemetry")]),
+            Content(role="model", parts=[Part.from_text("Hello OpenTelemetry!")]),
             Content(
                 role="user",
-                parts=[
-                    Part.from_text("Address me by name and say this is a test")
-                ],
+                parts=[Part.from_text("Address me by name and say this is a test")],
             ),
         ],
-        generation_config=GenerationConfig(
-            seed=12345, response_mime_type="text/plain"
-        ),
+        generation_config=GenerationConfig(seed=12345, response_mime_type="text/plain"),
     )
 
     # Emits a system event, 2 users events, an assistant event, and the choice (response) event
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    system_log, user_log1, assistant_log, user_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
+    system_log, user_log1, assistant_log, user_log2, choice_log = [log_data.log_record for log_data in logs]
 
     assert system_log.attributes == {"gen_ai.system": "vertex_ai"}
     assert system_log.event_name == "gen_ai.system.message"

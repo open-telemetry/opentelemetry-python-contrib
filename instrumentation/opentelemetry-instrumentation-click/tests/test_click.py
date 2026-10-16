@@ -171,9 +171,7 @@ class ClickTestCase(TestBase):
     @pytest.mark.skipif(flask_cli is None, reason="requires flask")
     def test_flask_run_command_ignored(self):
         runner = CliRunner()
-        result = runner.invoke(
-            flask_cli.run_command, obj=flask_cli.ScriptInfo()
-        )
+        result = runner.invoke(flask_cli.run_command, obj=flask_cli.ScriptInfo())
         self.assertEqual(result.exit_code, 2)
 
         self.assertFalse(self.memory_exporter.get_finished_spans())

@@ -47,7 +47,10 @@ Usage
         def on_message(self, agent, client, message):
             if message.remote_config is None:
                 return
-            for config_filename, config in message.remote_config.config.config_map.items():
+            for (
+                config_filename,
+                config,
+            ) in message.remote_config.config.config_map.items():
                 print("do something")
 
 

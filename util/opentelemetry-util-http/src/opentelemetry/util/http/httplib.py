@@ -13,7 +13,8 @@ import http.client
 import logging
 import socket  # pylint:disable=unused-import # Used for typing
 import typing
-from typing import Any, Callable, Collection, TypedDict, cast
+from collections.abc import Callable, Collection
+from typing import Any, TypedDict, cast
 
 import wrapt
 
@@ -62,9 +63,7 @@ def _remove_nonrecording(spanlist: list[Span]) -> bool:
     return True
 
 
-def trysetip(
-    conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG
-) -> bool:
+def trysetip(conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG) -> bool:
     """Tries to set the net.peer.ip semantic attribute on the current span from the given
     HttpConnection.
 
@@ -75,7 +74,7 @@ def trysetip(
     state = _getstate()
     if not state:
         return True
-    spanlist: typing.List[Span] = state.get("need_ip")
+    spanlist: list[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -86,7 +85,7 @@ def trysetip(
     sock = "<property not accessed>"
     ip = None
     try:
-        sock: typing.Optional[socket.socket] = conn.sock
+        sock: socket.socket | None = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False
@@ -164,9 +163,7 @@ def _getstate() -> _ConnectionState | None:
 def set_ip_on_next_http_connection(span: Span):
     state = _getstate()
     if not state:
-        token = context.attach(
-            context.set_value(_STATE_KEY, {"need_ip": [span]})
-        )
+        token = context.attach(context.set_value(_STATE_KEY, {"need_ip": [span]}))
         try:
             yield
         finally:

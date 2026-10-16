@@ -13,9 +13,7 @@ _tox_test_env_regex = re_compile(
     r"(?P<name>[-\w]+\w)-?(?P<test_requirements>\d+)?"
 )
 _tox_lint_env_regex = re_compile(r"lint-(?P<name>[-\w]+)")
-_tox_contrib_env_regex = re_compile(
-    r"py310-test-(?P<name>[-\w]+\w)-?(?P<contrib_requirements>\d+)?"
-)
+_tox_contrib_env_regex = re_compile(r"py310-test-(?P<name>[-\w]+\w)-?(?P<contrib_requirements>\d+)?")
 
 
 def get_tox_envs(tox_ini_path: Path) -> list:
@@ -25,9 +23,7 @@ def get_tox_envs(tox_ini_path: Path) -> list:
 
     tox_section = next(tox_ini.sections())
 
-    core_config_set = CoreConfigSet(
-        conf, tox_section, tox_ini_path.parent, tox_ini_path
-    )
+    core_config_set = CoreConfigSet(conf, tox_section, tox_ini_path.parent, tox_ini_path)
 
     (
         core_config_set.loaders.extend(
@@ -43,6 +39,36 @@ def get_tox_envs(tox_ini_path: Path) -> list:
     return core_config_set.load("env_list")
 
 
+def _get_pr_tox_envs(tox_envs: list) -> set:
+    """Return the test envs that run on pull requests.
+
+    For each test variant (the tox env without its Python factor), only PyPy
+    and the oldest and newest CPython versions run on pull requests. The
+    remaining CPython versions only run in the merge queue.
+    """
+    variant_tox_envs = defaultdict(list)
+    pr_tox_envs = set()
+
+    for tox_env in tox_envs:
+        tox_test_env_match = _tox_test_env_regex.match(tox_env)
+        if tox_test_env_match is None:
+            continue
+
+        python_version = tox_test_env_match.group("python_version")
+        if python_version == "pypy3":
+            pr_tox_envs.add(tox_env)
+            continue
+
+        variant = tox_env.split("-", 1)[1]
+        variant_tox_envs[variant].append((int(python_version[2:]), tox_env))
+
+    for versioned_tox_envs in variant_tox_envs.values():
+        pr_tox_envs.add(min(versioned_tox_envs)[1])
+        pr_tox_envs.add(max(versioned_tox_envs)[1])
+
+    return pr_tox_envs
+
+
 def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
     os_alias = {"ubuntu-latest": "Ubuntu", "windows-latest": "Windows"}
 
@@ -55,6 +81,8 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
         "py314": "3.14",
     }
 
+    pr_tox_envs = _get_pr_tox_envs(tox_envs)
+
     test_job_datas = []
 
     for operating_system in operating_systems:
@@ -66,9 +94,7 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
 
             groups = tox_test_env_match.groupdict()
 
-            aliased_python_version = python_version_alias[
-                groups["python_version"]
-            ]
+            aliased_python_version = python_version_alias[groups["python_version"]]
             tox_env = tox_test_env_match.string
 
             test_requirements = groups["test_requirements"]
@@ -83,14 +109,12 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
                 {
                     "name": f"{tox_env}_{operating_system}",
                     "ui_name": (
-                        f"{groups['name']}"
-                        f"{test_requirements}"
-                        f"{aliased_python_version} "
-                        f"{os_alias[operating_system]}"
+                        f"{groups['name']}{test_requirements}{aliased_python_version} {os_alias[operating_system]}"
                     ),
                     "python_version": aliased_python_version,
                     "tox_env": tox_env,
                     "os": operating_system,
+                    "run_on_pr": tox_env in pr_tox_envs,
                 }
             )
 
@@ -169,13 +193,9 @@ def get_misc_job_datas(tox_envs: list) -> list:
     return misc_job_datas
 
 
-def _generate_workflow(
-    job_datas: list, name: str, workflow_directory_path: Path
-) -> None:
+def _generate_workflow(job_datas: list, name: str, workflow_directory_path: Path) -> None:
     env = Environment(loader=FileSystemLoader(Path(__file__).parent))
-    with open(
-        workflow_directory_path.joinpath(f"{name}.yml"), "w"
-    ) as yml_file:
+    with open(workflow_directory_path.joinpath(f"{name}.yml"), "w") as yml_file:
         yml_file.write(
             env.get_template(f"{name}.yml.j2").render(
                 job_datas=job_datas,
@@ -184,9 +204,7 @@ def _generate_workflow(
         yml_file.write("\n")
 
 
-def generate_test_workflow(
-    tox_ini_path: Path, workflow_directory_path: Path, *operating_systems
-) -> None:
+def generate_test_workflow(tox_ini_path: Path, workflow_directory_path: Path, *operating_systems) -> None:
     _generate_workflow(
         get_test_job_datas(get_tox_envs(tox_ini_path), operating_systems),
         "test",
@@ -209,9 +227,7 @@ def generate_contrib_workflow(
     workflow_directory_path: Path,
 ) -> None:
     _generate_workflow(
-        get_contrib_job_datas(
-            get_tox_envs(Path(__file__).parent.joinpath("tox.ini"))
-        ),
+        get_contrib_job_datas(get_tox_envs(Path(__file__).parent.joinpath("tox.ini"))),
         "core_contrib_test",
         workflow_directory_path,
     )
@@ -233,8 +249,6 @@ def generate_ci_workflow(
 ) -> None:
     with open(workflow_directory_path.joinpath("ci.yml"), "w") as ci_yml_file:
         ci_yml_file.write(
-            Environment(loader=FileSystemLoader(Path(__file__).parent))
-            .get_template("ci.yml.j2")
-            .render()
+            Environment(loader=FileSystemLoader(Path(__file__).parent)).get_template("ci.yml.j2").render()
         )
         ci_yml_file.write("\n")

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from openai import AsyncStream, Stream
 from openai.types.chat import ChatCompletionChunk
@@ -32,11 +31,11 @@ class _ChatStreamMixin:
     _self_invocation: InferenceInvocation
     _self_capture_content: bool
     _self_choice_buffers: list[ChoiceBuffer]
-    _self_response_id: Optional[str]
-    _self_response_model: Optional[str]
-    _self_service_tier: Optional[str]
-    _self_prompt_tokens: Optional[int]
-    _self_completion_tokens: Optional[int]
+    _self_response_id: str | None
+    _self_response_model: str | None
+    _self_service_tier: str | None
+    _self_prompt_tokens: int | None
+    _self_completion_tokens: int | None
 
     def _set_response_model(self, chunk: ChatCompletionChunk) -> None:
         if self._self_response_model:
@@ -72,20 +71,14 @@ class _ChatStreamMixin:
                 self._self_choice_buffers.append(ChoiceBuffer(idx))
 
             if choice.finish_reason:
-                self._self_choice_buffers[
-                    choice.index
-                ].finish_reason = choice.finish_reason
+                self._self_choice_buffers[choice.index].finish_reason = choice.finish_reason
 
             if choice.delta.content is not None:
-                self._self_choice_buffers[choice.index].append_text_content(
-                    choice.delta.content
-                )
+                self._self_choice_buffers[choice.index].append_text_content(choice.delta.content)
 
             if choice.delta.tool_calls is not None:
                 for tool_call in choice.delta.tool_calls:
-                    self._self_choice_buffers[choice.index].append_tool_call(
-                        tool_call
-                    )
+                    self._self_choice_buffers[choice.index].append_tool_call(tool_call)
 
     def _set_usage(self, chunk: ChatCompletionChunk) -> None:
         usage = getattr(chunk, "usage", None)
@@ -111,9 +104,7 @@ class _ChatStreamMixin:
                 parts=[],
             )
             if choice.text_content:
-                message.parts.append(
-                    Text(content="".join(choice.text_content))
-                )
+                message.parts.append(Text(content="".join(choice.text_content)))
             if choice.tool_calls_buffers:
                 tool_calls = []
                 for tool_call in filter(None, choice.tool_calls_buffers):
@@ -145,23 +136,17 @@ class _ChatStreamMixin:
         """Called when using with_raw_response with stream=True."""
         return self
 
-    def _cleanup(self, error: Optional[BaseException] = None) -> None:
+    def _cleanup(self, error: BaseException | None = None) -> None:
         self._self_invocation.response_model_name = self._self_response_model
         self._self_invocation.response_id = self._self_response_id
         self._self_invocation.input_tokens = self._self_prompt_tokens
         self._self_invocation.output_tokens = self._self_completion_tokens
-        finish_reasons = [
-            choice.finish_reason
-            for choice in self._self_choice_buffers
-            if choice.finish_reason
-        ]
+        finish_reasons = [choice.finish_reason for choice in self._self_choice_buffers if choice.finish_reason]
         if finish_reasons:
             self._self_invocation.finish_reasons = finish_reasons
         if self._self_service_tier:
             self._self_invocation.attributes.update(
-                {
-                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self._self_service_tier
-                },
+                {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self._self_service_tier},
             )
 
         self._set_output_messages()

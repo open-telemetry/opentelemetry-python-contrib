@@ -46,6 +46,4 @@ class SQLiteTestCase(SQLAlchemyTestMixin):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
-        self.assertEqual(
-            span.status.description, "no such table: a_wrong_table"
-        )
+        self.assertEqual(span.status.description, "no such table: a_wrong_table")

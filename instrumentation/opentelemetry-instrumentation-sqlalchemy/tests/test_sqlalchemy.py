@@ -5,7 +5,6 @@ import logging
 from unittest import mock
 
 import pytest
-import sqlalchemy
 from sqlalchemy import (
     create_engine,
     text,
@@ -59,6 +58,29 @@ class TestSqlalchemyInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    def test_operation_name_comment_or_whitespace_only(self):
+        # Regression: a comment-only or whitespace-only statement is truthy but has
+        # no tokens after leading-comment stripping; executing it must not raise
+        # IndexError and the resulting span must not crash on naming either.
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        try:
+            cnx.execute(text("/* comment only */"))
+            cnx.execute(text("   "))
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            self.fail(f"An unexpected exception was raised {exception}")
+        spans = self.memory_exporter.get_finished_spans()
+        # connect + 2 executes
+        self.assertEqual(len(spans), 3)
+        for span in spans[1:]:
+            # No operation token survives comment/whitespace stripping, so the
+            # span name falls back to just the db name.
+            self.assertEqual(span.name, ":memory:")
+
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
@@ -68,11 +90,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         cnx = engine.connect()
         cnx.execute(text("SELECT	1 + 1;")).fetchall()
         cnx.execute(text("/* leading comment */ SELECT	1 + 1;")).fetchall()
-        cnx.execute(
-            text(
-                "/* leading comment */ SELECT	1 + 1; /* trailing comment */"
-            )
-        ).fetchall()
+        cnx.execute(text("/* leading comment */ SELECT	1 + 1; /* trailing comment */")).fetchall()
         cnx.execute(text("SELECT	1 + 1; /* trailing comment */")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
@@ -121,10 +139,6 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_async_trace_integration(self):
         async def run():
             from sqlalchemy.ext.asyncio import (  # pylint: disable-all  # noqa: PLC0415
@@ -132,9 +146,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             )
 
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-            SQLAlchemyInstrumentor().instrument(
-                engine=engine.sync_engine, tracer_provider=self.tracer_provider
-            )
+            SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine, tracer_provider=self.tracer_provider)
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT	1 + 1;"))
             spans = self.memory_exporter.get_finished_spans()
@@ -150,7 +162,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "opentelemetry.instrumentation.sqlalchemy",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -349,9 +361,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 },
             ),
         )
-        provider.add_span_processor(
-            export.SimpleSpanProcessor(self.memory_exporter)
-        )
+        provider.add_span_processor(export.SimpleSpanProcessor(self.memory_exporter))
 
         SQLAlchemyInstrumentor().instrument(tracer_provider=provider)
         from sqlalchemy import (  # noqa: PLC0415
@@ -365,17 +375,9 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.assertEqual(len(spans), 2)
         self.assertEqual(spans[0].resource.attributes["service.name"], "test")
-        self.assertEqual(
-            spans[0].resource.attributes["deployment.environment"], "env"
-        )
-        self.assertEqual(
-            spans[0].resource.attributes["service.version"], "1234"
-        )
+        self.assertEqual(spans[0].resource.attributes["deployment.environment"], "env")
+        self.assertEqual(spans[0].resource.attributes["service.version"], "1234")
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_create_async_engine_wrapper(self):
         async def run():
             SQLAlchemyInstrumentor().instrument()
@@ -401,12 +403,8 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "opentelemetry.instrumentation.sqlalchemy",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_create_async_engine_wrapper_enable_commenter(self):
         async def run():
             logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -439,12 +437,8 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "SELECT  1;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_create_async_engine_wrapper_enable_commenter_stmt_enabled(self):
         async def run():
             logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -478,12 +472,8 @@ class TestSqlalchemyInstrumentation(TestBase):
                 r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_create_async_engine_wrapper_enable_commenter_otel_values_false(
         self,
     ):
@@ -519,12 +509,8 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "SELECT  1;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_create_async_engine_wrapper_enable_commenter_stmt_enabled_otel_values_false(
         self,
     ):
@@ -561,7 +547,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 r"SELECT  1 /\*db_driver='(.*)'*/;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_uninstrument(self):
         engine = create_engine("sqlite:///:memory:")
@@ -600,9 +586,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(len(spans), 2)
 
     def test_uninstrument_without_engine(self):
-        SQLAlchemyInstrumentor().instrument(
-            tracer_provider=self.tracer_provider
-        )
+        SQLAlchemyInstrumentor().instrument(tracer_provider=self.tracer_provider)
         from sqlalchemy import create_engine  # noqa: PLC0415
 
         engine = create_engine("sqlite:///:memory:")
@@ -650,7 +634,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1 + 1;")).fetchall()
 
-        for _ in range(0, 5):
+        for _ in range(5):
             make_shortlived_engine()
 
         gc.collect()
@@ -667,10 +651,6 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.assertTrue(not isinstance(engine, EngineTracer))
 
-    @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
-    )
     def test_suppress_instrumentation_create_async_engine(self):
         async def run():
             SQLAlchemyInstrumentor().instrument()
@@ -683,7 +663,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             self.assertTrue(not isinstance(engine, EngineTracer))
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_suppress_instrumentation_connect(self):
         engine = create_engine("sqlite:///:memory:")
@@ -728,9 +708,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
         self.assertIn(DB_OPERATION, query_span.attributes)
-        self.assertEqual(
-            query_span.attributes[DB_OPERATION], "SELECT :memory:"
-        )
+        self.assertEqual(query_span.attributes[DB_OPERATION], "SELECT")
         # Verify new conventions are NOT present
         self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
@@ -806,16 +784,12 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
         self.assertIn(DB_OPERATION_NAME, query_span.attributes)
-        self.assertEqual(
-            query_span.attributes[DB_OPERATION_NAME], "SELECT :memory:"
-        )
+        self.assertEqual(query_span.attributes[DB_OPERATION_NAME], "SELECT")
         # Verify old conventions are NOT present
         self.assertNotIn(DB_STATEMENT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM, query_span.attributes)
 
-    @mock.patch.dict(
-        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http,database"}
-    )
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http,database"})
     def test_semconv_http_and_database_mode(self):
         SQLAlchemyInstrumentor().uninstrument()
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -889,9 +863,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
 
-    @mock.patch.dict(
-        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
-    )
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"})
     def test_semconv_database_dup_mode(self):
         SQLAlchemyInstrumentor().uninstrument()
         engine = create_engine("sqlite:///:memory:")
@@ -929,9 +901,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
 
-    @mock.patch.dict(
-        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup,database/dup"}
-    )
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup,database/dup"})
     def test_semconv_http_and_database_dup_mode(self):
         SQLAlchemyInstrumentor().uninstrument()
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -994,18 +964,14 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_info.dbname = "test_database"
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "postgresql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("postgresql", mock_connection, mock_cursor)
         self.assertEqual(result, "test_database")
 
     def test_get_db_name_from_cursor_or_conn_postgresql_no_connection(self):
         mock_cursor = mock.Mock()
         mock_cursor.connection = None
         mock_connection = mock.Mock()
-        result = _get_db_name_from_cursor_or_conn(
-            "postgresql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("postgresql", mock_connection, mock_cursor)
         self.assertIsNone(result)
 
     def test_get_db_name_from_cursor_or_conn_postgresql_no_dbname(self):
@@ -1015,9 +981,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_info.dbname = None
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "postgresql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("postgresql", mock_connection, mock_cursor)
         self.assertIsNone(result)
 
     def test_get_db_name_from_cursor_or_conn_unknown_vendor_with_url(self):
@@ -1025,9 +989,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection = mock.Mock()
         mock_connection.engine.url.database = "foo"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "unknown_db", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("unknown_db", mock_connection, mock_cursor)
         self.assertEqual(result, "foo")
 
     def test_get_db_name_from_cursor_or_conn_unknown_vendor_without_url(self):
@@ -1035,9 +997,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection = mock.Mock()
         mock_connection.engine.url.database = None
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "unknown_db", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("unknown_db", mock_connection, mock_cursor)
         self.assertIsNone(result)
 
     def test_get_db_name_from_cursor_or_conn_mysql_with_database_attr(self):
@@ -1045,9 +1005,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection = mock.Mock()
         mock_connection.database = "mysql_test_db"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "mysql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("mysql", mock_connection, mock_cursor)
         self.assertEqual(result, "mysql_test_db")
 
     def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_string(self):
@@ -1056,9 +1014,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.db = "mysql_test_db"
         del mock_connection.database  # Remove database attribute
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "mysql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("mysql", mock_connection, mock_cursor)
         self.assertEqual(result, "mysql_test_db")
 
     def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_bytes(self):
@@ -1067,9 +1023,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.db = b"mysql_test_db"
         del mock_connection.database  # Remove database attribute
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "mysql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("mysql", mock_connection, mock_cursor)
         self.assertEqual(result, "mysql_test_db")
 
     def test_get_db_name_from_cursor_or_conn_mysql_with_cnx_attr(self):
@@ -1079,9 +1033,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_cnx.database = "mysql_cnx_db"
         mock_cursor.connection = None
         mock_cursor._cnx = mock_cnx
-        result = _get_db_name_from_cursor_or_conn(
-            "mysql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("mysql", mock_connection, mock_cursor)
         self.assertEqual(result, "mysql_cnx_db")
 
     def test_get_db_name_from_cursor_or_conn_mssql_with_database_attr(self):
@@ -1089,9 +1041,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection = mock.Mock()
         mock_connection.database = "mssql_test_db"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor_or_conn(
-            "mssql", mock_connection, mock_cursor
-        )
+        result = _get_db_name_from_cursor_or_conn("mssql", mock_connection, mock_cursor)
         self.assertEqual(result, "mssql_test_db")
 
     def test_get_db_name_from_cursor_or_conn_mysql_variant_names(self):
@@ -1100,9 +1050,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.database = "test_db"
         mock_cursor.connection = mock_connection
         for vendor in ["mysql", "pymysql", "mysqlclient", "mysql+pymysql"]:
-            result = _get_db_name_from_cursor_or_conn(
-                vendor, mock_connection, mock_cursor
-            )
+            result = _get_db_name_from_cursor_or_conn(vendor, mock_connection, mock_cursor)
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
 
     def test_get_db_name_from_cursor_or_conn_mssql_variant_names(self):
@@ -1111,9 +1059,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.database = "test_db"
         mock_cursor.connection = mock_connection
         for vendor in ["mssql", "mssql+pyodbc", "sqlserver"]:
-            result = _get_db_name_from_cursor_or_conn(
-                vendor, mock_connection, mock_cursor
-            )
+            result = _get_db_name_from_cursor_or_conn(vendor, mock_connection, mock_cursor)
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
 
     def test_get_db_name_from_cursor_or_conn_postgresql_variant_names(self):
@@ -1124,7 +1070,5 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
         for vendor in ["postgresql", "postgres", "postgresql+psycopg2"]:
-            result = _get_db_name_from_cursor_or_conn(
-                vendor, mock_connection, mock_cursor
-            )
+            result = _get_db_name_from_cursor_or_conn(vendor, mock_connection, mock_cursor)
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")

@@ -22,6 +22,10 @@ from ._constants import (
 
 
 class AzureFunctionsResourceDetector(ResourceDetector):
+    # pylint: disable=no-self-use
+    def is_process_dependent(self) -> bool:
+        return True
+
     def detect(self) -> Resource:
         attributes = {}
         if _is_on_functions():
@@ -29,20 +33,14 @@ class AzureFunctionsResourceDetector(ResourceDetector):
             if website_site_name:
                 attributes[ResourceAttributes.SERVICE_NAME] = website_site_name
             attributes[ResourceAttributes.PROCESS_PID] = getpid()
-            attributes[ResourceAttributes.CLOUD_PROVIDER] = (
-                CloudProviderValues.AZURE.value
-            )
-            attributes[ResourceAttributes.CLOUD_PLATFORM] = (
-                CloudPlatformValues.AZURE_FUNCTIONS.value
-            )
+            attributes[ResourceAttributes.CLOUD_PROVIDER] = CloudProviderValues.AZURE.value
+            attributes[ResourceAttributes.CLOUD_PLATFORM] = CloudPlatformValues.AZURE_FUNCTIONS.value
             cloud_region = environ.get(_REGION_NAME)
             if cloud_region:
                 attributes[ResourceAttributes.CLOUD_REGION] = cloud_region
             azure_resource_uri = _get_azure_resource_uri()
             if azure_resource_uri:
-                attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = (
-                    azure_resource_uri
-                )
+                attributes[ResourceAttributes.CLOUD_RESOURCE_ID] = azure_resource_uri
             for key, env_var in _FUNCTIONS_ATTRIBUTE_ENV_VARS.items():
                 value = environ.get(env_var)
                 if value:

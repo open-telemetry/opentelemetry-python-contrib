@@ -59,10 +59,7 @@ def check_file(path):
         return False
 
     # Line 1 must be a copyright comment, line 2 must be SPDX
-    return (
-        lines[start].startswith("# Copyright")
-        and lines[start + 1] == SPDX_LINE
-    )
+    return lines[start].startswith("# Copyright") and lines[start + 1] == SPDX_LINE
 
 
 def main():

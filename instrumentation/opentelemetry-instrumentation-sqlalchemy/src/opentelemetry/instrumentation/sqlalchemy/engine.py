@@ -65,20 +65,14 @@ def _get_db_name_from_cursor_or_conn(vendor, conn, cursor):
 def _get_mysql_db_name(cursor):
     """Extract database name from MySQL cursor."""
     # mysql-connector with c-extension uses _cnx
-    connection = getattr(cursor, "connection", None) or getattr(
-        cursor, "_cnx", None
-    )
+    connection = getattr(cursor, "connection", None) or getattr(cursor, "_cnx", None)
     if not connection:
         return None
     if hasattr(connection, "database"):
         return connection.database
     if hasattr(connection, "db"):
         raw_db_name = connection.db
-        return (
-            raw_db_name.decode("utf-8")
-            if isinstance(raw_db_name, bytes)
-            else raw_db_name
-        )
+        return raw_db_name.decode("utf-8") if isinstance(raw_db_name, bytes) else raw_db_name
     return None
 
 
@@ -183,9 +177,7 @@ def _wrap_connect(tracer):
             _OpenTelemetryStabilitySignalType.HTTP,
         )
 
-        with tracer.start_as_current_span(
-            "connect", kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span("connect", kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(
                     module.url,
@@ -217,11 +209,15 @@ class EngineTracer:
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.DATABASE,
+        self._sem_conv_opt_in_mode_db = (
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            )
         )
-        self._sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP,
+        self._sem_conv_opt_in_mode_http = (
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP,
+            )
         )
 
         self.tracer = tracer
@@ -233,12 +229,8 @@ class EngineTracer:
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
-        self._register_event_listener(
-            engine, "before_cursor_execute", self._before_cur_exec, retval=True
-        )
-        self._register_event_listener(
-            engine, "after_cursor_execute", _after_cur_exec
-        )
+        self._register_event_listener(engine, "before_cursor_execute", self._before_cur_exec, retval=True)
+        self._register_event_listener(engine, "after_cursor_execute", _after_cur_exec)
         self._register_event_listener(engine, "handle_error", _handle_error)
         self._register_event_listener(engine, "connect", self._pool_connect)
         self._register_event_listener(engine, "close", self._pool_close)
@@ -281,9 +273,7 @@ class EngineTracer:
         self._add_idle_to_connection_usage(1)
 
     # Called when a connection is retrieved from the Pool.
-    def _pool_checkout(
-        self, _dbapi_connection, _connection_record, _connection_proxy
-    ):
+    def _pool_checkout(self, _dbapi_connection, _connection_record, _connection_proxy):
         self._add_idle_to_connection_usage(-1)
         self._add_used_to_connection_usage(1)
 
@@ -297,9 +287,7 @@ class EngineTracer:
     @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
-        cls._remove_event_listener_params.append(
-            (weakref.ref(target), identifier, func)
-        )
+        cls._remove_event_listener_params.append((weakref.ref(target), identifier, func))
 
         weakref.finalize(
             target,
@@ -319,18 +307,29 @@ class EngineTracer:
                 pass
         cls._remove_event_listener_params.clear()
 
+    def _operation(self, statement):
+        """Returns the operation being executed, e.g. ``SELECT``, or ``None`` if unknown.
+
+        This is the value of ``db.operation.name`` / ``db.operation``.
+        """
+        if not isinstance(statement, str):
+            return None
+        # otel spec recommends against parsing SQL queries. We are not trying to parse SQL
+        # but simply truncating the statement to the first word. This covers probably >95%
+        # use cases and uses the SQL statement in span name correctly as per the spec.
+        # For some very special cases it might not record the correct statement if the SQL
+        # dialect is too weird but in any case it shouldn't break anything.
+        # Strip leading comments so we get the operation name. A statement that
+        # is truthy but has no tokens left (comment-only or whitespace-only) must
+        # not raise IndexError; there is no operation in that case.
+        tokens = self._leading_comment_remover.sub("", statement).split()
+        return tokens[0] if tokens else None
+
     def _operation_name(self, db_name, statement):
+        """Returns the span name, ``<operation> <target>`` as per the semantic conventions."""
         parts = []
-        if isinstance(statement, str):
-            # otel spec recommends against parsing SQL queries. We are not trying to parse SQL
-            # but simply truncating the statement to the first word. This covers probably >95%
-            # use cases and uses the SQL statement in span name correctly as per the spec.
-            # For some very special cases it might not record the correct statement if the SQL
-            # dialect is too weird but in any case it shouldn't break anything.
-            # Strip leading comments so we get the operation name.
-            parts.append(
-                self._leading_comment_remover.sub("", statement).split()[0]
-            )
+        if operation := self._operation(statement):
+            parts.append(operation)
         if db_name:
             parts.append(db_name)
         if not parts:
@@ -349,31 +348,20 @@ class EngineTracer:
             commenter_data.update(**_get_opentelemetry_values())
 
         # Filter down to just the requested attributes.
-        commenter_data = {
-            k: v
-            for k, v in commenter_data.items()
-            if self.commenter_options.get(k, True)
-        }
+        commenter_data = {k: v for k, v in commenter_data.items() if self.commenter_options.get(k, True)}
         return commenter_data
 
-    def _set_db_client_span_attributes(
-        self, span, statement, db_name, attrs
-    ) -> None:
-        """Uses statement, db_name, and attrs to set attributes of provided Otel span"""
+    def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
+        """Uses statement and attrs to set attributes of provided Otel span"""
         span_attrs = dict(attrs)
         _set_db_statement(span_attrs, statement, self._sem_conv_opt_in_mode_db)
         _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode_db)
-        _set_db_operation(
-            span_attrs,
-            self._operation_name(db_name, statement),
-            self._sem_conv_opt_in_mode_db,
-        )
+        # Unlike the span name, db.operation.name must not include the database name.
+        _set_db_operation(span_attrs, self._operation(statement), self._sem_conv_opt_in_mode_db)
         for key, value in span_attrs.items():
             span.set_attribute(key, value)
 
-    def _before_cur_exec(
-        self, conn, cursor, statement, params, context, _executemany
-    ):
+    def _before_cur_exec(self, conn, cursor, statement, params, context, _executemany):
         if not is_instrumentation_enabled():
             return statement, params
 
@@ -409,28 +397,18 @@ class EngineTracer:
                         statement = str(statement)
 
                         # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
-                        statement = _add_sql_comment(
-                            statement, **commenter_data
-                        )
-                        self._set_db_client_span_attributes(
-                            span, statement, db_name, attrs
-                        )
+                        statement = _add_sql_comment(statement, **commenter_data)
+                        self._set_db_client_span_attributes(span, statement, attrs)
 
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text is set before add_sql_comment
-                        self._set_db_client_span_attributes(
-                            span, statement, db_name, attrs
-                        )
-                        statement = _add_sql_comment(
-                            statement, **commenter_data
-                        )
+                        self._set_db_client_span_attributes(span, statement, attrs)
+                        statement = _add_sql_comment(statement, **commenter_data)
 
                 else:
                     # no sqlcomment anywhere
-                    self._set_db_client_span_attributes(
-                        span, statement, db_name, attrs
-                    )
+                    self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
 
@@ -461,15 +439,11 @@ def _handle_error(context):
     span.end()
 
 
-def _get_attributes_from_url(
-    url, sem_conv_opt_in_mode_db, sem_conv_opt_in_mode_http
-):
+def _get_attributes_from_url(url, sem_conv_opt_in_mode_db, sem_conv_opt_in_mode_http):
     """Set connection tags from the url. return true if successful."""
     attrs = {}
     if url.host:
-        _set_http_net_peer_name_client(
-            attrs, url.host, sem_conv_opt_in_mode_http
-        )
+        _set_http_net_peer_name_client(attrs, url.host, sem_conv_opt_in_mode_http)
     if url.port:
         _set_http_peer_port_client(attrs, url.port, sem_conv_opt_in_mode_http)
     if url.database:
@@ -508,13 +482,9 @@ def _get_attributes_from_cursor_or_conn(
                 )
         else:
             attrs[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
-            _set_http_net_peer_name_client(
-                attrs, info.host, sem_conv_opt_in_mode_http
-            )
+            _set_http_net_peer_name_client(attrs, info.host, sem_conv_opt_in_mode_http)
             if info.port:
-                _set_http_peer_port_client(
-                    attrs, int(info.port), sem_conv_opt_in_mode_http
-                )
+                _set_http_peer_port_client(attrs, int(info.port), sem_conv_opt_in_mode_http)
     elif vendor == "sqlite":
         db_name = _get_db_name_from_cursor_or_conn(vendor, conn, cursor)
         _set_db_name(attrs, db_name, sem_conv_opt_in_mode_db)
@@ -534,8 +504,6 @@ def _get_attributes_from_engine(engine):
     """Set metadata attributes of the database engine"""
     attrs = {}
 
-    attrs["pool.name"] = getattr(
-        getattr(engine, "pool", None), "logging_name", None
-    ) or _get_connection_string(engine)
+    attrs["pool.name"] = getattr(getattr(engine, "pool", None), "logging_name", None) or _get_connection_string(engine)
 
     return attrs

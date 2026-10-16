@@ -48,6 +48,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_PORT,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
@@ -63,6 +64,7 @@ from opentelemetry.semconv.attributes.url_attributes import (
     URL_PATH,
     URL_SCHEME,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
@@ -80,10 +82,8 @@ _expected_metric_names = [
 ]
 
 _recommended_attrs = {
-    "http.server.active_requests": _server_active_requests_count_attrs_new
-    + _server_active_requests_count_attrs_old,
-    "http.server.duration": _server_duration_attrs_new
-    + _server_duration_attrs_old,
+    "http.server.active_requests": _server_active_requests_count_attrs_new + _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_new + _server_duration_attrs_old,
 }
 
 _recommended_metrics_attrs_old = {
@@ -94,12 +94,8 @@ _recommended_metrics_attrs_new = {
     "http.server.active_requests": _server_active_requests_count_attrs_new,
     "http.server.request.duration": _server_duration_attrs_new,
 }
-_server_active_requests_count_attrs_both = (
-    _server_active_requests_count_attrs_old
-)
-_server_active_requests_count_attrs_both.extend(
-    _server_active_requests_count_attrs_new
-)
+_server_active_requests_count_attrs_both = _server_active_requests_count_attrs_old
+_server_active_requests_count_attrs_both.extend(_server_active_requests_count_attrs_new)
 _recommended_metrics_attrs_both = {
     "http.server.active_requests": _server_active_requests_count_attrs_both,
     "http.server.duration": _server_duration_attrs_old,
@@ -110,6 +106,14 @@ _parsed_falcon_version = package_version.parse(_falcon_version)
 
 
 SCOPE = "opentelemetry.instrumentation.falcon"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 class TestFalconBase(TestBase):
@@ -147,7 +151,7 @@ class TestFalconBase(TestBase):
     def _has_fixed_http_target(self):
         # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
         # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156
         return _parsed_falcon_version < package_version.parse("3.1.2")
 
     def client(self):
@@ -263,7 +267,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(span, expected_attributes)
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
         self.memory_exporter.clear()
@@ -283,9 +287,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 HTTP_SCHEME: "http",
                 NET_HOST_PORT: 80,
                 HTTP_HOST: "falconframework.org",
-                HTTP_TARGET: "/"
-                if self._has_fixed_http_target
-                else "/does-not-exist",
+                HTTP_TARGET: "/" if self._has_fixed_http_target else "/does-not-exist",
                 NET_PEER_PORT: 65133,
                 HTTP_FLAVOR: "1.1",
                 HTTP_STATUS_CODE: 404,
@@ -293,7 +295,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
@@ -335,7 +337,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
-        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
+        # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172
         if NET_PEER_IP in span.attributes:
             self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
@@ -399,9 +401,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 HTTP_SCHEME: "http",
                 NET_HOST_PORT: 80,
                 HTTP_HOST: "falconframework.org",
-                HTTP_TARGET: "/"
-                if self._has_fixed_http_target
-                else "/user/123",
+                HTTP_TARGET: "/" if self._has_fixed_http_target else "/user/123",
                 NET_PEER_PORT: 65133,
                 HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
@@ -426,9 +426,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
     def test_no_op_tracer_provider(self):
         FalconInstrumentor().uninstrument()
 
-        FalconInstrumentor().instrument(
-            tracer_provider=trace.NoOpTracerProvider()
-        )
+        FalconInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
 
         self.memory_exporter.clear()
 
@@ -457,12 +455,8 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         orig = get_global_response_propagator()
         set_global_response_propagator(TraceResponsePropagator())
 
-        response = self.client().simulate_get(
-            path="/hello", query_string="q=abc"
-        )
-        self.assertTraceResponseHeaderMatchesSpan(
-            response.headers, self.memory_exporter.get_finished_spans()[0]
-        )
+        response = self.client().simulate_get(path="/hello", query_string="q=abc")
+        self.assertTraceResponseHeaderMatchesSpan(response.headers, self.memory_exporter.get_finished_spans()[0])
 
         set_global_response_propagator(orig)
 
@@ -561,6 +555,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
 
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def test_falcon_active_requests_unit_new_semconv(self):
+        # The semantic conventions define http.server.active_requests with the
+        # UCUM annotation unit {request}.
+        self.client().simulate_get("/hello/756")
+        metrics = self.get_sorted_metrics(SCOPE)
+
+        active_requests = [metric for metric in metrics if metric.name == "http.server.active_requests"]
+        self.assertEqual(len(active_requests), 1)
+        self.assertEqual(active_requests[0].unit, "{request}")
+
     def test_falcon_metric_values_both_semconv(self):
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -591,9 +595,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                             delta=10,
                         )
                     elif metric.unit == "s":
-                        self.assertAlmostEqual(
-                            max(duration_s, 0), point.sum, delta=10
-                        )
+                        self.assertAlmostEqual(max(duration_s, 0), point.sum, delta=10)
                         self.assertEqual(
                             point.explicit_bounds,
                             HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -673,9 +675,7 @@ class TestFalconInstrumentationWithTracerProvider(TestBase):
         spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(
-            span.resource.attributes["resource-key"], "resource-value"
-        )
+        self.assertEqual(span.resource.attributes["resource-key"], "resource-value")
         self.exporter.clear()
 
 
@@ -693,24 +693,18 @@ class TestFalconInstrumentationHooks(TestFalconBase):
 
         self.assertEqual(span.name, "set from hook")
         self.assertIn("request_hook_attr", span.attributes)
-        self.assertEqual(
-            span.attributes["request_hook_attr"], "value from hook"
-        )
+        self.assertEqual(span.attributes["request_hook_attr"], "value from hook")
 
 
 class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "test", kind=trace.SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER) as parent_span:
             self.client().simulate_request(method="GET", path="/hello")
             span = self.memory_exporter.get_finished_spans()[0]
             assert span.status.is_ok
             self.assertEqual(trace.SpanKind.INTERNAL, span.kind)
-            self.assertEqual(
-                span.parent.span_id, parent_span.get_span_context().span_id
-            )
+            self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
 
 
 @patch.dict(
@@ -731,21 +725,15 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
             "My-Secret-Header": "My Secret Value",
         }
-        self.client().simulate_request(
-            method="GET", path="/hello", headers=headers
-        )
+        self.client().simulate_request(method="GET", path="/hello", headers=headers)
         span = self.memory_exporter.get_finished_spans()[0]
         assert span.status.is_ok
 
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
-                "TestValue2,TestValue3",
-            ),
+            "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
@@ -767,57 +755,115 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
                 "My-Secret-Header": "My Secret Value",
             }
-            self.client().simulate_request(
-                method="GET", path="/hello", headers=headers
-            )
+            self.client().simulate_request(method="GET", path="/hello", headers=headers)
             span = self.memory_exporter.get_finished_spans()[0]
             assert span.status.is_ok
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
-                    "TestValue2,TestValue3",
-                ),
-                "http.request.header.regex_test_header_1": (
-                    "Regex Test Value 1",
-                ),
-                "http.request.header.regex_test_header_2": (
-                    "RegexTestValue2,RegexTestValue3",
-                ),
+                "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
+                "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+                "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
                 "http.request.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
 
+    def _instrument_with_sampler(self, sampler):
+        FalconInstrumentor().uninstrument()
+        tracer_provider, exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        FalconInstrumentor().instrument(tracer_provider=tracer_provider)
+        self.app = make_app()
+        return tracer_provider, exporter
+
+    def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+            "http.request.header.my_secret_header": ["[REDACTED]"],
+        }
+        sampler = CapturingSampler()
+        _, exporter = self._instrument_with_sampler(sampler)
+
+        response = self.client().simulate_request(
+            method="GET",
+            path="/hello",
+            headers={
+                "Custom-Test-Header-1": "test-header-value-1",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "My-Secret-Header": "My Secret Value",
+                "Uncaptured-Header": "Uncaptured Value",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+
+        self.assertEqual(sampler.kind, trace.SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, trace.SpanKind.SERVER)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter = self._instrument_with_sampler(sampler)
+
+                response = self.client().simulate_request(
+                    method="GET", path="/hello", headers={"Custom-Test-Header-1": value}
+                )
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        tracer_provider, exporter = self._instrument_with_sampler(sampler)
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER) as parent_span:
+            self.client().simulate_request(
+                method="GET", path="/hello", headers={"Custom-Test-Header-1": "test-header-value-1"}
+            )
+
+        self.assertEqual(sampler.kind, trace.SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        span = spans[0]
+        self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
+
     @pytest.mark.skipif(
         condition=_parsed_falcon_version < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
     def test_custom_response_header_added_in_server_span(self):
-        self.client().simulate_request(
-            method="GET", path="/test_custom_response_headers"
-        )
+        self.client().simulate_request(method="GET", path="/test_custom_response_headers")
         span = self.memory_exporter.get_finished_spans()[0]
         assert span.status.is_ok
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
             "http.response.header.content_length": ("0",),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
-        not_expected = {
-            "http.response.header.dont_capture_me": ("test-value",)
-        }
+        not_expected = {"http.response.header.dont_capture_me": ("test-value",)}
         self.assertEqual(span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
         for key, _ in not_expected.items():
@@ -830,25 +876,15 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
     def test_custom_response_header_not_added_in_internal_span(self):
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("test", kind=trace.SpanKind.SERVER):
-            self.client().simulate_request(
-                method="GET", path="/test_custom_response_headers"
-            )
+            self.client().simulate_request(method="GET", path="/test_custom_response_headers")
             span = self.memory_exporter.get_finished_spans()[0]
             assert span.status.is_ok
             not_expected = {
-                "http.response.header.content_type": (
-                    "text/plain; charset=utf-8",
-                ),
+                "http.response.header.content_type": ("text/plain; charset=utf-8",),
                 "http.response.header.content_length": ("0",),
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
-                "http.response.header.my_custom_regex_header_1": (
-                    "my-custom-regex-value-1,my-custom-regex-value-2",
-                ),
-                "http.response.header.my_custom_regex_header_2": (
-                    "my-custom-regex-value-3,my-custom-regex-value-4",
-                ),
+                "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+                "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+                "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
                 "http.response.header.my_secret_header": ("[REDACTED]",),
             }
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)

@@ -20,7 +20,7 @@ to every log record without changing the logging format:
 
     LoggingInstrumentor().instrument(inject_trace_context=True)
 
-    logging.warning('OTel test')
+    logging.warning("OTel test")
 
 Alternatively, set ``set_logging_format=True`` (or the environment variable
 ``OTEL_PYTHON_LOG_CORRELATION=true``) to inject those same attributes and
@@ -34,7 +34,7 @@ call ``logging.basicConfig()`` with a format string that includes them:
 
     LoggingInstrumentor().instrument(set_logging_format=True)
 
-    logging.warning('OTel test')
+    logging.warning("OTel test")
 
 When running the above example you will see the following output:
 
@@ -45,8 +45,8 @@ When running the above example you will see the following output:
 """
 
 import logging  # pylint: disable=import-self
+from collections.abc import Collection
 from os import environ
-from typing import Collection, Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -73,7 +73,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 
-__doc__ = _MODULE_DOC  # noqa: A001
+__doc__ = _MODULE_DOC
 
 LEVELS = {
     "debug": logging.DEBUG,
@@ -85,7 +85,7 @@ LEVELS = {
 _logger = logging.getLogger(__name__)
 
 
-def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+def _get_log_level(level_name: str | None) -> int | None:
     if level_name is None:
         return None
     result = logging.getLevelName(level_name.upper().strip())
@@ -150,35 +150,22 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         set_logging_format = kwargs.get(
             "set_logging_format",
-            environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower()
-            == "true",
+            environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower() == "true",
         )
 
         if set_logging_format:
             log_format = (
-                kwargs.get(
-                    "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
-                )
-                or DEFAULT_LOGGING_FORMAT
+                kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
-            log_level = (
-                kwargs.get(
-                    "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
-                )
-                or logging.INFO
-            )
+            log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
             logging.basicConfig(format=log_format, level=log_level)
 
-        inject_context = set_logging_format or kwargs.get(
-            "inject_trace_context", False
-        )
+        inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
 
-            if not inject_context and not callable(
-                LoggingInstrumentor._log_hook
-            ):
+            if not inject_context and not callable(LoggingInstrumentor._log_hook):
                 return record
 
             if inject_context:
@@ -190,9 +177,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 if service_name is None:
                     resource = getattr(provider, "resource", None)
                     if resource:
-                        service_name = (
-                            resource.attributes.get("service.name") or ""
-                        )
+                        service_name = resource.attributes.get("service.name") or ""
                     else:
                         service_name = ""
 
@@ -224,11 +209,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         # - the sdk logging handler is not enabled and we should setup the handler by default
         # - the sdk logging handler is not enabled and the user do not want we setup the handler
         sdk_autoinstrumentation_env_var = (
-            environ.get(
-                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset"
-            )
-            .strip()
-            .lower()
+            environ.get("OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset").strip().lower()
         )
         if sdk_autoinstrumentation_env_var == "true":
             _logger.warning(
@@ -240,17 +221,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             )
         elif kwargs.get(
             "enable_log_auto_instrumentation",
-            environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
-            .strip()
-            .lower()
-            == "true",
+            environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true").strip().lower() == "true",
         ):
             log_code_attributes = kwargs.get(
                 "log_code_attributes",
-                environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
-                .strip()
-                .lower()
-                == "true",
+                environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false").strip().lower() == "true",
             )
             handler_level = kwargs.get(
                 "log_handler_level",
@@ -270,7 +245,5 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             LoggingInstrumentor._old_factory = None
 
         if LoggingInstrumentor._logging_handler:
-            logging.getLogger().removeHandler(
-                LoggingInstrumentor._logging_handler
-            )
+            logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
             LoggingInstrumentor._logging_handler = None

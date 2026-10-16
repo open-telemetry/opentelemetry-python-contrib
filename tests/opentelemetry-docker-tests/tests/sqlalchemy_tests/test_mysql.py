@@ -35,10 +35,7 @@ class MysqlConnectorTestCase(SQLAlchemyTestMixin):
 
     VENDOR = "mysql"
     SQL_DB = "opentelemetry-tests"
-    ENGINE_ARGS = {
-        "url": "mysql+mysqlconnector://%(user)s:%(password)s@%(host)s:%(port)s/%(database)s"
-        % MYSQL_CONFIG
-    }
+    ENGINE_ARGS = {"url": "mysql+mysqlconnector://%(user)s:%(password)s@%(host)s:%(port)s/%(database)s" % MYSQL_CONFIG}
 
     def check_meta(self, span):
         # check database connection tags

@@ -15,9 +15,7 @@ from .common_test_func import factorial
 
 
 class TestAsyncioCreateTask(TestBase):
-    @patch.dict(
-        "os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"}
-    )
+    @patch.dict("os.environ", {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "sleep"})
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()

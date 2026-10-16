@@ -36,11 +36,7 @@ load_dotenv()  # take environment variables from .env.
 def configure_tracing() -> None:
     """Configure a tracer provider that exports spans via OTLP."""
     resource = Resource.create(
-        {
-            "service.name": os.environ.get(
-                "OTEL_SERVICE_NAME", "openai-agents-content-capture-demo"
-            )
-        }
+        {"service.name": os.environ.get("OTEL_SERVICE_NAME", "openai-agents-content-capture-demo")}
     )
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
@@ -89,10 +85,7 @@ def run_workflow() -> None:
                 output=[
                     {
                         "role": "assistant",
-                        "content": (
-                            "Day 1 visit the Louvre, Day 2 tour Versailles, "
-                            "Day 3 explore Montmartre."
-                        ),
+                        "content": ("Day 1 visit the Louvre, Day 2 tour Versailles, Day 3 explore Montmartre."),
                     }
                 ],
                 model="gpt-4o-mini",
@@ -111,9 +104,7 @@ def run_workflow() -> None:
             ):
                 pass
 
-    print(
-        "\nWorkflow complete – spans exported to the configured OTLP endpoint."
-    )
+    print("\nWorkflow complete – spans exported to the configured OTLP endpoint.")
 
 
 def main() -> None:

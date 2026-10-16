@@ -49,6 +49,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
@@ -61,6 +62,7 @@ from opentelemetry.semconv.attributes.url_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.test.globals_test import reset_trace_globals
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
@@ -83,6 +85,14 @@ _recommended_attrs = {
 }
 
 SCOPE = "opentelemetry.instrumentation.pyramid.callbacks"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 class TestAutomatic(InstrumentationTest, WsgiTestBase):
@@ -143,9 +153,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
 
     def test_registry_name_is_this_module(self):
         config = Configurator()
-        self.assertEqual(
-            config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0]
-        )
+        self.assertEqual(config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0])
 
     def test_before_traversal_subscriber_not_duplicated_after_commit(self):
         registrations = []
@@ -163,9 +171,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             if getattr(subscriber, "__name__", "") == "_before_traversal":
                 registrations.append(subscriber)
 
-            return original_add_subscriber(
-                config, subscriber, iface=iface, **kwargs
-            )
+            return original_add_subscriber(config, subscriber, iface=iface, **kwargs)
 
         with patch.object(
             AdaptersConfiguratorMixin,
@@ -333,9 +339,7 @@ class TestWrappedWithOtherFramework(InstrumentationTest, WsgiTestBase):
         tracer_provider, _ = self.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
 
-        with tracer.start_as_current_span(
-            "test", kind=SpanKind.SERVER
-        ) as parent_span:
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
             resp = self.client.get("/hello/123")
             self.assertEqual(200, resp.status_code)
             span_list = self.memory_exporter.get_finished_spans()
@@ -380,13 +384,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
             "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
-                "TestValue2,TestValue3",
-            ),
+            "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         not_expected = {
@@ -409,37 +409,98 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
                 "http.request.header.custom_test_header_1": ("Test Value 1",),
-                "http.request.header.custom_test_header_2": (
-                    "TestValue2,TestValue3",
-                ),
+                "http.request.header.custom_test_header_2": ("TestValue2,TestValue3",),
             }
             self.assertEqual(span.kind, SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+    def _instrument_with_sampler(self, sampler):
+        tracer_provider, exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        # The instrumentation gets its tracer from the global tracer provider.
+        reset_trace_globals()
+        trace.set_tracer_provider(tracer_provider)
+        return tracer_provider, exporter
+
+    def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+            "http.request.header.my_secret_header": ["[REDACTED]"],
+        }
+        sampler = CapturingSampler()
+        _, exporter = self._instrument_with_sampler(sampler)
+
+        response = self.client.get(
+            "/hello/123",
+            headers={
+                "Custom-Test-Header-1": "test-header-value-1",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "My-Secret-Header": "My Secret Value",
+                "Uncaptured-Header": "Uncaptured Value",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.SERVER)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter = self._instrument_with_sampler(sampler)
+
+                response = self.client.get("/hello/123", headers={"Custom-Test-Header-1": value})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        tracer_provider, exporter = self._instrument_with_sampler(sampler)
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
+            self.client.get("/hello/123", headers={"Custom-Test-Header-1": "test-header-value-1"})
+
+        self.assertEqual(sampler.kind, SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        span = spans[0]
+        self.assertEqual(span.kind, SpanKind.INTERNAL)
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
 
     def test_custom_response_header_added_in_server_span(self):
         resp = self.client.get("/test_custom_response_headers")
         self.assertEqual(200, resp.status_code)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
-                "text/plain; charset=utf-8",
-            ),
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
             "http.response.header.content_length": ("7",),
-            "http.response.header.my_custom_header": (
-                "my-custom-value-1,my-custom-header-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
-        not_expected = {
-            "http.response.header.dont_capture_me": ("test-value",)
-        }
+        not_expected = {"http.response.header.dont_capture_me": ("test-value",)}
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(span, expected)
         for key, _ in not_expected.items():
@@ -452,13 +513,9 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(200, resp.status_code)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.content_type": (
-                    "text/plain; charset=utf-8",
-                ),
+                "http.response.header.content_type": ("text/plain; charset=utf-8",),
                 "http.response.header.content_length": ("7",),
-                "http.response.header.my_custom_header": (
-                    "my-custom-value-1,my-custom-header-2",
-                ),
+                "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-header-2",),
             }
             self.assertEqual(span.kind, SpanKind.INTERNAL)
             for key, _ in not_expected.items():
@@ -487,9 +544,7 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
         with self.disable_logging():
             PyramidInstrumentor().uninstrument()
 
-    def _verify_metric_names(
-        self, metrics, expected_names, not_expected_names=None
-    ):
+    def _verify_metric_names(self, metrics, expected_names, not_expected_names=None):
         metric_names = []
         for metric in metrics:
             metric_names.append(metric.name)
@@ -559,9 +614,7 @@ class TestSemConvDefault(_SemConvTestBase):
             HTTP_SERVER_ACTIVE_REQUESTS,
             MetricInstruments.HTTP_SERVER_DURATION,
         ]
-        self._verify_metric_names(
-            metrics, expected_metrics, [HTTP_SERVER_REQUEST_DURATION]
-        )
+        self._verify_metric_names(metrics, expected_metrics, [HTTP_SERVER_REQUEST_DURATION])
 
         for metric in metrics:
             for point in metric.data.data_points:
@@ -570,18 +623,14 @@ class TestSemConvDefault(_SemConvTestBase):
                     self.assertIn("http.scheme", point.attributes)
                     self.assertIn(HTTP_STATUS_CODE, point.attributes)
                     self.assertNotIn(HTTP_REQUEST_METHOD, point.attributes)
-                    self.assertNotIn(
-                        HTTP_RESPONSE_STATUS_CODE, point.attributes
-                    )
+                    self.assertNotIn(HTTP_RESPONSE_STATUS_CODE, point.attributes)
 
 
 class TestSemConvNew(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP
 
     def test_basic_new_semconv(self):
-        resp = self.client.get(
-            "/hello/456?query=test", headers={"User-Agent": "test-agent"}
-        )
+        resp = self.client.get("/hello/456?query=test", headers={"User-Agent": "test-agent"})
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
@@ -637,9 +686,7 @@ class TestSemConvDup(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP_DUP
 
     def test_basic_both_semconv(self):
-        resp = self.client.get(
-            "/hello/789?query=test", headers={"User-Agent": "test-agent"}
-        )
+        resp = self.client.get("/hello/789?query=test", headers={"User-Agent": "test-agent"})
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
