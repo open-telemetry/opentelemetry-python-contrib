@@ -413,6 +413,19 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_shared_middleware_list_not_modified(self):
+        middleware = []
+        for _ in range(2):
+            self.app = make_app(middleware=middleware)
+            self.client().simulate_get(path="/hello")
+        self.assertEqual(middleware, [])
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2)
+
+    def test_tuple_middleware(self):
+        self.app = make_app(middleware=())
+        self.client().simulate_get(path="/hello")
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
     def test_no_op_tracer_provider(self):
         FalconInstrumentor().uninstrument()
 
@@ -668,6 +681,13 @@ class TestFalconInstrumentationWithTracerProvider(TestBase):
         self.assertEqual(span.resource.attributes["resource-key"], "resource-value")
         self.exporter.clear()
 
+    def test_traced_request_second_app(self):
+        # instrument() options must apply to every app, not only the first one
+        testing.TestClient(make_app()).simulate_request(method="GET", path="/hello")
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].resource.attributes["resource-key"], "resource-value")
+
 
 class TestFalconInstrumentationHooks(TestFalconBase):
     # pylint: disable=no-self-use
@@ -683,6 +703,13 @@ class TestFalconInstrumentationHooks(TestFalconBase):
 
         self.assertEqual(span.name, "set from hook")
         self.assertIn("request_hook_attr", span.attributes)
+        self.assertEqual(span.attributes["request_hook_attr"], "value from hook")
+
+    def test_hooks_second_app(self):
+        testing.TestClient(make_app()).simulate_get(path="/hello", query_string="q=abc")
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        self.assertEqual(span.name, "set from hook")
         self.assertEqual(span.attributes["request_hook_attr"], "value from hook")
 
 
