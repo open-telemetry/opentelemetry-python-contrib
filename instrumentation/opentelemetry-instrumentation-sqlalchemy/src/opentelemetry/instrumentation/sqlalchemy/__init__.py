@@ -118,6 +118,29 @@ will also be configured by this setting.
 Warning:
     Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -125,7 +148,6 @@ API
 from collections.abc import Collection, Sequence
 
 import sqlalchemy
-from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
@@ -234,36 +256,33 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_attribute_commenter,
             ),
         )
-        # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            _w(
-                "sqlalchemy.engine.create",
-                "create_engine",
-                _wrap_create_engine(
-                    tracer,
-                    connections_usage,
-                    enable_commenter,
-                    commenter_options,
-                    enable_attribute_commenter,
-                ),
-            )
+        _w(
+            "sqlalchemy.engine.create",
+            "create_engine",
+            _wrap_create_engine(
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
+            ),
+        )
         _w(
             "sqlalchemy.engine.base",
             "Engine.connect",
             _wrap_connect(tracer),
         )
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            _w(
-                "sqlalchemy.ext.asyncio",
-                "create_async_engine",
-                _wrap_create_async_engine(
-                    tracer,
-                    connections_usage,
-                    enable_commenter,
-                    commenter_options,
-                    enable_attribute_commenter,
-                ),
-            )
+        _w(
+            "sqlalchemy.ext.asyncio",
+            "create_async_engine",
+            _wrap_create_async_engine(
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
+            ),
+        )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 tracer,
@@ -291,9 +310,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            unwrap(sqlalchemy.engine.create, "create_engine")
+        unwrap(sqlalchemy.engine.create, "create_engine")
         unwrap(Engine, "connect")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
-            unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
+        unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
         EngineTracer.remove_all_event_listeners()

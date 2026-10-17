@@ -291,6 +291,23 @@ def test_invalid_send_message(prom_rw):
     assert result == MetricExportResult.FAILURE
 
 
+# insecure_skip_verify=True must disable TLS verification, i.e. verify=False
+@pytest.mark.parametrize(
+    "insecure_skip_verify,expected_verify",
+    [(True, False), (False, True)],
+)
+@patch("requests.post")
+def test_send_message_insecure_skip_verify(mock_post, insecure_skip_verify, expected_verify):
+    mock_post.return_value.configure_mock(ok=True)
+    exporter = PrometheusRemoteWriteMetricsExporter(
+        "http://victoria:8428/api/v1/write",
+        tls_config={"insecure_skip_verify": insecure_skip_verify},
+    )
+    result = exporter._send_message(b"", {})
+    assert result == MetricExportResult.SUCCESS
+    assert mock_post.call_args.kwargs["verify"] is expected_verify
+
+
 # Verifies that build_message calls snappy.compress and returns SerializedString
 @patch("snappy.compress", return_value=b"")
 def test_build_message(mock_compress, prom_rw):
