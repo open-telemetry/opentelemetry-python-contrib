@@ -34,7 +34,7 @@ from collections.abc import Collection
 from typing import Any
 
 from wrapt import (
-    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+    wrap_function_wrapper,
 )
 
 from opentelemetry._logs import get_logger
@@ -146,7 +146,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
             wrap_function_wrapper(
                 client_class,
                 method_name,
-                wrapper,
+                wrapper,  # pyright: ignore[reportArgumentType]
             )
             self._methods_to_unwrap.append((client_class, method_name))
 

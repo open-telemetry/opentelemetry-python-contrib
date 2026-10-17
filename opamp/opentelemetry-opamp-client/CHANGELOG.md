@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 0.4b0 (2026-10-07)
+
+### Added
+
+- `opentelemetry-opamp-client`: allow configuring agent capabilities
+  ([#4897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4897))
+
+### Changed
+
+- `opentelemetry-opamp-client`: bump supported protobuf to < 8
+  ([#5151](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5151))
+
+### Fixed
+
+- Add `requests` to the `opentelemetry-opamp-client` dependencies, fixing a
+  `ModuleNotFoundError` when importing `opentelemetry._opamp.client` in a fresh
+  environment.
+  ([#4930](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4930))
+
 ## Version 0.3b0 (2026-07-16)
 
 ### Added
