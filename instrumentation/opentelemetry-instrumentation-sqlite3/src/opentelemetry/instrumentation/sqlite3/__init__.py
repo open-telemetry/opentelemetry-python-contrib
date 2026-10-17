@@ -3,8 +3,9 @@
 
 """
 SQLite instrumentation supporting `sqlite3`_, it can be enabled by
-using ``SQLite3Instrumentor``. At this time, cursor objects must
-be explicitly initialized as shown below to support tracing.
+using ``SQLite3Instrumentor``. Queries made through explicit cursors and
+the connection shortcut methods ``execute``, ``executemany``, and
+``executescript`` are traced.
 
 .. _sqlite3: https://docs.python.org/3/library/sqlite3.html
 
@@ -71,7 +72,7 @@ API
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Collection
+from collections.abc import Callable, Collection, Sequence
 from sqlite3 import dbapi2
 from typing import Any, TypeVar
 
@@ -89,6 +90,49 @@ _DATABASE_SYSTEM = "sqlite"
 SQLite3Connection = TypeVar(  # pylint: disable=invalid-name
     "SQLite3Connection", bound=sqlite3.Connection | None
 )
+
+
+class _SQLite3ShortcutTracer(dbapi.CursorTracer[sqlite3.Connection | sqlite3.Cursor]):
+    def get_operation_name(self, cursor: sqlite3.Connection | sqlite3.Cursor, args: Sequence[Any]) -> str:
+        if args and isinstance(args[0], str):
+            tokens = self._leading_comment_remover.sub("", args[0]).split()
+            return tokens[0] if tokens else ""
+        return super().get_operation_name(cursor, args)
+
+
+class _SQLite3ShortcutCursorProxy(dbapi.TracedCursorProxy[sqlite3.Cursor]):
+    def __init__(self, cursor: sqlite3.Cursor, db_api_integration: dbapi.DatabaseApiIntegration) -> None:
+        super().__init__(cursor, db_api_integration)
+        self._self_cursor_tracer = _SQLite3ShortcutTracer(db_api_integration)
+
+
+class _SQLite3ConnectionProxy(dbapi.TracedConnectionProxy[sqlite3.Connection]):
+    def _trace_shortcut(self, method: str, *args: Any, **kwargs: Any) -> dbapi.TracedCursorProxy[sqlite3.Cursor]:
+        cursor = _SQLite3ShortcutTracer(self._self_db_api_integration).traced_execution(
+            self.__wrapped__, getattr(self.__wrapped__, method), *args, **kwargs
+        )
+        return _SQLite3ShortcutCursorProxy(cursor, self._self_db_api_integration)
+
+    def execute(self, *args: Any, **kwargs: Any) -> dbapi.TracedCursorProxy[sqlite3.Cursor]:
+        return self._trace_shortcut("execute", *args, **kwargs)
+
+    def executemany(self, *args: Any, **kwargs: Any) -> dbapi.TracedCursorProxy[sqlite3.Cursor]:
+        return self._trace_shortcut("executemany", *args, **kwargs)
+
+    def executescript(self, *args: Any, **kwargs: Any) -> dbapi.TracedCursorProxy[sqlite3.Cursor]:
+        return self._trace_shortcut("executescript", *args, **kwargs)
+
+
+class _SQLite3DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
+    def wrapped_connection(
+        self,
+        connect_method: Callable[..., sqlite3.Connection],
+        args: tuple[Any, ...],
+        kwargs: dict[Any, Any],
+    ) -> _SQLite3ConnectionProxy:
+        connection = connect_method(*args, **kwargs)
+        self.get_connection_attributes(connection)
+        return _SQLite3ConnectionProxy(connection, self)
 
 
 class SQLite3Instrumentor(BaseInstrumentor):
@@ -112,6 +156,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 _CONNECTION_ATTRIBUTES,
                 version=__version__,
                 tracer_provider=tracer_provider,
+                db_api_integration_factory=_SQLite3DatabaseApiIntegration,
             )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -136,13 +181,19 @@ class SQLite3Instrumentor(BaseInstrumentor):
             telemetry for tracing database operations.
 
         """
-        return dbapi.instrument_connection(
+        instrumented_connection = dbapi.instrument_connection(
             __name__,
             connection,
             _DATABASE_SYSTEM,
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+        )
+        if instrumented_connection is connection:
+            return connection
+        return _SQLite3ConnectionProxy(
+            instrumented_connection.__wrapped__,
+            instrumented_connection._self_db_api_integration,
         )
 
     @staticmethod
