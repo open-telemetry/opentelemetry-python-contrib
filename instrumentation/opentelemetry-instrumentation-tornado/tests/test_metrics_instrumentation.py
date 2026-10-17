@@ -329,11 +329,15 @@ class TornadoSemconvTestBase(AsyncHTTPTestCase, TestBase):
         self.assertEqual(response.code, expected_status)
         self._assert_server_metric_samples(expected_status, histogram_names, status_attribute, len(response.body))
 
-    async def _assert_websocket_rejection_metrics(self) -> None:
+    async def _assert_websocket_rejection_metrics(
+        self,
+        histogram_names: tuple[str, str],
+        status_attribute: str,
+    ) -> None:
         with self.assertRaises(HTTPClientError) as raised:
             await tornado.websocket.websocket_connect(f"ws://127.0.0.1:{self.get_http_port()}/ws_reject")
         self.assertEqual(raised.exception.code, 403)
-        self._assert_server_metric_samples(403, self.HISTOGRAMS, self.STATUS_ATTRIBUTE, 0)
+        self._assert_server_metric_samples(403, histogram_names, status_attribute, 0)
 
 
 class TestTornadoSemconvDefault(TornadoSemconvTestBase):
@@ -356,7 +360,7 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
 
     @tornado.testing.gen_test()
     async def test_server_metrics_on_websocket_rejection(self) -> None:
-        await self._assert_websocket_rejection_metrics()
+        await self._assert_websocket_rejection_metrics(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     def test_server_span_attributes_old_semconv(self):
         response = self.fetch("/")
@@ -455,7 +459,7 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
 
     @tornado.testing.gen_test()
     async def test_server_metrics_on_websocket_rejection(self) -> None:
-        await self._assert_websocket_rejection_metrics()
+        await self._assert_websocket_rejection_metrics(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     def test_server_span_attributes_new_semconv(self):
         response = self.fetch("/")
