@@ -81,3 +81,37 @@ class MockedProducer(Producer):
 
     def flush(self, *args, **kwargs):
         return len(self._queue)
+
+
+
+class MockedAIOProducer:
+    def __init__(self, config=None):
+        self._queue = []
+        self.config = config or {}
+
+    async def produce(self, topic, value=None, *args, **kwargs):
+        msg = MockedMessage(
+            topic=topic,
+            partition=0,
+            offset=0,
+            headers=kwargs.get("headers", []),
+            key=kwargs.get("key"),
+            value=value,
+        )
+        self._queue.append(msg)
+        return msg
+
+
+class MockedAIOConsumer:
+    def __init__(self, config=None):
+        self._queue = []
+        self.config = config or {}
+        self._current_consume_span = None
+
+    async def poll(self, timeout=None):
+        if len(self._queue) > 0:
+            return self._queue.pop(0)
+        return None
+
+    async def close(self):
+        pass

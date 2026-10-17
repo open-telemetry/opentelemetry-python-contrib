@@ -470,3 +470,61 @@ class TestConfluentKafka(TestBase):
         process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+    def test_aio_produce(self) -> None:
+        import asyncio
+        from .utils import MockedAIOProducer
+
+        async def _run():
+            instrumentation = ConfluentKafkaInstrumentor()
+            tracer = self.tracer_provider.get_tracer(__name__)
+            producer = MockedAIOProducer({"bootstrap.servers": "localhost:9092"})
+
+            await instrumentation.wrap_aio_produce(
+                producer.produce,
+                producer,
+                tracer,
+                args=(),
+                kwargs={"topic": "test-topic", "value": b"test-value"},
+            )
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "test-topic send")
+            self.assertEqual(len(producer._queue), 1)
+            headers = producer._queue[0].headers()
+            self.assertTrue(any("traceparent" in str(h) for h in headers))
+
+        asyncio.run(_run())
+
+    def test_aio_poll(self) -> None:
+        import asyncio
+        from .utils import MockedAIOConsumer, MockedMessage
+
+        async def _run():
+            instrumentation = ConfluentKafkaInstrumentor()
+            tracer = self.tracer_provider.get_tracer(__name__)
+            consumer = MockedAIOConsumer({"bootstrap.servers": "localhost:9092"})
+            consumer._queue.append(MockedMessage("test-topic", 0, 0, []))
+
+            msg = await instrumentation.wrap_aio_poll(
+                consumer.poll,
+                consumer,
+                tracer,
+                args=(),
+                kwargs={},
+            )
+            self.assertIsNotNone(msg)
+
+            await instrumentation.wrap_aio_poll(
+                consumer.poll,
+                consumer,
+                tracer,
+                args=(),
+                kwargs={},
+            )
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertTrue(any(s.name == "test-topic process" for s in spans))
+
+        asyncio.run(_run())
