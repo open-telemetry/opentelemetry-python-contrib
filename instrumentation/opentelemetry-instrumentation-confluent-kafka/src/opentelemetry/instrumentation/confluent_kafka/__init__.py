@@ -118,6 +118,7 @@ from .utils import (
     _end_current_consume_span,
     _enrich_span,
     _get_span_name,
+    _kafka_getter,
     _kafka_setter,
 )
 from .version import __version__
@@ -384,7 +385,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         record = func(*args, **kwargs)
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
+            ctx = propagate.extract(carrier=record.headers(), getter=_kafka_getter)
+            with tracer.start_as_current_span("recv", context=ctx, end_on_exit=True, kind=trace.SpanKind.CONSUMER):
                 _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
