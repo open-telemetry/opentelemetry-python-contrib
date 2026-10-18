@@ -408,6 +408,45 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         finally:
             self._instrumentor.uninstrument_app(app)
 
+    def test_mounted_sub_app_metric_target(self):
+        """
+        http.target on the duration metric for a request served by a mounted
+        sub-application must be consistent with the span's http.route and must
+        not duplicate the mount prefix (e.g. /sub/sub).
+        """
+        app = fastapi.FastAPI()
+        sub_app = fastapi.FastAPI()
+
+        @sub_app.get("/items/{item_id}")
+        async def _item(item_id: str):
+            return {"id": item_id}
+
+        app.mount("/sub", app=sub_app)
+
+        self._instrumentor.instrument_app(app)
+        try:
+            client = TestClient(app)
+            resp = client.get("/sub/items/abc123")
+            self.assertEqual(200, resp.status_code)
+
+            spans = self.memory_exporter.get_finished_spans()
+            server_span = next(span for span in spans if span.kind == trace.SpanKind.SERVER)
+            metrics = self.get_sorted_metrics(SCOPE)
+            duration_metrics = [metric for metric in metrics if metric.name == "http.server.duration"]
+            self.assertTrue(duration_metrics)
+            targets = {
+                point.attributes.get("http.target")
+                for metric in duration_metrics
+                for point in metric.data.data_points
+                if isinstance(point, HistogramDataPoint)
+            }
+            # Only the outer app is instrumented and http.route stops at the
+            # mount, so the metric matches the span.
+            self.assertEqual("/sub", server_span.attributes[HTTP_ROUTE])
+            self.assertEqual({"/sub"}, targets)
+        finally:
+            self._instrumentor.uninstrument_app(app)
+
     def test_custom_route_preserves_templated_path(self):
         class CustomPathRoute(BaseRoute):
             path = "/widgets/{widget_id}"
@@ -502,6 +541,21 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
             "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
+
+    def test_mounted_sub_app_metric_target(self):
+        resp = self._client.get("/sub/home")
+        self.assertEqual(200, resp.status_code)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        targets = {
+            point.attributes.get("http.target")
+            for metric in metrics
+            if metric.name == "http.server.duration"
+            for point in metric.data.data_points
+            if isinstance(point, HistogramDataPoint)
+        }
+        # outer app: http.route is "/sub"; instrumented sub-app: "/home" under root_path "/sub".
+        self.assertEqual({"/sub", "/sub/home"}, targets)
 
 
 # pylint: disable=too-many-public-methods

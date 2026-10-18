@@ -58,6 +58,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
@@ -2003,52 +2004,57 @@ class TestAsgiAttributes(unittest.TestCase):
             "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
-    def test_collect_target_attribute_missing(self):
-        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
+    def test_collect_target_attribute_from_scope_missing(self):
+        self.assertIsNone(otel_asgi._collect_target_attribute_from_scope(self.scope))
 
-    def test_collect_target_attribute_fastapi(self):
+    def test_collect_target_attribute_from_scope_fastapi(self):
         class TestRoute:
             path_format = "/api/users/{user_id}"
 
         self.scope["route"] = TestRoute()
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "/api/users/{user_id}",
         )
 
-    def test_collect_target_attribute_fastapi_mounted(self):
+    def test_collect_target_attribute_from_scope_fastapi_mounted(self):
         class TestRoute:
             path_format = "/users/{user_id}"
 
         self.scope["route"] = TestRoute()
         self.scope["root_path"] = "/api/v2"
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "/api/v2/users/{user_id}",
         )
 
-    def test_collect_target_attribute_fastapi_starlette_invalid(self):
+    def test_collect_target_attribute_from_scope_invalid_route(self):
         self.scope["route"] = object()
         self.assertIsNone(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "HTTP_TARGET values is not None",
         )
 
-    def test_collect_target_attribute_prefers_http_route_attribute(self):
-        class TestRoute:
-            path_format = "/{id}"
+    def test_collect_target_attribute_from_span_missing_route(self):
+        self.assertIsNone(otel_asgi._collect_target_attribute_from_span({}, ""))
 
-        self.scope["route"] = TestRoute()
+    def test_collect_target_attribute_from_span(self):
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope, "/api/foo/bar/{id}"),
+            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/api/foo/bar/{id}"}, ""),
             "/api/foo/bar/{id}",
         )
 
-    def test_collect_target_attribute_http_route_with_root_path(self):
-        self.scope["root_path"] = "/sub"
+    def test_collect_target_attribute_from_span_with_root_path(self):
+        # An instrumented sub-app: http.route is relative to its root_path.
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope, "/home"),
+            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/home"}, "/sub"),
             "/sub/home",
+        )
+
+    def test_collect_target_attribute_from_span_with_server_root_path(self):
+        self.assertEqual(
+            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/foo"}, "/api"),
+            "/api/foo",
         )
 
 

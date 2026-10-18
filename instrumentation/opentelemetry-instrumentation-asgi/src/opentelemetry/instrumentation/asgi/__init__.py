@@ -527,9 +527,26 @@ def get_default_span_details(scope: dict) -> tuple[str, dict]:
     return method, {}  # http with no path
 
 
-def _collect_target_attribute(
+def _collect_target_attribute_from_span(
+    attributes: typing.Mapping[str, typing.Any],
+    root_path: str,
+) -> str | None:
+    """
+    Returns the target path from the http.route span attribute, or None.
+
+    http.route is relative to the root_path that was in the scope when it was
+    computed, so that is the root_path to pass. Mounts change
+    scope["root_path"] while the request is handled, so the value at the end
+    of the request must not be used here.
+    """
+    route = attributes.get(HTTP_ROUTE)
+    if not route:
+        return None
+    return f"{root_path}{route}"
+
+
+def _collect_target_attribute_from_scope(
     scope: dict[str, typing.Any],
-    route: str | None = None,
 ) -> str | None:
     """
     Returns the target path as defined by the Semantic Conventions.
@@ -543,16 +560,10 @@ def _collect_target_attribute(
     Note: this function requires specific code for each framework, as there's no
     standard attribute to use.
     """
-    root_path = scope.get("root_path", "")
-
-    if not route:
-        route_obj = scope.get("route")
-        route = getattr(route_obj, "path_format", None)
-
-    if route:
-        return f"{root_path}{route}"
-
-    return None
+    path_format = getattr(scope.get("route"), "path_format", None)
+    if not path_format:
+        return None
+    return f"{scope.get('root_path', '')}{path_format}"
 
 
 class OpenTelemetryMiddleware:
@@ -727,6 +738,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
+        root_path = scope.get("root_path", "")
         span_name, additional_attributes = self.default_span_details(scope)
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
@@ -782,7 +794,9 @@ class OpenTelemetryMiddleware:
                 await self.app(scope, otel_receive, otel_send)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope, attributes.get(HTTP_ROUTE))
+                target = _collect_target_attribute_from_span(
+                    attributes, root_path
+                ) or _collect_target_attribute_from_scope(scope)
                 if target:
                     path, query = _parse_url_query(target)
                     _set_http_target(
