@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-botocore`: capture Bedrock prompt cache token usage for `converse` and `converse_stream` API

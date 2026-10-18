@@ -19,6 +19,151 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 1.45.0/0.66b0 (2026-09-25)
+
+### Added
+
+- `opentelemetry-instrumentation-psycopg2`,
+  `opentelemetry-instrumentation-psycopg`: Add sqlcommenter support for
+  `instrument_connection`
+  ([#4267](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4267))
+- `opentelemetry-instrumentation-fastapi`: Document auto-instrumentation setup
+  and HTTP/WebSocket trace propagation
+  `opentelemetry-instrumentation`: Include the instrumentation README in API
+  docs
+  ([#4555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4555))
+- `opentelemetry-instrumentation-botocore`: capture Bedrock prompt cache token
+  usage for `converse` and `converse_stream` API
+  ([#4615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4615))
+- `opentelemetry-instrumentation-fastapi`: advertise inline type annotations
+  ([#4685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4685))
+- `opentelemetry-instrumentation-kafka-python`: Update kafka python
+  instrumentation to support kafka-python>=3
+  ([#4786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4786))
+- `opentelemetry-instrumentation-mysql`: add semantic convention stability
+  opt-in mode tests
+  ([#4810](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4810))
+- `opentelemetry-instrumentation-aiopg`: Add DB client operation duration and
+  returned rows metrics.
+  ([#4826](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4826))
+- `opentelemetry-instrumentation-httpx`: support strict typing
+  ([#4833](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4833))
+- `opentelemetry-instrumentation-mysqlclient`: add semantic convention
+  stability opt-in mode tests
+  ([#4834](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4834))
+- `opentelemetry-instrumentation-pymysql`: add semantic convention stability
+  opt-in mode tests
+  ([#4835](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4835))
+- `opentelemetry-instrumentation-sqlite3`: add semantic convention stability
+  opt-in mode tests
+  ([#4836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4836))
+- `opentelemetry-instrumentation-psycopg`: add semantic convention stability
+  opt-in mode tests
+  ([#4838](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4838))
+- infra: add validation for changelog file format
+  ([#4856](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4856))
+- `opentelemetry-instrumentation-aio-pika`: bump maximum admissible aio-pika
+  version to 11.0.0
+  ([#4998](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4998))
+
+### Changed
+
+- `opentelemetry-instrumentation`: clarify dependency conflict messages, in
+  logs and in `DependencyConflictError`, and promote auto-instrumentation
+  version conflict logs to error level
+  ([#5025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5025))
+
+### Removed
+
+- `opentelemetry-instrumentation-kafka-python`: drop support for the deprecated
+  `kafka-python-ng` fork now that `kafka-python` is actively maintained again
+  ([#4839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4839))
+- `opentelemetry-instrumentation-kafka-python`: remove unused
+  `KafkaPropertiesExtractor.extract_send_key` and
+  `KafkaPropertiesExtractor.extract_send_value` helpers
+  ([#4858](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4858))
+- `opentelemetry-instrumentation-anthropic`,
+  `opentelemetry-instrumentation-claude-agent-sdk`,
+  `opentelemetry-instrumentation-langchain`,
+  `opentelemetry-instrumentation-weaviate`: removed from this repository; these
+  instrumentations now live in and are maintained from the
+  [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+  repository
+  ([#4903](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4903))
+
+### Fixed
+
+- `opentelemetry-instrumentation-aws-lambda`: support ALB multiValueHeaders
+  ([#4605](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4605))
+- `opentelemetry-instrumentation-redis`: extract `ClusterPipeline` commands
+  from `_execution_strategy` in redis-py 6+ so pipeline span attributes include
+  the queued commands instead of being empty
+  ([#4728](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4728))
+- `opentelemetry-instrumentation-aiopg`: fix connection metadata for manual
+  instrumentation
+  ([#4821](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4821))
+- `opentelemetry-instrumentation-redis`: treat explicit `db=None` as database
+  index 0
+  ([#4828](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4828))
+- `opentelemetry-instrumentation-aws-lambda`: use the correct camel case when
+  accessing the SQS message attributes
+  ([#4831](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4831))
+- `opentelemetry-instrumentation-botocore`: Restore PyPy test coverage.
+  ([#4841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4841))
+- `opentelemetry-instrumentation-botocore`: don't emit error status on 3xx
+  ClientError responses
+  ([#4851](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4851))
+- `opentelemetry-instrumentation-kafka-python`: record the actual
+  `messaging.kafka.partition` read back from the producer `send()` future,
+  instead of a pre-computed estimate that did not match the delivered partition
+  for randomly-partitioned messages
+  ([#4858](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4858))
+- `opentelemetry-instrumentation-logging`: Promote otel.event.name to
+  LogRecord.event_name in _translate
+  ([#4864](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4864))
+- `opentelemetry-instrumentation-grpc`: respect suppressed instrumentation in
+  server interceptors
+  ([#4870](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4870))
+- `opentelemetry-instrumentation-logging`: Import code_attributes from stable
+  semconv package
+  ([#4873](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4873))
+- `opentelemetry-instrumentation-asyncio`: fix `to_thread` instrumentation so
+  spans and duration metrics measure the actual function execution instead of
+  ending immediately, repeated calls of the same function are all recorded
+  instead of only the first one, and failures are recorded with the same
+  `state` values (`exception`, `timeout`, `cancelled`) as the coroutine and
+  future paths; the `AsyncioInstrumentor.trace_to_thread` method is renamed to
+  `AsyncioInstrumentor.wrap_to_thread_func` to reflect that it now returns a
+  wrapper
+  ([#4901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4901))
+- `opentelemetry-instrumentation-logging`: fix documented name of the code
+  attributes env var to `OTEL_PYTHON_LOG_CODE_ATTRIBUTES`
+  ([#4912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4912))
+- `opentelemetry-instrumentation-psycopg`: avoid `IndexError` in
+  `get_operation_name` for comment-only or whitespace-only Composed statements
+  ([#4936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4936))
+- `opentelemetry-instrumentation-psycopg2`: avoid `IndexError` in
+  `get_operation_name` for comment-only or whitespace-only statements
+  ([#4942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4942))
+- `opentelemetry-instrumentation-sqlalchemy`: avoid `IndexError` in
+  `_operation_name` for comment-only or whitespace-only statements
+  ([#4943](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4943))
+- `opentelemetry-instrumentation-mysql`: support mysql-connector-python 26.7.0
+  and later
+  ([#4951](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4951))
+- `opentelemetry-util-http`: stop `_parse_url_query` raising on unparsable urls
+  ([#4965](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4965))
+- `opentelemetry-instrumentation-asyncio`: fix metric name and future example
+  in module docs
+  ([#5083](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5083))
+- `opentelemetry-instrumentation-pymemcache`: honor instrumentation suppression
+  ([#5086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5086))
+- `opentelemetry-instrumentation-asyncpg`: honor instrumentation suppression
+  ([#5087](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5087))
+- `opentelemetry-propagator-ot-trace`: cap ot-baggage-* entries on extract and
+  inject
+  ([#5098](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5098))
+
 ## Version 1.44.0/0.65b0 (2026-07-16)
 
 ### Added
