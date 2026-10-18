@@ -331,6 +331,9 @@ class TestLoggingInstrumentor(TestBase):
         # A factory installed after ours must survive uninstrument: the
         # logging module offers no way to unlink a factory from the middle of
         # the chain, so restoring the old factory here would silently drop it.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument()
         chained_onto = logging.getLogRecordFactory()
 
         def app_factory(*args, **kwargs):
@@ -349,7 +352,7 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertEqual(len(records), 1)
                 self.assertEqual(records[0].custom_app_attribute, "some-value")
         finally:
-            logging.setLogRecordFactory(chained_onto)
+            logging.setLogRecordFactory(baseline)
 
     def test_uninstrument_restores_factory_when_nothing_chained(self):
         # Observe the pre-instrumentation factory rather than reading it back
