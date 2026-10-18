@@ -4,7 +4,11 @@
 import os
 
 import opentelemetry.instrumentation.asgi as otel_asgi
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
+)
 from opentelemetry.test.asgitestutil import AsyncAsgiTestBase
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.http import (
@@ -13,7 +17,15 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
 )
 
-from .test_asgi_middleware import simple_asgi
+from .test_asgi_middleware import SCOPE, simple_asgi
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 async def http_app_with_custom_headers(scope, receive, send):
@@ -195,6 +207,94 @@ class TestCustomHeaders(AsyncAsgiTestBase):
                 self.assertSpanHasAttributes(span, expected)
                 for key, _ in not_expected.items():
                     self.assertNotIn(key, span.attributes)
+
+    def _create_app_with_sampler(self, sampler, app=simple_asgi):
+        tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        # Without receive and send spans, the sampler's last call is for the
+        # span created by the middleware.
+        otel_app = otel_asgi.OpenTelemetryMiddleware(
+            app,
+            tracer_provider=tracer_provider,
+            exclude_spans=["receive", "send"],
+            **self.constructor_params,
+        )
+        return tracer_provider, exporter, otel_app
+
+    async def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+            "http.request.header.my_secret_header": ["[REDACTED]"],
+        }
+        sampler = CapturingSampler()
+        _, exporter, app = self._create_app_with_sampler(sampler)
+
+        self.scope["headers"].extend(
+            [
+                (b"custom-test-header-1", b"test-header-value-1"),
+                (b"Regex-Test-Header-1", b"Regex Test Value 1"),
+                (b"My-Secret-Header", b"My Secret Value"),
+                (b"uncaptured-header", b"Uncaptured Value"),
+            ]
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.assertEqual(outputs[0]["status"], 200)
+
+        self.assertEqual(sampler.kind, SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.SERVER)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    async def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in ((b"sample", 1), (b"drop", 0)):
+            with self.subTest(value=value):
+                self.scope["headers"] = [(b"custom-test-header-1", value)]
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter, app = self._create_app_with_sampler(sampler)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.assertEqual(outputs[0]["status"], 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    async def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        tracer_provider, exporter, app = self._create_app_with_sampler(sampler)
+        tracer = tracer_provider.get_tracer(__name__)
+
+        async def wrapped_app(scope, receive, send):
+            with tracer.start_as_current_span("test", kind=SpanKind.SERVER):
+                await app(scope, receive, send)
+
+        self.scope["headers"].append((b"custom-test-header-1", b"test-header-value-1"))
+        self.seed_app(wrapped_app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self.assertEqual(sampler.kind, SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        span, parent_span = spans
+        self.assertEqual(span.kind, SpanKind.INTERNAL)
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
 
     async def test_http_custom_response_headers_in_span_attributes(self):
         self.app = otel_asgi.OpenTelemetryMiddleware(
