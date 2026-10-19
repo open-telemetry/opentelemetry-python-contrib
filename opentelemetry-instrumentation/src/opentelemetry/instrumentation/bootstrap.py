@@ -154,6 +154,7 @@ def run(
     parser.add_argument(
         "-e",
         "--exclude",
+        action="append",
         help="packages to exclude from installation",
         type=lambda s: set(item.strip().lower() for item in s.split(",") if item.strip()),
     )
