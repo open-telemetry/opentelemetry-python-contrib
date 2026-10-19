@@ -154,9 +154,9 @@ def run(
     parser.add_argument(
         "-e",
         "--exclude",
-        action="append",
+        action="extend",
         help="packages to exclude from installation",
-        type=lambda s: set(item.strip().lower() for item in s.split(",") if item.strip()),
+        type=lambda s: [item.strip().lower() for item in s.split(",") if item.strip()],
     )
     args = parser.parse_args()
 
@@ -170,7 +170,7 @@ def run(
         instrumentor_name = Requirement(name).name.lower().removeprefix("opentelemetry-instrumentation-")
         return instrumentor_name in excluded_packages
 
-    _normalized_packages_to_exclude = {package.lower() for package in (args.exclude or set())}
+    _normalized_packages_to_exclude = set(args.exclude)
 
     filtered_libraries = [
         library
