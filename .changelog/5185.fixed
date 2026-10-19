@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-urllib`: handle file-like and iterable request bodies
