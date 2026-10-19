@@ -259,6 +259,16 @@ For example, if you assign ``"GRPCTestServer,GRPCHealthServer"`` to the variable
 then the global interceptor automatically adds the filters to exclude requests to
 services ``GRPCTestServer`` and ``GRPCHealthServer``.
 
+Metrics
+-------
+
+The server interceptors record the ``rpc.server.call.duration`` histogram and the
+client interceptors record the ``rpc.client.call.duration`` histogram (both in
+seconds) with the ``rpc.system.name``, ``rpc.method`` (``package.Service/Method``),
+``rpc.response.status_code`` (gRPC status name, e.g. ``OK``) and, for failed calls,
+``error.type`` attributes. Pass ``meter_provider`` to ``instrument()`` or to the
+interceptor factories to use a custom meter provider.
+
 """
 
 import os
@@ -278,6 +288,7 @@ from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
 
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
@@ -319,17 +330,20 @@ class GrpcInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.server
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         def server(*args, **kwargs):
+            interceptor = server_interceptor(
+                tracer_provider=tracer_provider,
+                filter_=self._filter,
+                meter_provider=meter_provider,
+            )
             if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
-                kwargs["interceptors"].insert(
-                    0,
-                    server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
-                )
+                kwargs["interceptors"].insert(0, interceptor)
             else:
-                kwargs["interceptors"] = [server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [interceptor]
 
             return self._original_func(*args, **kwargs)
 
@@ -367,17 +381,20 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._original_func = grpc.aio.server
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         def server(*args, **kwargs):
+            interceptor = aio_server_interceptor(
+                tracer_provider=tracer_provider,
+                filter_=self._filter,
+                meter_provider=meter_provider,
+            )
             if kwargs.get("interceptors"):
                 kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
-                kwargs["interceptors"].insert(
-                    0,
-                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
-                )
+                kwargs["interceptors"].insert(0, interceptor)
             else:
-                kwargs["interceptors"] = [aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [interceptor]
             return self._original_func(*args, **kwargs)
 
         grpc.aio.server = server
@@ -415,6 +432,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         self._filter = filter_
         self._request_hook = None
         self._response_hook = None
+        self._meter_provider = None
 
     # Figures out which channel type we need to wrap
     def _which_channel(self, kwargs):
@@ -438,6 +456,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
+        self._meter_provider = kwargs.get("meter_provider")
         for ctype in self._which_channel(kwargs):
             _wrap(
                 "grpc",
@@ -461,6 +480,7 @@ class GrpcInstrumentorClient(BaseInstrumentor):
                 filter_=self._filter,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                meter_provider=self._meter_provider,
             ),
         )
 
@@ -488,6 +508,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         self._filter = filter_
         self._request_hook = None
         self._response_hook = None
+        self._meter_provider = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -501,6 +522,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
                     filter_=self._filter,
                     request_hook=self._request_hook,
                     response_hook=self._response_hook,
+                    meter_provider=self._meter_provider,
                 )
                 + kwargs["interceptors"]
             )
@@ -510,6 +532,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
                 filter_=self._filter,
                 request_hook=self._request_hook,
                 response_hook=self._response_hook,
+                meter_provider=self._meter_provider,
             )
 
         return kwargs
@@ -519,6 +542,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         self._original_secure = grpc.aio.secure_channel
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
+        self._meter_provider = kwargs.get("meter_provider")
         tracer_provider = kwargs.get("tracer_provider")
 
         def insecure(*args, **kwargs):
@@ -539,7 +563,13 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def client_interceptor(
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -548,6 +578,9 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, re
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        meter_provider: The meter provider used to record the
+                 ``rpc.client.call.duration`` metric.
 
     Returns:
         An invocation-side interceptor object.
@@ -566,10 +599,11 @@ def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, re
         filter_=filter_,
         request_hook=request_hook,
         response_hook=response_hook,
+        meter=get_meter(__name__, __version__, meter_provider),
     )
 
 
-def server_interceptor(tracer_provider=None, filter_=None):
+def server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
     """Create a gRPC server interceptor.
 
     Args:
@@ -578,6 +612,9 @@ def server_interceptor(tracer_provider=None, filter_=None):
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        meter_provider: The meter provider used to record the
+                 ``rpc.server.call.duration`` metric.
 
     Returns:
         A service-side interceptor object.
@@ -591,14 +628,27 @@ def server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
+    return _server.OpenTelemetryServerInterceptor(
+        tracer,
+        filter_=filter_,
+        meter=get_meter(__name__, __version__, meter_provider),
+    )
 
 
-def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def aio_client_interceptors(
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
+
+        meter_provider: The meter provider used to record the
+                 ``rpc.client.call.duration`` metric.
 
     Returns:
         An invocation-side interceptor object.
@@ -611,6 +661,7 @@ def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=Non
         tracer_provider,
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
+    meter = get_meter(__name__, __version__, meter_provider)
 
     return [
         _aio_client.UnaryUnaryAioClientInterceptor(
@@ -618,33 +669,40 @@ def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=Non
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            meter=meter,
         ),
         _aio_client.UnaryStreamAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            meter=meter,
         ),
         _aio_client.StreamUnaryAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            meter=meter,
         ),
         _aio_client.StreamStreamAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            meter=meter,
         ),
     ]
 
 
-def aio_server_interceptor(tracer_provider=None, filter_=None):
+def aio_server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
     """Create a gRPC aio server interceptor.
 
     Args:
         tracer: The tracer to use to create server-side spans.
+
+        meter_provider: The meter provider used to record the
+                 ``rpc.server.call.duration`` metric.
 
     Returns:
         A service-side interceptor object.
@@ -658,7 +716,11 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
+    return _aio_server.OpenTelemetryAioServerInterceptor(
+        tracer,
+        filter_=filter_,
+        meter=get_meter(__name__, __version__, meter_provider),
+    )
 
 
 def _excluded_service_filter() -> Callable[[object], bool] | None:
