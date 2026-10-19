@@ -43,6 +43,10 @@ class _Job:
         initial_backoff: float = 1.0,
         callback: Callable[..., None] | None = None,
     ):
+        if isinstance(payload, opamp_pb2.AgentToServer):
+            queued_message = opamp_pb2.AgentToServer()
+            queued_message.CopyFrom(payload)
+            payload = queued_message
         self.payload = payload
         self.attempt = 0
         self.max_retries = max_retries
@@ -138,12 +142,12 @@ class OpAMPAgent:
         callback: Callable[..., None] | None = None,
     ) -> None:
         """
-        Enqueue an on-demand request.
+        Enqueue an on-demand request, copying protobuf messages so callers can reuse them.
 
         :param payload: the AgentToServer message to send, usually from one of the client's
             build_*_message methods, or bytes encoding one. Its instance UID and sequence
             number are set when it is sent, so messages are numbered in the order they are
-            sent and carry the instance UID current at that point.
+            sent by the worker and carry the instance UID current at that point.
         :param callback: called after the message has been sent, or sending it has failed,
             and the response has been handled. Not called if the payload is not a valid
             AgentToServer message.
