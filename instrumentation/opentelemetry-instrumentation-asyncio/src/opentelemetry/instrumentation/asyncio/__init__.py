@@ -35,12 +35,12 @@ Run instrumented application
 
     AsyncioInstrumentor().instrument()
 
-    loop = asyncio.get_event_loop()
+    async def main():
+        future = asyncio.Future()
+        future.set_result(1)
+        await asyncio.ensure_future(future)
 
-    future = asyncio.Future()
-    future.set_result(1)
-    task = asyncio.ensure_future(future)
-    loop.run_until_complete(task)
+    asyncio.run(main())
 
 3. to_thread
 -------------
@@ -66,7 +66,7 @@ asyncio metric types
 ---------------------
 
 * asyncio.process.duration (seconds) - Duration of asyncio process
-* asyncio.process.count (count) - Number of asyncio process
+* asyncio.process.created ({process}) - Number of asyncio process
 
 API
 ---
