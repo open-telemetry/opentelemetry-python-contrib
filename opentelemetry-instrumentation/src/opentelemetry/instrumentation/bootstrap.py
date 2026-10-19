@@ -3,7 +3,6 @@
 
 import argparse
 import logging
-import re
 import sys
 from subprocess import (
     PIPE,
@@ -166,23 +165,16 @@ def run(
     if default_instrumentations is None:
         default_instrumentations = gen_default_instrumentations
 
-    def _normalize_package_name(name: str) -> str:
-        return re.sub(r"[-_.\s]+", "-", name.strip().lower())
-
     def _is_excluded(name: str, excluded_packages: set[str]) -> bool:
-        normalized_name = _normalize_package_name(Requirement(name).name)
-        instrumentor_name = normalized_name.removeprefix("opentelemetry-instrumentation-")
-        return normalized_name in excluded_packages or instrumentor_name in excluded_packages
+        instrumentor_name = Requirement(name).name.lower().removeprefix("opentelemetry-instrumentation-")
+        return instrumentor_name in excluded_packages
 
-    _normalized_packages_to_exclude = {_normalize_package_name(package) for package in (args.exclude or set())}
+    _normalized_packages_to_exclude = {package.lower() for package in (args.exclude or set())}
 
     filtered_libraries = [
         library
         for library in libraries
-        if not (
-            _is_excluded(library["library"], _normalized_packages_to_exclude)
-            or _is_excluded(library["instrumentation"], _normalized_packages_to_exclude)
-        )
+        if not (_is_excluded(library["instrumentation"], _normalized_packages_to_exclude))
     ]
 
     filtered_default_instrumentations = [
