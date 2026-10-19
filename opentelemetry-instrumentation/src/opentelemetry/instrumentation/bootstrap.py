@@ -170,7 +170,7 @@ def run(
         instrumentor_name = Requirement(name).name.lower().removeprefix("opentelemetry-instrumentation-")
         return instrumentor_name in excluded_packages
 
-    _normalized_packages_to_exclude = set(args.exclude)
+    _normalized_packages_to_exclude = set(args.exclude or [])
 
     filtered_libraries = [
         library
