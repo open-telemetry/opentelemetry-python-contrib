@@ -45,8 +45,8 @@ class OpAMPClient:
     """
     OpAMPClient implement the helpers for building and sending messages that the agent will use.
 
-    The build_*_message methods return messages to pass to OpAMPAgent.send() or send(). Their
-    instance UID and sequence number are set when they are sent, by prepare_message().
+    The build_*_message methods return messages to pass to OpAMPAgent.send(). Direct client
+    users call prepare_message() before send() to set the instance UID and sequence number.
     """
 
     def __init__(
@@ -186,14 +186,13 @@ class OpAMPClient:
         )
         return message
 
-    def send(self, data: opamp_pb2.AgentToServer | bytes):
+    def send(self, data: bytes) -> opamp_pb2.ServerToAgent:
         """
         Sends a message to the server and returns its response.
 
-        A message is prepared first (see prepare_message). Bytes are sent as they are.
+        Call prepare_message() before the first send. Prepared bytes are sent unchanged,
+        so retries keep the same instance UID and sequence number.
         """
-        if isinstance(data, opamp_pb2.AgentToServer):
-            data = self.prepare_message(data)
         token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         try:
             response = self._transport.send(

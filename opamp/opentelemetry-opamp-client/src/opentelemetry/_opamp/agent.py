@@ -188,17 +188,17 @@ class OpAMPAgent:
                 continue
 
             try:
-                data = self._client.prepare_message(job.payload)
+                prepared_message = self._client.prepare_message(job.payload)
             except Exception:
                 # nothing was sent, so the job's callback is not called either
                 logger.exception("Failed to prepare message for job %r, dropping it", job)
                 self._queue.task_done()
                 continue
 
-            message = None
+            response = None
             while job.should_retry() and not self._stop.is_set():
                 try:
-                    message = self._client.send(data)
+                    response = self._client.send(prepared_message)
                     _safe_invoke(self._callbacks.on_connect, self, self._client)
                     logger.debug("Job succeeded: %r", job)
                     break
@@ -230,8 +230,8 @@ class OpAMPAgent:
                         logger.debug("Stop signaled, abandoning job %r", job)
                         break
 
-            if message is not None:
-                self._process_message(message)
+            if response is not None:
+                self._process_message(response)
 
             try:
                 if job.callback is not None:
@@ -276,7 +276,8 @@ class OpAMPAgent:
         logger.debug("Stopping OpAMPAgent: sending AgentDisconnect")
         payload = self._client.build_agent_disconnect_message()
         try:
-            self._client.send(payload)
+            prepared_message = self._client.prepare_message(payload)
+            self._client.send(prepared_message)
         except Exception:  # pylint: disable=broad-exception-caught
             logger.debug("Stopping OpAMPAgent: failed to send AgentDisconnect message")
 

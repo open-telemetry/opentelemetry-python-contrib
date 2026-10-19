@@ -495,15 +495,18 @@ def test_prepare_message_decodes_bytes(client):
     assert message.HasField("agent_disconnect")
 
 
-def test_send_prepares_messages_but_not_bytes(client):
+def test_send_preserves_prepared_bytes_and_sequence_num(client):
     client._transport = mock.Mock()
-    client.send(client.build_heartbeat_message())
-    client.send(client.build_heartbeat_message())
+    prepared = client.prepare_message(client.build_heartbeat_message())
+    client.send(prepared)
+    client.send(prepared)
+    client.send(client.prepare_message(client.build_heartbeat_message()))
     client.send(b"prebuilt")
 
     sent = [call.kwargs["data"] for call in client._transport.send.call_args_list]
-    assert [opamp_pb2.AgentToServer.FromString(data).sequence_num for data in sent[:2]] == [0, 1]
-    assert sent[2] == b"prebuilt"
+    assert sent[0] == sent[1] == prepared
+    assert [opamp_pb2.AgentToServer.FromString(data).sequence_num for data in sent[:3]] == [0, 0, 1]
+    assert sent[3] == b"prebuilt"
     assert client._sequence_num == 2
 
 
