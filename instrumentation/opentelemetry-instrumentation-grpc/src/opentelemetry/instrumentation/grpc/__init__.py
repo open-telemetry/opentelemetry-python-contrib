@@ -265,9 +265,12 @@ Metrics
 The server interceptors record the ``rpc.server.call.duration`` histogram and the
 client interceptors record the ``rpc.client.call.duration`` histogram (both in
 seconds) with the ``rpc.system.name``, ``rpc.method`` (``package.Service/Method``),
-``rpc.response.status_code`` (gRPC status name, e.g. ``OK``) and, for failed calls,
-``error.type`` attributes. Pass ``meter_provider`` to ``instrument()`` or to the
-interceptor factories to use a custom meter provider.
+``rpc.response.status_code`` (gRPC status name, e.g. ``OK``) and ``error.type``
+attributes. ``error.type`` is the gRPC status name for failed calls and ``None``
+otherwise; on the client every status other than ``OK`` is a failure, on the server
+only ``UNKNOWN``, ``DEADLINE_EXCEEDED``, ``UNIMPLEMENTED``, ``INTERNAL``,
+``UNAVAILABLE`` and ``DATA_LOSS`` are. Pass ``meter_provider`` to ``instrument()``
+or to the interceptor factories to use a custom meter provider.
 
 """
 

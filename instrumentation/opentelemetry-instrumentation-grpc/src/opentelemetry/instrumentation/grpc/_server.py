@@ -35,7 +35,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
 
 from ._utilities import (
     _create_server_call_duration,
-    _record_call_duration,
+    _record_server_call_duration,
     _server_status,
 )
 
@@ -196,13 +196,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # uncaught exceptions which are not aborts are reported as UNKNOWN by grpc
         if error is not None and code in (None, grpc.StatusCode.OK):
             code = grpc.StatusCode.UNKNOWN
-        _record_call_duration(
-            self._call_duration,
-            start,
-            handler_call_details.method,
-            code,
-            is_server=True,
-        )
+        _record_server_call_duration(self._call_duration, start, handler_call_details.method, code)
 
     @contextmanager
     def _set_remote_context(self, servicer_context):

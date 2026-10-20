@@ -26,6 +26,9 @@ from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace.status import Status, StatusCode
 
+# error.type value of the calls which did not fail
+_NO_ERROR = "None"
+
 # Status codes that are considered errors on the server side, see
 # https://opentelemetry.io/docs/specs/semconv/rpc/grpc/#grpc-status
 _SERVER_ERROR_CODES = frozenset(
@@ -90,25 +93,47 @@ def _create_client_call_duration(meter: Meter) -> Histogram:
     )
 
 
-def _record_call_duration(
-    histogram: Histogram | None,
-    start: float,
+def _call_duration_attributes(
     full_method: str | bytes | None,
-    code: grpc.StatusCode | None,
-    is_server: bool,
-) -> None:
-    if histogram is None:
-        return
-    if code is None:
-        code = grpc.StatusCode.UNKNOWN
+    code: grpc.StatusCode,
+    is_error: bool,
+) -> dict[str, str]:
     attributes: dict[str, str] = {
         RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
         RPC_RESPONSE_STATUS_CODE: code.name,
+        ERROR_TYPE: code.name if is_error else _NO_ERROR,
     }
     if isinstance(full_method, bytes):
         full_method = full_method.decode()
     if full_method:
         attributes[RPC_METHOD] = full_method.lstrip("/")
-    if code != grpc.StatusCode.OK and (not is_server or code in _SERVER_ERROR_CODES):
-        attributes[ERROR_TYPE] = code.name
+    return attributes
+
+
+def _record_server_call_duration(
+    histogram: Histogram | None,
+    start: float,
+    full_method: str | bytes | None,
+    code: grpc.StatusCode | None,
+) -> None:
+    if histogram is None:
+        return
+    if code is None:
+        code = grpc.StatusCode.UNKNOWN
+    attributes = _call_duration_attributes(full_method, code, is_error=code in _SERVER_ERROR_CODES)
+    histogram.record(max(default_timer() - start, 0), attributes)
+
+
+def _record_client_call_duration(
+    histogram: Histogram | None,
+    start: float,
+    full_method: str | bytes | None,
+    code: grpc.StatusCode | None,
+) -> None:
+    if histogram is None:
+        return
+    if code is None:
+        code = grpc.StatusCode.UNKNOWN
+    # every status other than OK is an error on the client side
+    attributes = _call_duration_attributes(full_method, code, is_error=code != grpc.StatusCode.OK)
     histogram.record(max(default_timer() - start, 0), attributes)

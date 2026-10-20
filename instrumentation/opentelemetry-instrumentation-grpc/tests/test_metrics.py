@@ -71,7 +71,7 @@ class _MetricsAssertions(TestBase):
                         points.extend(metric.data.data_points)
         return points
 
-    def _assert_duration(self, metric_name, method, status_code, error_type=None, count=1):
+    def _assert_duration(self, metric_name, method, status_code, error_type="None", count=1):
         points = [
             point
             for point in self._duration_points(metric_name)
@@ -87,9 +87,9 @@ class _MetricsAssertions(TestBase):
             RPC_SYSTEM_NAME: "grpc",
             RPC_METHOD: method,
             RPC_RESPONSE_STATUS_CODE: status_code,
+            # calls without errors have the "None" error type
+            ERROR_TYPE: error_type,
         }
-        if error_type is not None:
-            expected[ERROR_TYPE] = error_type
         self.assertEqual(dict(point.attributes), expected)
         for value in point.attributes.values():
             self.assertIsInstance(value, str)

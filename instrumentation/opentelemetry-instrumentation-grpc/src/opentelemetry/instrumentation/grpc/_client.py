@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import (
     RpcInfo,
     _create_client_call_duration,
-    _record_call_duration,
+    _record_client_call_duration,
 )
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
@@ -88,7 +88,7 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
         self._call_duration = _create_client_call_duration(meter) if meter is not None else None
 
     def _record_call_duration(self, start, full_method, code):
-        _record_call_duration(self._call_duration, start, full_method, code, is_server=False)
+        _record_client_call_duration(self._call_duration, start, full_method, code)
 
     @staticmethod
     def _code_from_exception(exc):
