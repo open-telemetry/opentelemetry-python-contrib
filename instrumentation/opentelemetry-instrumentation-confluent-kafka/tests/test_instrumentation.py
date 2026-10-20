@@ -54,7 +54,7 @@ def _traceparent_header(trace_id: int, span_id: int) -> tuple[str, bytes]:
     return ("traceparent", f"00-{trace_id:032x}-{span_id:016x}-01".encode())
 
 
-class TestConfluentKafka(TestBase):
+class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
     def test_instrument_api(self) -> None:
         from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 
