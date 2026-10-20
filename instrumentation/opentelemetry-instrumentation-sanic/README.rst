@@ -45,7 +45,6 @@ WebSocket routes are not instrumented.
 References
 ----------
 
-* `OpenTelemetry Sanic Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/sanic/sanic.html>`_
 * `Sanic <https://sanic.dev/>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
