@@ -1,0 +1,10 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+anyio~=4.5
+Flask~=3.0
+wrapt>=1.16.0,<3.0.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-flask
+-e instrumentation/opentelemetry-instrumentation-wsgi
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-asyncclick[instruments]
