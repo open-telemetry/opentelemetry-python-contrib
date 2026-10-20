@@ -20,6 +20,11 @@ TEST_RESOURCE_ID = (
 
 
 class TestAzureAKSResourceDetector(unittest.TestCase):
+    def test_is_process_dependent(self) -> None:
+        detector = AzureAKSResourceDetector()
+
+        self.assertTrue(detector.is_process_dependent())
+
     @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     def test_detects_aks_from_environment(self) -> None:
         attributes = AzureAKSResourceDetector().detect().attributes
