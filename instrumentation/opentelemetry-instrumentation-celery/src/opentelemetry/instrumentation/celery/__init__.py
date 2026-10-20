@@ -407,7 +407,7 @@ class CeleryInstrumentor(BaseInstrumentor):
     @staticmethod
     def _flush_provider(provider: object, provider_name: str) -> None:
         try:
-            getattr(provider, "force_flush")()
+            provider.force_flush()
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception(
                 "%s failed to flush during Celery worker process shutdown",
