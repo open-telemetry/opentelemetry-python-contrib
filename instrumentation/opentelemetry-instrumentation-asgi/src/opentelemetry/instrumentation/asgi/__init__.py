@@ -218,9 +218,10 @@ from __future__ import annotations
 import typing
 import urllib
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, DefaultDict, Tuple
+from typing import Any
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -256,7 +257,7 @@ from opentelemetry.instrumentation.asgi.types import (
     ClientResponseHook,
     ServerRequestHook,
 )
-from opentelemetry.instrumentation.asgi.version import __version__  # noqa
+from opentelemetry.instrumentation.asgi.version import __version__
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -302,7 +303,7 @@ from opentelemetry.util.http import (
 
 
 class ASGIGetter(Getter[dict]):
-    def get(self, carrier: dict, key: str) -> typing.Optional[typing.List[str]]:
+    def get(self, carrier: dict, key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the ASGI
         scope.
 
@@ -326,7 +327,7 @@ class ASGIGetter(Getter[dict]):
             return None
         return decoded
 
-    def keys(self, carrier: dict) -> typing.List[str]:
+    def keys(self, carrier: dict) -> list[str]:
         headers = carrier.get("headers") or []
         return [_decode_header_item(_key) for (_key, _value) in headers]
 
@@ -435,7 +436,7 @@ def collect_custom_headers_attributes(
     Refer to semantic conventions:
      - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
-    headers: DefaultDict[str, list[str]] = defaultdict(list)
+    headers: defaultdict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
     if raw_headers:
         for key, value in raw_headers:
@@ -503,7 +504,7 @@ def set_status_code(
     )
 
 
-def get_default_span_details(scope: dict) -> Tuple[str, dict]:
+def get_default_span_details(scope: dict) -> tuple[str, dict]:
     """
     Default span name is the HTTP method and URL path, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
@@ -526,8 +527,8 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
 
 
 def _collect_target_attribute(
-    scope: typing.Dict[str, typing.Any],
-) -> typing.Optional[str]:
+    scope: dict[str, typing.Any],
+) -> str | None:
     """
     Returns the target path as defined by the Semantic Conventions.
 
@@ -698,6 +699,16 @@ class OpenTelemetryMiddleware:
         self.exclude_receive_span = "receive" in exclude_spans if exclude_spans else False
         self.exclude_send_span = "send" in exclude_spans if exclude_spans else False
 
+    def _collect_custom_request_headers_attributes(self, scope) -> dict[str, list[str]]:
+        if not self.http_capture_headers_server_request:
+            return {}
+        return collect_custom_headers_attributes(
+            scope,
+            self.http_capture_headers_sanitize_fields,
+            self.http_capture_headers_server_request,
+            normalise_request_header_name,
+        )
+
     # pylint: disable=too-many-statements
     async def __call__(
         self,
@@ -727,6 +738,10 @@ class OpenTelemetryMiddleware:
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
         attributes.update(additional_attributes)
+        # Captured request headers are only added to SERVER spans, which
+        # _start_internal_or_server_span creates when there is no current span.
+        if trace.get_current_span() is trace.INVALID_SPAN:
+            attributes.update(self._collect_custom_request_headers_attributes(scope))
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
             span_name=span_name,
@@ -747,20 +762,6 @@ class OpenTelemetryMiddleware:
                 if current_span.is_recording():
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
-
-                    if current_span.kind == trace.SpanKind.SERVER:
-                        custom_attributes = (
-                            collect_custom_headers_attributes(
-                                scope,
-                                self.http_capture_headers_sanitize_fields,
-                                self.http_capture_headers_server_request,
-                                normalise_request_header_name,
-                            )
-                            if self.http_capture_headers_server_request
-                            else {}
-                        )
-                        if len(custom_attributes) > 0:
-                            current_span.set_attributes(custom_attributes)
 
                 if callable(self.server_request_hook):
                     self.server_request_hook(current_span, scope)

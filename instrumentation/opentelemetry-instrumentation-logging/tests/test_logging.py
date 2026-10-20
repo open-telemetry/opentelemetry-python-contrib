@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -21,8 +20,8 @@ class FakeTracerProvider:
     def get_tracer(  # pylint: disable=no-self-use
         self,
         instrumenting_module_name: str,
-        instrumenting_library_version: Optional[str] = None,
-        schema_url: Optional[str] = None,
+        instrumenting_library_version: str | None = None,
+        schema_url: str | None = None,
     ) -> ProxyTracer:
         return ProxyTracer(
             instrumenting_module_name,

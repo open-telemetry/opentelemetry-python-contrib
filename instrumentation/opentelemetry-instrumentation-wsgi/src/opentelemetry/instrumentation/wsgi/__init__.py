@@ -132,6 +132,8 @@ For example,
 
 will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
+Captured request headers are sanitized and included when SERVER spans are created, so they can be used by samplers.
+
 Request header names in WSGI are case-insensitive and ``-`` characters are replaced by ``_``. So, giving the header
 name as ``CUStom_Header`` in the environment variable will capture the header named ``custom-header``.
 
@@ -219,8 +221,9 @@ from __future__ import annotations
 
 import functools
 import wsgiref.util as wsgiref_util
+from collections.abc import Callable, Iterable
 from timeit import default_timer
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -295,7 +298,7 @@ _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class WSGIGetter(Getter[Dict[str, Any]]):
+class WSGIGetter(Getter[dict[str, Any]]):
     def get(self, carrier: dict[str, Any], key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the
              PEP3333-conforming WSGI environ
@@ -328,9 +331,14 @@ wsgi_getter = WSGIGetter()
 def collect_request_attributes(
     environ: WSGIEnvironment,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    *,
+    capture_custom_headers: bool = False,
 ):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
+
+    Set capture_custom_headers to include configured, sanitized request headers
+    when creating a SERVER span. Existing callers omit these headers by default.
     """
     result: dict[str, str | None] = {}
     _set_http_method(
@@ -396,6 +404,9 @@ def collect_request_attributes(
     if flavor:
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
+    if capture_custom_headers:
+        result.update(collect_custom_request_headers_attributes(environ))
+
     return result
 
 
@@ -418,12 +429,16 @@ def _apply_user_agent_attributes(
         result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
 
-def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
+def collect_custom_request_headers_attributes(environ: WSGIEnvironment) -> dict[str, list[str]]:
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
     in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
     See also https://peps.python.org/pep-3333/
     """
+
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+    if not captured_headers:
+        return {}
 
     sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
     headers = {
@@ -434,7 +449,7 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
 
     return sanitize.sanitize_header_values(
         headers,
-        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
+        captured_headers,
         normalise_request_header_name,
     )
 
@@ -653,7 +668,13 @@ class OpenTelemetryMiddleware:
             environ: A WSGI environment.
             start_response: The WSGI start_response callable.
         """
-        req_attrs = collect_request_attributes(environ, self._sem_conv_opt_in_mode)
+        req_attrs = collect_request_attributes(
+            environ,
+            self._sem_conv_opt_in_mode,
+            # Custom headers are only recorded on SERVER spans, which are
+            # created when there is no current span.
+            capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
+        )
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
             self._sem_conv_opt_in_mode,
@@ -667,10 +688,6 @@ class OpenTelemetryMiddleware:
             context_getter=wsgi_getter,
             attributes=req_attrs,
         )
-        if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-            custom_attributes = collect_custom_request_headers_attributes(environ)
-            if len(custom_attributes) > 0:
-                span.set_attributes(custom_attributes)
 
         if self.request_hook:
             self.request_hook(span, environ)

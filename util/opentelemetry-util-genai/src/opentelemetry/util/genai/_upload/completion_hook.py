@@ -11,6 +11,7 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
+from collections.abc import Callable
 from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
@@ -19,7 +20,7 @@ from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
 from time import time
-from typing import Any, Callable, Final, Literal
+from typing import Any, Final, Literal
 from uuid import uuid4
 
 import fsspec

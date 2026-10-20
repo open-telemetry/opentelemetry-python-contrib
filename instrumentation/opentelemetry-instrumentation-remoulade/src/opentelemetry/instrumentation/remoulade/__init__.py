@@ -36,7 +36,7 @@ Run instrumented actor
 
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 from remoulade import Middleware, broker
 

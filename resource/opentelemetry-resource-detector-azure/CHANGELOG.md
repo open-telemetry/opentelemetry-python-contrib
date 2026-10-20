@@ -15,7 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
-## Version 0.2.0 (2026-08-19)
+## Version 0.3.0 (2026-09-29)
+
+### Added
+
+- `opentelemetry-resource-detector-azure`: add AKS resource detector
+  ([#5012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5012))
+
+### Changed
+
+- `opentelemetry-resource-detector-azure`: add owners JacksonWeber and
+  rads-1996
+  ([#4973](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4973))
+- Make azure app service and azure functions resource detector process
+  dependent
+  ([#5075](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5075))
+
+## Version 0.2.0 (2026-08-20)
 
 ### Changed
 
