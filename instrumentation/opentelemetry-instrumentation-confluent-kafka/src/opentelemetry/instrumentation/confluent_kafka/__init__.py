@@ -95,6 +95,24 @@ For example:
     p.produce('my-topic',b'raw_bytes')
     msg = c.poll()
 
+Trace context on the consumer
+-----------------------------
+
+The consumer creates one ``process`` span per ``poll()`` or ``consume()`` call
+that returns at least one message. The span stays current until the next call
+on the same consumer, so spans the application starts while it handles the
+messages become children of the ``process`` span.
+
+When one message is returned, the ``process`` span uses the trace context from
+the message headers as its parent, so the producer span is its direct parent.
+
+When ``consume()`` returns more than one message, the messages can belong to
+different traces. The ``process`` span then keeps the current context as its
+parent and adds a link to the trace context of each message. It carries no
+partition, offset or message id, because those identify one message. An
+application that needs one span per message can extract the context from the
+message headers and start a span with that context as the parent.
+
 """
 
 from collections.abc import Collection
@@ -424,7 +442,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         # since consume can return multiple records, we _could_ wrap the call in a span
         # and then create a new span for each record
         # however, this span is awkward because there is no obvious trace to assign to it
-        # before the messages are returned, and afterwards it's can't be modified
+        # before the messages are returned, and afterwards it cannot be modified
 
         # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
         # a span around consume should be created by the client, not the consumer
@@ -435,11 +453,15 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             _create_new_consume_span(instance, tracer, records)
+            # partition, offset and message id identify one record, so they are
+            # only set when consume returned exactly one record
+            partition = records[0].partition() if len(records) == 1 else None
+            offset = records[0].offset() if len(records) == 1 else None
             _enrich_span(
                 instance._current_consume_span,
                 records[0].topic(),
-                partition=records[0].partition(),
-                offset=records[0].offset(),
+                partition=partition,
+                offset=offset,
                 operation=MessagingOperationTypeValues.PROCESS,
                 bootstrap_servers=bootstrap_servers,
             )

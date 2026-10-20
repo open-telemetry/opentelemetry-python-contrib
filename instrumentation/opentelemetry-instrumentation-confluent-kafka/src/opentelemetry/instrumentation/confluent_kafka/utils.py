@@ -113,8 +113,16 @@ def _end_current_consume_span(instance):
 
 
 def _create_new_consume_span(instance, tracer, records):
-    ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
-    links = _get_links_from_records(records)
+    # A single record has one unambiguous creation context, so the process span
+    # uses it as parent. Records in a batch can belong to different traces, so the
+    # batch span keeps the ambient parent and links to each record instead.
+    # https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#message-creation-context-as-parent-of-process-span
+    if len(records) == 1:
+        ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
+        links = None
+    else:
+        ctx = None
+        links = _get_links_from_records(records)
     instance._current_consume_span = tracer.start_span(
         name=f"{records[0].topic()} process",
         links=links,
