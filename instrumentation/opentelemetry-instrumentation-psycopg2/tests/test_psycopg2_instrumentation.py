@@ -132,7 +132,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_psycopg2_installed(self, mock_logger, mock_dep):
         def _instrumentation_loaded_successfully_call():
-            return call("Instrumented %s", "psycopg2")
+            return call("Loaded OpenTelemetry instrumentation for %s", "psycopg2")
 
         mock_distro = Mock()
         mock_dep.return_value = None
