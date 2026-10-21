@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from logging import Logger, getLogger
+from logging import Logger, LoggerAdapter, getLogger
 
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -62,7 +62,7 @@ class DependencyConflict:
         """False when the dependency is not installed at all, rather than installed at an incompatible version."""
         return bool(self.found or self.found_any)
 
-    def _log(self, logger: Logger, instrumentor_name: str) -> None:
+    def _log(self, logger: Logger | LoggerAdapter[Logger], instrumentor_name: str) -> None:
         """Log as an error for a version conflict, at debug level when the dependency is not installed."""
         log = logger.error if self._is_version_conflict else logger.debug
         log(self._format_message(instrumentor_name))

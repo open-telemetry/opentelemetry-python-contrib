@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from argparse import REMAINDER, ArgumentParser
-from logging import getLogger
 from os import environ, execl, getcwd
 from os.path import abspath, dirname, pathsep
 from re import sub
@@ -14,6 +13,7 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_configurators,
     _load_distro,
     _load_instrumentors,
+    _logger,
 )
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
@@ -21,8 +21,6 @@ from opentelemetry.instrumentation.environment_variables import (
 from opentelemetry.instrumentation.utils import _python_path_without_directory
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import entry_points
-
-_logger = getLogger(__name__)
 
 
 def run() -> None:
@@ -109,6 +107,7 @@ def run() -> None:
 
 
 def _initialize(*, swallow_exceptions: bool = True) -> None:
+    _logger.initialize()
     # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
     # opentelemetry operator
     gevent_patch: str | None = environ.get(OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH)
@@ -138,6 +137,8 @@ def _initialize(*, swallow_exceptions: bool = True) -> None:
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:
             raise exc
+    else:
+        _logger.info("OpenTelemetry automatic instrumentation started successfully")
 
 
 def initialize(*, swallow_exceptions: bool = True) -> None:
