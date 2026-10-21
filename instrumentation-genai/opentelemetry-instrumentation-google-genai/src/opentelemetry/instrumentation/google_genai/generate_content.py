@@ -253,13 +253,14 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     definitions = []
     if tool.function_declarations:
         for fd in tool.function_declarations:
+            parameters = getattr(fd, "parameters", None)
+            if parameters is None:
+                parameters = getattr(fd, "parameters_json_schema", None)
             definitions.append(
                 FunctionToolDefinition(
                     name=getattr(fd, "name", type(fd).__name__),
                     description=getattr(fd, "description", None),
-                    parameters=_clean_parameters(
-                        getattr(fd, "parameters", None)
-                    ),
+                    parameters=_clean_parameters(parameters),
                 )
             )
 
