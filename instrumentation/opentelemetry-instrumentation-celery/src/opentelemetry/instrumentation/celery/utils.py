@@ -16,7 +16,6 @@ from opentelemetry.instrumentation._semconv import (
     _report_old,
     _set_messaging_conversation_id,
     _set_messaging_destination,
-    _StabilityMode,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
@@ -66,17 +65,6 @@ CELERY_CONTEXT_ATTRIBUTES = (
 )
 
 
-def _get_messaging_semconv_mode() -> _StabilityMode:
-    """Return the current messaging semantic-convention stability mode.
-
-    Resolved lazily on every call (rather than once at instrument time)
-    because set_attributes_from_context runs on Celery signal handlers.
-    """
-    return _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
-        _OpenTelemetryStabilitySignalType.MESSAGING
-    ]
-
-
 # pylint:disable=too-many-branches
 def set_attributes_from_context(
     span: Span,
@@ -85,7 +73,11 @@ def set_attributes_from_context(
     """Helper to extract meta values from a Celery Context"""
     if not span.is_recording():
         return
-    semconv_opt_in_mode = _get_messaging_semconv_mode()
+    # Resolved lazily on every call (rather than once at instrument time)
+    # because set_attributes_from_context runs on Celery signal handlers.
+    semconv_opt_in_mode = _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
+        _OpenTelemetryStabilitySignalType.MESSAGING
+    ]
     for key in CELERY_CONTEXT_ATTRIBUTES:
         value = context.get(key)
 
@@ -119,8 +111,12 @@ def set_attributes_from_context(
             if routing_key is not None:
                 destination_attributes: dict[str, AttributeValue] = {}
                 _set_messaging_destination(destination_attributes, routing_key, semconv_opt_in_mode)
-                for dest_key, dest_value in destination_attributes.items():
-                    span.set_attribute(dest_key, dest_value)
+                # The shared helper drops falsy values, but the old code
+                # reported an empty routing key as an empty legacy
+                # attribute — preserve that in old / dup mode.
+                if routing_key == "" and _report_old(semconv_opt_in_mode):
+                    destination_attributes[SpanAttributes.MESSAGING_DESTINATION] = ""
+                span.set_attributes(destination_attributes)
 
             value = str(value)
 
@@ -130,15 +126,13 @@ def set_attributes_from_context(
         elif key == "correlation_id":
             conversation_attributes: dict[str, AttributeValue] = {}
             _set_messaging_conversation_id(conversation_attributes, value, semconv_opt_in_mode)
-            for conv_key, conv_value in conversation_attributes.items():
-                span.set_attribute(conv_key, conv_value)
+            span.set_attributes(conversation_attributes)
             continue
 
         elif key == "routing_key":
-            destination_attributes = {}
+            destination_attributes: dict[str, AttributeValue] = {}
             _set_messaging_destination(destination_attributes, value, semconv_opt_in_mode)
-            for dest_key, dest_value in destination_attributes.items():
-                span.set_attribute(dest_key, dest_value)
+            span.set_attributes(destination_attributes)
             continue
 
         # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types

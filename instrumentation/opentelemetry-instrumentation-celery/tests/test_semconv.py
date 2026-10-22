@@ -118,6 +118,38 @@ class TestCelerySemConvAttributes(TestBase):
         self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION_KIND), "queue")
         self.assertEqual(span.attributes.get(MESSAGING_MESSAGE_ID), "44b7f305")
 
+    @stability_mode("")
+    def test_default_mode_preserves_empty_delivery_routing_key(self):
+        # Before this change the shared helper dropped the empty value,
+        # while the old code reported it as an empty legacy attribute.
+        context = _context()
+        context["delivery_info"] = {"routing_key": ""}
+        # The top-level key is skipped when empty, so it cannot overwrite
+        # the delivery_info value below.
+        context["routing_key"] = ""
+        span = _make_span()
+        utils.set_attributes_from_context(span, context)
+
+        self.assertIn(SpanAttributes.MESSAGING_DESTINATION, span.attributes)
+        self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "")
+        self.assertNotIn(MESSAGING_DESTINATION_NAME, span.attributes)
+
+    @stability_mode("messaging/dup")
+    def test_dup_mode_preserves_empty_delivery_routing_key(self):
+        context = _context()
+        context["delivery_info"] = {"routing_key": ""}
+        # The top-level key is skipped when empty, so it cannot overwrite
+        # the delivery_info value below.
+        context["routing_key"] = ""
+        span = _make_span()
+        utils.set_attributes_from_context(span, context)
+
+        self.assertIn(SpanAttributes.MESSAGING_DESTINATION, span.attributes)
+        self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "")
+        # The new name is not reported for an empty value: the shared
+        # helper drops falsy values, and no new telemetry is added here.
+        self.assertNotIn(MESSAGING_DESTINATION_NAME, span.attributes)
+
 
 class TestCelerySemConvSchemaUrl(TestBase):
     def setUp(self):
