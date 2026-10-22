@@ -818,6 +818,26 @@ class TestConfluentKafka(TestBase):
             mock_lt.assert_not_called()
         self.assertEqual(result2, "producer-cluster")
 
+    def test_extract_cluster_id_returns_none_when_broker_reports_empty(
+        self,
+    ) -> None:
+        """An empty id from the broker is absent, not a value to cache or attach."""
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+            _extract_cluster_id,
+        )
+
+        _cluster_id_by_bootstrap.clear()
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        producer._mock_cluster_id = ""
+
+        self.assertIsNone(_extract_cluster_id(producer, "localhost:29092", "topic-1"))
+        # An empty value must not be cached either, or it would be served to
+        # every later client on this bootstrap address.
+        self.assertNotIn("localhost:29092", _cluster_id_by_bootstrap)
+
     def test_extract_cluster_id_returns_none_for_none_instance(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
             _extract_cluster_id,
