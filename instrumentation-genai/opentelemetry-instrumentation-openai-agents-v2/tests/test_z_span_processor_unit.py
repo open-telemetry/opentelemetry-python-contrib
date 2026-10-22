@@ -18,6 +18,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -162,6 +163,15 @@ def test_operation_and_span_naming(processor_setup):
     response_data = ResponseSpanData()
     assert processor._get_operation_name(response_data) == sp.GenAIOperationName.CHAT
 
+    mcp_data = MCPListToolsSpanData(server="weather_server", result=["get_weather"])
+    assert processor._get_operation_name(mcp_data) == sp.GenAIOperationName.LIST_TOOLS
+
+    class DuckMCPListTools:
+        type = "mcp_tools"
+        server = "custom_mcp"
+
+    assert processor._get_operation_name(DuckMCPListTools()) == sp.GenAIOperationName.LIST_TOOLS
+
     class UnknownSpanData:
         pass
 
@@ -170,9 +180,13 @@ def test_operation_and_span_naming(processor_setup):
 
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL
+    assert processor._get_span_kind(MCPListToolsSpanData()) is SpanKind.CLIENT
+    assert processor._get_span_kind(DuckMCPListTools()) is SpanKind.CLIENT
 
     assert sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o") == "chat gpt-4o"
     assert sp.get_span_name(sp.GenAIOperationName.EXECUTE_TOOL, tool_name="weather") == "execute_tool weather"
+    assert sp.get_span_name(sp.GenAIOperationName.LIST_TOOLS, tool_name="weather_server") == "list_tools weather_server"
+    assert sp.get_span_name(sp.GenAIOperationName.LIST_TOOLS, tool_name=None) == "list_tools"
     assert sp.get_span_name(sp.GenAIOperationName.INVOKE_AGENT, agent_name=None) == "invoke_agent"
     assert sp.get_span_name(sp.GenAIOperationName.CREATE_AGENT, agent_name=None) == "create_agent"
 
@@ -468,3 +482,99 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_mcp_list_tools_attributes_and_lifecycle(processor_setup):
+    processor, exporter = processor_setup
+
+    mcp_data = MCPListToolsSpanData(
+        server="filesystem_server",
+        result=["read_file", "write_file", "list_dir"],
+    )
+    payload = processor._build_content_payload(
+        FakeSpan(
+            trace_id="trace-mcp",
+            span_id="mcp-span-1",
+            span_data=mcp_data,
+        )
+    )
+    attrs = _collect(processor._get_attributes_from_mcp_list_tools_span_data(mcp_data, payload))
+
+    assert attrs[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS
+    assert attrs[sp.GEN_AI_TOOL_NAME] == "filesystem_server"
+    assert attrs[ServerAttributes.SERVER_ADDRESS] == "filesystem_server"
+    assert attrs[sp.GEN_AI_TOOL_TYPE] == "function"
+    assert json.loads(attrs[sp.GEN_AI_TOOL_DEFINITIONS]) == ["read_file", "write_file", "list_dir"]
+    assert json.loads(attrs[sp.GEN_AI_TOOL_CALL_RESULT]) == ["read_file", "write_file", "list_dir"]
+    assert attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    # Test full trace lifecycle with start and end
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp-lifecycle")
+    processor.on_trace_start(trace)
+
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-span-2",
+        span_data=mcp_data,
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    span_by_name = {s.name: s for s in finished}
+    assert "list_tools filesystem_server" in span_by_name
+    mcp_otel_span = span_by_name["list_tools filesystem_server"]
+    assert mcp_otel_span.kind is SpanKind.CLIENT
+    assert mcp_otel_span.attributes[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS
+    assert mcp_otel_span.attributes[sp.GEN_AI_TOOL_NAME] == "filesystem_server"
+    assert mcp_otel_span.attributes[ServerAttributes.SERVER_ADDRESS] == "filesystem_server"
+    assert mcp_otel_span.attributes[sp.GEN_AI_TOOL_TYPE] == "function"
+    assert json.loads(mcp_otel_span.attributes[sp.GEN_AI_TOOL_DEFINITIONS]) == ["read_file", "write_file", "list_dir"]
+    assert json.loads(mcp_otel_span.attributes[sp.GEN_AI_TOOL_CALL_RESULT]) == ["read_file", "write_file", "list_dir"]
+    assert mcp_otel_span.attributes[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+
+def test_mcp_list_tools_empty_server_and_result(processor_setup):
+    processor, exporter = processor_setup
+
+    mcp_data = MCPListToolsSpanData(server=None, result=None)
+    payload = processor._build_content_payload(
+        FakeSpan(
+            trace_id="trace-mcp-empty",
+            span_id="mcp-span-empty",
+            span_data=mcp_data,
+        )
+    )
+    attrs = _collect(processor._get_attributes_from_mcp_list_tools_span_data(mcp_data, payload))
+
+    assert attrs[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS
+    assert sp.GEN_AI_TOOL_NAME not in attrs
+    assert ServerAttributes.SERVER_ADDRESS not in attrs
+    assert sp.GEN_AI_TOOL_DEFINITIONS not in attrs
+    assert sp.GEN_AI_TOOL_CALL_RESULT not in attrs
+    assert attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    # Full lifecycle naming check:
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp-empty-lifecycle")
+    processor.on_trace_start(trace)
+
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-span-empty-2",
+        span_data=mcp_data,
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    span_by_name = {s.name: s for s in finished}
+    assert "list_tools" in span_by_name
+    empty_otel_span = span_by_name["list_tools"]
+    assert empty_otel_span.kind is SpanKind.CLIENT
+    assert empty_otel_span.attributes[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS

@@ -42,7 +42,12 @@ try:
         SpeechSpanData,
         TranscriptionSpanData,
     )
-except ModuleNotFoundError:  # pragma: no cover - test stubs
+
+    try:
+        from agents.tracing.span_data import MCPListToolsSpanData
+    except ImportError:  # pragma: no cover
+        MCPListToolsSpanData = getattr(importlib.import_module("agents.tracing"), "MCPListToolsSpanData", Any)  # type: ignore[assignment]
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - test stubs
     tracing_module = importlib.import_module("agents.tracing")
     Span = tracing_module.Span
     Trace = tracing_module.Trace
@@ -52,6 +57,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
     GuardrailSpanData = getattr(tracing_module, "GuardrailSpanData", Any)  # type: ignore[assignment]
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
+    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData", Any)  # type: ignore[assignment]
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
     TranscriptionSpanData = getattr(tracing_module, "TranscriptionSpanData", Any)  # type: ignore[assignment]
@@ -123,12 +129,15 @@ class GenAIOperationName:
     GUARDRAIL = "guardrail_check"
     HANDOFF = "agent_handoff"
     RESPONSE = "response"  # internal aggregator in current processor
+    LIST_TOOLS = _OPERATION_VALUES.get("LIST_TOOLS", "list_tools")
 
     CLASS_FALLBACK = {
         "generationspan": CHAT,
         "responsespan": RESPONSE,
         "functionspan": EXECUTE_TOOL,
         "agentspan": INVOKE_AGENT,
+        "mcplisttoolsspandata": LIST_TOOLS,
+        "mcplisttoolsspan": LIST_TOOLS,
     }
 
 
@@ -375,7 +384,7 @@ def get_span_name(
     if operation_name == GenAIOperationName.INVOKE_AGENT:
         return f"{base_name} {agent_name}" if agent_name else base_name
 
-    if operation_name == GenAIOperationName.EXECUTE_TOOL:
+    if operation_name in {GenAIOperationName.EXECUTE_TOOL, GenAIOperationName.LIST_TOOLS}:
         return f"{base_name} {tool_name}" if tool_name else base_name
 
     if operation_name == GenAIOperationName.HANDOFF:
@@ -878,7 +887,11 @@ class GenAISemanticProcessor(TracingProcessor):
             self._content_mode.capture_in_span or self._content_mode.capture_in_event
         )
         capture_tools = self._content_mode.capture_in_span or (
-            self._content_mode.capture_in_event and _is_instance_of(span_data, FunctionSpanData)
+            self._content_mode.capture_in_event
+            and (
+                _is_instance_of(span_data, (FunctionSpanData, MCPListToolsSpanData))
+                or getattr(span_data, "type", None) == "mcp_tools"
+            )
         )
 
         if _is_instance_of(span_data, GenerationSpanData):
@@ -911,7 +924,10 @@ class GenAISemanticProcessor(TracingProcessor):
                 if normalized_out:
                     payload.output_messages = normalized_out
 
-        elif _is_instance_of(span_data, FunctionSpanData) and capture_tools:
+        elif (
+            _is_instance_of(span_data, (FunctionSpanData, MCPListToolsSpanData))
+            or getattr(span_data, "type", None) == "mcp_tools"
+        ) and capture_tools:
 
             def _serialize_tool_value(value: Any) -> str | None:
                 if value is None:
@@ -920,8 +936,11 @@ class GenAISemanticProcessor(TracingProcessor):
                     return safe_json_dumps(value)
                 return str(value)
 
-            payload.tool_arguments = _serialize_tool_value(getattr(span_data, "input", None))
-            payload.tool_result = _serialize_tool_value(getattr(span_data, "output", None))
+            if _is_instance_of(span_data, FunctionSpanData):
+                payload.tool_arguments = _serialize_tool_value(getattr(span_data, "input", None))
+                payload.tool_result = _serialize_tool_value(getattr(span_data, "output", None))
+            else:
+                payload.tool_result = _serialize_tool_value(getattr(span_data, "result", None))
 
         return payload
 
@@ -971,7 +990,10 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
-        if _is_instance_of(span_data, FunctionSpanData):
+        if (
+            _is_instance_of(span_data, (FunctionSpanData, MCPListToolsSpanData))
+            or getattr(span_data, "type", None) == "mcp_tools"
+        ):
             # Tool results are typically JSON
             return GenAIOutputType.JSON
         if _is_instance_of(span_data, TranscriptionSpanData):
@@ -1084,16 +1106,20 @@ class GenAISemanticProcessor(TracingProcessor):
         """Determine appropriate span kind based on span data type."""
         if _is_instance_of(span_data, FunctionSpanData):
             return SpanKind.INTERNAL  # Tool execution is internal
-        if _is_instance_of(
-            span_data,
-            (
-                GenerationSpanData,
-                ResponseSpanData,
-                TranscriptionSpanData,
-                SpeechSpanData,
-            ),
+        if (
+            _is_instance_of(
+                span_data,
+                (
+                    GenerationSpanData,
+                    ResponseSpanData,
+                    TranscriptionSpanData,
+                    SpeechSpanData,
+                    MCPListToolsSpanData,
+                ),
+            )
+            or getattr(span_data, "type", None) == "mcp_tools"
         ):
-            return SpanKind.CLIENT  # API calls to model providers
+            return SpanKind.CLIENT  # API calls to model providers or MCP server
         if _is_instance_of(span_data, AgentSpanData):
             return SpanKind.CLIENT
         if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
@@ -1166,6 +1192,11 @@ class GenAISemanticProcessor(TracingProcessor):
             agent_name = self._agent_name_default
 
         tool_name = getattr(span.span_data, "name", None) if _is_instance_of(span.span_data, FunctionSpanData) else None
+        if not tool_name and (
+            _is_instance_of(span.span_data, MCPListToolsSpanData)
+            or getattr(span.span_data, "type", None) == "mcp_tools"
+        ):
+            tool_name = getattr(span.span_data, "server", None)
 
         # Generate spec-compliant span name
         span_name = get_span_name(operation_name, model, agent_name, tool_name)
@@ -1316,6 +1347,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
+        if _is_instance_of(span_data, MCPListToolsSpanData) or getattr(span_data, "type", None) == "mcp_tools":
+            return GenAIOperationName.LIST_TOOLS
         if _is_instance_of(span_data, ResponseSpanData):
             return GenAIOperationName.CHAT  # Response typically from chat
         if _is_instance_of(span_data, TranscriptionSpanData):
@@ -1326,6 +1359,9 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
+        cls_name = getattr(getattr(span_data, "__class__", None), "__name__", "").lower()
+        if cls_name in GenAIOperationName.CLASS_FALLBACK:
+            return GenAIOperationName.CLASS_FALLBACK[cls_name]
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1364,6 +1400,8 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_agent_span_data(span_data, agent_content)
         elif _is_instance_of(span_data, FunctionSpanData):
             yield from self._get_attributes_from_function_span_data(span_data, payload)
+        elif _is_instance_of(span_data, MCPListToolsSpanData) or getattr(span_data, "type", None) == "mcp_tools":
+            yield from self._get_attributes_from_mcp_list_tools_span_data(span_data, payload)
         elif _is_instance_of(span_data, ResponseSpanData):
             yield from self._get_attributes_from_response_span_data(span_data, payload)
         elif _is_instance_of(span_data, TranscriptionSpanData):
@@ -1683,6 +1721,32 @@ class GenAISemanticProcessor(TracingProcessor):
 
         if self.include_sensitive_data and self._content_mode.capture_in_span and payload.tool_result is not None:
             yield GEN_AI_TOOL_CALL_RESULT, payload.tool_result
+
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_mcp_list_tools_span_data(
+        self, span_data: Any, payload: ContentPayload
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from MCP list tools span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.LIST_TOOLS
+
+        server = getattr(span_data, "server", None)
+        if server:
+            yield GEN_AI_TOOL_NAME, str(server)
+            yield ServerAttributes.SERVER_ADDRESS, str(server)
+
+        yield GEN_AI_TOOL_TYPE, validate_tool_type("function")
+
+        result = getattr(span_data, "result", None)
+        if result is not None:
+            serialized = safe_json_dumps(result)
+            if self._capture_tool_definitions:
+                yield GEN_AI_TOOL_DEFINITIONS, serialized
+            if self.include_sensitive_data and self._content_mode.capture_in_span:
+                yield GEN_AI_TOOL_CALL_RESULT, serialized
 
         yield (
             GEN_AI_OUTPUT_TYPE,
