@@ -228,7 +228,7 @@ def _set_consumer_group(
         attributes[MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
 
 
-def _set_new_mode_extras(
+def _set_new_mode_offset_and_batch_attributes(
     attributes: dict,
     offset: int | None,
     message_count: int | None,
@@ -278,10 +278,9 @@ def _enrich_span(
 
     _set_partition(attributes, partition, sem_conv_opt_in_mode)
     _set_consumer_group(attributes, consumer_group, sem_conv_opt_in_mode)
-    _set_new_mode_extras(attributes, offset, message_count, sem_conv_opt_in_mode)
+    _set_new_mode_offset_and_batch_attributes(attributes, offset, message_count, sem_conv_opt_in_mode)
 
-    for key, value in attributes.items():
-        span.set_attribute(key, value)
+    span.set_attributes(attributes)
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
