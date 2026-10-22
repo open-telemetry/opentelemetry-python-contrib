@@ -14,8 +14,11 @@
 
 """Tests for sync Messages.create instrumentation."""
 
+from importlib.metadata import version as _package_version
+
 import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
+from packaging.version import Version
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
@@ -27,6 +30,8 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+
+_anthropic_version = _package_version("anthropic")
 
 
 def assert_span_attributes(
@@ -114,6 +119,10 @@ def test_sync_messages_create_basic(
     )
 
 
+@pytest.mark.skipif(
+    Version(_anthropic_version) >= Version("1.0.0"),
+    reason="anthropic 1.0 removed temperature, top_p and top_k from messages.create()",
+)
 @pytest.mark.vcr()
 def test_sync_messages_create_with_all_params(
     span_exporter, anthropic_client, instrument_no_content

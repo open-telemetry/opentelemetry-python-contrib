@@ -115,7 +115,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         for sub_messages in messages:
             for message in sub_messages:
                 # Cast to Any to avoid type checking issues with LangChain's complex content type
-                raw_content: Any = message.content  # type: ignore[misc]
+                raw_content: Any = message.content
                 role = message.type
                 parts: list[Text] = []
 
