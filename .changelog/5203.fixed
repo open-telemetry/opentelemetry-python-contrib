@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-agents-v2`: Support `MCPListToolsSpanData` in span processor instead of defaulting to `unknown`
