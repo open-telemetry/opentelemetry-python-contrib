@@ -65,6 +65,18 @@ variables:
 * ``--distro`` or ``OTEL_PYTHON_DISTRO``
 * ``--configurator`` or ``OTEL_PYTHON_CONFIGURATOR``
 
+As auto-instrumentation successfully loads each instrumentation, it logs a
+message at DEBUG. Once initialization completes, it logs a startup confirmation
+at INFO. The default minimum level is INFO, so only the confirmation is
+printed by default. To also print instrumentation loading messages, set ``OTEL_LOG_LEVEL``
+to ``debug`` or ``trace``.
+When ``OTEL_CONFIG_FILE`` is set, messages logged after the file is loaded use
+its ``log_level`` setting.
+
+Auto-instrumentation typically starts before application or OpenTelemetry
+logging is configured, so these messages go to stderr. If application logging
+is already configured when initialization starts, its settings control the output.
+
 The exporter options define what exporter destination to use and can be set to one or more
 exporter names (see below). You can pass multiple values to configure multiple exporters
 (e.g., ``zipkin_json,otlp``).
