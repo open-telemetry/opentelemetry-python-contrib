@@ -1,11 +1,17 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import fastapi
+import pytest
 from starlette.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
 from opentelemetry.test.test_base import TestBase
+
+pytestmark = pytest.mark.skipif(
+    otel_fastapi.telemetry is not None,
+    reason="FastAPI provides native OpenTelemetry instrumentation",
+)
 
 
 class TestWrappedApplication(TestBase):
