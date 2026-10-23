@@ -7,9 +7,8 @@ from collections.abc import Generator, Mapping
 from logging import getLogger
 from typing import Any, Final
 
-from uuid_utils import uuid7
-
 from opentelemetry._opamp import messages
+from opentelemetry._opamp._uuid import uuid7
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.transport.base import HttpTransport
 from opentelemetry._opamp.transport.requests import RequestsTransport
