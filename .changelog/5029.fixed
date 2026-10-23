@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-client`: create the duration histograms and the tracer once instead of per `ClientSession`. `instrument()` now resolves the tracer and meter providers when it is called, matching `requests` and `httpx`, so a provider set after `instrument()` is no longer picked up
