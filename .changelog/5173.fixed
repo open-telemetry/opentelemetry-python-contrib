@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-wsgi`: do not crash on non latin-1 `SCRIPT_NAME`/`PATH_INFO` when `RAW_URI`/`REQUEST_URI` are not set
