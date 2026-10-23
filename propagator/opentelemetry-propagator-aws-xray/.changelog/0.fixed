@@ -1,0 +1,1 @@
+`opentelemetry-propagator-aws-xray`: fix Lambda extraction with custom getters

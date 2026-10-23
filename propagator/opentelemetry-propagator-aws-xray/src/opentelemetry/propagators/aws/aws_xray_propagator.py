@@ -333,5 +333,4 @@ class AwsXRayLambdaPropagator(AwsXRayPropagator):
         return super().extract(
             {TRACE_HEADER_KEY: trace_header},
             context=xray_context,
-            getter=getter,
         )

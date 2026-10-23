@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from email.message import Message
 from os import environ
 from unittest import TestCase
 from unittest.mock import patch
@@ -12,7 +13,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayLambdaPropagator,
 )
-from opentelemetry.propagators.textmap import DefaultGetter
+from opentelemetry.propagators.textmap import DefaultGetter, Getter
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import (
     Link,
@@ -23,6 +24,14 @@ from opentelemetry.trace import (
     use_span,
 )
 from opentelemetry.util._importlib_metadata import entry_points
+
+
+class MessageGetter(Getter[Message]):
+    def get(self, carrier: Message, key: str) -> list[str] | None:
+        return carrier.get_all(key)
+
+    def keys(self, carrier: Message) -> list[str]:
+        return carrier.keys()
 
 
 class AwsXRayLambdaPropagatorTest(TestCase):
@@ -66,6 +75,19 @@ class AwsXRayLambdaPropagatorTest(TestCase):
             actual_context.trace_flags.sampled,
         )
         self.assertEqual(actual_context.trace_state, TraceState.get_default())
+
+    @patch.dict(
+        environ,
+        {"_X_AMZN_TRACE_ID": "Root=1-00000001-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"},
+    )
+    def test_extract_from_environment_variable_with_custom_getter(self):
+        actual_context = get_current_span(
+            AwsXRayLambdaPropagator().extract(Message(), context=get_current(), getter=MessageGetter())
+        ).get_span_context()
+
+        self.assertEqual(actual_context.trace_id, 0x1D188F8FA79D48A391A778FA6)
+        self.assertEqual(actual_context.span_id, 0x53995C3F42CD8AD8)
+        self.assertTrue(actual_context.trace_flags.sampled)
 
     @patch.dict(
         environ,
