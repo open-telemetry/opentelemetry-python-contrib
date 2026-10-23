@@ -126,6 +126,18 @@ class TestOTTracePropagator(TestCase):
             "false",
         )
 
+    def test_inject_sampled_with_additional_trace_flags(self):
+        for trace_flags in (0x02, 0x03, 0xFE, 0xFF):
+            with self.subTest(trace_flags=trace_flags):
+                carrier = self.carrier_inject(
+                    int("80f198ee56343ba864fe8b2a57d3eff7", 16),
+                    int("e457b5a2e4d86bd1", 16),
+                    True,
+                    TraceFlags(trace_flags),
+                )
+
+                self.assertEqual(carrier[OT_SAMPLED_HEADER], "true" if trace_flags & TraceFlags.SAMPLED else "false")
+
     def test_inject_invalid_trace_id(self):
         """Test that no attributes are injected if the trace_id is invalid"""
 

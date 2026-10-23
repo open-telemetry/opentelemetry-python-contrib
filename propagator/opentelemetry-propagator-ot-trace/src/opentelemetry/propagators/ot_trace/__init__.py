@@ -149,7 +149,7 @@ class OTTracePropagator(TextMapPropagator):
             hex(span_context.span_id)[2:][-16:],
         )
 
-        if span_context.trace_flags == TraceFlags.SAMPLED:
+        if span_context.trace_flags & TraceFlags.SAMPLED:
             traceflags = "true"
         else:
             traceflags = "false"
