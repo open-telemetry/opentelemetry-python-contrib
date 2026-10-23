@@ -27,6 +27,17 @@ import botocore.client
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _set_messaging_conversation_id,
+    _set_messaging_destination,
+    _set_messaging_operation,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
@@ -45,6 +56,20 @@ from .package import _instruments
 from .version import __version__
 
 _logger = logging.getLogger(__name__)
+
+_MESSAGING_SYSTEM_OLD = "aws.sqs"
+
+
+def _get_messaging_semconv_mode() -> _StabilityMode:
+    """Return the current messaging semantic-convention stability mode.
+
+    Resolved lazily on every call (rather than once at instrument time)
+    because ``_enrich_span`` is a static helper called from the wrappers.
+    """
+    return _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
+        _OpenTelemetryStabilitySignalType.MESSAGING
+    ]
+
 
 _IS_SQS_INSTRUMENTED_ATTRIBUTE = "_otel_boto3sqs_instrumented"
 
@@ -135,20 +160,51 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     ) -> None:
         if not span.is_recording():
             return
-        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
-        span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_KIND,
-            MessagingDestinationKindValues.QUEUE.value,
-        )
-        span.set_attribute(SpanAttributes.MESSAGING_URL, queue_url)
+        sem_conv_opt_in_mode = _get_messaging_semconv_mode()
+        attributes: dict[str, Any] = {}
+
+        # messaging.system changed value between conventions ("aws.sqs"
+        # -> "aws_sqs"), so one key cannot carry both in dup mode; the
+        # new value wins there, matching the new conventions.
+        if _report_old(sem_conv_opt_in_mode):
+            attributes[messaging_attributes.MESSAGING_SYSTEM] = _MESSAGING_SYSTEM_OLD
+        if _report_new(sem_conv_opt_in_mode):
+            attributes[messaging_attributes.MESSAGING_SYSTEM] = messaging_attributes.MessagingSystemValues.AWS_SQS.value
+
+        _set_messaging_destination(attributes, queue_name, sem_conv_opt_in_mode)
+
+        if _report_old(sem_conv_opt_in_mode):
+            attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.QUEUE.value
+            # messaging.url has no replacement in the new conventions.
+            attributes[SpanAttributes.MESSAGING_URL] = queue_url
 
         if operation:
-            span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+            if operation == MessagingOperationValues.PUBLISH:
+                # Send spans never carried a messaging.operation attribute
+                # before this change, so one is added only where the new
+                # conventions require it (operation.name + operation.type
+                # of "send"); the old-mode spans stay byte-identical.
+                if _report_new(sem_conv_opt_in_mode):
+                    attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = (
+                        messaging_attributes.MessagingOperationTypeValues.SEND.value
+                    )
+                    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = (
+                        messaging_attributes.MessagingOperationTypeValues.SEND.value
+                    )
+            else:
+                _set_messaging_operation(attributes, operation.value, sem_conv_opt_in_mode)
+                if _report_new(sem_conv_opt_in_mode):
+                    # messaging.operation.name is required by the new
+                    # conventions; the span name already carries this value
+                    # ("<queue> process" / "<queue> receive").
+                    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = operation.value
         if conversation_id:
-            span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id)
+            _set_messaging_conversation_id(attributes, conversation_id, sem_conv_opt_in_mode)
         if message_id:
-            span.set_attribute(messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
+            # messaging.message.id is identical across conventions.
+            attributes[messaging_attributes.MESSAGING_MESSAGE_ID] = message_id
+
+        span.set_attributes(attributes)
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:
@@ -204,7 +260,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 kind=SpanKind.PRODUCER,
                 end_on_exit=True,
             ) as span:
-                Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
+                Boto3SQSInstrumentor._enrich_span(
+                    span,
+                    queue_name,
+                    queue_url,
+                    operation=MessagingOperationValues.PUBLISH,
+                )
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
@@ -233,7 +294,13 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 entry_id = entry["Id"]
                 span = self._tracer.start_span(name=f"{queue_name} send", kind=SpanKind.PRODUCER)
                 ids_to_spans[entry_id] = span
-                Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url, conversation_id=entry_id)
+                Boto3SQSInstrumentor._enrich_span(
+                    span,
+                    queue_name,
+                    queue_url,
+                    conversation_id=entry_id,
+                    operation=MessagingOperationValues.PUBLISH,
+                )
                 with trace.use_span(span):
                     if "MessageAttributes" not in entry:
                         entry["MessageAttributes"] = {}
@@ -364,11 +431,14 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: dict[str, Any]) -> None:
         self._tracer_provider: TracerProvider | None = kwargs.get("tracer_provider")
+        # Initialize the stability modes before resolving the schema URL so
+        # OTEL_SEMCONV_STABILITY_OPT_IN is honored.
+        _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))
         self._tracer: Tracer = trace.get_tracer(
             __name__,
             __version__,
             self._tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
         self._wrap_client_creation()
 
