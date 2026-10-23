@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: add ability to configure scope attributes for `LoggingHandler`

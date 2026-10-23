@@ -3,6 +3,7 @@
 
 import logging
 import os
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -35,6 +36,18 @@ class MutatingFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         record.my_special_attr = "my-special-attr-value"
         return super().format(record)
+
+
+def _make_record(name: str, msg: str = "test message") -> logging.LogRecord:
+    return logging.LogRecord(
+        name=name,
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg=msg,
+        args=(),
+        exc_info=None,
+    )
 
 
 # pylint: disable=too-many-public-methods
@@ -534,6 +547,126 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_scope_attributes_passed_to_get_logger(self, mock_get_logger):
+        """scope_attributes are forwarded to get_logger on every emit."""
+        mock_get_logger.return_value = Mock()
+        scope_attrs = {
+            "service.name": "test-service",
+            "deployment.environment": "prod",
+        }
+        logger_provider = LoggerProvider()
+        logger = logging.getLogger("test_scope_attrs_passed")
+        handler = LoggingHandler(
+            level=logging.WARNING,
+            logger_provider=logger_provider,
+            scope_attributes=scope_attrs,
+        )
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        logger.warning("Test scope attributes")
+
+        mock_get_logger.assert_called_once()
+        _, call_kwargs = mock_get_logger.call_args
+        self.assertEqual(call_kwargs.get("attributes"), scope_attrs)
+
+    def test_scope_attributes_appear_on_instrumentation_scope(self):
+        """scope_attributes end up on the instrumentation scope of emitted records."""
+        scope_attrs = {"service.name": "test-service"}
+        processor, logger, handler = set_up_test_logging(logging.WARNING, scope_attributes=scope_attrs)
+        self.addCleanup(logger.removeHandler, handler)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning("Test instrumentation scope")
+
+        record = processor.get_log_record(0)
+        self.assertIsNotNone(record.instrumentation_scope)
+        self.assertEqual(
+            record.instrumentation_scope.attributes["service.name"],
+            "test-service",
+        )
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_scope_attributes_none_by_default(self, mock_get_logger):
+        """Without scope_attributes, get_logger is called with attributes=None."""
+        mock_get_logger.return_value = Mock()
+        logger_provider = LoggerProvider()
+        logger = logging.getLogger("test_scope_attrs_none")
+        handler = LoggingHandler(
+            level=logging.WARNING,
+            logger_provider=logger_provider,
+        )
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        logger.warning("Test no scope attributes")
+
+        mock_get_logger.assert_called_once()
+        _, call_kwargs = mock_get_logger.call_args
+        self.assertIsNone(call_kwargs.get("attributes"))
+
+    @staticmethod
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_reuses_logger_for_same_record_name(mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        handler.emit(_make_record("same.name"))
+        handler.emit(_make_record("same.name"))
+        handler.emit(_make_record("same.name"))
+
+        mock_get_logger.assert_called_once()
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_misses_for_different_record_names(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        handler.emit(_make_record("name.a"))
+        handler.emit(_make_record("name.b"))
+
+        self.assertEqual(mock_get_logger.call_count, 2)
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_evicts_least_recently_used_entry(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        for index in range(128):
+            handler.emit(_make_record(f"logger.{index}"))
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.0"))
+        self.assertEqual(mock_get_logger.call_count, 0)
+
+        handler.emit(_make_record("logger.128"))
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.1"))
+        mock_get_logger.assert_called_once()
+        mock_get_logger.reset_mock()
+
+        handler.emit(_make_record("logger.0"))
+        mock_get_logger.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_logger_cache_is_thread_local(self, mock_get_logger):
+        mock_get_logger.return_value = Mock()
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+
+        def emit_twice():
+            handler.emit(_make_record("shared.name"))
+            handler.emit(_make_record("shared.name"))
+
+        threads = [threading.Thread(target=emit_twice) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(mock_get_logger.call_count, 4)
+
     def test_logging_handler_without_env_var_uses_default_limit(self):
         """Test that without OTEL_ATTRIBUTE_COUNT_LIMIT, default limit (128) should apply."""
         processor, logger, _ = set_up_test_logging(logging.WARNING)
@@ -773,7 +906,13 @@ class GetLogLevelTestCase(unittest.TestCase):
         self.assertTrue(any("foobar" in line for line in cm.output))
 
 
-def set_up_test_logging(level, formatter=None, root_logger=False, log_code_attributes=False):
+def set_up_test_logging(
+    level,
+    formatter=None,
+    root_logger=False,
+    log_code_attributes=False,
+    scope_attributes=None,
+):
     logger_provider = LoggerProvider()
     processor = FakeProcessor()
     logger_provider.add_log_record_processor(processor)
@@ -782,6 +921,7 @@ def set_up_test_logging(level, formatter=None, root_logger=False, log_code_attri
         level=level,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
+        scope_attributes=scope_attributes,
     )
     if formatter:
         handler.setFormatter(formatter)
