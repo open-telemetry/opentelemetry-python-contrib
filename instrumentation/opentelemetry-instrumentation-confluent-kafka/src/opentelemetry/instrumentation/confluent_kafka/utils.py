@@ -4,12 +4,27 @@
 from logging import getLogger
 
 from opentelemetry import context, propagate
+from opentelemetry.instrumentation._semconv import (
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _set_messaging_destination,
+    _set_messaging_operation,
+    _set_messaging_temp_destination,
+    _StabilityMode,
+)
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_BATCH_MESSAGE_COUNT,
+    MESSAGING_CONSUMER_GROUP_NAME,
+    MESSAGING_DESTINATION_PARTITION_ID,
+    MESSAGING_KAFKA_OFFSET,
     MESSAGING_MESSAGE_ID,
-    MESSAGING_OPERATION,
+    MESSAGING_OPERATION_NAME,
     MESSAGING_SYSTEM,
     MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -22,6 +37,18 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
+
+
+def _get_messaging_semconv_mode() -> _StabilityMode:
+    """Return the current messaging semantic-convention stability mode.
+
+    Resolved lazily on every call (rather than once at instrument time)
+    because ``instrument_producer``/``instrument_consumer`` are static
+    entry points that bypass ``_instrument()``.
+    """
+    return _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
+        _OpenTelemetryStabilitySignalType.MESSAGING
+    ]
 
 
 class KafkaPropertiesExtractor:
@@ -42,6 +69,15 @@ class KafkaPropertiesExtractor:
         if len(args) > position:
             return args[position]
         return kwargs.get(key, default_value)
+
+    @staticmethod
+    def extract_consumer_group(instance):
+        config = getattr(instance, "config", None)
+        if not isinstance(config, dict):
+            return None
+        # confluent-kafka uses the dotted key "group.id"; also accept the
+        # python-style "group_id" for robustness.
+        return config.get("group.id") or config.get("group_id")
 
     @staticmethod
     def extract_produce_topic(args, kwargs):
@@ -149,6 +185,63 @@ def _set_bootstrap_servers_attributes(span, bootstrap_servers):
         span.set_attribute(SERVER_ADDRESS, first_broker)
 
 
+def _set_operation_name(
+    attributes: dict,
+    operation: MessagingOperationTypeValues,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    if not _report_new(sem_conv_opt_in_mode):
+        return
+    # `messaging.operation.name` is required by the new conventions. The
+    # span name already carries this value (`send` for produce spans,
+    # `process` for consume spans).
+    attributes[MESSAGING_OPERATION_NAME] = (
+        MessagingOperationTypeValues.SEND.value
+        if operation.value == MessagingOperationTypeValues.PUBLISH.value
+        else operation.value
+    )
+
+
+def _set_partition(
+    attributes: dict,
+    partition: int | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    if partition is None:
+        return
+    if _report_old(sem_conv_opt_in_mode):
+        attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+    if _report_new(sem_conv_opt_in_mode):
+        attributes[MESSAGING_DESTINATION_PARTITION_ID] = str(partition)
+
+
+def _set_consumer_group(
+    attributes: dict,
+    consumer_group: str | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    if not consumer_group:
+        return
+    if _report_old(sem_conv_opt_in_mode):
+        attributes[SpanAttributes.MESSAGING_KAFKA_CONSUMER_GROUP] = consumer_group
+    if _report_new(sem_conv_opt_in_mode):
+        attributes[MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
+
+
+def _set_new_mode_offset_and_batch_attributes(
+    attributes: dict,
+    offset: int | None,
+    message_count: int | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    if not _report_new(sem_conv_opt_in_mode):
+        return
+    if offset is not None:
+        attributes[MESSAGING_KAFKA_OFFSET] = offset
+    if message_count is not None:
+        attributes[MESSAGING_BATCH_MESSAGE_COUNT] = message_count
+
+
 def _enrich_span(
     span,
     topic,
@@ -156,25 +249,38 @@ def _enrich_span(
     offset: int | None = None,
     operation: MessagingOperationTypeValues | None = None,
     bootstrap_servers: str | None = None,
+    consumer_group: str | None = None,
+    message_count: int | None = None,
+    sem_conv_opt_in_mode: _StabilityMode | None = None,
 ):
     if not span.is_recording():
         return
 
-    span.set_attribute(MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
+    if sem_conv_opt_in_mode is None:
+        sem_conv_opt_in_mode = _get_messaging_semconv_mode()
 
-    if partition is not None:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+    attributes: dict = {}
 
-    span.set_attribute(
-        SpanAttributes.MESSAGING_DESTINATION_KIND,
-        MessagingDestinationKindValues.QUEUE.value,
-    )
+    attributes[MESSAGING_SYSTEM] = MessagingSystemValues.KAFKA.value
+
+    _set_messaging_destination(attributes, topic, sem_conv_opt_in_mode)
 
     if operation:
-        span.set_attribute(MESSAGING_OPERATION, operation.value)
+        # The old `messaging.operation` value is passed to the shared
+        # helper, which maps `publish` to the new `send` operation type.
+        _set_messaging_operation(attributes, operation.value, sem_conv_opt_in_mode)
+        _set_operation_name(attributes, operation, sem_conv_opt_in_mode)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+        _set_messaging_temp_destination(attributes, True, sem_conv_opt_in_mode)
+
+    if _report_old(sem_conv_opt_in_mode):
+        attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.QUEUE.value
+
+    _set_partition(attributes, partition, sem_conv_opt_in_mode)
+    _set_consumer_group(attributes, consumer_group, sem_conv_opt_in_mode)
+    _set_new_mode_offset_and_batch_attributes(attributes, offset, message_count, sem_conv_opt_in_mode)
+
+    span.set_attributes(attributes)
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
