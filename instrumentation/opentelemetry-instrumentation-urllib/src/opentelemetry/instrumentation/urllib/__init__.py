@@ -167,8 +167,9 @@ API
 from __future__ import annotations
 
 import functools
+import io
 import types
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Sized
 from http import client
 from timeit import default_timer
 from typing import Any
@@ -362,7 +363,7 @@ def _instrument(
         url = redact_url(url)
 
         data = getattr(request, "data", None)
-        request_size = 0 if data is None else len(data)
+        request_size = _get_body_size(data)
 
         labels = {}
 
@@ -551,11 +552,21 @@ def _create_client_histograms(
     return histograms
 
 
+def _get_body_size(body: object) -> int | None:
+    if body is None:
+        return 0
+    if isinstance(body, Sized):
+        return len(body)
+    if isinstance(body, io.BytesIO):
+        return body.getbuffer().nbytes
+    return None
+
+
 def _record_histograms(
     histograms: dict[str, Histogram],
     metric_attributes_old: Attributes,
     metric_attributes_new: Attributes,
-    request_size: int,
+    request_size: int | None,
     response_size: int,
     duration_s: float,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
@@ -563,9 +574,13 @@ def _record_histograms(
     if _report_old(sem_conv_opt_in_mode):
         duration = max(round(duration_s * 1000), 0)
         histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(duration, attributes=metric_attributes_old)
-        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(request_size, attributes=metric_attributes_old)
+        if request_size is not None:
+            histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(
+                request_size, attributes=metric_attributes_old
+            )
         histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(response_size, attributes=metric_attributes_old)
     if _report_new(sem_conv_opt_in_mode):
         histograms[HTTP_CLIENT_REQUEST_DURATION].record(duration_s, attributes=metric_attributes_new)
-        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE].record(request_size, attributes=metric_attributes_new)
+        if request_size is not None:
+            histograms[HTTP_CLIENT_REQUEST_BODY_SIZE].record(request_size, attributes=metric_attributes_new)
         histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE].record(response_size, attributes=metric_attributes_new)

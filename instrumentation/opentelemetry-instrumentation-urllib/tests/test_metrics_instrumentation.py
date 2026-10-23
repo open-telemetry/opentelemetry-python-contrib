@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import io
 from platform import python_implementation
 from timeit import default_timer
 from unittest.mock import patch
@@ -386,6 +387,37 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
+            )
+
+    def test_bytesio_request_body_size_metrics(self):
+        with request.urlopen(self.URL_POST, data=io.BytesIO(b"foobar")) as result:
+            metrics = self.get_sorted_metrics(SCOPE)
+            (_, client_request_size, _) = metrics
+
+            self.assertEqual(
+                client_request_size.name,
+                MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+            )
+            self.assert_metric_expected(
+                client_request_size,
+                self.create_histogram_data_points(
+                    6,
+                    attributes={
+                        "http.status_code": int(result.code),
+                        "http.method": "POST",
+                        "http.url": str(result.url),
+                        "http.flavor": "1.1",
+                    },
+                ),
+            )
+
+    def test_generator_request_body_size_metrics(self):
+        with request.urlopen(self.URL_POST, data=(b for b in (b"foo", b"bar"))):
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 2)
+            self.assertNotIn(
+                MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+                [m.name for m in metrics],
             )
 
     @mark.skipif(python_implementation() == "PyPy", reason="Fails randomly in pypy")
