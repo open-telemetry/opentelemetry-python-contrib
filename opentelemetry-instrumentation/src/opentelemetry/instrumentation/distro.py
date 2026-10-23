@@ -1,6 +1,5 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# type: ignore
 
 """
 OpenTelemetry Base Distribution (Distro)
@@ -47,7 +46,7 @@ class BaseDistro(ABC):
         passing additional arguments, load a replacement/fork instead,
         skip loading entirely, etc.
         """
-        instrumentor: BaseInstrumentor = entry_point.load()
+        instrumentor: type[BaseInstrumentor] = entry_point.load()
         instrumentor().instrument(**kwargs)
 
 
