@@ -28,6 +28,7 @@ class TestUtils(unittest.TestCase):
             "expires": "later",
             "hostname": "localhost",
             "id": "44b7f305",
+            "origin": "gen8@localhost",
             "reply_to": "44b7f305",
             "retries": 4,
             "timelimit": ("now", "later"),
@@ -52,11 +53,22 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
+        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
         self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
         self.assertNotIn("custom_meta", span.attributes)
+
+    def test_set_attributes_from_context_origin_not_aliased_to_hostname(self):
+        # `origin` is the publisher's nodename, not the worker hostname
+        context = {"origin": "gen8@localhost"}
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
+        self.assertNotIn("celery.hostname", span.attributes)
 
     def test_set_attributes_not_recording(self):
         # it should extract only relevant keys
