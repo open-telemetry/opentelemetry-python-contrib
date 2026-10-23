@@ -279,6 +279,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_request_body_size,
     create_http_server_response_body_size,
 )
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -526,7 +527,25 @@ def get_default_span_details(scope: dict) -> tuple[str, dict]:
     return method, {}  # http with no path
 
 
-def _collect_target_attribute(
+def _collect_target_attribute_from_span(
+    attributes: typing.Mapping[str, typing.Any],
+    root_path: str,
+) -> str | None:
+    """
+    Returns the target path from the http.route span attribute, or None.
+
+    http.route is relative to the root_path that was in the scope when it was
+    computed, so that is the root_path to pass. Mounts change
+    scope["root_path"] while the request is handled, so the value at the end
+    of the request must not be used here.
+    """
+    route = attributes.get(HTTP_ROUTE)
+    if not route:
+        return None
+    return f"{root_path}{route}"
+
+
+def _collect_target_attribute_from_scope(
     scope: dict[str, typing.Any],
 ) -> str | None:
     """
@@ -541,15 +560,10 @@ def _collect_target_attribute(
     Note: this function requires specific code for each framework, as there's no
     standard attribute to use.
     """
-    # FastAPI
-    root_path = scope.get("root_path", "")
-
-    route = scope.get("route")
-    path_format = getattr(route, "path_format", None)
-    if path_format:
-        return f"{root_path}{path_format}"
-
-    return None
+    path_format = getattr(scope.get("route"), "path_format", None)
+    if not path_format:
+        return None
+    return f"{scope.get('root_path', '')}{path_format}"
 
 
 class OpenTelemetryMiddleware:
@@ -734,6 +748,7 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
+        root_path = scope.get("root_path", "")
         span_name, additional_attributes = self.default_span_details(scope)
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
@@ -779,7 +794,9 @@ class OpenTelemetryMiddleware:
                 await self.app(scope, otel_receive, otel_send)
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute(scope)
+                target = _collect_target_attribute_from_span(
+                    attributes, root_path
+                ) or _collect_target_attribute_from_scope(scope)
                 if target:
                     path, query = _parse_url_query(target)
                     _set_http_target(
