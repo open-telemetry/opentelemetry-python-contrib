@@ -10,7 +10,8 @@ from __future__ import annotations
 import importlib
 import logging
 import os
-from typing import Any, Collection
+from collections.abc import Collection
+from typing import Any
 
 from typing_extensions import deprecated
 
@@ -33,12 +34,12 @@ from .span_processor import (
 )
 
 __all__ = [
-    "OpenAIAgentsInstrumentor",
-    "GenAIProvider",
-    "GenAIOperationName",
-    "GenAIToolType",
-    "GenAIOutputType",
     "GenAIEvaluationAttributes",
+    "GenAIOperationName",
+    "GenAIOutputType",
+    "GenAIProvider",
+    "GenAIToolType",
+    "OpenAIAgentsInstrumentor",
 ]
 
 logger = logging.getLogger(__name__)

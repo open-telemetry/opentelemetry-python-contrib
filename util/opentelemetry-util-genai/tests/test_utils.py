@@ -4,7 +4,8 @@
 import json
 import os
 import unittest
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 from unittest.mock import patch
 
 from opentelemetry import trace
@@ -128,7 +129,7 @@ def _assert_text_message(
     message: Mapping[str, Any],
     role: str,
     content: str,
-    finish_reason: Optional[str] = None,
+    finish_reason: str | None = None,
 ) -> None:
     assert message.get("role") == role
     parts = message.get("parts")

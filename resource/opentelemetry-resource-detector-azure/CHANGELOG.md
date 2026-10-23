@@ -15,6 +15,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 0.3.0 (2026-09-29)
+
+### Added
+
+- `opentelemetry-resource-detector-azure`: add AKS resource detector
+  ([#5012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5012))
+
+### Changed
+
+- `opentelemetry-resource-detector-azure`: add owners JacksonWeber and
+  rads-1996
+  ([#4973](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4973))
+- Make azure app service and azure functions resource detector process
+  dependent
+  ([#5075](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5075))
+
+## Version 0.2.0 (2026-08-20)
+
+### Changed
+
+- Ensure consistently use of suppress_instrumentation utils
+  ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
+- Update `opentelemetry-instrumentation` version to 0.44b0
+  ([#2961](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2961))
+
 ## Version 0.1.5 (2024-05-16)
 
 - Ignore vm detector if already in other rps

@@ -256,7 +256,7 @@ class TestValidation(unittest.TestCase):
 # Ensures export is successful with valid export_records and config
 @patch("requests.post")
 def test_valid_export(mock_post, prom_rw, metric):
-    mock_post.return_value.configure_mock(**{"status_code": 200})
+    mock_post.return_value.configure_mock(status_code=200)
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
     scope = ScopeMetrics(InstrumentationScope(name="prom-rw-test"), [metric], None)
@@ -280,19 +280,36 @@ def test_invalid_export(prom_rw):
 
 @patch("requests.post")
 def test_valid_send_message(mock_post, prom_rw):
-    mock_post.return_value.configure_mock(**{"ok": True})
-    result = prom_rw._send_message(bytes(), {})
+    mock_post.return_value.configure_mock(ok=True)
+    result = prom_rw._send_message(b"", {})
     assert mock_post.call_count == 1
     assert result == MetricExportResult.SUCCESS
 
 
 def test_invalid_send_message(prom_rw):
-    result = prom_rw._send_message(bytes(), {})
+    result = prom_rw._send_message(b"", {})
     assert result == MetricExportResult.FAILURE
 
 
+# insecure_skip_verify=True must disable TLS verification, i.e. verify=False
+@pytest.mark.parametrize(
+    "insecure_skip_verify,expected_verify",
+    [(True, False), (False, True)],
+)
+@patch("requests.post")
+def test_send_message_insecure_skip_verify(mock_post, insecure_skip_verify, expected_verify):
+    mock_post.return_value.configure_mock(ok=True)
+    exporter = PrometheusRemoteWriteMetricsExporter(
+        "http://victoria:8428/api/v1/write",
+        tls_config={"insecure_skip_verify": insecure_skip_verify},
+    )
+    result = exporter._send_message(b"", {})
+    assert result == MetricExportResult.SUCCESS
+    assert mock_post.call_args.kwargs["verify"] is expected_verify
+
+
 # Verifies that build_message calls snappy.compress and returns SerializedString
-@patch("snappy.compress", return_value=bytes())
+@patch("snappy.compress", return_value=b"")
 def test_build_message(mock_compress, prom_rw):
     message = prom_rw._build_message([TimeSeries()])
     assert mock_compress.call_count == 1

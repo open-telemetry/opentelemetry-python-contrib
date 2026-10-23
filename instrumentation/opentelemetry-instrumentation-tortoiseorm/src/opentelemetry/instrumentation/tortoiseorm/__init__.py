@@ -29,7 +29,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import wrapt
 

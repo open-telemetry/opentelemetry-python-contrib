@@ -26,7 +26,7 @@ class Trace:
         self.ended_at = datetime.utcnow().isoformat() + "Z"
         self._processor.on_trace_end(self)
 
-    def __enter__(self) -> "Trace":
+    def __enter__(self) -> Trace:
         self.start()
         return self
 

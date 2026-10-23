@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Callable, Iterator, Sequence
 from os import environ
-from typing import Any, Callable, Dict, Iterator, Sequence, Union
+from typing import Any
 
 from botocore.eventstream import EventStream, EventStreamError
 
@@ -26,7 +27,7 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GenAiSystemValues,
 )
 
-_StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
+_StreamDoneCallableT = Callable[[dict[str, int | str]], None]
 _StreamErrorCallableT = Callable[[Exception], None]
 
 
@@ -126,6 +127,12 @@ class ConverseStreamWrapper(BaseObjectProxy):
 
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
+
+                if cache_read := usage.get("cacheReadInputTokens"):
+                    self._response["usage"]["cacheReadInputTokens"] = cache_read
+
+                if cache_write := usage.get("cacheWriteInputTokens"):
+                    self._response["usage"]["cacheWriteInputTokens"] = cache_write
             self._complete_stream(self._response)
 
             return
@@ -322,9 +329,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
             # {'type': 'content_block_start', 'index': 1, 'content_block': {'type': 'tool_use', 'id': 'id', 'name': 'func_name', 'input': {}}}
             if self._record_message:
                 block = chunk.get("content_block", {})
-                if block.get("type") == "text":
-                    self._content_block = block
-                elif block.get("type") == "tool_use":
+                if block.get("type") == "text" or block.get("type") == "tool_use":
                     self._content_block = block
             return
 
@@ -382,7 +387,7 @@ def genai_capture_message_content() -> bool:
     return capture_content.lower() == "true"
 
 
-def extract_tool_calls(message: dict[str, Any], capture_content: bool) -> Sequence[Dict[str, Any]] | None:
+def extract_tool_calls(message: dict[str, Any], capture_content: bool) -> Sequence[dict[str, Any]] | None:
     content = message.get("content")
     if not content:
         return None
@@ -414,7 +419,7 @@ def extract_tool_calls(message: dict[str, Any], capture_content: bool) -> Sequen
     return tool_calls
 
 
-def extract_tool_results(message: dict[str, Any], capture_content: bool) -> Iterator[Dict[str, Any]]:
+def extract_tool_results(message: dict[str, Any], capture_content: bool) -> Iterator[dict[str, Any]]:
     content = message.get("content")
     if not content:
         return

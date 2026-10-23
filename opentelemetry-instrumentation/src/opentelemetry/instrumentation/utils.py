@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import sys
 import urllib.parse
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Any, Dict, Generator, Sequence
+from typing import Any
 
 try:
     # wrapt 2.0.0+
@@ -38,8 +39,8 @@ _SUPPRESS_INSTRUMENTATION_KEY_PLAIN = "suppress_instrumentation"  # Set for back
 
 
 def extract_attributes_from_object(
-    obj: Any, attributes: Sequence[str], existing: Dict[str, str] | None = None
-) -> Dict[str, str]:
+    obj: Any, attributes: Sequence[str], existing: dict[str, str] | None = None
+) -> dict[str, str]:
     extracted: dict[str, str] = {}
     if existing:
         extracted.update(existing)

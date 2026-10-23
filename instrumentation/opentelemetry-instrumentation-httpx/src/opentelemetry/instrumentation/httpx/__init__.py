@@ -377,9 +377,7 @@ from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
-from wrapt import (
-    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
-)
+from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -1048,7 +1046,7 @@ class _AsyncOpenTelemetryTransportBase:
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
