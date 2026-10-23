@@ -2,10 +2,14 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0 AND PSF-2.0
 
-"""UUIDv7 tests adapted from CPython's Lib/test/test_uuid.py."""
+"""UUIDv7 tests adapted from CPython's Lib/test/test_uuid.py.
+
+Taken from 3.14 branch at a2341ad86bd6d4361f19550eefb1e7c8b006f37a.
+"""
 
 from __future__ import annotations
 
+import sys
 from itertools import pairwise
 from random import Random
 from unittest import mock
@@ -15,11 +19,17 @@ import pytest
 
 from opentelemetry._opamp import _uuid
 
+backport_only = pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="Python 3.14+ uses the standard library uuid7 implementation",
+)
+
 
 @pytest.fixture(autouse=True)
 def reset_uuid7_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_uuid, "_last_timestamp_v7", None)
-    monkeypatch.setattr(_uuid, "_last_counter_v7", 0)
+    if sys.version_info < (3, 14):
+        monkeypatch.setattr(_uuid, "_last_timestamp_v7", None)
+        monkeypatch.setattr(_uuid, "_last_counter_v7", 0)
 
 
 def _assert_uuid7_fields(value: UUID, timestamp_ms: int, counter: int, tail: int) -> None:
@@ -33,6 +43,7 @@ def _assert_uuid7_fields(value: UUID, timestamp_ms: int, counter: int, tail: int
     assert _uuid._last_counter_v7 == counter
 
 
+@backport_only
 def test_uuid7_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamp_ms = 0x0123456789AB
     monkeypatch.setattr(_uuid.time, "time_ns", lambda: timestamp_ms * 1_000_000)
@@ -49,6 +60,7 @@ def test_uuid7_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     assert value.hex == "0123456789ab77ffbfffffffffffffff"
 
 
+@backport_only
 def test_uuid7_random_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamp_ns = 1672533296_123_456_789
     timestamp_ms = timestamp_ns // 1_000_000
@@ -84,6 +96,7 @@ def test_uuid7_monotonicity() -> None:
     assert values == sorted(values)
 
 
+@backport_only
 def test_uuid7_counter_increment_and_fresh_tail(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamp_ns = 1672533296_123_456_789
     next_timestamp_ns = 1672533296_123_457_032
@@ -111,6 +124,7 @@ def test_uuid7_counter_increment_and_fresh_tail(monkeypatch: pytest.MonkeyPatch)
     assert first < second
 
 
+@backport_only
 def test_uuid7_monotonic_within_millisecond(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_uuid.time, "time_ns", lambda: 1_000_000_000)
     monkeypatch.setattr(_uuid.os, "urandom", bytes)
@@ -121,6 +135,7 @@ def test_uuid7_monotonic_within_millisecond(monkeypatch: pytest.MonkeyPatch) -> 
     assert all(left.int < right.int for left, right in pairwise(values))
 
 
+@backport_only
 def test_uuid7_new_millisecond_resets_counter(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamps = iter([1_000_000_000, 1_001_000_000])
     monkeypatch.setattr(_uuid.time, "time_ns", lambda: next(timestamps))
@@ -135,6 +150,7 @@ def test_uuid7_new_millisecond_resets_counter(monkeypatch: pytest.MonkeyPatch) -
     assert second.hex == "0000000003e970008000000000000000"
 
 
+@backport_only
 def test_uuid7_clock_rollback(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamp_ns = 1672533296_123_456_789
     timestamp_ms = timestamp_ns // 1_000_000
@@ -152,6 +168,7 @@ def test_uuid7_clock_rollback(monkeypatch: pytest.MonkeyPatch) -> None:
     _assert_uuid7_fields(value, last_timestamp_ms + 1, counter + 1, tail)
 
 
+@backport_only
 def test_uuid7_overflow_reseeds_counter(monkeypatch: pytest.MonkeyPatch) -> None:
     timestamp_ns = 1672533296_123_456_789
     timestamp_ms = timestamp_ns // 1_000_000
@@ -170,6 +187,7 @@ def test_uuid7_overflow_reseeds_counter(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.parametrize("counter", [(1 << 30) - 1, (1 << 42) - 1])
+@backport_only
 def test_uuid7_counter_carry(monkeypatch: pytest.MonkeyPatch, counter: int) -> None:
     monkeypatch.setattr(_uuid, "_last_timestamp_v7", 1000)
     monkeypatch.setattr(_uuid, "_last_counter_v7", counter)
