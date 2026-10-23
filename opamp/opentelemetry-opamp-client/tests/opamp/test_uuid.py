@@ -118,7 +118,7 @@ def test_uuid7_counter_increment_and_fresh_tail(monkeypatch: pytest.MonkeyPatch)
 
 def test_uuid7_monotonic_within_millisecond(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_uuid.time, "time_ns", lambda: 1_000_000_000)
-    monkeypatch.setattr(_uuid.os, "urandom", lambda size: bytes(size))
+    monkeypatch.setattr(_uuid.os, "urandom", bytes)
 
     values = [_uuid.uuid7() for _ in range(100)]
 
@@ -179,7 +179,7 @@ def test_uuid7_counter_carry(monkeypatch: pytest.MonkeyPatch, counter: int) -> N
     monkeypatch.setattr(_uuid, "_last_timestamp_v7", 1000)
     monkeypatch.setattr(_uuid, "_last_counter_v7", counter)
     monkeypatch.setattr(_uuid.time, "time_ns", lambda: 1_000_000_000)
-    monkeypatch.setattr(_uuid.os, "urandom", lambda size: bytes(size))
+    monkeypatch.setattr(_uuid.os, "urandom", bytes)
 
     value = _uuid.uuid7()
 

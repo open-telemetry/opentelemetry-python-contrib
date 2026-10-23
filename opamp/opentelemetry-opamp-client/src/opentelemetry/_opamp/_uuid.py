@@ -47,6 +47,7 @@ def uuid7() -> UUID:
     # advanced and the counter is reset to a random 42-bit integer with MSB
     # set to 0.
 
+    # pylint: disable=global-statement
     global _last_timestamp_v7
     global _last_counter_v7
 
