@@ -1,13 +1,8 @@
-# Copyright The OpenTelemetry Authors
 # Copyright (c) 2001-2025 Python Software Foundation; All Rights Reserved.
+# Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0 AND PSF-2.0
 
-"""UUIDv7 tests adapted from CPython's Lib/test/test_uuid.py.
-
-Byte conversions use explicit byte order and timestamps are extracted from
-the integer instead of UUID.time for Python 3.10 compatibility. Randomized
-field checks use a fixed seed for reproducibility. See LICENSE.PSF.
-"""
+"""UUIDv7 tests adapted from CPython's Lib/test/test_uuid.py."""
 
 from __future__ import annotations
 
