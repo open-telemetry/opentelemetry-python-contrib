@@ -172,6 +172,7 @@ from collections.abc import Callable, Collection
 from http import client
 from timeit import default_timer
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -187,8 +188,12 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _set_http_host_client,
     _set_http_method,
+    _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
+    _set_http_peer_port_client,
+    _set_http_scheme,
     _set_http_url,
     _set_status,
     _StabilityMode,
@@ -231,7 +236,7 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-from opentelemetry.util.types import Attributes
+from opentelemetry.util.types import Attributes, AttributeValue
 
 _excluded_urls_from_env = get_excluded_urls("URLLIB")
 
@@ -374,6 +379,10 @@ def _instrument(
         )
         _set_http_url(labels, url, sem_conv_opt_in_mode)
 
+        # Reported as metric labels only: `http.host` is a server span
+        # attribute and would be incorrect on a client span.
+        metric_labels = _get_network_metric_labels(url, sem_conv_opt_in_mode)
+
         headers = get_or_create_headers()
         labels.update(
             get_custom_header_attributes(
@@ -427,13 +436,13 @@ def _instrument(
                 labels[ERROR_TYPE] = type(exception).__qualname__
 
             duration_attrs_old = _filter_semconv_duration_attrs(
-                labels,
+                {**labels, **metric_labels},
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
             )
             duration_attrs_new = _filter_semconv_duration_attrs(
-                labels,
+                {**labels, **metric_labels},
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 sem_conv_opt_in_mode=_StabilityMode.HTTP,
@@ -491,6 +500,32 @@ def _get_span_name(method: str) -> str:
     if method == "_OTHER":
         method = "HTTP"
     return method
+
+
+def _get_network_metric_labels(
+    url: str,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> dict[str, AttributeValue]:
+    """Return the network attributes for the HTTP client metrics.
+
+    These are reported as metric labels only. They are not added to the span
+    because `http.host` is a server span attribute and would be incorrect on a
+    client span.
+    """
+    metric_labels: dict[str, AttributeValue] = {}
+    try:
+        parsed_url = urlparse(url)
+        if parsed_url.scheme and _report_old(sem_conv_opt_in_mode):
+            # TODO: Support opt-in for url.scheme in new semconv
+            _set_http_scheme(metric_labels, parsed_url.scheme, sem_conv_opt_in_mode)
+        if parsed_url.hostname:
+            _set_http_host_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
+            _set_http_net_peer_name_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
+        if parsed_url.port:
+            _set_http_peer_port_client(metric_labels, parsed_url.port, sem_conv_opt_in_mode)
+    except ValueError:
+        pass
+    return metric_labels
 
 
 def _set_status_code_attribute(
