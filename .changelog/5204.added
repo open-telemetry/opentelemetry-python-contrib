@@ -1,0 +1,1 @@
+Add `OTEL_SEMCONV_STABILITY_OPT_IN` messaging opt-in to the remoulade instrumentation: the tracer schema URL is now resolved through the shared `_semconv` helpers (1.11.0 by default, 1.44.0 when `messaging` or `messaging/dup` is enabled). Span attributes are unchanged — `messaging.message.id` is identical in both conventions and the remoulade-specific attributes are not semconv.
