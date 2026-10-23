@@ -26,6 +26,11 @@ Request/Response hooks
 The requests instrumentation supports extending tracing behavior with the help of
 request and response hooks. These are functions that are called back by the instrumentation
 right after a Span is created for a request and right before the span is finished processing a response respectively.
+The request hook receives the live ``requests.PreparedRequest`` before OpenTelemetry injects propagation
+headers. Because it is the same request object that Requests sends, mutations made by the hook can change
+the outbound request. Propagation runs after the request hook, so values written by the configured propagator
+can replace values written by the hook. Avoid copying inbound headers wholesale into an outbound request;
+preserve headers owned by the application or connector unless the hook intentionally owns them.
 The hooks can be configured as follows:
 
 .. code:: python
@@ -529,7 +534,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
-                ``request_hook``: An optional callback that is invoked right after a span is created.
+                ``request_hook``: An optional callback that receives the live ``PreparedRequest`` after a span is created and before propagation headers are injected. Mutations affect the outbound request.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
                 ``excluded_urls``: A string containing a comma-delimited list of regexes used to exclude URLs from tracking
                 ``duration_histogram_boundaries``: A list of float values representing the explicit bucket boundaries for the duration histogram.
