@@ -1398,6 +1398,30 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_hook_results])
 
+    async def test_default_span_details_exception(self):
+        def update_expected_span_details_results(expected):
+            for entry in expected:
+                if entry["kind"] == trace_api.SpanKind.SERVER:
+                    entry["events"] = [
+                        {
+                            "name": "exception",
+                            "attributes": {
+                                "exception.type": f"{__name__}.UnhandledException",
+                                "exception.message": "span details",
+                            },
+                        }
+                    ]
+            return expected
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi,
+            default_span_details=failing_hook("span details"),
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(outputs, modifiers=[update_expected_span_details_results])
+
     async def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
