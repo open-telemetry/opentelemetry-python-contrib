@@ -61,6 +61,7 @@ API
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Collection, Iterable
 from timeit import default_timer
 
@@ -75,7 +76,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.metrics import get_meter
+from opentelemetry.metrics import get_meter, get_meter_provider
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
@@ -99,6 +100,10 @@ _TASK_RETRY_REASON_KEY = "celery.retry.reason"
 _TASK_REVOKED_REASON_KEY = "celery.revoked.reason"
 _TASK_REVOKED_TERMINATED_SIGNAL_KEY = "celery.terminated.signal"
 _TASK_NAME_KEY = "celery.task_name"
+
+# Celery does not guarantee that worker-process shutdown handlers finish, so a
+# stuck exporter must not hold a recycled pool child indefinitely.
+_PROVIDER_FLUSH_TIMEOUT_SECONDS = 1.0
 
 
 class CeleryGetter(Getter[Request]):
@@ -139,6 +144,10 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         use_span_links = kwargs.get("use_span_links", False)
 
+        # Keep only explicit providers. When the global provider is used, look
+        # it up during shutdown so providers installed after instrumentation
+        # are flushed instead of the initial proxy provider.
+        self._tracer_provider = tracer_provider
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -148,6 +157,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self._use_span_links = use_span_links
 
         meter_provider = kwargs.get("meter_provider")
+        self._meter_provider = meter_provider
         meter = get_meter(
             __name__,
             __version__,
@@ -164,6 +174,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.connect(self._trace_after_publish, weak=False)
         signals.task_failure.connect(self._trace_failure, weak=False)
         signals.task_retry.connect(self._trace_retry, weak=False)
+        signals.worker_process_shutdown.connect(self._flush_providers, weak=False)
 
     def _uninstrument(self, **kwargs):
         signals.task_prerun.disconnect(self._trace_prerun)
@@ -172,6 +183,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.disconnect(self._trace_after_publish)
         signals.task_failure.disconnect(self._trace_failure)
         signals.task_retry.disconnect(self._trace_retry)
+        signals.worker_process_shutdown.disconnect(self._flush_providers)
         self.task_id_to_start_time = {}
 
     def _trace_prerun(self, *args, **kwargs):
@@ -353,6 +365,54 @@ class CeleryInstrumentor(BaseInstrumentor):
         # Use `str(reason)` instead of `reason.message` in case we get
         # something that isn't an `Exception`
         span.set_attribute(_TASK_RETRY_REASON_KEY, str(reason))
+
+    def _flush_providers(self, *args, **kwargs):
+        # Flush the tracer and meter providers when a worker process is
+        # shutting down. With `worker_max_tasks_per_child`, the pool child
+        # process is terminated as soon as the last task returns, so any spans
+        # or metrics still buffered in the SDK would otherwise be lost.
+        providers = (
+            (
+                "TracerProvider",
+                self._tracer_provider if self._tracer_provider is not None else trace.get_tracer_provider(),
+            ),
+            (
+                "MeterProvider",
+                self._meter_provider if self._meter_provider is not None else get_meter_provider(),
+            ),
+        )
+        flush_threads = []
+        deadline = default_timer() + _PROVIDER_FLUSH_TIMEOUT_SECONDS
+        for provider_name, provider in providers:
+            if provider is None or not hasattr(provider, "force_flush"):
+                continue
+            flush_thread = threading.Thread(
+                target=self._flush_provider,
+                args=(provider, provider_name),
+                daemon=True,
+                name=f"otel-celery-flush-{provider_name}",
+            )
+            flush_thread.start()
+            flush_threads.append((provider_name, flush_thread))
+
+        for provider_name, flush_thread in flush_threads:
+            flush_thread.join(max(0.0, deadline - default_timer()))
+            if flush_thread.is_alive():
+                logger.warning(
+                    "%s did not flush within %.1f seconds during Celery worker process shutdown",
+                    provider_name,
+                    _PROVIDER_FLUSH_TIMEOUT_SECONDS,
+                )
+
+    @staticmethod
+    def _flush_provider(provider: object, provider_name: str) -> None:
+        try:
+            provider.force_flush()
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception(
+                "%s failed to flush during Celery worker process shutdown",
+                provider_name,
+            )
 
     def update_task_duration_time(self, task_id):
         cur_time = default_timer()
