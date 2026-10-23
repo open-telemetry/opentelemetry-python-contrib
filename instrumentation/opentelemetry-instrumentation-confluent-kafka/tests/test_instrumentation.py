@@ -755,7 +755,7 @@ class TestConsumerParentContext(TestBase):
         try:
             # AutoInstrumentedConsumer needs a broker to return messages, so call the
             # wrapt wrapper that instrument() installed with a stub consumer and a stub poll
-            wrapper = AutoInstrumentedConsumer.poll._self_wrapper
+            wrapper = AutoInstrumentedConsumer.poll._self_wrapper  # pylint: disable=no-member
             consumer = SimpleNamespace(config=_CONSUMER_CONFIG, _current_consume_span=None, _current_context_token=None)
             message = MockedMessage("topic-1", 0, 5, [_HEADER_A])
             wrapper(lambda *args, **kwargs: message, consumer, (), {})

@@ -19,7 +19,7 @@ from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
 )
-from opentelemetry.trace import Link, SpanKind
+from opentelemetry.trace import Link, SpanKind, get_current_span
 from opentelemetry.util import types
 
 _LOG = getLogger(__name__)
@@ -112,17 +112,25 @@ def _end_current_consume_span(instance):
     instance._current_consume_span = None
 
 
-def _create_new_consume_span(instance, tracer, records):
-    # A single record has one unambiguous creation context, so the process span
-    # uses it as parent. Records in a batch can belong to different traces, so the
-    # batch span keeps the ambient parent and links to each record instead.
+def _create_new_consume_span(instance, tracer, records, use_message_context_as_parent: bool = False):
+    # By default the process span takes the ambient context as parent and links
+    # to the creation context of every record. Records in a batch can belong to
+    # different traces, so a batch span never takes a record context as parent.
     # https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#message-creation-context-as-parent-of-process-span
-    if len(records) == 1:
-        ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
-        links = None
-    else:
-        ctx = None
-        links = _get_links_from_records(records)
+    ctx = None
+    links = _get_links_from_records(records)
+
+    if use_message_context_as_parent and len(records) == 1:
+        message_ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
+        if get_current_span(message_ctx).get_span_context().is_valid:
+            # One record with a valid creation context: use it as parent and keep
+            # the correlation with the ambient span through a link.
+            ctx = message_ctx
+            links = []
+            ambient_span_context = get_current_span().get_span_context()
+            if ambient_span_context.is_valid:
+                links.append(Link(context=ambient_span_context))
+
     instance._current_consume_span = tracer.start_span(
         name=f"{records[0].topic()} process",
         links=links,

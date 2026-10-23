@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-confluent-kafka`: Add `use_message_context_as_parent` option to `instrument()` and `instrument_consumer()`. When enabled, a consumer `process` span for a single record uses the message trace context as its parent. By default the span links to each record context.

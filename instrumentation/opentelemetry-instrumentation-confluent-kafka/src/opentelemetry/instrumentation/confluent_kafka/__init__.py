@@ -50,6 +50,7 @@ Usage
 The ``_instrument()`` method accepts the following keyword args:
 
 - **tracer_provider** (TracerProvider) - an optional tracer provider
+- **use_message_context_as_parent** (bool) - use the message trace context as the parent of the consumer ``process`` span when one message is returned. Defaults to ``False``. See `Trace context on the consumer`_.
 - **instrument_producer** (Callable) - a function with extra user-defined logic to be performed before sending the message
 
   Function signature:
@@ -64,7 +65,7 @@ The ``_instrument()`` method accepts the following keyword args:
 
   .. code:: python
 
-      def instrument_consumer(consumer: Consumer, tracer_provider=None): ...
+      def instrument_consumer(consumer: Consumer, tracer_provider=None, use_message_context_as_parent=False): ...
 
 For example:
 
@@ -103,15 +104,29 @@ that returns at least one message. The span stays current until the next call
 on the same consumer, so spans the application starts while it handles the
 messages become children of the ``process`` span.
 
-When one message is returned, the ``process`` span uses the trace context from
-the message headers as its parent, so the producer span is its direct parent.
+By default, the ``process`` span takes the context that is current when the
+application calls ``poll()`` or ``consume()`` as its parent, or is a root span
+when there is none. It adds a link to the trace context found in the headers of
+each message. The trace shape is the same for one message and for a batch.
 
-When ``consume()`` returns more than one message, the messages can belong to
-different traces. The ``process`` span then keeps the current context as its
-parent and adds a link to the trace context of each message. It carries no
-partition, offset or message id, because those identify one message. An
-application that needs one span per message can extract the context from the
-message headers and start a span with that context as the parent.
+With ``use_message_context_as_parent=True``, a ``process`` span for one message
+uses the trace context from the message headers as its parent, so the producer
+span is its direct parent. If a span is current when the application calls the
+consumer, the ``process`` span links to it. A ``process`` span for more than one
+message keeps the default behavior, because the messages can belong to
+different traces. A message with no valid trace context also keeps the default
+behavior.
+
+.. code:: python
+
+    ConfluentKafkaInstrumentor().instrument(use_message_context_as_parent=True)
+    # or, for one consumer
+    c = inst.instrument_consumer(c, use_message_context_as_parent=True)
+
+A ``process`` span for more than one message carries no partition, offset or
+message id, because those identify one message. An application that needs one
+span per message can extract the context from the message headers and start a
+span with that context as the parent.
 
 """
 
@@ -216,9 +231,10 @@ class ProxiedProducer(Producer):
 
 
 class ProxiedConsumer(Consumer):
-    def __init__(self, consumer: Consumer, tracer: Tracer):
+    def __init__(self, consumer: Consumer, tracer: Tracer, use_message_context_as_parent: bool = False):
         self._consumer = consumer
         self._tracer = tracer
+        self._use_message_context_as_parent = use_message_context_as_parent
         self._current_consume_span = None
         self._current_context_token = None
         # See ProxiedProducer.__init__ for rationale.
@@ -240,6 +256,7 @@ class ProxiedConsumer(Consumer):
             self._tracer,
             args,
             kwargs,
+            use_message_context_as_parent=self._use_message_context_as_parent,
         )
 
     def get_watermark_offsets(self, partition, timeout=-1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -249,7 +266,14 @@ class ProxiedConsumer(Consumer):
         return self._consumer.offsets_for_times(partitions, timeout)
 
     def poll(self, timeout=-1):
-        return ConfluentKafkaInstrumentor.wrap_poll(self._consumer.poll, self, self._tracer, [timeout], {})
+        return ConfluentKafkaInstrumentor.wrap_poll(
+            self._consumer.poll,
+            self,
+            self._tracer,
+            [timeout],
+            {},
+            use_message_context_as_parent=self._use_message_context_as_parent,
+        )
 
     def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self._consumer.subscribe(topics, on_assign, *args, **kwargs)
@@ -277,7 +301,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return manual_producer
 
     @staticmethod
-    def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
+    def instrument_consumer(
+        consumer: Consumer,
+        tracer_provider=None,
+        use_message_context_as_parent: bool = False,
+    ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -285,7 +313,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        manual_consumer = ProxiedConsumer(consumer, tracer)
+        manual_consumer = ProxiedConsumer(
+            consumer,
+            tracer,
+            use_message_context_as_parent=use_message_context_as_parent,
+        )
 
         return manual_consumer
 
@@ -323,15 +355,30 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         )
 
         self._tracer = tracer
+        use_message_context_as_parent = bool(kwargs.get("use_message_context_as_parent", False))
 
         def _inner_wrap_produce(func, instance, args, kwargs):
             return ConfluentKafkaInstrumentor.wrap_produce(func, instance, self._tracer, args, kwargs)
 
         def _inner_wrap_poll(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_poll(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_poll(
+                func,
+                instance,
+                self._tracer,
+                args,
+                kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
+            )
 
         def _inner_wrap_consume(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_consume(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_consume(
+                func,
+                instance,
+                self._tracer,
+                args,
+                kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
+            )
 
         def _inner_wrap_close(func, instance, args, kwargs):
             return ConfluentKafkaInstrumentor.wrap_close(func, instance, args, kwargs)
@@ -398,7 +445,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             return func(*args, **kwargs)
 
     @staticmethod
-    def wrap_poll(func, instance, tracer, args, kwargs):
+    def wrap_poll(func, instance, tracer, args, kwargs, use_message_context_as_parent: bool = False):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
@@ -418,7 +465,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         # create a new span for the message
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _create_new_consume_span(instance, tracer, [record])
+            _create_new_consume_span(instance, tracer, [record], use_message_context_as_parent)
             _enrich_span(
                 instance._current_consume_span,
                 record.topic(),
@@ -433,7 +480,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return record
 
     @staticmethod
-    def wrap_consume(func, instance, tracer, args, kwargs):
+    def wrap_consume(func, instance, tracer, args, kwargs, use_message_context_as_parent: bool = False):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
@@ -452,7 +499,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _create_new_consume_span(instance, tracer, records)
+            _create_new_consume_span(instance, tracer, records, use_message_context_as_parent)
             # partition, offset and message id identify one record, so they are
             # only set when consume returned exactly one record
             partition = records[0].partition() if len(records) == 1 else None
