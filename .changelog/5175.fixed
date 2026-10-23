@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiopg`: honor instrumentation suppression for database spans and metrics
