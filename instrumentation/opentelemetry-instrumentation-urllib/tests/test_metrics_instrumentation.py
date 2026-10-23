@@ -105,6 +105,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
                 est_value_delta=40,
@@ -123,6 +126,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
@@ -140,6 +146,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
@@ -168,6 +177,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -186,6 +196,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                 ),
             )
@@ -202,6 +213,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                 ),
             )
@@ -235,6 +247,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
                 est_value_delta=40,
@@ -253,6 +268,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
@@ -270,6 +288,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "GET",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
@@ -284,6 +305,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -302,6 +324,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                 ),
             )
@@ -318,6 +341,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
+                        "server.address": "mock",
                     },
                 ),
             )
@@ -349,6 +373,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
                 est_value_delta=40,
@@ -367,6 +394,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
@@ -384,9 +414,77 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.method": "POST",
                         "http.url": str(result.url),
                         "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
                     },
                 ),
             )
+
+    def test_basic_metric_with_port_both_semconv(self):
+        url = "http://mock:8080/status/200"
+        Entry.single_register(Entry.GET, url, body=b"Hello!")
+
+        start_time = default_timer()
+        with request.urlopen(url) as result:
+            duration_s = default_timer() - start_time
+            duration = max(round(duration_s * 1000), 0)
+
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 6)
+
+            (
+                client_duration,
+                _client_request_body_size,
+                client_request_duration,
+                _client_request_size,
+                _client_response_body_size,
+                _client_response_size,
+            ) = metrics[:6]
+
+            self.assertEqual(client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION)
+            self.assert_metric_expected(
+                client_duration,
+                self.create_histogram_data_points(
+                    duration,
+                    attributes={
+                        "http.status_code": int(result.code),
+                        "http.method": "GET",
+                        "http.url": str(result.url),
+                        "http.flavor": "1.1",
+                        "http.scheme": "http",
+                        "http.host": "mock",
+                        "net.peer.name": "mock",
+                        "net.peer.port": 8080,
+                    },
+                ),
+                est_value_delta=40,
+            )
+
+            self.assertEqual(client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION)
+            self.assert_metric_expected(
+                client_request_duration,
+                self.create_histogram_data_points(
+                    duration_s,
+                    attributes={
+                        "http.response.status_code": int(result.code),
+                        "http.request.method": "GET",
+                        "network.protocol.version": "1.1",
+                        "server.address": "mock",
+                        "server.port": 8080,
+                    },
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                ),
+                est_value_delta=40,
+            )
+
+        # The network attributes are server-side span attributes: they belong on
+        # the metric labels only and must not leak onto the client span.
+        [span] = self.get_finished_spans()
+        self.assertNotIn("http.host", span.attributes)
+        self.assertNotIn("net.peer.name", span.attributes)
+        self.assertNotIn("server.address", span.attributes)
+        self.assertNotIn("server.port", span.attributes)
 
     @mark.skipif(python_implementation() == "PyPy", reason="Fails randomly in pypy")
     def test_metric_uninstrument(self):
