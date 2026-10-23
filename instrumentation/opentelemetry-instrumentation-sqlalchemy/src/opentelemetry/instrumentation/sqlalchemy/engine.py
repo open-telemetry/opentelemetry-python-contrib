@@ -9,6 +9,7 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     listen,
     remove,
 )
+from sqlalchemy.exc import InvalidRequestError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -295,15 +296,14 @@ class EngineTracer:
 
     @classmethod
     def remove_all_event_listeners(cls):
-        for (
-            weak_ref_target,
-            identifier,
-            func,
-        ) in cls._remove_event_listener_params:
-            # Remove an event listener only if saved weak reference points to an object
-            # which has not been garbage collected
-            if weak_ref_target() is not None:
-                remove(weak_ref_target(), identifier, func)
+        for weak_ref_target, identifier, fn in cls._remove_event_listener_params:
+            target = weak_ref_target()
+            if target is None:
+                continue
+            try:
+                remove(target, identifier, fn)
+            except InvalidRequestError:
+                pass
         cls._remove_event_listener_params.clear()
 
     def _operation(self, statement):
