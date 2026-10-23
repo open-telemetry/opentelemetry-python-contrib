@@ -304,6 +304,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _wrap_delete_message_batch(sqs_class: type) -> None:
         def delete_message_wrapper_batch(wrapped, instance, args, kwargs):
             entries = kwargs.get("Entries")
+            # Without Entries, call wrapped so botocore raises its own validation error
+            if not entries:
+                return wrapped(*args, **kwargs)
             for entry in entries:
                 receipt_handle = entry.get("ReceiptHandle")
                 if receipt_handle:
