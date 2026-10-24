@@ -62,7 +62,7 @@ For example, to only copy baggage entries that match the regex `^key.+`:
 
 ::
 
-    regex_predicate = lambda baggage_key: baggage_key.startswith("^key.+")
+    regex_predicate = lambda baggage_key: re.match(r"^key.+", baggage_key) is not None
     tracer_provider.add_span_processor(BaggageSpanProcessor(regex_predicate))
 
 BaggageLogProcessor
