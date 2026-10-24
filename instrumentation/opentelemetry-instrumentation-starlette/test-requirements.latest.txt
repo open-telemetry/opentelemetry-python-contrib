@@ -22,7 +22,7 @@ anyio==4.8.0
     #   starlette
 asgiref==3.8.1
     # via opentelemetry-instrumentation-asgi
-certifi==2025.1.31
+certifi==2026.10.19
     # via
     #   httpcore
     #   httpx
