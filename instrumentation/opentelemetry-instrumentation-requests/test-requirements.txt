@@ -15,6 +15,3 @@ typing_extensions==4.12.2
 urllib3==2.7.0
 wrapt==1.16.0
 zipp==3.19.2
--e opentelemetry-instrumentation
--e util/opentelemetry-util-http
--e instrumentation/opentelemetry-instrumentation-requests
