@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-pika`, `opentelemetry-instrumentation-sqlalchemy`: removed the runtime `packaging` dependency in favor of the copy vendored in `opentelemetry-instrumentation`
