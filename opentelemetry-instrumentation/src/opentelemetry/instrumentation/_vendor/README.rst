@@ -34,3 +34,13 @@ upstream has deleted is skipped without warning. A new absolute import of a
 project that is not itself vendored resolves against the application's
 environment at runtime rather than against this directory, which would
 reintroduce exactly the undeclared dependency this directory exists to avoid.
+
+Two jobs cover this directory. ``.github/workflows/update-vendored-dependencies.yml``
+runs weekly, performs the two commands above, and opens a pull request when the
+result differs from what is committed. The ``lint-vendoring-check`` tox
+environment runs on every pull request and fails if ``vendoring sync`` changes
+anything here, which catches both a file edited by hand and a pin bumped without
+regenerating.
+
+Both pin the version of the ``vendoring`` tool, because ``sbom.json`` records
+the version that generated it.

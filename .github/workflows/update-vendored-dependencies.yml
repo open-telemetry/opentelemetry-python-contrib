@@ -1,0 +1,82 @@
+name: Update vendored dependencies
+on:
+  schedule:
+    - cron: "30 6 * * 1" # once a week
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-vendored-dependencies:
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # zizmor: ignore[artipacked] Credentials are required by the branch push below.
+          persist-credentials: true
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.14"
+
+      - name: Install vendoring
+        run: pip install vendoring==1.4.0
+
+      - name: Update the pins and regenerate the vendored tree
+        working-directory: opentelemetry-instrumentation
+        run: |
+          vendoring update
+          vendoring sync
+
+      - name: Determine whether anything changed
+        id: changed
+        run: |
+          status=$(git status --porcelain -- \
+            opentelemetry-instrumentation/vendor.txt \
+            opentelemetry-instrumentation/src/opentelemetry/instrumentation/_vendor)
+          if [ -z "$status" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use CLA approved github bot
+        if: steps.changed.outputs.changed == 'true'
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        if: steps.changed.outputs.changed == 'true'
+        id: otelbot-token
+        with:
+          client-id: ${{ vars.OTELBOT_CLIENT_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+          permission-pull-requests: write
+
+      - name: Create pull request
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+        run: |
+          branch="otelbot/update-vendored-dependencies"
+          message="Update vendored dependencies"
+
+          git add --all -- \
+            opentelemetry-instrumentation/vendor.txt \
+            opentelemetry-instrumentation/src/opentelemetry/instrumentation/_vendor
+          git commit -m "$message"
+          git push --force origin "HEAD:$branch"
+
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --title "$message" \
+                         --body "Ran \`vendoring update\` and \`vendoring sync\` in \`opentelemetry-instrumentation\`. The pins are in \`opentelemetry-instrumentation/vendor.txt\` and the regenerated tree is under \`opentelemetry-instrumentation/src/opentelemetry/instrumentation/_vendor\`.
+
+          The diff below the pin change is the upstream diff between the two releases, restricted to the files kept by the \`drop\` list. Check for a module added upstream that the \`drop\` list does not name, for a \`drop\` entry naming a path upstream has deleted, and for a new absolute import of a project that is not itself vendored." \
+                         --head "$branch" \
+                         --base main
+          fi
