@@ -1,7 +1,7 @@
 name: Update vendored dependencies
 on:
   schedule:
-    - cron: "30 6 * * 1" # once a week
+    - cron: "30 6 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -10,13 +10,13 @@ permissions:
 jobs:
   update-vendored-dependencies:
     permissions:
-      contents: write # required for pushing branches
-      pull-requests: write # required for creating pull requests
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # zizmor: ignore[artipacked] Credentials are required by the branch push below.
+          # zizmor: ignore[artipacked]
           persist-credentials: true
 
       - name: Set up Python 3.14
@@ -60,7 +60,6 @@ jobs:
       - name: Create pull request
         if: steps.changed.outputs.changed == 'true'
         env:
-          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
           GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           branch="otelbot/update-vendored-dependencies"
