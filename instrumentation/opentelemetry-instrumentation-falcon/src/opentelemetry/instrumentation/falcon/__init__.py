@@ -185,7 +185,6 @@ from time import time_ns
 from timeit import default_timer
 
 import falcon
-from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
@@ -197,6 +196,9 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _StabilityMode,
+)
+from opentelemetry.instrumentation._vendor.packaging import (
+    version as package_version,
 )
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
