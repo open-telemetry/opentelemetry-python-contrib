@@ -11,5 +11,3 @@ zipp==3.19.2
 opentelemetry-api==1.21  # when updating, also update in pyproject.toml
 opentelemetry-sdk==1.21  # when updating, also update in pyproject.toml
 opentelemetry-instrumentation==0.44b0  # when updating, also update in pyproject.toml
-
--e resource/opentelemetry-resource-detector-azure
