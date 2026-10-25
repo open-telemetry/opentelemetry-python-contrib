@@ -53,3 +53,22 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[tool.vendoring]
+destination = "src/opentelemetry/instrumentation/_vendor/"
+requirements = "vendor.txt"
+namespace = "opentelemetry.instrumentation._vendor"
+protected-files = ["__init__.py", "README.rst", "vendor.txt"]
+
+[tool.vendoring.transformations]
+drop = [
+  "packaging/dependency_groups.py",
+  "packaging/direct_url.py",
+  "packaging/errors.py",
+  "packaging/licenses",
+  "packaging/metadata.py",
+  "packaging/pylock.py",
+  "packaging/ranges.py",
+  "packaging/_structures.py",
+  "packaging-*.dist-info",
+]
