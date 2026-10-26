@@ -9,7 +9,7 @@ pytest==7.4.4
 pytz==2024.1
 sqlparse==0.5.0
 tomli==2.0.1
-typing_extensions==4.12.2
+typing_extensions==4.14.0
 wrapt==1.16.0
 zipp==3.19.2
 setuptools==79.0.1 ; python_version >= "3.12"
