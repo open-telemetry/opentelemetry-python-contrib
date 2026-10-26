@@ -125,7 +125,6 @@ For more information about the maintainer role, see the [community repository](h
 - [Diego Hurtado](https://github.com/ocelotl), Dash0
 - [Dylan Russell](https://github.com/dylanrussell), Google
 - [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Keith Decker](https://github.com/keith-decker), Cisco/Splunk
 - [Liudmila Molkova](https://github.com/lmolkova), Google
 - [Mike Goldsmith](https://github.com/MikeGoldsmith), Honeycomb
 - [Pablo Collins](https://github.com/pmcollins), Splunk
@@ -139,6 +138,7 @@ For more information about the approver role, see the [community repository](htt
 - [Alex Boten](https://github.com/codeboten), Maintainer
 - [Ashutosh Goel](https://github.com/ashu658), Approver
 - [Jeremy Voss](https://github.com/jeremydvoss), Approver
+- [Keith Decker](https://github.com/keith-decker), Approver
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), Approver
 - [Nikolay Sokolik](https://github.com/nikosokolik), Approver
 - [Nikolay Sokolik](https://github.com/oxeye-nikolay), Approver
