@@ -3435,7 +3435,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "packaging", specifier = ">=20.0" },
-    { name = "pika", marker = "extra == 'instruments'", specifier = ">=0.12.0" },
+    { name = "pika", marker = "extra == 'instruments'" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
