@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tortoiseorm`: declare `pydantic >= 1.10.2` in `_instruments` so the dependency conflict check verifies it
