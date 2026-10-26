@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
+from kombu import Exchange, Queue
 
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
@@ -123,6 +124,11 @@ def set_attributes_from_context(
         # set attribute name if not set specially for a key
         if attribute_name is None:
             attribute_name = f"celery.{key}"
+
+        if isinstance(value, (Exchange, Queue)):
+            value = value.name
+            if value == "":
+                continue
 
         span.set_attribute(attribute_name, value)
 

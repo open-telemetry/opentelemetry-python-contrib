@@ -6,6 +6,7 @@
 import json
 import logging
 from unittest import mock
+from uuid import RFC_4122, UUID
 
 import pytest
 
@@ -35,6 +36,14 @@ _EFFECTIVE_CONFIG_CAPABILITIES = (
 @pytest.fixture(name="client")
 def client_fixture():
     return OpAMPClient(endpoint="url", agent_identifying_attributes={"foo": "bar"})
+
+
+def test_instance_uid_is_uuid7(client: OpAMPClient) -> None:
+    instance_uid = UUID(bytes=client._instance_uid)
+    assert instance_uid.version == 7
+    assert instance_uid.variant == RFC_4122
+    other = OpAMPClient(endpoint="url", agent_identifying_attributes={})
+    assert other._instance_uid != client._instance_uid
 
 
 def test_can_instantiate_opamp_client_with_defaults():

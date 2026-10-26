@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     _ContextManager,
     _PoolAcquireContextManager,
 )
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
@@ -679,6 +680,25 @@ class TestAiopgMetrics(TestBase):
             (metric for metric in self.get_sorted_metrics() if metric.name == name),
             None,
         )
+
+    def test_suppress_instrumentation(self) -> None:
+        with use_semconv_opt_in("database"):
+            connection = AiopgInstrumentor().instrument_connection(async_call(mock_connect()))
+            cursor = async_call(connection.cursor())
+
+            with suppress_instrumentation():
+                async_call(cursor.execute("SELECT 1", rowcount=3))
+
+            self.assertEqual(cursor.rowcount, 3)
+            self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+            self.assertEqual(self.get_sorted_metrics(), [])
+
+            async_call(cursor.execute("SELECT 1", rowcount=2))
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+        self.assertEqual(self._get_metric(DB_CLIENT_OPERATION_DURATION).data.data_points[0].count, 1)
+        self.assertEqual(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS).data.data_points[0].count, 1)
+        self.assertEqual(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS).data.data_points[0].sum, 2)
 
     def test_metrics_not_emitted_in_default_mode(self):
         db_integration = AiopgIntegration(__name__, "testcomponent")
