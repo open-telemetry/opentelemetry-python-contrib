@@ -3508,7 +3508,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "pymemcache", marker = "extra == 'instruments'", specifier = ">=1.3.5,<5" },
+    { name = "pymemcache", marker = "extra == 'instruments'" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
