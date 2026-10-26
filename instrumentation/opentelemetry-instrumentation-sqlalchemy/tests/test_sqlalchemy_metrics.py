@@ -5,12 +5,15 @@ import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.sdk.metrics.export import Histogram
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
 CONNECTION_COUNT = "db.client.connection.count"
 CONNECTIONS_USAGE = "db.client.connections.usage"
+CONNECTION_USE_TIME = "db.client.connection.use_time"
 POOL_NAME = "db.client.connection.pool.name"
 STATE = "db.client.connection.state"
 
@@ -26,12 +29,16 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    def get_metric(self, name):
+        metrics = [m for m in self.get_sorted_metrics(SCOPE) if m.name == name]
+        self.assertLessEqual(len(metrics), 1)
+        return metrics[0] if metrics else None
+
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
-        metrics = self.get_sorted_metrics(SCOPE)
-        self.assertEqual(len(metrics), 1)
-        self.assertEqual(metrics[0].name, CONNECTION_COUNT)
+        metric = self.get_metric(CONNECTION_COUNT)
+        self.assertIsNotNone(metric)
         self.assert_metric_expected(
-            metrics[0],
+            metric,
             [
                 self.create_number_data_point(
                     value=idle,
@@ -147,3 +154,78 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertIn(CONNECTION_COUNT, metric_names)
         self.assertNotIn(CONNECTIONS_USAGE, metric_names)
+
+    def test_use_time_recorded_on_checkin(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with engine.connect():
+            # Nothing is recorded while the connection is still checked out
+            self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        self.assertEqual(metric.unit, "s")
+        self.assertIsInstance(metric.data, Histogram)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        point = data_points[0]
+        self.assertEqual(dict(point.attributes), {POOL_NAME: pool_name})
+        self.assertIsInstance(point.attributes[POOL_NAME], str)
+        self.assertEqual(point.count, 1)
+        self.assertIsInstance(point.sum, float)
+        self.assertGreaterEqual(point.sum, 0)
+
+    def test_use_time_recorded_per_checkout(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with engine.connect():
+            with engine.connect():
+                pass
+        with engine.connect():
+            pass
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        self.assertEqual(data_points[0].count, 3)
+
+    def test_use_time_not_recorded_for_suppressed_checkout(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        with suppress_instrumentation():
+            conn = engine.connect()
+        conn.close()
+
+        self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+
+    def test_use_time_recorded_for_suppressed_checkin(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        conn = engine.connect()
+        with suppress_instrumentation():
+            conn.close()
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: pool_name})
