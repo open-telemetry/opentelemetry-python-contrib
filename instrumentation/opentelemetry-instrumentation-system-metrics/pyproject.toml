@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "psutil >= 5",
+  "psutil",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
