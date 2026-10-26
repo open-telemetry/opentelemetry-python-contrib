@@ -3158,7 +3158,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'instruments'", specifier = "~=0.92" },
+    { name = "fastapi", marker = "extra == 'instruments'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", editable = "instrumentation/opentelemetry-instrumentation-asgi" },
