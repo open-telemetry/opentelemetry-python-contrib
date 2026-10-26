@@ -248,9 +248,6 @@ class EngineTracer:
         self._add_connection_count(DbClientConnectionStateValues.USED.value, value)
 
     def _add_connection_count(self, state, value):
-        if not is_instrumentation_enabled():
-            return
-
         self.connection_count.add(
             value,
             attributes={
@@ -260,18 +257,38 @@ class EngineTracer:
         )
 
     def _pool_connect(self, _dbapi_connection, _connection_record):
+        info = getattr(_connection_record, "info", None)
+        if not is_instrumentation_enabled():
+            if info is not None:
+                info["_otel_suppressed_connect"] = True
+            return
         self._add_idle_to_connection_usage(1)
 
     def _pool_close(self, _dbapi_connection, _connection_record):
+        info = getattr(_connection_record, "info", None)
+        if info is not None and info.pop("_otel_suppressed_connect", False):
+            return
+        if info is None and not is_instrumentation_enabled():
+            return
         self._add_idle_to_connection_usage(-1)
 
     # Called when a connection returns to the pool.
     def _pool_checkin(self, _dbapi_connection, _connection_record):
+        info = getattr(_connection_record, "info", None)
+        if info is not None and info.pop("_otel_suppressed_checkout", False):
+            return
+        if info is None and not is_instrumentation_enabled():
+            return
         self._add_used_to_connection_usage(-1)
         self._add_idle_to_connection_usage(1)
 
     # Called when a connection is retrieved from the Pool.
     def _pool_checkout(self, _dbapi_connection, _connection_record, _connection_proxy):
+        info = getattr(_connection_record, "info", None)
+        if not is_instrumentation_enabled():
+            if info is not None:
+                info["_otel_suppressed_checkout"] = True
+            return
         self._add_idle_to_connection_usage(-1)
         self._add_used_to_connection_usage(1)
 
