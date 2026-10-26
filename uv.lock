@@ -3130,7 +3130,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "falcon", marker = "extra == 'instruments'", specifier = ">=1.4.1,<5.0.0" },
+    { name = "falcon", marker = "extra == 'instruments'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-wsgi", editable = "instrumentation/opentelemetry-instrumentation-wsgi" },
