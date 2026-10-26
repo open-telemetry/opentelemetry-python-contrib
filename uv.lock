@@ -2767,7 +2767,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiopg", marker = "extra == 'instruments'", specifier = ">=0.13.0,<2.0.0" },
+    { name = "aiopg", marker = "extra == 'instruments'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
