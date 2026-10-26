@@ -8,6 +8,7 @@ import contextlib
 import logging
 import re
 import sys
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -84,6 +85,14 @@ def use_semconv_opt_in(sem_conv_mode):
     finally:
         env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
+
+
+class ParameterWithFailingStr:
+    def __repr__(self) -> str:
+        return "<ParameterWithFailingStr>"
+
+    def __str__(self) -> str:
+        raise ValueError("str is not available for this value")
 
 
 # pylint: disable=too-many-public-methods
@@ -489,6 +498,63 @@ class TestDBApiIntegration(TestBase):
                 span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"],
                 "jdoe",
             )
+
+    def test_query_runs_when_a_parameter_cannot_be_stringified(self):
+        with use_semconv_opt_in("database"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+                capture_parameters=True,
+            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", ParameterWithFailingStr()))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
+            )
+            self.assertNotIn(f"{DB_QUERY_PARAMETER_TEMPLATE}.1", span.attributes)
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_async_query_runs_when_a_parameter_cannot_be_stringified(self):
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                capture_parameters=True,
+            )
+            cursor_tracer = dbapi.CursorTracer(db_integration)
+            executed = []
+            parameters = ("param1Value", ParameterWithFailingStr())
+
+            async def async_execute(query: str, params: tuple[Any, ...]) -> None:
+                executed.append((query, params))
+
+            asyncio.run(
+                cursor_tracer.traced_execution_async(
+                    MockCursor(),
+                    async_execute,
+                    "Test query",
+                    parameters,
+                )
+            )
+
+            self.assertEqual(executed, [("Test query", parameters)])
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
+            )
+            self.assertNotIn(f"{DB_QUERY_PARAMETER_TEMPLATE}.1", span.attributes)
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_query_parameters_not_captured_for_batch_operations(self):
         with use_semconv_opt_in("database/dup"):
