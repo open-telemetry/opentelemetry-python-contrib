@@ -26,6 +26,11 @@ TEST_POD_UID = "627cc493-f310-47de-96bd-71410b7dec09"
 
 
 class TestAzureAKSResourceDetector(unittest.TestCase):
+    def test_is_process_dependent(self) -> None:
+        detector = AzureAKSResourceDetector()
+
+        self.assertTrue(detector.is_process_dependent())
+
     @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     def test_detects_aks_from_environment(self) -> None:
         attributes = AzureAKSResourceDetector().detect().attributes

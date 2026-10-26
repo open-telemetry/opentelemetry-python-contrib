@@ -109,6 +109,9 @@ and omitted if its environment variable is missing or empty. Pod identity is onl
 populated when AKS cluster metadata is detected; the pod environment variables alone
 do not identify AKS. The detector does not infer pod identity from the hostname.
 
+The detector is process-dependent so SDK post-fork resource refresh can re-run it
+in child processes.
+
 The pod UID identifies the pod, not an individual service instance within it. It
 remains the same across container restarts within that pod and changes when the pod
 is replaced. The detector does not set or overwrite ``service.instance.id``, since

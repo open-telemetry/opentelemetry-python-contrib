@@ -72,6 +72,10 @@ def _get_aks_metadata_from_file() -> str | None:
 
 
 class AzureAKSResourceDetector(ResourceDetector):
+    # pylint: disable=no-self-use
+    def is_process_dependent(self) -> bool:
+        return True
+
     def detect(self) -> Resource:
         resource_id = environ.get(_AKS_CLUSTER_RESOURCE_ID) or _get_aks_metadata_from_file()
         if not resource_id:

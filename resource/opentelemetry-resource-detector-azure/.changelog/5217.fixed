@@ -1,0 +1,1 @@
+Mark the AKS resource detector as process-dependent so it is rerun during post-fork resource refresh.
