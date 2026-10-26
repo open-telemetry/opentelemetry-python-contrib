@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "redis >= 2.6",
+  "redis",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

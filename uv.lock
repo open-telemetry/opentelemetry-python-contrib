@@ -3631,7 +3631,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "redis", marker = "extra == 'instruments'", specifier = ">=2.6" },
+    { name = "redis", marker = "extra == 'instruments'" },
     { name = "wrapt", specifier = ">=1.12.1" },
 ]
 provides-extras = ["instruments"]
