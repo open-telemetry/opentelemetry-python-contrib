@@ -5,7 +5,7 @@ async-timeout==4.0.3
 asyncpg==0.31.0
 billiard==4.2.0
 celery==5.3.6
-certifi==2024.7.4
+certifi==2026.10.19
 chardet==3.0.4
 click==8.1.7
 click-didyoumean==0.3.0
