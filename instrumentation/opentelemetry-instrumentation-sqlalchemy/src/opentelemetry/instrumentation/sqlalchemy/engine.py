@@ -27,6 +27,11 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     is_instrumentation_enabled,
 )
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_CLIENT_CONNECTION_POOL_NAME,
+    DB_CLIENT_CONNECTION_STATE,
+    DbClientConnectionStateValues,
+)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
@@ -106,7 +111,7 @@ def _normalize_vendor(vendor):
 
 def _wrap_create_async_engine(
     tracer,
-    connections_usage,
+    connection_count,
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
@@ -123,7 +128,7 @@ def _wrap_create_async_engine(
         EngineTracer(
             tracer,
             engine.sync_engine,
-            connections_usage,
+            connection_count,
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
@@ -135,7 +140,7 @@ def _wrap_create_async_engine(
 
 def _wrap_create_engine(
     tracer,
-    connections_usage,
+    connection_count,
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
@@ -151,7 +156,7 @@ def _wrap_create_engine(
         EngineTracer(
             tracer,
             engine,
-            connections_usage,
+            connection_count,
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
@@ -201,7 +206,7 @@ class EngineTracer:
         self,
         tracer,
         engine,
-        connections_usage,
+        connection_count,
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
@@ -220,7 +225,7 @@ class EngineTracer:
         )
 
         self.tracer = tracer
-        self.connections_usage = connections_usage
+        self.connection_count = connection_count
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
@@ -237,26 +242,20 @@ class EngineTracer:
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
     def _add_idle_to_connection_usage(self, value):
-        if not is_instrumentation_enabled():
-            return
-
-        self.connections_usage.add(
-            value,
-            attributes={
-                **self._engine_attrs,
-                "state": "idle",
-            },
-        )
+        self._add_connection_count(DbClientConnectionStateValues.IDLE.value, value)
 
     def _add_used_to_connection_usage(self, value):
+        self._add_connection_count(DbClientConnectionStateValues.USED.value, value)
+
+    def _add_connection_count(self, state, value):
         if not is_instrumentation_enabled():
             return
 
-        self.connections_usage.add(
+        self.connection_count.add(
             value,
             attributes={
-                **self._engine_attrs,
-                "state": "used",
+                DB_CLIENT_CONNECTION_POOL_NAME: self._engine_attrs["pool.name"],
+                DB_CLIENT_CONNECTION_STATE: state,
             },
         )
 
@@ -307,20 +306,29 @@ class EngineTracer:
                 remove(weak_ref_target(), identifier, func)
         cls._remove_event_listener_params.clear()
 
+    def _operation(self, statement):
+        """Returns the operation being executed, e.g. ``SELECT``, or ``None`` if unknown.
+
+        This is the value of ``db.operation.name`` / ``db.operation``.
+        """
+        if not isinstance(statement, str):
+            return None
+        # otel spec recommends against parsing SQL queries. We are not trying to parse SQL
+        # but simply truncating the statement to the first word. This covers probably >95%
+        # use cases and uses the SQL statement in span name correctly as per the spec.
+        # For some very special cases it might not record the correct statement if the SQL
+        # dialect is too weird but in any case it shouldn't break anything.
+        # Strip leading comments so we get the operation name. A statement that
+        # is truthy but has no tokens left (comment-only or whitespace-only) must
+        # not raise IndexError; there is no operation in that case.
+        tokens = self._leading_comment_remover.sub("", statement).split()
+        return tokens[0] if tokens else None
+
     def _operation_name(self, db_name, statement):
+        """Returns the span name, ``<operation> <target>`` as per the semantic conventions."""
         parts = []
-        if isinstance(statement, str):
-            # otel spec recommends against parsing SQL queries. We are not trying to parse SQL
-            # but simply truncating the statement to the first word. This covers probably >95%
-            # use cases and uses the SQL statement in span name correctly as per the spec.
-            # For some very special cases it might not record the correct statement if the SQL
-            # dialect is too weird but in any case it shouldn't break anything.
-            # Strip leading comments so we get the operation name. A statement that
-            # is truthy but has no tokens left (comment-only or whitespace-only) must
-            # not raise IndexError; skip adding an operation part in that case.
-            tokens = self._leading_comment_remover.sub("", statement).split()
-            if tokens:
-                parts.append(tokens[0])
+        if operation := self._operation(statement):
+            parts.append(operation)
         if db_name:
             parts.append(db_name)
         if not parts:
@@ -342,16 +350,13 @@ class EngineTracer:
         commenter_data = {k: v for k, v in commenter_data.items() if self.commenter_options.get(k, True)}
         return commenter_data
 
-    def _set_db_client_span_attributes(self, span, statement, db_name, attrs) -> None:
-        """Uses statement, db_name, and attrs to set attributes of provided Otel span"""
+    def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
+        """Uses statement and attrs to set attributes of provided Otel span"""
         span_attrs = dict(attrs)
         _set_db_statement(span_attrs, statement, self._sem_conv_opt_in_mode_db)
         _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode_db)
-        _set_db_operation(
-            span_attrs,
-            self._operation_name(db_name, statement),
-            self._sem_conv_opt_in_mode_db,
-        )
+        # Unlike the span name, db.operation.name must not include the database name.
+        _set_db_operation(span_attrs, self._operation(statement), self._sem_conv_opt_in_mode_db)
         for key, value in span_attrs.items():
             span.set_attribute(key, value)
 
@@ -392,17 +397,17 @@ class EngineTracer:
 
                         # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
                         statement = _add_sql_comment(statement, **commenter_data)
-                        self._set_db_client_span_attributes(span, statement, db_name, attrs)
+                        self._set_db_client_span_attributes(span, statement, attrs)
 
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text is set before add_sql_comment
-                        self._set_db_client_span_attributes(span, statement, db_name, attrs)
+                        self._set_db_client_span_attributes(span, statement, attrs)
                         statement = _add_sql_comment(statement, **commenter_data)
 
                 else:
                     # no sqlcomment anywhere
-                    self._set_db_client_span_attributes(span, statement, db_name, attrs)
+                    self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
 
