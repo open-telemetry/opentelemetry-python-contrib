@@ -43,7 +43,7 @@ class _Job:
         self.attempt = 0
         self.max_retries = max_retries
         self.initial_backoff = initial_backoff
-        # callback is called after OpAMP message handler is executed
+        # callback is called if a response has been received and processed
         self.callback = callback
 
     def should_retry(self) -> bool:
@@ -205,14 +205,14 @@ class OpAMPAgent:
                         logger.debug("Stop signaled, abandoning job %r", job.payload)
                         break
 
-            if message is not None:
-                self._process_message(message)
-
             try:
-                if job.callback is not None:
-                    job.callback()
-            except Exception as exc:
-                logging.warning("Callback for job failed: %s", exc)
+                if message is not None:
+                    self._process_message(message)
+                    try:
+                        if job.callback is not None:
+                            job.callback()
+                    except Exception as exc:
+                        logging.warning("Callback for job failed: %s", exc)
             finally:
                 self._queue.task_done()
 
