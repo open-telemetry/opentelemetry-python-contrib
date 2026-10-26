@@ -34,7 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "asgiref ~= 3.0",
+  "asgiref",
 ]
 
 [project.urls]
