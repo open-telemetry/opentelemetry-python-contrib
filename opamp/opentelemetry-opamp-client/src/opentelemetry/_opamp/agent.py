@@ -43,7 +43,7 @@ class _Job:
         self.attempt = 0
         self.max_retries = max_retries
         self.initial_backoff = initial_backoff
-        # callback is called after OpAMP message handler is executed
+        # callback is called if a response has been received and processed
         self.callback = callback
 
     def should_retry(self) -> bool:
