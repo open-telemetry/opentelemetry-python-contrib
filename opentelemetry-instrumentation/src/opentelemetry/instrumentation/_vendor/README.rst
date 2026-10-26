@@ -28,12 +28,17 @@ To move to a newer release of a vendored project::
 Review the resulting diff: it is the upstream diff between the two releases,
 restricted to the files kept by the ``drop`` list.
 
-Three things need checking on an update. A module added upstream that the
+Two things need checking by hand on an update. A module added upstream that the
 ``drop`` list does not name is vendored silently. A ``drop`` entry naming a path
-upstream has deleted is skipped without warning. A new absolute import of a
-project that is not itself vendored resolves against the application's
-environment at runtime rather than against this directory, which would
-reintroduce exactly the undeclared dependency this directory exists to avoid.
+upstream has deleted is skipped without warning.
+
+A third risk is checked for you. A new absolute import of a project that is not
+itself vendored resolves against the application's environment at runtime
+rather than against this directory, which would reintroduce exactly the
+undeclared dependency this directory exists to avoid.
+``opentelemetry-instrumentation/tests/test_vendor.py`` parses every module here
+and fails when one imports anything outside the standard library that is not
+vendored alongside it.
 
 Two jobs cover this directory. ``.github/workflows/update-vendored-dependencies.yml``
 runs weekly, performs the two commands above, and opens a pull request when the
