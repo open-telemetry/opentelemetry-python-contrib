@@ -3483,8 +3483,8 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
-    { name = "psycopg2", marker = "extra == 'instruments-any'", specifier = ">=2.7.3.1" },
-    { name = "psycopg2-binary", marker = "extra == 'instruments-any'", specifier = ">=2.7.3.1" },
+    { name = "psycopg2", marker = "extra == 'instruments-any'" },
+    { name = "psycopg2-binary", marker = "extra == 'instruments-any'" },
 ]
 provides-extras = ["instruments", "instruments-any"]
 
