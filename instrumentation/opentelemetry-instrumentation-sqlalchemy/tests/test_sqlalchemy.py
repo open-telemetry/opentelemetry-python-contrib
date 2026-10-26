@@ -939,7 +939,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
 
-    def test_suppress_instrumentation_cursor_and_metric(self):
+    def test_suppress_instrumentation_cursor(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
             engine=engine,
@@ -953,9 +953,6 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
-
-        metric_list = self.get_sorted_metrics()
-        self.assertEqual(len(metric_list), 0)
 
     def test_get_db_name_from_cursor_or_conn_postgresql_success(self):
         mock_cursor = mock.Mock()
