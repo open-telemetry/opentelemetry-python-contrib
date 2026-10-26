@@ -3532,7 +3532,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "pymongo", marker = "extra == 'instruments'", specifier = ">=3.1,<5.0" },
+    { name = "pymongo", marker = "extra == 'instruments'" },
 ]
 provides-extras = ["instruments"]
 
