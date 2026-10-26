@@ -3084,7 +3084,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "django", marker = "extra == 'instruments'", specifier = ">=2.0" },
+    { name = "django", marker = "extra == 'instruments'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", marker = "extra == 'asgi'", editable = "instrumentation/opentelemetry-instrumentation-asgi" },
