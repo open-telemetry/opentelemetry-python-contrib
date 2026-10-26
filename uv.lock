@@ -3240,8 +3240,8 @@ instruments-any = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", marker = "extra == 'instruments-any'", specifier = ">=0.18.0" },
-    { name = "httpx2", marker = "extra == 'instruments-any'", specifier = ">=2.0.0" },
+    { name = "httpx", marker = "extra == 'instruments-any'" },
+    { name = "httpx2", marker = "extra == 'instruments-any'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
