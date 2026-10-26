@@ -19,10 +19,7 @@ greenlet==3.5.6
 iniconfig==2.3.0
     # via pytest
 packaging==26.3
-    # via
-    #   opentelemetry-instrumentation
-    #   opentelemetry-instrumentation-sqlalchemy
-    #   pytest
+    # via pytest
 pluggy==1.6.0
     # via pytest
 pytest==7.4.4
