@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import threading
 from collections.abc import Container, Mapping, MutableMapping, Sequence
+from contextlib import suppress
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
@@ -610,10 +611,11 @@ def _set_db_query_parameters(
     is_batch: bool = False,
 ) -> None:
     if _report_old(sem_conv_opt_in_mode):
-        result[_DB_STATEMENT_PARAMETERS] = str(parameters)
+        with suppress(Exception):
+            result[_DB_STATEMENT_PARAMETERS] = str(parameters)
     # db.query.parameter.<key> is only defined in the new (stable) database
     # semantic conventions, and it SHOULD NOT be captured on batch operations.
-    if not _report_new(sem_conv_opt_in_mode) or is_batch or not parameters:
+    if not _report_new(sem_conv_opt_in_mode) or is_batch or parameters is None:
         return
     # Named parameters are keyed by their name; positional parameters use their
     # 0-based index, both matching the placeholders in db.query.text. A string
@@ -629,7 +631,8 @@ def _set_db_query_parameters(
     for key, value in items:
         # Assign directly instead of using set_string_attribute so that falsy
         # values (empty string, 0, False, None) are still captured.
-        result[f"{DB_QUERY_PARAMETER_TEMPLATE}.{key}"] = str(value)
+        with suppress(Exception):
+            result[f"{DB_QUERY_PARAMETER_TEMPLATE}.{key}"] = str(value)
 
 
 def _set_db_user(
