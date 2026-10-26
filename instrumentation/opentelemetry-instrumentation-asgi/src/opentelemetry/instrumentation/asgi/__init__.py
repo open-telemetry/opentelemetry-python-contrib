@@ -760,8 +760,7 @@ class OpenTelemetryMiddleware:
         try:
             with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
-                    for key, value in attributes.items():
-                        current_span.set_attribute(key, value)
+                    current_span.set_attributes(attributes)
 
                 if callable(self.server_request_hook):
                     self.server_request_hook(current_span, scope)

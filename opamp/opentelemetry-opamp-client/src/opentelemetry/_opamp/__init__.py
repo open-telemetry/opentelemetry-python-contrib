@@ -79,6 +79,31 @@ Usage
                 )
                 opamp_agent.start()
 
+Sending messages
+----------------
+
+``OpAMPClient.build_*_message()`` methods return ``AgentToServer`` protobuf messages,
+not encoded bytes. Pass a message to the agent to queue it:
+
+.. code-block:: python
+
+    agent.send(client.build_heartbeat_message())
+
+The agent copies the message when it is queued and sets its instance UID and sequence
+number just before sending. Queued messages can therefore use the current UID without
+changing the caller's message.
+
+When using the client directly, prepare each new message once and reuse the prepared
+bytes if it needs to be retried:
+
+.. code-block:: python
+
+    prepared_message = client.prepare_message(client.build_heartbeat_message())
+    response = client.send(prepared_message)
+
+``OpAMPAgent.send()`` also accepts encoded bytes and prepares them when dequeued.
+``OpAMPClient.send()`` accepts only bytes and sends them unchanged.
+
 API
 ---
 .. _OpAMP protocol: https://opentelemetry.io/docs/specs/opamp/
