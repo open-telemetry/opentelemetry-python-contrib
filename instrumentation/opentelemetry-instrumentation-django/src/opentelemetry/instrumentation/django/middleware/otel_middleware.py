@@ -244,8 +244,7 @@ class _DjangoMiddleware:
                     attributes,
                 )
 
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
+            span.set_attributes(attributes)
 
         activation = use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
@@ -333,8 +332,7 @@ class _DjangoMiddleware:
                         get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE),
                         normalise_response_header_name,
                     )
-                    for key, value in custom_res_attributes.items():
-                        span.set_attribute(key, value)
+                    span.set_attributes(custom_res_attributes)
             else:
                 add_response_attributes(
                     span,
