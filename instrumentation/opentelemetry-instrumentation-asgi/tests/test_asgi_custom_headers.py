@@ -260,17 +260,25 @@ class TestCustomHeaders(AsyncAsgiTestBase):
             for point in metric.data.data_points:
                 self.assertEqual(_request_header_attributes(point.attributes), {})
 
-    async def test_http_custom_request_headers_control_sampling(self):
-        for value, expected_span_count in ((b"sample", 1), (b"drop", 0)):
-            with self.subTest(value=value):
-                self.scope["headers"] = [(b"custom-test-header-1", value)]
-                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
-                _, exporter, app = self._create_app_with_sampler(sampler)
-                self.seed_app(app)
-                await self.send_default_request()
-                outputs = await self.get_all_output()
-                self.assertEqual(outputs[0]["status"], 200)
-                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+    async def test_http_custom_request_headers_sample(self):
+        self.scope["headers"] = [(b"custom-test-header-1", b"sample")]
+        sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+        _, exporter, app = self._create_app_with_sampler(sampler)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.assertEqual(outputs[0]["status"], 200)
+        self.assertEqual(len(exporter.get_finished_spans()), 1)
+
+    async def test_http_custom_request_headers_drop(self):
+        self.scope["headers"] = [(b"custom-test-header-1", b"drop")]
+        sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+        _, exporter, app = self._create_app_with_sampler(sampler)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.assertEqual(outputs[0]["status"], 200)
+        self.assertEqual(len(exporter.get_finished_spans()), 0)
 
     async def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
         sampler = CapturingSampler()
