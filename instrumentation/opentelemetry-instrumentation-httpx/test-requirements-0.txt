@@ -1,6 +1,6 @@
 anyio==3.7.1
 asgiref==3.8.1
-certifi==2024.7.4
+certifi==2026.10.19
 exceptiongroup==1.2.0
 h11==0.12.0
 httpcore==0.13.7

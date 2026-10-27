@@ -9,6 +9,7 @@ from unittest import TestCase, mock
 
 import boto3
 from botocore.awsrequest import AWSResponse
+from botocore.exceptions import ParamValidationError
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.boto3sqs import (
@@ -417,3 +418,9 @@ class TestBoto3SQSInstrumentation(TestBase):
             )
             spans = self.get_finished_spans()
             self.assertEqual(0, len(spans))
+
+    def test_delete_message_batch_without_entries(self):
+        # botocore reports the missing parameter; the wrapper must not fail first
+        with self._mocked_endpoint({"Successful": [], "Failed": []}):
+            with self.assertRaises(ParamValidationError):
+                self._client.delete_message_batch(QueueUrl=self._queue_url)
