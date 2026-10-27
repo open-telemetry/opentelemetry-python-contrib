@@ -238,9 +238,12 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         exception = None
         params = getattr(instance, "_params", None)
         query = args[0] if args else kwargs.get("query", kwargs.get("command"))
-        parameters = args[1:]
-        if not parameters and "args" in kwargs:
-            parameters = (kwargs["args"],)
+
+        parameters = None
+        if self.capture_parameters:
+            parameters = args[1:]
+            if not parameters and "args" in kwargs:
+                parameters = (kwargs["args"],)
         name = query if query else getattr(params, "database", "postgresql")
 
         try:
@@ -253,7 +256,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         span_attributes = _hydrate_span_from_args(
             instance,
             query,
-            parameters if self.capture_parameters else None,
+            parameters,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
