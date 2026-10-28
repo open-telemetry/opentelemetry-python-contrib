@@ -660,9 +660,9 @@ def _instrument(
 
     trace_configs = trace_configs or ()
 
-    # The tracer and the instruments are created once here rather than per session: a
-    # meter is retained by its provider for the lifetime of the process, so building one
-    # in instrumented_init would accumulate one per ClientSession. This matches how
+    # The tracer and the instruments are created once here rather than per session: the
+    # default proxy meter provider keeps every meter it hands out, so building one in
+    # instrumented_init would accumulate one per ClientSession. This matches how
     # requests and httpx resolve their providers at instrument() time.
     tracer = _create_tracer(tracer_provider, sem_conv_opt_in_mode)
     duration_histogram_old, duration_histogram_new = _create_duration_histograms(meter_provider, sem_conv_opt_in_mode)
