@@ -212,11 +212,12 @@ def _get_base_attributes(
     partition: int | None,
     key: str | None,
 ) -> dict[str, Any]:
-    attributes: dict[str, Any] = {}
-    attributes[messaging_attributes.MESSAGING_SYSTEM] = messaging_attributes.MessagingSystemValues.KAFKA.value
-    attributes[server_attributes.SERVER_ADDRESS] = json.dumps(bootstrap_servers)
-    attributes[messaging_attributes.MESSAGING_CLIENT_ID] = client_id
-    attributes[messaging_attributes.MESSAGING_DESTINATION_NAME] = topic
+    attributes: dict[str, Any] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+        server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
+        messaging_attributes.MESSAGING_CLIENT_ID: client_id,
+        messaging_attributes.MESSAGING_DESTINATION_NAME: topic,
+    }
 
     if partition is not None:
         attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID] = str(partition)
@@ -294,20 +295,19 @@ def _get_poll_attributes(
     consumer_group: str | None,
     message_count: int,
 ) -> dict[str, Any]:
-    attributes: dict[str, Any] = {}
-    attributes[messaging_attributes.MESSAGING_SYSTEM] = messaging_attributes.MessagingSystemValues.KAFKA.value
-    attributes[server_attributes.SERVER_ADDRESS] = json.dumps(bootstrap_servers)
-    attributes[messaging_attributes.MESSAGING_CLIENT_ID] = client_id
+    attributes: dict[str, Any] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+        server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
+        messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT: message_count,
+        messaging_attributes.MESSAGING_OPERATION_NAME: "receive",
+        messaging_attributes.MESSAGING_OPERATION_TYPE: (
+            messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
+        ),
+        messaging_attributes.MESSAGING_CLIENT_ID: client_id,
+    }
 
     if consumer_group is not None:
         attributes[messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
-
-    attributes[messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT] = message_count
-
-    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = "receive"
-    attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = (
-        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
-    )
 
     return attributes
 
