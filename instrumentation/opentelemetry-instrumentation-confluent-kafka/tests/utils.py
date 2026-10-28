@@ -83,7 +83,6 @@ class MockedProducer(Producer):
         return len(self._queue)
 
 
-
 class MockedAIOProducer:
     def __init__(self, config=None):
         self._queue = []

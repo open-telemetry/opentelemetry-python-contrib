@@ -165,7 +165,6 @@ class AutoInstrumentedConsumer(Consumer):
         super().__init__(*args, **kwargs)
         self.config = _capture_config(args, kwargs)
         self._current_consume_span = None
-        
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def poll(self, timeout=-1):  # pylint: disable=useless-super-delegation
@@ -178,6 +177,7 @@ class AutoInstrumentedConsumer(Consumer):
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def close(self):  # pylint: disable=useless-super-delegation
         return super().close()
+
 
 # Instrument asynchronous AIOProducer and AIOConsumer if available in confluent-kafka
 if AIOProducer is not None:
@@ -209,6 +209,7 @@ if AIOConsumer is not None:
             return await super().close()
 else:
     AutoInstrumentedAIOConsumer = None
+
 
 class ProxiedProducer(Producer):
     def __init__(self, producer: Producer, tracer: Tracer):
@@ -409,7 +410,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 AutoInstrumentedAIOConsumer,
                 "close",
                 _inner_wrap_aio_close,
-            )         
+            )
+
     def _uninstrument(self, **kwargs):
         confluent_kafka.Producer = self._original_kafka_producer
         confluent_kafka.Consumer = self._original_kafka_consumer
@@ -494,7 +496,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     @staticmethod
     def wrap_close(func, instance, args, kwargs):
 
-        
+
         if instance._current_consume_span:
             _end_current_consume_span(instance)
         func(*args, **kwargs)
