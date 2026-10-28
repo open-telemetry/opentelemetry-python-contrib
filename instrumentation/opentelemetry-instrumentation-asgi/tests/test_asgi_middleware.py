@@ -55,6 +55,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -73,6 +74,10 @@ from opentelemetry.semconv.attributes.url_attributes import (
 )
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.test.asgitestutil import (
     AsyncAsgiTestBase,
@@ -277,6 +282,15 @@ async def error_asgi(scope, receive, send):
 
 class UnhandledException(Exception):
     pass
+
+
+class ClientDisconnect(Exception):
+    """Stands in for starlette.requests.ClientDisconnect.
+
+    Starlette raises it as an ordinary Exception subclass once receive()
+    yields http.disconnect, so the middleware sees a plain exception and
+    cannot tell it from any other application failure.
+    """
 
 
 def failing_hook(msg):
@@ -2066,8 +2080,78 @@ class TestWrappedApplication(AsyncAsgiTestBase):
 
 
 class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
+    def setUp(self):
+        super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
+        )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        # setUp above mutates a module global, so drop the cached mapping again
+        # instead of leaking this class's opt-in mode into later tests.
+        self.addCleanup(
+            setattr,
+            _OpenTelemetrySemanticConventionStability,
+            "_initialized",
+            False,
+        )
+
+        self.env_patch.start()
+        self.addCleanup(self.env_patch.stop)
+
     def tearDown(self):
         pass
+
+    async def _run_raising_app(self, app, expected_exception, extra_input=()):
+        """Drive an application whose request ends in an exception."""
+        self.seed_app(otel_asgi.OpenTelemetryMiddleware(app))
+        await self.send_default_request()
+        for message in extra_input:
+            await self.send_input(message)
+        with self.assertRaises(expected_exception):
+            await self.communicator.wait()
+
+    async def _send_request_to_raising_app(self):
+        """Run an application that raises before any response status is sent."""
+
+        async def bad_app(_scope, _receive, _send):
+            raise ValueError("whatever")
+
+        await self._run_raising_app(bad_app, ValueError)
+
+    def _get_server_span(self):
+        server_spans = [span for span in self.get_finished_spans() if span.kind == SpanKind.SERVER]
+        self.assertEqual(len(server_spans), 1)
+        return server_spans[0]
+
+    def _single_point_attributes(self, metrics, metric_name):
+        """Assert metric_name was recorded once, and return its attributes.
+
+        Naming the metric matters: a loop over every recorded metric proves
+        nothing about error.type, because _parse_duration_attrs keeps only the
+        attributes listed for the mode in use.
+        """
+        recorded = [metric for metric in metrics if metric.name == metric_name]
+        self.assertEqual(
+            len(recorded),
+            1,
+            f"expected one {metric_name}, recorded {[metric.name for metric in metrics]}",
+        )
+        points = list(recorded[0].data.data_points)
+        self.assertEqual(len(points), 1)
+        return dict(points[0].attributes)
 
     async def test_asgi_value_error_exception(self):
         """
@@ -2089,6 +2173,152 @@ class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
             self.fail("expecting ValueError('whatever'), received instead: " + str(exc_info))
         else:
             self.fail("expecting ValueError('whatever')")
+
+    async def test_asgi_error_type_new_semconv(self):
+        """
+        Test that error.type is reported on the server span and on the duration
+        metric when the application raises before sending a response status.
+        See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2699
+        """
+        await self._send_request_to_raising_app()
+
+        span_attributes = dict(self._get_server_span().attributes)
+        self.assertEqual(span_attributes.get(ERROR_TYPE), "ValueError")
+        self.assertIsInstance(span_attributes.get(ERROR_TYPE), str)
+
+        duration_attributes = self._single_point_attributes(
+            self.get_sorted_metrics(SCOPE), HTTP_SERVER_REQUEST_DURATION
+        )
+        self.assertEqual(duration_attributes.get(ERROR_TYPE), "ValueError")
+        self.assertIsInstance(duration_attributes.get(ERROR_TYPE), str)
+
+    async def test_asgi_error_type_both_semconv(self):
+        """
+        Test that error.type reaches the span and the new duration metric in
+        http/dup mode, and stays off the old duration metric.
+        """
+        await self._send_request_to_raising_app()
+
+        span_attributes = dict(self._get_server_span().attributes)
+        self.assertEqual(span_attributes.get(ERROR_TYPE), "ValueError")
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_attributes_new = self._single_point_attributes(metrics, HTTP_SERVER_REQUEST_DURATION)
+        self.assertEqual(duration_attributes_new.get(ERROR_TYPE), "ValueError")
+        duration_attributes_old = self._single_point_attributes(metrics, MetricInstruments.HTTP_SERVER_DURATION)
+        self.assertNotIn(ERROR_TYPE, duration_attributes_old)
+
+    async def test_asgi_error_type_not_reported_default_semconv(self):
+        """Test that error.type is not reported with the old semantic conventions."""
+        await self._send_request_to_raising_app()
+
+        self.assertNotIn(ERROR_TYPE, dict(self._get_server_span().attributes))
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertNotIn(HTTP_SERVER_REQUEST_DURATION, [metric.name for metric in metrics])
+        duration_attributes = self._single_point_attributes(metrics, MetricInstruments.HTTP_SERVER_DURATION)
+        self.assertNotIn(ERROR_TYPE, duration_attributes)
+
+    async def test_asgi_error_type_keeps_response_status_new_semconv(self):
+        """
+        Test that an error.type already derived from a status code wins over a
+        later exception. A streaming response can send 500, emit chunks and
+        then fail, and that request failed with a 500, not with the type that
+        aborted the stream.
+        """
+
+        async def failing_stream_app(_scope, _receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 500,
+                    "headers": [[b"Content-Type", b"text/plain"]],
+                }
+            )
+            await send({"type": "http.response.body", "body": b"*", "more_body": True})
+            raise ValueError("stream aborted")
+
+        await self._run_raising_app(failing_stream_app, ValueError)
+
+        span_attributes = dict(self._get_server_span().attributes)
+        self.assertEqual(span_attributes.get(HTTP_RESPONSE_STATUS_CODE), 500)
+        self.assertEqual(span_attributes.get(ERROR_TYPE), "500")
+
+        duration_attributes = self._single_point_attributes(
+            self.get_sorted_metrics(SCOPE), HTTP_SERVER_REQUEST_DURATION
+        )
+        self.assertEqual(duration_attributes.get(ERROR_TYPE), "500")
+
+    async def test_asgi_error_type_keeps_ok_response_status_new_semconv(self):
+        """
+        Test that an ok status already sent does not suppress error.type. Only
+        a status that already produced error.type does, so the exception wins
+        here while test_asgi_error_type_keeps_response_status_new_semconv keeps
+        "500". Together the two pin the single precondition: a status code in
+        the attributes is not by itself a reason to stay silent, which is what
+        http-spans.md shows with a server span carrying both status 201 and
+        error.type.
+        """
+
+        async def failing_stream_app(_scope, _receive, send):
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [[b"Content-Type", b"text/plain"]],
+                }
+            )
+            await send({"type": "http.response.body", "body": b"*", "more_body": True})
+            raise ValueError("stream aborted")
+
+        await self._run_raising_app(failing_stream_app, ValueError)
+
+        span_attributes = dict(self._get_server_span().attributes)
+        self.assertEqual(span_attributes.get(HTTP_RESPONSE_STATUS_CODE), 200)
+        self.assertEqual(span_attributes.get(ERROR_TYPE), "ValueError")
+
+        duration_attributes = self._single_point_attributes(
+            self.get_sorted_metrics(SCOPE), HTTP_SERVER_REQUEST_DURATION
+        )
+        self.assertEqual(duration_attributes.get(ERROR_TYPE), "ValueError")
+
+    async def test_asgi_client_disconnect_is_error_type_new_semconv(self):
+        """
+        Test that a disconnect-derived exception is reported like any other.
+
+        Starlette turns http.disconnect into ClientDisconnect, an ordinary
+        Exception subclass, and this is deliberately not suppressed.
+        http-spans.md gives "connection dropped before response body was sent"
+        as a server-span example that carries error.type, and its only
+        not-an-error carve-out is scoped to HTTP client instrumentation
+        cancelling intentionally. Suppressing here would also need a predicate
+        that no ASGI middleware has: http.disconnect arrives whenever receive()
+        is called after a response was sent, and websocket.disconnect arrives
+        when the server closes too, so a seen disconnect does not imply the
+        peer went away, let alone that it caused this exception. One extra
+        low-cardinality value on the error rate is filterable at query time;
+        a silently dropped application error is not.
+        """
+
+        async def disconnecting_app(_scope, receive, _send):
+            while True:
+                message = await receive()
+                if message["type"] == "http.disconnect":
+                    raise ClientDisconnect
+
+        await self._run_raising_app(
+            disconnecting_app,
+            ClientDisconnect,
+            extra_input=({"type": "http.disconnect"},),
+        )
+
+        span_attributes = dict(self._get_server_span().attributes)
+        self.assertEqual(span_attributes.get(ERROR_TYPE), "ClientDisconnect")
+
+        duration_attributes = self._single_point_attributes(
+            self.get_sorted_metrics(SCOPE), HTTP_SERVER_REQUEST_DURATION
+        )
+        self.assertEqual(duration_attributes.get(ERROR_TYPE), "ClientDisconnect")
 
 
 if __name__ == "__main__":

@@ -36,6 +36,25 @@ Run instrumented code:
 
     asyncio.run(main())
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database conventions are emitted.
+
 API
 ---
 """
@@ -130,7 +149,7 @@ def _hydrate_span_from_args(
         _set_net_transport(
             span_attributes,
             NetTransportValues.OTHER.value,
-            NetworkTransportValues.PIPE.value,
+            NetworkTransportValues.UNIX.value,
             semconv_opt_in_mode,
         )
 
@@ -218,7 +237,14 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
         exception = None
         params = getattr(instance, "_params", None)
-        name = args[0] if args[0] else getattr(params, "database", "postgresql")
+        query = args[0] if args else kwargs.get("query", kwargs.get("command"))
+
+        parameters = None
+        if self.capture_parameters:
+            parameters = args[1:]
+            if not parameters and "args" in kwargs:
+                parameters = (kwargs["args"],)
+        name = query if query else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -229,8 +255,8 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         # Hydrate attributes before span creation to enable filtering
         span_attributes = _hydrate_span_from_args(
             instance,
-            args[0],
-            args[1:] if self.capture_parameters else None,
+            query,
+            parameters,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 

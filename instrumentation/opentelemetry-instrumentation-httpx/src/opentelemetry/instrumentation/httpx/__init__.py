@@ -377,9 +377,7 @@ from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
-from wrapt import (
-    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
-)
+from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -748,8 +746,7 @@ def _apply_response_client_attributes_to_span(
             semconv,
         )
 
-    for key, val in span_attributes.items():
-        span.set_attribute(key, val)
+    span.set_attributes(span_attributes)
 
 
 def _apply_response_client_attributes_to_metrics(

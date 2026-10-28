@@ -1,5 +1,5 @@
 asgiref==3.8.1
-certifi==2024.7.4
+certifi==2026.10.19
 charset-normalizer==3.3.2
 cramjam==2.11.0
 Deprecated==1.2.14
