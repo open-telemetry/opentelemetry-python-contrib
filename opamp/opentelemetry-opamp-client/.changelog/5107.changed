@@ -1,0 +1,1 @@
+`opentelemetry-opamp-client`: the `OpAMPClient.build_*_message()` methods return an `AgentToServer` message instead of bytes; its instance UID and sequence number are set when it is sent

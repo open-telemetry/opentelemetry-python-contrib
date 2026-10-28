@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asgi`: set `error.type` on an uncaught exception
