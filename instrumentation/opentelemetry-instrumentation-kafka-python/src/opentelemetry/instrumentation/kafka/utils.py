@@ -8,6 +8,7 @@ from logging import getLogger
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
@@ -131,7 +132,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
-            future = func(*args, **kwargs)
+            with _record_error_type(span):
+                future = func(*args, **kwargs)
             partition = KafkaPropertiesExtractor.extract_send_partition(future)
             if partition is not None:
                 span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
