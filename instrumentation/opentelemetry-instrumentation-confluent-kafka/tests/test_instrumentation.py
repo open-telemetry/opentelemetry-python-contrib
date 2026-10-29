@@ -1,8 +1,8 @@
+import asyncio
+
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-
 # pylint: disable=no-name-in-module,import-outside-toplevel
-
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -472,34 +472,44 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
 
     def test_aio_produce(self) -> None:
-        import asyncio
-        from .utils import MockedAIOProducer
+        from .utils import MockedAIOProducer  # noqa: PLC0415
 
         async def _run():
             instrumentation = ConfluentKafkaInstrumentor()
             tracer = self.tracer_provider.get_tracer(__name__)
             producer = MockedAIOProducer({"bootstrap.servers": "localhost:9092"})
 
+            # Without headers: verify produce succeeds and headers kwarg is NOT forced
+            # (confluent-kafka AIOProducer raises NotImplementedError if headers is passed)
+            call_kwargs = {"topic": "test-topic", "value": b"test-value"}
             await instrumentation.wrap_aio_produce(
                 producer.produce,
                 producer,
                 tracer,
                 args=(),
-                kwargs={"topic": "test-topic", "value": b"test-value"},
+                kwargs=call_kwargs,
             )
-
+            self.assertNotIn("headers", call_kwargs)
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 1)
             self.assertEqual(spans[0].name, "test-topic send")
-            self.assertEqual(len(producer._queue), 1)
-            headers = producer._queue[0].headers()
-            self.assertTrue(any("traceparent" in str(h) for h in headers))
+
+            # With headers: verify traceparent is injected into supplied headers
+            self.memory_exporter.clear()
+            supplied_headers = []
+            await instrumentation.wrap_aio_produce(
+                producer.produce,
+                producer,
+                tracer,
+                args=(),
+                kwargs={"topic": "test-topic", "value": b"test-value", "headers": supplied_headers},
+            )
+            self.assertTrue(any("traceparent" in str(h) for h in supplied_headers))
 
         asyncio.run(_run())
 
     def test_aio_poll(self) -> None:
-        import asyncio
-        from .utils import MockedAIOConsumer, MockedMessage
+        from .utils import MockedAIOConsumer, MockedMessage  # noqa: PLC0415
 
         async def _run():
             instrumentation = ConfluentKafkaInstrumentor()
@@ -528,3 +538,31 @@ class TestConfluentKafka(TestBase):
             self.assertTrue(any(s.name == "test-topic process" for s in spans))
 
         asyncio.run(_run())
+
+    def test_aio_instrument_and_uninstrument(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka import (  # noqa: PLC0415
+            AutoInstrumentedAIOConsumer,
+            AutoInstrumentedAIOProducer,
+            _aio_module,
+        )
+
+        if _aio_module is None or AutoInstrumentedAIOProducer is None:
+            return
+
+        instrumentor = ConfluentKafkaInstrumentor()
+        orig_producer = getattr(_aio_module, "AIOProducer", None)
+        orig_consumer = getattr(_aio_module, "AIOConsumer", None)
+
+        instrumentor.instrument()
+        try:
+            if orig_producer is not None:
+                self.assertIs(_aio_module.AIOProducer, AutoInstrumentedAIOProducer)
+            if orig_consumer is not None:
+                self.assertIs(_aio_module.AIOConsumer, AutoInstrumentedAIOConsumer)
+        finally:
+            instrumentor.uninstrument()
+
+        if orig_producer is not None:
+            self.assertIs(_aio_module.AIOProducer, orig_producer)
+        if orig_consumer is not None:
+            self.assertIs(_aio_module.AIOConsumer, orig_consumer)
