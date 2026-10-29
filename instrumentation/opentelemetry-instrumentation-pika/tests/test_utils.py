@@ -17,10 +17,12 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, SpanKind, Tracer
 
 
@@ -502,3 +504,44 @@ class TestUtils(TestCase):
         )
         proxy = utils.ReadyMessagesDequeProxy(deque, generator_info, None)
         self.assertEqual(list(proxy), [1, 2, 3])
+
+
+@mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
+class TestErrorType(TestBase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.channel = mock.MagicMock(spec=Channel)
+        self.properties = mock.MagicMock(spec=BasicProperties)
+        self.properties.headers = {}
+        self.properties.type = "task"
+        self.properties.message_id = "message-id"
+        self.properties.correlation_id = "correlation-id"
+
+    def _publish(self, original_function) -> None:
+        decorated = utils._decorate_basic_publish(original_function, self.channel, self.tracer)
+        decorated("test-exchange", "test-routing-key", b"body", self.properties)
+
+    def test_error_type_recorded_on_a_failed_publish(self, _enrich_span: mock.MagicMock) -> None:
+        error = ConnectionError("broker unavailable")
+
+        def failing_publish(*args, **kwargs):
+            raise error
+
+        with self.assertRaises(ConnectionError) as raised:
+            self._publish(failing_publish)
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.PRODUCER)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ConnectionError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_publish(self, _enrich_span: mock.MagicMock) -> None:
+        self._publish(mock.MagicMock())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
