@@ -24,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -556,6 +557,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.status.description,
             f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INTERNAL")
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -616,6 +618,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.status.description, None)
+        self.assertNotIn(ERROR_TYPE, span.attributes)
 
         # Check attributes
         self.assertSpanHasAttributes(

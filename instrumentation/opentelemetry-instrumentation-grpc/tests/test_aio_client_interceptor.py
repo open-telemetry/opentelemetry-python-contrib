@@ -22,6 +22,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -204,6 +205,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INVALID_ARGUMENT")
 
     async def test_error_unary_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -221,6 +223,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INVALID_ARGUMENT")
 
     async def test_error_stream_unary(self):
         with self.assertRaises(grpc.RpcError):
@@ -237,6 +240,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INVALID_ARGUMENT")
 
     async def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -254,6 +258,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INVALID_ARGUMENT")
 
     # pylint:disable=no-self-use
     async def test_client_interceptor_trace_context_propagation(self):
