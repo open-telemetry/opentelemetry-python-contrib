@@ -10,6 +10,8 @@ try:
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
+from grpc.aio import AbortError
+
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
@@ -107,7 +109,8 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                         # Here, we're interested in uncaught exceptions.
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
-                            _set_grpc_error_type(span, error=error)
+                            if not isinstance(error, AbortError):
+                                _set_grpc_error_type(span, error=error)
                             span.record_exception(error)
                         raise error
 
@@ -130,7 +133,8 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                     except Exception as error:
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
-                            _set_grpc_error_type(span, error=error)
+                            if not isinstance(error, AbortError):
+                                _set_grpc_error_type(span, error=error)
                             span.record_exception(error)
                         raise error
 
