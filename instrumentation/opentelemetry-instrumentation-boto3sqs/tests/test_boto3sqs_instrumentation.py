@@ -18,6 +18,7 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSSetter,
 )
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
@@ -234,6 +235,34 @@ class TestBoto3SQSInstrumentation(TestBase):
             "StringValue": self._to_trace_parent(trace_id, span_id, TraceFlags.get_default()),
             "DataType": "String",
         }
+
+    def test_error_type_recorded_on_a_failed_send_message(self):
+        error = RuntimeError("endpoint unreachable")
+        with mock.patch.object(
+            self._client.meta.events,
+            "emit",
+            side_effect=error,
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                self._client.send_message(QueueUrl=self._queue_url, MessageBody="hello msg")
+        self.assertIs(raised.exception, error)
+
+        span = self._get_only_span()
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "RuntimeError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_send_message(self):
+        mock_response = {"MessageId": "123456789"}
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=self._queue_url,
+                MessageBody="hello msg",
+                MessageAttributes={},
+            )
+
+        span = self._get_only_span()
+        self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_send_message(self):
         message_id = "123456789"

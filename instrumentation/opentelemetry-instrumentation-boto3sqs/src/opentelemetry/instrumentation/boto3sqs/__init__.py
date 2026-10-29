@@ -27,6 +27,10 @@ import botocore.client
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _record_error_type,
+    _set_error_type,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
@@ -207,7 +211,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
-                retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
+                with _record_error_type(span):
+                    retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
                 message_id = retval.get("MessageId")
                 if message_id:
                     if span.is_recording():
@@ -238,7 +243,13 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     if "MessageAttributes" not in entry:
                         entry["MessageAttributes"] = {}
                     propagate.inject(entry["MessageAttributes"], setter=boto3sqs_setter)
-            retval = wrapped(*args, **kwargs)
+            try:
+                retval = wrapped(*args, **kwargs)
+            except Exception as error:
+                for span in ids_to_spans.values():
+                    _set_error_type(error, span)
+                    span.end()
+                raise
             for successful_messages in retval.get("Successful", []):
                 message_identifier = successful_messages["Id"]
                 message_span = ids_to_spans.get(message_identifier)
@@ -271,11 +282,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     queue_url,
                     operation=MessagingOperationValues.RECEIVE,
                 )
-                retval = wrapped(
-                    *args,
-                    MessageAttributeNames=message_attribute_names,
-                    **kwargs,
-                )
+                with _record_error_type(span):
+                    retval = wrapped(
+                        *args,
+                        MessageAttributeNames=message_attribute_names,
+                        **kwargs,
+                    )
                 messages = retval.get("Messages", [])
                 if not messages:
                     return retval
