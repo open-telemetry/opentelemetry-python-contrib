@@ -260,6 +260,7 @@ _ResponseHookT = Callable[[Span, PreparedRequest, Response], None] | None
 def _call_hook_and_log_exception(hook: Callable[..., None], *args: Any) -> None:
     try:
         hook(*args)
+    # pylint: disable-next=broad-exception-caught
     except Exception:
         _logger.warning("Exception raised by hook %r", hook, exc_info=True)
 
