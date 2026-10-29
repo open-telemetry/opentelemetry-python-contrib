@@ -39,7 +39,7 @@ def chat_completions_create_v_old(
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
+        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
         operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
         model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
@@ -101,7 +101,7 @@ def async_chat_completions_create_v_old(
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
+        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
         operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
         model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
@@ -157,7 +157,6 @@ def async_chat_completions_create_v_old(
 def embeddings_create(
     tracer: Tracer,
     instruments: Instruments,
-    latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `Embeddings` class to trace it."""
 
@@ -165,7 +164,6 @@ def embeddings_create(
         span_attributes = get_llm_request_attributes(
             kwargs,
             instance,
-            latest_experimental_enabled,
             GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
         )
         span_name = _get_embeddings_span_name(span_attributes)
@@ -210,7 +208,6 @@ def embeddings_create(
 def async_embeddings_create(
     tracer: Tracer,
     instruments: Instruments,
-    latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `AsyncEmbeddings` class to trace it."""
 
@@ -218,7 +215,6 @@ def async_embeddings_create(
         span_attributes = get_llm_request_attributes(
             kwargs,
             instance,
-            latest_experimental_enabled,
             GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
         )
         span_name = _get_embeddings_span_name(span_attributes)
