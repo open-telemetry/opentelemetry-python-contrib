@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-pyramid`: record `error.type` on both the span and the duration metric
+`opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-pyramid`: record `error.type` on the span as well as the duration metric when the stable conventions are opted into
