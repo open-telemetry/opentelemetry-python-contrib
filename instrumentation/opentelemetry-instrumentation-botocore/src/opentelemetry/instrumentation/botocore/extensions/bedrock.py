@@ -8,9 +8,12 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import io
 import json
 import logging
+import warnings
 from timeit import default_timer
 from typing import Any
 
@@ -28,6 +31,7 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
+    _AwsSdkCallContext,
     _AwsSdkExtension,
     _BotoClientErrorT,
     _BotocoreInstrumentorContext,
@@ -102,6 +106,26 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 _MODEL_ID_KEY: str = "modelId"
 
 
+def _is_genai_bedrock_active() -> bool:
+    try:
+        if (
+            importlib.util.find_spec(
+                "opentelemetry.instrumentation.genai.bedrock"
+            )
+            is None
+        ):
+            return False
+        mod = importlib.import_module(
+            "opentelemetry.instrumentation.genai.bedrock"
+        )
+        bedrock_instrumentor_cls = getattr(mod, "BedrockInstrumentor", None)
+        if bedrock_instrumentor_cls is None:
+            return False
+        return bedrock_instrumentor_cls().is_instrumented_by_opentelemetry
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+
 class _BedrockRuntimeExtension(_AwsSdkExtension):
     """
     This class is an extension for <a
@@ -120,10 +144,38 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         "InvokeModelWithResponseStream",
     }
 
+    def __init__(self, call_context: _AwsSdkCallContext):
+        super().__init__(call_context)
+        warnings.warn(
+            "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated "
+            "and will be removed in a future release. "
+            "Please use 'opentelemetry-instrumentation-genai-bedrock' instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        if _is_genai_bedrock_active():
+            _logger.debug(
+                "opentelemetry-instrumentation-genai-bedrock is active; "
+                "suppressing botocore BedrockExtension to avoid duplicate spans."
+            )
+            self._handled_operations: set[str] = set()
+            self._dont_close_span_on_end_operations: set[str] = set()
+        else:
+            self._handled_operations = self._HANDLED_OPERATIONS
+            self._dont_close_span_on_end_operations = (
+                self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
+            )
+
+    @property
+    def _disabled(self) -> bool:
+        return not self._handled_operations
+
     def should_end_span_on_exit(self):
-        return self._call_context.operation not in self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
+        return self._call_context.operation not in self._dont_close_span_on_end_operations
 
     def setup_metrics(self, meter: Meter, metrics: dict[str, Instrument]):
+        if self._disabled:
+            return
         metrics[GEN_AI_CLIENT_OPERATION_DURATION] = meter.create_histogram(
             name=GEN_AI_CLIENT_OPERATION_DURATION,
             description="GenAI operation duration",
@@ -158,7 +210,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+        if self._call_context.operation not in self._handled_operations:
             return
 
         attributes[GEN_AI_SYSTEM] = GenAiSystemValues.AWS_BEDROCK.value
@@ -376,7 +428,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         return []
 
     def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
-        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+        if self._call_context.operation not in self._handled_operations:
             return
 
         capture_content = genai_capture_message_content()
@@ -540,7 +592,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         result: dict[str, Any],
         instrumentor_context: _BotocoreInstrumentorContext,
     ):
-        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+        if self._call_context.operation not in self._handled_operations:
             return
 
         capture_content = genai_capture_message_content()
@@ -836,7 +888,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         exception: _BotoClientErrorT,
         instrumentor_context: _BotocoreInstrumentorContext,
     ):
-        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+        if self._call_context.operation not in self._handled_operations:
             return
 
         span.set_status(Status(StatusCode.ERROR, str(exception)))

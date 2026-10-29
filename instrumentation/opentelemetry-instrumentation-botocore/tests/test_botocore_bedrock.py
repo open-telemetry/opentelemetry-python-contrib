@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import json
+from typing import Any
 from unittest import mock
 
 import boto3
@@ -14,15 +15,23 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock import (
+    _BedrockRuntimeExtension,
+    _is_genai_bedrock_active,
+)
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
+from opentelemetry.instrumentation.botocore.extensions.types import (
+    _AwsSdkCallContext,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_SYSTEM,
     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
     GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
 )
@@ -3076,3 +3085,137 @@ def get_anthropic_tool_config():
             },
         }
     ]
+
+
+def _create_mock_call_context(
+    operation: str = "Converse",
+    params: dict[str, Any] | None = None,
+) -> _AwsSdkCallContext:
+    mock_client = mock.MagicMock()
+    mock_client.meta.region_name = "us-east-1"
+    mock_client.meta.endpoint_url = "https://bedrock-runtime.us-east-1.amazonaws.com"
+    mock_client.meta.service_model.service_name = "bedrock-runtime"
+    mock_client.meta.service_model.service_id = "Bedrock Runtime"
+    mock_client.meta.service_model.api_version = "2023-09-30"
+    return _AwsSdkCallContext(mock_client, (operation, params or {}))
+
+
+def test_bedrock_runtime_extension_deprecation_warning():
+    call_context = _create_mock_call_context()
+    with pytest.deprecated_call() as warning_info:
+        _BedrockRuntimeExtension(call_context)
+
+    assert any(
+        "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated"
+        in str(w.message)
+        for w in warning_info
+    )
+
+
+def test_is_genai_bedrock_active():
+    with mock.patch("importlib.util.find_spec", return_value=None):
+        assert not _is_genai_bedrock_active()
+
+    mock_instrumentor_cls = mock.MagicMock()
+    mock_instrumentor_cls.return_value.is_instrumented_by_opentelemetry = False
+    with (
+        mock.patch("importlib.util.find_spec", return_value=mock.MagicMock()),
+        mock.patch.dict(
+            "sys.modules",
+            {"opentelemetry.instrumentation.genai.bedrock": mock.MagicMock(BedrockInstrumentor=mock_instrumentor_cls)},
+        ),
+    ):
+        assert not _is_genai_bedrock_active()
+
+    mock_instrumentor_cls.return_value.is_instrumented_by_opentelemetry = True
+    with (
+        mock.patch("importlib.util.find_spec", return_value=mock.MagicMock()),
+        mock.patch.dict(
+            "sys.modules",
+            {"opentelemetry.instrumentation.genai.bedrock": mock.MagicMock(BedrockInstrumentor=mock_instrumentor_cls)},
+        ),
+    ):
+        assert _is_genai_bedrock_active()
+
+
+def test_bedrock_extension_suppressed_when_genai_active():
+    call_context = _create_mock_call_context(
+        operation="ConverseStream",
+        params={"modelId": "amazon.titan-text-lite-v1"},
+    )
+    with mock.patch(
+        "opentelemetry.instrumentation.botocore.extensions.bedrock._is_genai_bedrock_active",
+        return_value=True,
+    ):
+        extension = _BedrockRuntimeExtension(call_context)
+
+    assert extension._disabled is True
+    # When disabled, should_end_span_on_exit should be True (standard botocore behavior)
+    assert extension.should_end_span_on_exit() is True
+
+    # setup_metrics should be a no-op
+    metrics: dict[str, Any] = {}
+    extension.setup_metrics(mock.MagicMock(), metrics)
+    assert len(metrics) == 0
+
+    # extract_attributes should be a no-op
+    attributes: dict[str, Any] = {"rpc.system": "aws-api"}
+    extension.extract_attributes(attributes)
+    assert attributes == {"rpc.system": "aws-api"}
+
+    # before_service_call should be a no-op
+    mock_span = mock.MagicMock()
+    mock_ctx = mock.MagicMock()
+    extension.before_service_call(mock_span, mock_ctx)
+    mock_ctx.logger.emit.assert_not_called()
+    mock_span.update_name.assert_not_called()
+
+    # on_success should be a no-op (no stream wrapper, no events, no metrics)
+    result = {"stream": mock.MagicMock(spec=EventStream)}
+    extension.on_success(mock_span, result, mock_ctx)
+    mock_ctx.logger.emit.assert_not_called()
+    assert not isinstance(result["stream"], ConverseStreamWrapper)
+
+    # on_error should be a no-op
+    mock_error = mock.MagicMock()
+    extension.on_error(mock_span, mock_error, mock_ctx)
+    mock_span.set_status.assert_not_called()
+
+
+@pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
+@pytest.mark.vcr()
+def test_converse_suppressed_end_to_end_when_genai_active(
+    span_exporter,
+    log_exporter,
+    metric_reader,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    with mock.patch(
+        "opentelemetry.instrumentation.botocore.extensions.bedrock._is_genai_bedrock_active",
+        return_value=True,
+    ):
+        messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+        response = bedrock_runtime_client.converse(
+            messages=messages,
+            modelId="amazon.titan-text-lite-v1",
+            inferenceConfig={
+                "maxTokens": 10,
+                "temperature": 0.8,
+                "topP": 1,
+                "stopSequences": ["|"],
+            },
+        )
+        assert response is not None
+
+    (span,) = span_exporter.get_finished_spans()
+    # Span name should remain the raw botocore RPC span name
+    assert span.name == "Bedrock Runtime.Converse"
+    assert GEN_AI_SYSTEM not in span.attributes
+    assert "gen_ai.request.model" not in span.attributes
+
+    # No gen_ai log events emitted
+    assert len(log_exporter.get_finished_logs()) == 0
+
+    # No gen_ai metrics recorded
+    assert metric_reader.get_metrics_data() is None
