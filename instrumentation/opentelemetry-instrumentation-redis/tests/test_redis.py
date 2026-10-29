@@ -648,6 +648,47 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
             _OpenTelemetrySemanticConventionStability._initialize()
 
     @pytest.mark.asyncio
+    async def test_error_type_on_an_async_pipeline_failure(self):
+        try:
+            with patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}):
+                _OpenTelemetrySemanticConventionStability._initialized = False
+                _OpenTelemetrySemanticConventionStability._initialize()
+                self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+                redis_client = FakeRedis()
+                await redis_client.lpush("mylist", "value")
+                pipe = redis_client.pipeline(transaction=False)
+                pipe.incr("mylist")
+                with self.assertRaises(redis.ResponseError):
+                    await pipe.execute()
+
+                spans = self.memory_exporter.get_finished_spans()
+                error_type = spans[-1].attributes[ERROR_TYPE]
+                self.assertEqual(error_type, "ResponseError")
+                self.assertIs(type(error_type), str)
+                RedisInstrumentor().uninstrument()
+        finally:
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+
+    @pytest.mark.asyncio
+    async def test_no_error_type_on_an_async_watch_error(self):
+        try:
+            with patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}):
+                _OpenTelemetrySemanticConventionStability._initialized = False
+                _OpenTelemetrySemanticConventionStability._initialize()
+                self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+                redis_client = FakeRedis()
+                await self._redis_pipeline_operations(redis_client)
+
+                spans = self.assert_span_count(3)
+                for span in spans:
+                    self.assertNotIn(ERROR_TYPE, span.attributes)
+                RedisInstrumentor().uninstrument()
+        finally:
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+
+    @pytest.mark.asyncio
     async def test_no_error_type_on_a_successful_async_command(self):
         self.instrumentor.instrument(tracer_provider=self.tracer_provider)
         redis_client = FakeRedis()
