@@ -32,6 +32,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -97,6 +98,28 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         self.check_spans(spans, 1, ["set key"])
+
+    def test_error_type_recorded_on_a_failed_command(self) -> None:
+        error = MemcacheServerError(b"server unavailable")
+        client = self.make_client([error])
+
+        with self.assertRaises(MemcacheServerError) as raised:
+            client.get(b"key")
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "MemcacheServerError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_command(self) -> None:
+        client = self.make_client([b"STORED\r\n"])
+        self.assertTrue(client.set(b"key", b"value", noreply=False))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
 
     def test_suppressed_commands(self) -> None:
         client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n", b"STORED\r\n"])
