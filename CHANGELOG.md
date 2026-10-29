@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 1.45.2/0.66b2 (2026-10-29)
+
 ## Version 1.45.1/0.66b1 (2026-10-06)
 
 No significant changes. 
