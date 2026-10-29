@@ -141,6 +141,13 @@ To enable the latest experimental features, set the environment variable
 ``OTEL_SEMCONV_STABILITY_OPT_IN`` to ``gen_ai_latest_experimental``. Or, if you use
 ``OTEL_SEMCONV_STABILITY_OPT_IN`` to enable other features, append ``,gen_ai_latest_experimental`` to its value.
 
+When enabled, this package turns itself off and enables
+`opentelemetry-instrumentation-genai-openai <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
+(installed as a dependency) instead.
+
+Content capturing modes (``span_only``, ``event_only``, ``span_and_event``) and
+completion hooks are provided by that package.
+
 Without this setting, OpenAI instrumentation aligns with `Semantic Conventions v1.30.0 <https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_
 and would not capture additional details introduced in later versions.
 

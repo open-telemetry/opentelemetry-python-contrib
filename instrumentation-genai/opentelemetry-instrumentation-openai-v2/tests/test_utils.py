@@ -24,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 V2_SCOPE = "opentelemetry.instrumentation.openai_v2"
+GENAI_OPENAI_SCOPE = "opentelemetry.instrumentation.genai.openai"
 PATCHED_CLASSES = (Completions, AsyncCompletions, Embeddings, AsyncEmbeddings)
 
 
@@ -36,6 +37,10 @@ def _wrapper_module(cls: type) -> str | None:
 
 def wrapped_by_v2() -> bool:
     return all(_wrapper_module(cls) == f"{V2_SCOPE}.patch" for cls in PATCHED_CLASSES)
+
+
+def wrapped_by_genai_openai() -> bool:
+    return all((_wrapper_module(cls) or "").startswith(GENAI_OPENAI_SCOPE) for cls in PATCHED_CLASSES)
 
 
 def not_wrapped() -> bool:

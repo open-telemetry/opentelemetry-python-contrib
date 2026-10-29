@@ -46,7 +46,6 @@ members = [
     "opentelemetry-instrumentation-mysql",
     "opentelemetry-instrumentation-mysqlclient",
     "opentelemetry-instrumentation-openai-agents-v2",
-    "opentelemetry-instrumentation-openai-v2",
     "opentelemetry-instrumentation-pika",
     "opentelemetry-instrumentation-psycopg",
     "opentelemetry-instrumentation-psycopg2",
@@ -3387,31 +3386,6 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-openai-v2"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-openai-v2" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "typing-extensions" },
-]
-
-[package.optional-dependencies]
-instruments = [
-    { name = "openai" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "openai", marker = "extra == 'instruments'", specifier = ">=1.26.0,<3" },
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
-    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "typing-extensions", specifier = ">=4.5.0" },
-]
-provides-extras = ["instruments"]
-
-[[package]]
 name = "opentelemetry-instrumentation-pika"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pika" }
 dependencies = [
@@ -4053,7 +4027,6 @@ dependencies = [
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-mysqlclient", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-openai-v2", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-pika", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-psycopg", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-psycopg2", extra = ["instruments-any"] },
@@ -4126,7 +4099,6 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-logging", editable = "instrumentation/opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysql" },
     { name = "opentelemetry-instrumentation-mysqlclient", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysqlclient" },
-    { name = "opentelemetry-instrumentation-openai-v2", extras = ["instruments"], editable = "instrumentation-genai/opentelemetry-instrumentation-openai-v2" },
     { name = "opentelemetry-instrumentation-pika", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-pika" },
     { name = "opentelemetry-instrumentation-psycopg", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-psycopg" },
     { name = "opentelemetry-instrumentation-psycopg2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-psycopg2" },
