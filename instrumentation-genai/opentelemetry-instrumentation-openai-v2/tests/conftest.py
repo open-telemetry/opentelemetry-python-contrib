@@ -121,13 +121,11 @@ def vcr_config():
 
 @pytest.fixture(
     scope="function",
-    params=[(True, "span_only"), (False, "True")],
+    params=[(False, "True")],
     name="content_mode",
 )
 def fixture_content_mode(request):
     # returns tuple: (latest_experimental_enabled: bool, content_mode: str)
-    # we don't test (True, "event_only"), (True, "span_and_event") because it's util's
-    # responsibility
     return request.param
 
 

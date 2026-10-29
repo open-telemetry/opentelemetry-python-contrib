@@ -13,26 +13,15 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    openai_attributes as OpenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
-from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.invocation import InferenceInvocation
-from opentelemetry.util.genai.types import (
-    Error,
-)
 
 from .chat_buffers import ChoiceBuffer
-from .chat_wrappers import AsyncChatStreamWrapper, ChatStreamWrapper
 from .instruments import Instruments
 from .utils import (
-    _prepare_output_messages,
     choice_to_event,
-    create_chat_invocation,
     get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
@@ -103,35 +92,6 @@ def chat_completions_create_v_old(
     return traced_method
 
 
-def chat_completions_create_v_new(
-    handler: TelemetryHandler,
-):
-    """Wrap the `create` method of the `ChatCompletion` class to trace it."""
-    capture_content = handler.should_capture_content()
-
-    def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = create_chat_invocation(handler, kwargs, instance, capture_content=capture_content)
-
-        try:
-            result = wrapped(*args, **kwargs)
-            if hasattr(result, "parse"):
-                # result is of type LegacyAPIResponse, call parse to get the actual response
-                parsed_result = result.parse()
-            else:
-                parsed_result = result
-            if is_streaming(kwargs):
-                return ChatStreamWrapper(parsed_result, chat_invocation, capture_content)
-
-            _set_response_properties(chat_invocation, parsed_result, capture_content)
-            chat_invocation.stop()
-            return result
-        except Exception as error:
-            chat_invocation.fail(Error(type=type(error), message=str(error)))
-            raise
-
-    return traced_method
-
-
 def async_chat_completions_create_v_old(
     tracer: Tracer,
     logger: Logger,
@@ -190,36 +150,6 @@ def async_chat_completions_create_v_old(
                     error_type,
                     GenAIAttributes.GenAiOperationNameValues.CHAT.value,
                 )
-
-    return traced_method
-
-
-def async_chat_completions_create_v_new(
-    handler: TelemetryHandler,
-):
-    """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
-    capture_content = handler.should_capture_content()
-
-    async def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = create_chat_invocation(handler, kwargs, instance, capture_content=capture_content)
-
-        try:
-            result = await wrapped(*args, **kwargs)
-            if hasattr(result, "parse"):
-                # result is of type LegacyAPIResponse, calling parse to get the actual response
-                parsed_result = result.parse()
-            else:
-                parsed_result = result
-            if is_streaming(kwargs):
-                return AsyncChatStreamWrapper(parsed_result, chat_invocation, capture_content)
-
-            _set_response_properties(chat_invocation, parsed_result, capture_content)
-            chat_invocation.stop()
-            return result
-
-        except Exception as error:
-            chat_invocation.fail(Error(type=type(error), message=str(error)))
-            raise
 
     return traced_method
 
@@ -434,48 +364,6 @@ def _set_response_attributes(span, result):
             GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             result.usage.completion_tokens,
         )
-
-
-def _set_response_properties(
-    chat_invocation: InferenceInvocation, result, capture_content: bool
-) -> InferenceInvocation:
-    if getattr(result, "model", None):
-        chat_invocation.response_model_name = result.model
-
-    if getattr(result, "choices", None):
-        finish_reasons = []
-        for choice in result.choices:
-            finish_reasons.append(choice.finish_reason or "error")
-
-        chat_invocation.finish_reasons = finish_reasons
-
-        if capture_content:  # optimization
-            chat_invocation.output_messages = _prepare_output_messages(result.choices)
-
-    if getattr(result, "id", None):
-        chat_invocation.response_id = result.id
-
-    if getattr(result, "service_tier", None):
-        chat_invocation.attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier},
-        )
-        chat_invocation.metric_attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier},
-        )
-
-    if getattr(result, "usage", None):
-        chat_invocation.input_tokens = result.usage.prompt_tokens
-        chat_invocation.output_tokens = result.usage.completion_tokens
-
-    if getattr(result, "system_fingerprint", None):
-        chat_invocation.attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint},
-        )
-        chat_invocation.metric_attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint},
-        )
-
-    return chat_invocation
 
 
 def _set_embeddings_response_attributes(

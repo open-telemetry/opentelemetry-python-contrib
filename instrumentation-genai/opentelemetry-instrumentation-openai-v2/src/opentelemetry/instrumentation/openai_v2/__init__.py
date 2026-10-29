@@ -39,44 +39,30 @@ By default, the instrumentation aligns with `Semantic Conventions v1.30.0
 and does not capture prompt or completion content. Behavior is controlled
 via environment variables:
 
-- ``OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`` - opt into the
-  latest GenAI semantic conventions. Required to access the newer attributes
-  and the ``span_only`` / ``event_only`` / ``span_and_event`` content modes.
-  Without this flag, the instrumentation stays on v1.30.0 conventions.
-- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` - enable capture of
-  prompts, completions, tool arguments, and return values. Set to ``true``
-  on the legacy path, or one of ``span_only``, ``event_only``,
-  ``span_and_event`` when experimental conventions are enabled.
-- ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK=upload`` together with
-  ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH=<fsspec-uri>`` - upload
-  prompts and completions to an ``fsspec``-compatible destination
-  (local filesystem, ``gs://``, ``s3://``, etc.) and record reference URIs as
-  ``gen_ai.input.messages.ref`` / ``gen_ai.output.messages.ref`` attributes.
-  Inline content is not captured unless
-  ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` is also set.
-
-See the `opentelemetry-util-genai README
-<https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/util/opentelemetry-util-genai/README.rst>`_
-for the full list of GenAI configuration variables.
-
-A custom ``CompletionHook`` implementation can also be passed programmatically::
-
-    OpenAIInstrumentor().instrument(completion_hook=my_hook)
-
-When provided, this takes precedence over the hook resolved from
-``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK``.
+- ``OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`` - not supported.
+  This instrumentation turns itself off; use
+  `opentelemetry-instrumentation-genai-openai
+  <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
+  for the latest GenAI semantic conventions.
+- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` - capture
+  prompts, completions, tool arguments, and return values on log events.
 
 API
 ---
 """
 
+import logging
 from collections.abc import Collection
-from importlib import import_module
 
 from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._logs import get_logger
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
@@ -84,24 +70,26 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
-from opentelemetry.util.genai.completion_hook import load_completion_hook
-from opentelemetry.util.genai.handler import (
-    TelemetryHandler,
-)
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .instruments import Instruments
 from .patch import (
-    async_chat_completions_create_v_new,
     async_chat_completions_create_v_old,
     async_embeddings_create,
-    chat_completions_create_v_new,
     chat_completions_create_v_old,
     embeddings_create,
 )
-from .patch_responses import (
-    responses_create,
-)
+
+_logger = logging.getLogger(__name__)
+
+
+def _is_latest_experimental_enabled() -> bool:
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI
+        )
+        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    )
 
 
 @deprecated(
@@ -117,6 +105,10 @@ class OpenAIInstrumentor(BaseInstrumentor):
         This package only receives security patches.
     """
 
+    # BaseInstrumentor is a singleton and __init__ re-runs on every
+    # OpenAIInstrumentor() call, so state lives on the class.
+    _legacy_instrumented: bool = False
+
     def __init__(self):
         self._meter = None
 
@@ -126,7 +118,15 @@ class OpenAIInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         """Enable OpenAI instrumentation."""
 
-        latest_experimental_enabled = is_experimental_mode()
+        if _is_latest_experimental_enabled():
+            _logger.warning(
+                "opentelemetry-instrumentation-openai-v2 does not support "
+                "gen_ai_latest_experimental and is disabled. Use "
+                "opentelemetry-instrumentation-genai-openai to get the latest "
+                "GenAI semantic conventions."
+            )
+            return
+
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
@@ -151,73 +151,41 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         instruments = Instruments(self._meter)
 
-        handler = TelemetryHandler(
-            tracer_provider=tracer_provider,
-            meter_provider=meter_provider,
-            logger_provider=logger_provider,
-            completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
-        )
-
         wrap_function_wrapper(
             "openai.resources.chat.completions",
             "Completions.create",
-            (
-                chat_completions_create_v_new(handler)
-                if latest_experimental_enabled
-                else chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
-            ),
+            chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled()),
         )
 
         wrap_function_wrapper(
             "openai.resources.chat.completions",
             "AsyncCompletions.create",
-            (
-                async_chat_completions_create_v_new(handler)
-                if latest_experimental_enabled
-                else async_chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
-            ),
+            async_chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled()),
         )
 
         # Add instrumentation for the embeddings API
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "Embeddings.create",
-            embeddings_create(tracer, instruments, latest_experimental_enabled),
+            embeddings_create(tracer, instruments, False),
         )
 
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "AsyncEmbeddings.create",
-            async_embeddings_create(tracer, instruments, latest_experimental_enabled),
+            async_embeddings_create(tracer, instruments, False),
         )
 
-        responses_module = _get_responses_module()
-        # Responses instrumentation is intentionally limited to the latest
-        # experimental semconv path. Unlike chat completions, we do not carry
-        # a second legacy wrapper here; the current implementation is built on
-        # the inference handler lifecycle and would need a separate old-path
-        # implementation to support legacy semconv mode.
-        if responses_module is not None and latest_experimental_enabled:
-            wrap_function_wrapper(
-                "openai.resources.responses.responses",
-                "Responses.create",
-                responses_create(handler),
-            )
+        type(self)._legacy_instrumented = True
 
     def _uninstrument(self, **kwargs):
+        if not type(self)._legacy_instrumented:
+            return
+
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
-        responses_module = _get_responses_module()
-        if responses_module is not None:
-            unwrap(responses_module.Responses, "create")
-
-
-def _get_responses_module():
-    try:
-        return import_module("openai.resources.responses.responses")
-    except ImportError:
-        return None
+        type(self)._legacy_instrumented = False

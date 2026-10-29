@@ -1,0 +1,1 @@
+Fix `ModuleNotFoundError: No module named 'opentelemetry.util.genai.instruments'` when `opentelemetry-util-genai` 1.x is installed by removing the dependency on `opentelemetry-util-genai` ([opentelemetry-python-genai#997](https://github.com/open-telemetry/opentelemetry-python-genai/issues/997))

@@ -50,7 +50,7 @@ except ImportError:
     _has_reasoning_param = False
 
 
-pytestmark = pytest.mark.skipif(not HAS_RESPONSES_API, reason="Responses API requires a newer openai SDK")
+pytestmark = pytest.mark.skip(reason="latest experimental conventions are no longer supported by this package")
 
 SYSTEM_INSTRUCTIONS = "You are a helpful assistant."
 EXPECTED_SYSTEM_INSTRUCTIONS = [
