@@ -24,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -240,6 +241,23 @@ class TestClientProto(TestBase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+
+    def test_error_type_is_the_grpc_status_code(self):
+        with self.assertRaises(grpc.RpcError):
+            simple_method(self._stub, error=True)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_call(self):
+        simple_method(self._stub)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
 
     def test_error_stream_unary(self):
         with self.assertRaises(grpc.RpcError):
