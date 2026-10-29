@@ -485,6 +485,20 @@ class TestURLLib3Instrumentor(TestBase):
         response = self.perform_request(url)
         self.assert_success_span(response, self.HTTP_URL)
 
+    def test_credential_removal_absolute_url(self):
+        url = "http://username:password@mock:666/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock", port=666)
+        response = pool.request("GET", url)
+
+        self.assert_success_span(response, "http://REDACTED:REDACTED@mock:666/status/200")
+
+    def test_sensitive_query_parameter_removal(self):
+        url = self.HTTP_URL + "?AWSAccessKeyId=secret"
+
+        response = self.perform_request(url)
+        self.assert_success_span(response, self.HTTP_URL + "?AWSAccessKeyId=REDACTED")
+
     def test_hooks(self):
         def request_hook(span, pool, request_info):
             span.update_name("name set from hook")

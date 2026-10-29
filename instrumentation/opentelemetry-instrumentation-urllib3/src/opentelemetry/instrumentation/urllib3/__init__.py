@@ -236,6 +236,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     parse_excluded_urls,
+    redact_url,
     sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
@@ -452,7 +453,7 @@ def _instrument(
             sanitized_method,
             sem_conv_opt_in_mode,
         )
-        _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
+        _set_http_url(span_attributes, redact_url(url), sem_conv_opt_in_mode)
 
         span_attributes.update(
             get_custom_header_attributes(
