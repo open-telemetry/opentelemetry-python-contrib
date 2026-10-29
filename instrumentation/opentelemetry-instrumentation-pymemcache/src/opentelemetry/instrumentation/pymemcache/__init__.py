@@ -38,6 +38,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _record_error_type,
+    _report_new,
     _set_db_statement,
     _set_db_system,
     _set_http_net_peer_name_client,
@@ -130,7 +131,7 @@ def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
         except Exception as ex:  # pylint: disable=broad-except
             logger.warning("Failed to set attributes for pymemcache span %s", str(ex))
 
-        with _record_error_type(span):
+        with _record_error_type(span if _report_new(sem_conv_opt_in_mode) else None):
             return wrapped(*args, **kwargs)
 
 

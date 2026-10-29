@@ -70,6 +70,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
     def tearDown(self):
         super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         PymemcacheInstrumentor().uninstrument()
 
     def make_client(self, mock_socket_values, **kwargs):
@@ -101,17 +102,24 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
     def test_error_type_recorded_on_a_failed_command(self) -> None:
         error = MemcacheServerError(b"server unavailable")
-        client = self.make_client([error])
+        PymemcacheInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            PymemcacheInstrumentor().instrument()
+            client = self.make_client([error])
 
-        with self.assertRaises(MemcacheServerError) as raised:
-            client.get(b"key")
-        self.assertIs(raised.exception, error)
+            with self.assertRaises(MemcacheServerError) as raised:
+                client.get(b"key")
+            self.assertIs(raised.exception, error)
 
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        error_type = spans[0].attributes[ERROR_TYPE]
-        self.assertEqual(error_type, "MemcacheServerError")
-        self.assertIs(type(error_type), str)
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            error_type = spans[0].attributes[ERROR_TYPE]
+            self.assertEqual(error_type, "MemcacheServerError")
+            self.assertIs(type(error_type), str)
 
     def test_no_error_type_on_a_successful_command(self) -> None:
         client = self.make_client([b"STORED\r\n"])
@@ -637,6 +645,7 @@ class PymemcacheHashClientTestCase(TestBase):
 
     def tearDown(self):
         super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         PymemcacheInstrumentor().uninstrument()
 
     def make_client_pool(self, hostname, mock_socket_values, serializer=None, **kwargs):  # pylint: disable=no-self-use
