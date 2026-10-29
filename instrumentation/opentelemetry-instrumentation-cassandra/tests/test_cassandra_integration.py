@@ -32,6 +32,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
 )
@@ -60,6 +61,44 @@ class TestCassandraIntegration(TestBase):
     @property
     def _mocked_session(self):
         return cassandra.cluster.Session(cluster=mock.Mock(), hosts=[])
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_error_type_recorded_on_a_failed_query(self, mock_create_response_future, mock_session_init, mock_connect):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+        failure = RuntimeError("no host available")
+        mock_create_response_future.side_effect = failure
+
+        CassandraInstrumentor().instrument()
+
+        with self.assertRaises(RuntimeError) as raised:
+            connect_and_execute_query()
+        self.assertIs(raised.exception, failure)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        error_type = spans_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "RuntimeError")
+        self.assertIs(type(error_type), str)
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_no_error_type_on_a_successful_query(self, mock_create_response_future, mock_session_init, mock_connect):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        CassandraInstrumentor().instrument()
+
+        connect_and_execute_query()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertNotIn(ERROR_TYPE, spans_list[0].attributes)
 
     def test_instrument_uninstrument(self):
         instrumentation = CassandraInstrumentor()
