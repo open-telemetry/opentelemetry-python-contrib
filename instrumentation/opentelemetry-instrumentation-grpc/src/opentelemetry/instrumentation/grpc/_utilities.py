@@ -56,9 +56,10 @@ def _set_grpc_error_type(
     and for the canonical class name of the exception otherwise.
     """
     if status_code is None and isinstance(error, grpc.RpcError):
-        code = getattr(error, "code", None)
-        if callable(code):
-            status_code = code()
+        try:
+            status_code = error.code()
+        except (AttributeError, TypeError):
+            status_code = None
     name = getattr(status_code, "name", None)
     if name is not None:
         span.set_attribute(ERROR_TYPE, name)
