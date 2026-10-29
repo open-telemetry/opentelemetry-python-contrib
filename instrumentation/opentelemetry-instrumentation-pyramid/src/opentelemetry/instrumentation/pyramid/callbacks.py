@@ -240,8 +240,6 @@ def trace_tween_factory(handler, registry):
             # should infer a internal server error and raise
             status = "500 InternalServerError"
             recordable_exc = exc
-            if _report_new(_sem_conv_opt_in_mode):
-                attributes[ERROR_TYPE] = type(exc).__qualname__
             raise
         finally:
             duration_s = default_timer() - start
@@ -250,16 +248,6 @@ def trace_tween_factory(handler, registry):
             if status_code is not None:
                 duration_attrs[HTTP_STATUS_CODE] = status_code
                 duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
-
-            # Record metrics for old semconv (milliseconds)
-            if duration_histogram_old:
-                duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
-                duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
-
-            # Record metrics for new semconv (seconds)
-            if duration_histogram_new:
-                duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
-                duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
 
             active_requests_counter.add(-1, active_requests_count_attrs)
             span = request.environ.get(_ENVIRON_SPAN_KEY)
@@ -281,11 +269,13 @@ def trace_tween_factory(handler, registry):
                     )
 
                     if recordable_exc is not None:
-                        if _report_new(_sem_conv_opt_in_mode) and span.is_recording():
-                            span.set_attribute(
-                                ERROR_TYPE,
-                                type(recordable_exc).__qualname__,
-                            )
+                        if _report_new(_sem_conv_opt_in_mode):
+                            duration_attrs[ERROR_TYPE] = type(recordable_exc).__qualname__
+                            if span.is_recording():
+                                span.set_attribute(
+                                    ERROR_TYPE,
+                                    type(recordable_exc).__qualname__,
+                                )
                         span.set_status(Status(StatusCode.ERROR, str(recordable_exc)))
                         span.record_exception(recordable_exc)
 
@@ -316,6 +306,16 @@ def trace_tween_factory(handler, registry):
                 env_token = request.environ.get(_ENVIRON_TOKEN, None)
                 if env_token is not None:
                     context.detach(env_token)
+
+            # Record metrics for old semconv (milliseconds)
+            if duration_histogram_old:
+                duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
+                duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
+
+            # Record metrics for new semconv (seconds)
+            if duration_histogram_new:
+                duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
+                duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
 
         return response
 

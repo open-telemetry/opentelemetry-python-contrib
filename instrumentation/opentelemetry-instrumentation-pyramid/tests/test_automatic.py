@@ -48,6 +48,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     HTTP_SERVER_ACTIVE_REQUESTS,
     HTTP_SERVER_REQUEST_DURATION,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
@@ -680,6 +681,22 @@ class TestSemConvNew(_SemConvTestBase):
         self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metric_names)
 
         self._verify_duration_attributes(metrics)
+
+    def test_error_type_on_span_and_duration_metric_new_semconv(self):
+        with self.assertRaises(NotImplementedError):
+            self.client.get("/hello/900")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes[ERROR_TYPE], "NotImplementedError")
+
+        duration_points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == HTTP_SERVER_REQUEST_DURATION
+            for point in metric.data.data_points
+        ]
+        self.assertEqual(len(duration_points), 1)
+        self.assertEqual(duration_points[0].attributes[ERROR_TYPE], "NotImplementedError")
 
 
 class TestSemConvDup(_SemConvTestBase):
