@@ -93,6 +93,33 @@ class TestCassandraIntegration(TestBase):
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
     @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_no_error_type_on_a_failed_query_in_the_default_semconv_mode(
+        self, mock_create_response_future, mock_session_init, mock_connect
+    ):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+        failure = RuntimeError("no host available")
+        mock_create_response_future.side_effect = failure
+
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": ""},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument()
+
+            with self.assertRaises(RuntimeError) as raised:
+                connect_and_execute_query()
+            self.assertIs(raised.exception, failure)
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            self.assertNotIn(ERROR_TYPE, spans_list[0].attributes)
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
     def test_no_error_type_on_a_successful_query(self, mock_create_response_future, mock_session_init, mock_connect):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
