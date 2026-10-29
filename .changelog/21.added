@@ -1,0 +1,1 @@
+database, messaging and gRPC instrumentations: record `error.type` on a failed operation
