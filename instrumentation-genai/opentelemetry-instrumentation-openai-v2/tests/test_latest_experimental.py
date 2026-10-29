@@ -1,30 +1,34 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import logging
 
-from openai.resources.chat.completions import Completions
-from wrapt import FunctionWrapper
+import pytest
 
-from opentelemetry.instrumentation._semconv import (
-    OTEL_SEMCONV_STABILITY_OPT_IN,
-    _OpenTelemetrySemanticConventionStability,
-)
+from opentelemetry.instrumentation import openai_v2
+from opentelemetry.instrumentation._semconv import OTEL_SEMCONV_STABILITY_OPT_IN
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 
+from .test_utils import not_wrapped
 
-def test_latest_experimental_disables_instrumentation(monkeypatch, caplog):
+pytestmark = pytest.mark.usefixtures("latest_experimental")
+
+
+@pytest.fixture(name="latest_experimental")
+def fixture_latest_experimental(monkeypatch: pytest.MonkeyPatch, reset_instrumentors: None) -> None:
     monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, "gen_ai_latest_experimental")
-    _OpenTelemetrySemanticConventionStability._initialized = False
+
+
+def test_latest_experimental_disables_instrumentation(tracer_provider, caplog):
+    caplog.set_level(logging.WARNING, logger=openai_v2.__name__)
+
     instrumentor = OpenAIInstrumentor()
-    try:
-        with caplog.at_level(logging.WARNING, logger="opentelemetry.instrumentation.openai_v2"):
-            instrumentor.instrument()
+    instrumentor.instrument(tracer_provider=tracer_provider)
 
-        assert not isinstance(Completions.__dict__["create"], FunctionWrapper)
-        assert "opentelemetry-instrumentation-genai-openai" in caplog.text
-    finally:
-        instrumentor.uninstrument()
-        _OpenTelemetrySemanticConventionStability._initialized = False
+    assert not_wrapped()
+    assert "opentelemetry-instrumentation-genai-openai" in caplog.text
 
-    assert not isinstance(Completions.__dict__["create"], FunctionWrapper)
+    instrumentor.uninstrument()
+    assert not instrumentor.is_instrumented_by_opentelemetry

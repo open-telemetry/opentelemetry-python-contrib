@@ -230,6 +230,17 @@ def instrument_event_only(tracer_provider, logger_provider, meter_provider):
     instrumentor.uninstrument()
 
 
+@pytest.fixture(name="reset_instrumentors")
+def fixture_reset_instrumentors(monkeypatch):
+    monkeypatch.delenv(OTEL_SEMCONV_STABILITY_OPT_IN, raising=False)
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    yield
+    instrumentor = OpenAIInstrumentor()
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+
 class LiteralBlockScalar(str):
     """Formats the string as a literal block scalar, preserving whitespace and
     without interpreting escape characters"""
