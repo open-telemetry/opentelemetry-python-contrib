@@ -43,6 +43,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_error_type,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
 )
@@ -296,6 +297,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 raise
             finally:
                 if span.is_recording() and exception is not None:
+                    _set_error_type(exception, span)
                     span.set_status(Status(StatusCode.ERROR))
 
         return result
@@ -333,6 +335,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 raise
             finally:
                 if span.is_recording() and exception is not None:
+                    _set_error_type(exception, span)
                     span.set_status(Status(StatusCode.ERROR))
 
         return result
