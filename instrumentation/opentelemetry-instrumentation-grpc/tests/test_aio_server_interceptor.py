@@ -548,10 +548,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
         class FailingServicer(GRPCTestServerServicer):
             async def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=request.client_id, response_data="one")
                 raise ValueError(failure_message)
-                yield
 
         testcase = self
+        received = []
 
         async def request(channel):
             request = Request(client_id=1, request_data=failure_message)
@@ -559,7 +560,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
             with testcase.assertRaises(grpc.RpcError):
                 async for response in channel.unary_stream(rpc_call)(msg):
-                    pass
+                    received.append(response)
 
         await run_with_test_server(
             request,
@@ -567,6 +568,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             interceptors=[aio_server_interceptor()],
         )
 
+        self.assertEqual(len(received), 1)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         error_type = spans_list[0].attributes[ERROR_TYPE]

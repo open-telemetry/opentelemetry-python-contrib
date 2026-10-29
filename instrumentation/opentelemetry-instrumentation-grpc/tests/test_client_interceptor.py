@@ -242,33 +242,6 @@ class TestClientProto(TestBase):
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
 
-    def test_error_type_is_the_grpc_status_code(self):
-        with self.assertRaises(grpc.RpcError):
-            simple_method(self._stub, error=True)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        error_type = spans[0].attributes[ERROR_TYPE]
-        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
-        self.assertIs(type(error_type), str)
-
-    def test_error_type_is_the_grpc_status_code_on_a_future_call(self):
-        with self.assertRaises(grpc.RpcError):
-            simple_method_future(self._stub, error=True).result()
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        error_type = spans[0].attributes[ERROR_TYPE]
-        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
-        self.assertIs(type(error_type), str)
-
-    def test_no_error_type_on_a_successful_call(self):
-        simple_method(self._stub)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
-
     def test_error_stream_unary(self):
         with self.assertRaises(grpc.RpcError):
             client_streaming_method(self._stub, error=True)
@@ -408,3 +381,48 @@ class TestClientProto(TestBase):
             bidirectional_streaming_method(self._stub)
             spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+
+class TestClientProtoErrorType(TestBase):
+    def setUp(self):
+        super().setUp()
+        GrpcInstrumentorClient().instrument()
+        self.server = create_test_server(25565)
+        self.server.start()
+        interceptors = [Interceptor()]
+        self.channel = grpc.insecure_channel("localhost:25565")
+        self.channel = grpc.intercept_channel(self.channel, *interceptors)
+        self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
+
+    def tearDown(self):
+        super().tearDown()
+        GrpcInstrumentorClient().uninstrument()
+        self.server.stop(None)
+        self.channel.close()
+
+    def test_error_type_is_the_grpc_status_code(self):
+        with self.assertRaises(grpc.RpcError):
+            simple_method(self._stub, error=True)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
+
+    def test_error_type_is_the_grpc_status_code_on_a_future_call(self):
+        with self.assertRaises(grpc.RpcError):
+            simple_method_future(self._stub, error=True).result()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_call(self):
+        simple_method(self._stub)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
