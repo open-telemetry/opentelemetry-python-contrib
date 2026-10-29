@@ -175,6 +175,7 @@ from __future__ import annotations
 import functools
 import types
 from collections.abc import Callable, Collection
+from logging import getLogger
 from timeit import default_timer
 from typing import Any
 from urllib.parse import urlparse
@@ -248,10 +249,19 @@ from opentelemetry.util.http import (
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
+_logger = getLogger(__name__)
+
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Callable[[Span, PreparedRequest], None] | None
 _ResponseHookT = Callable[[Span, PreparedRequest, Response], None] | None
+
+
+def _call_hook_and_log_exception(hook: Callable[..., None], *args: Any) -> None:
+    try:
+        hook(*args)
+    except Exception:
+        _logger.warning("Exception raised by hook %r", hook, exc_info=True)
 
 
 def _set_http_status_code_attribute(
