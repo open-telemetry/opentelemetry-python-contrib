@@ -16,7 +16,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
 )
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
-from ._utilities import _server_status
+from ._utilities import _set_grpc_error_type, _set_server_status
 
 
 # pylint:disable=abstract-method,no-member
@@ -31,8 +31,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
         self._self_code = code
         self._self_details = details
         self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
-        status = _server_status(code, details)
-        self._self_active_span.set_status(status)
+        _set_server_status(self._self_active_span, code, details)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
@@ -40,15 +39,13 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
         details = self._self_details or code.value[1]
         self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
         if code != grpc.StatusCode.OK:
-            status = _server_status(code, details)
-            self._self_active_span.set_status(status)
+            _set_server_status(self._self_active_span, code, details)
         return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
         self._self_details = details
         if self._self_code != grpc.StatusCode.OK:
-            status = _server_status(self._self_code, details)
-            self._self_active_span.set_status(status)
+            _set_server_status(self._self_active_span, self._self_code, details)
         return self.__wrapped__.set_details(details)
 
 
@@ -110,6 +107,7 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                         # Here, we're interested in uncaught exceptions.
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
+                            _set_grpc_error_type(span, error=error)
                             span.record_exception(error)
                         raise error
 
@@ -132,6 +130,7 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                     except Exception as error:
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
+                            _set_grpc_error_type(span, error=error)
                             span.record_exception(error)
                         raise error
 

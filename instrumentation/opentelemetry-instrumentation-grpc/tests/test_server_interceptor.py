@@ -30,6 +30,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -570,6 +571,28 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                     RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
+
+    def test_error_type_is_the_grpc_status_code_on_abort(self):
+        interceptor = server_interceptor()
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+
+        def handler(request, context):
+            context.abort(grpc.StatusCode.INTERNAL, "failed")
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
+            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+            server.start()
+            with self.assertRaises(Exception):
+                channel.unary_unary(rpc_call)(b"")
+            server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        error_type = spans_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INTERNAL.name)
+        self.assertIs(type(error_type), str)
 
     def test_abort(self):
         """Check that we can catch an abort properly"""

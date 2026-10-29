@@ -11,6 +11,7 @@ from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
+from opentelemetry.instrumentation.grpc._utilities import _set_grpc_error_type
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
@@ -29,6 +30,7 @@ def _unary_done_callback(span, code, details, response_hook):
                 code.value[0],
             )
             if code != grpc.StatusCode.OK:
+                _set_grpc_error_type(span, status_code=code)
                 span.set_status(
                     Status(
                         status_code=StatusCode.ERROR,
@@ -69,6 +71,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
                 RPC_GRPC_STATUS_CODE,
                 exc.code().value[0],
             )
+        _set_grpc_error_type(span, error=exc)
         span.set_status(
             Status(
                 status_code=StatusCode.ERROR,
