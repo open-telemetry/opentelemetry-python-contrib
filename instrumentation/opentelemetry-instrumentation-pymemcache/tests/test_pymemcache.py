@@ -121,6 +121,25 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             self.assertEqual(error_type, "MemcacheServerError")
             self.assertIs(type(error_type), str)
 
+    def test_no_error_type_on_a_failed_command_in_the_default_semconv_mode(self) -> None:
+        error = MemcacheServerError(b"server unavailable")
+        PymemcacheInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": ""},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            PymemcacheInstrumentor().instrument()
+            client = self.make_client([error])
+
+            with self.assertRaises(MemcacheServerError) as raised:
+                client.get(b"key")
+            self.assertIs(raised.exception, error)
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+
     def test_no_error_type_on_a_successful_command(self) -> None:
         client = self.make_client([b"STORED\r\n"])
         self.assertTrue(client.set(b"key", b"value", noreply=False))

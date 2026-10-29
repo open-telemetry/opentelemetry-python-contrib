@@ -651,6 +651,18 @@ class TestDBApiIntegration(TestBase):
             metric_attributes = dict(list(duration_metric.data.data_points)[0].attributes)
             self.assertEqual(metric_attributes[ERROR_TYPE], span_error_type)
 
+    def test_span_carries_no_error_type_in_the_default_semconv_mode(self):
+        with use_semconv_opt_in(""):
+            db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+            mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
+            cursor = mock_connection.cursor()
+            with self.assertRaises(Exception):
+                cursor.execute("SELECT 1", throw_exception=True)
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            self.assertNotIn(ERROR_TYPE, spans_list[0].attributes)
+
     def test_span_carries_no_error_type_when_the_query_succeeds(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
         mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
