@@ -108,6 +108,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
                 est_value_delta=40,
@@ -129,6 +130,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )
@@ -149,6 +151,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )
@@ -178,6 +181,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -197,6 +201,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                 ),
             )
@@ -214,6 +219,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                 ),
             )
@@ -250,6 +256,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
                 est_value_delta=40,
@@ -271,6 +278,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )
@@ -291,6 +299,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )
@@ -306,6 +315,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -325,6 +335,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                 ),
             )
@@ -342,6 +353,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                         "server.address": "mock",
+                        "server.port": 80,
                     },
                 ),
             )
@@ -376,6 +388,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
                 est_value_delta=40,
@@ -397,6 +410,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )
@@ -417,6 +431,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.scheme": "http",
                         "http.host": "mock",
                         "net.peer.name": "mock",
+                        "net.peer.port": 80,
                     },
                 ),
             )

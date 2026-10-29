@@ -521,8 +521,20 @@ def _get_network_metric_labels(
         if parsed_url.hostname:
             _set_http_host_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
             _set_http_net_peer_name_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
-        if parsed_url.port:
-            _set_http_peer_port_client(metric_labels, parsed_url.port, sem_conv_opt_in_mode)
+        port = parsed_url.port
+        if not port:
+            # `urlparse` only returns a port for URLs with an explicit port, but
+            # the actual connection resolves the scheme default port (http -> 80,
+            # https -> 443). Mirror that resolution so the required peer port
+            # attribute is set for implicit URLs as well, consistent with the
+            # urllib3 instrumentation which reads the resolved port from the
+            # connection pool.
+            if parsed_url.scheme == "https":
+                port = 443
+            elif parsed_url.scheme == "http":
+                port = 80
+        if port:
+            _set_http_peer_port_client(metric_labels, port, sem_conv_opt_in_mode)
     except ValueError:
         pass
     return metric_labels
