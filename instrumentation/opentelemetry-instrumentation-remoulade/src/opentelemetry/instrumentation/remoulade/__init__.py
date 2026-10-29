@@ -41,6 +41,7 @@ from collections.abc import Collection
 from remoulade import Middleware, broker
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _set_error_type
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
@@ -55,6 +56,19 @@ _REMOULADE_MESSAGE_RUN = "run"
 _REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 _REMOULADE_MESSAGE_RETRY_COUNT_KEY = "remoulade.retry_count"
+
+
+def _exit_activation(span, activation, exception):
+    """Close the span activation, recording error.type when the operation failed."""
+    if exception is None:
+        activation.__exit__(None, None, None)
+        return
+    _set_error_type(exception, span)
+    activation.__exit__(
+        type(exception),
+        exception,
+        getattr(exception, "__traceback__", None),
+    )
 
 
 class _InstrumentationMiddleware(Middleware):
@@ -99,7 +113,7 @@ class _InstrumentationMiddleware(Middleware):
                 }
             )
 
-        activation.__exit__(None, None, None)
+        _exit_activation(span, activation, exception)
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
@@ -137,13 +151,13 @@ class _InstrumentationMiddleware(Middleware):
         inject(message.options["trace_ctx"])
 
     def after_enqueue(self, _broker, message, delay, exception=None):
-        _, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
+        span, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
 
         if activation is None:
             # no existing span found for message_id
             return
 
-        activation.__exit__(None, None, None)
+        _exit_activation(span, activation, exception)
         utils.detach_span(self._span_registry, message.message_id, is_publish=True)
 
 
