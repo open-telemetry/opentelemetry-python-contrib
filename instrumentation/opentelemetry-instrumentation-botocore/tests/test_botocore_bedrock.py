@@ -3106,8 +3106,7 @@ def test_bedrock_runtime_extension_deprecation_warning():
         _BedrockRuntimeExtension(call_context)
 
     assert any(
-        "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated"
-        in str(w.message)
+        "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated" in str(w.message)
         for w in warning_info
     )
 

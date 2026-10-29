@@ -108,16 +108,9 @@ _MODEL_ID_KEY: str = "modelId"
 
 def _is_genai_bedrock_active() -> bool:
     try:
-        if (
-            importlib.util.find_spec(
-                "opentelemetry.instrumentation.genai.bedrock"
-            )
-            is None
-        ):
+        if importlib.util.find_spec("opentelemetry.instrumentation.genai.bedrock") is None:
             return False
-        mod = importlib.import_module(
-            "opentelemetry.instrumentation.genai.bedrock"
-        )
+        mod = importlib.import_module("opentelemetry.instrumentation.genai.bedrock")
         bedrock_instrumentor_cls = getattr(mod, "BedrockInstrumentor", None)
         if bedrock_instrumentor_cls is None:
             return False
@@ -162,9 +155,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             self._dont_close_span_on_end_operations: set[str] = set()
         else:
             self._handled_operations = self._HANDLED_OPERATIONS
-            self._dont_close_span_on_end_operations = (
-                self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
-            )
+            self._dont_close_span_on_end_operations = self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
 
     @property
     def _disabled(self) -> bool:
