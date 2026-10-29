@@ -7,6 +7,7 @@ from aio_pika import Queue
 from aio_pika.abc import AbstractIncomingMessage
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import MessagingOperationValues
@@ -38,7 +39,7 @@ class CallbackDecorator:
             if not span:
                 return await callback(message)
             try:
-                with trace.use_span(span, end_on_exit=True):
+                with trace.use_span(span, end_on_exit=True), _record_error_type(span):
                     return_value = await callback(message)
             finally:
                 if token:
