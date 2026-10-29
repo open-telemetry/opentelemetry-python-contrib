@@ -3,6 +3,7 @@
 
 import remoulade
 from remoulade.brokers.local import LocalBroker
+from remoulade.middleware.shutdown import Shutdown
 
 from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
@@ -15,6 +16,11 @@ def actor_div(dividend, divisor):
     return dividend / divisor
 
 
+@remoulade.actor(max_retries=0)
+def actor_interrupted():
+    raise Shutdown("worker stopping")
+
+
 class TestRemouladeInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
@@ -24,6 +30,7 @@ class TestRemouladeInstrumentation(TestBase):
         remoulade.set_broker(broker)
 
         broker.declare_actor(actor_div)
+        broker.declare_actor(actor_interrupted)
 
     def tearDown(self):
         RemouladeInstrumentor().uninstrument()
@@ -95,6 +102,14 @@ class TestRemouladeInstrumentation(TestBase):
         error_type = final_attempt.attributes[ERROR_TYPE]
         self.assertEqual(error_type, "ZeroDivisionError")
         self.assertIs(type(error_type), str)
+
+    def test_no_error_type_when_the_message_is_interrupted(self):
+        with self.assertRaises(Shutdown):
+            actor_interrupted.send()
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_no_error_type_on_a_successful_message(self):
         actor_div.send(2, 3)

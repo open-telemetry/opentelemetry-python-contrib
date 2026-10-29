@@ -59,8 +59,15 @@ _REMOULADE_MESSAGE_RETRY_COUNT_KEY = "remoulade.retry_count"
 
 
 def _exit_activation(span, activation, exception):
-    """Close the span activation, recording error.type when the operation failed."""
-    if exception is None:
+    """Close the span activation, recording error.type when the operation failed.
+
+    A :class:`BaseException` that is not an :class:`Exception` closes the activation
+    without being recorded. remoulade signals an interrupted message that way, through
+    ``remoulade.middleware.threading.Interrupt`` and its subclasses ``Shutdown`` and
+    ``TimeLimitExceeded``, and the conventions treat an interruption as something other
+    than a failed operation.
+    """
+    if not isinstance(exception, Exception):
         activation.__exit__(None, None, None)
         return
     _set_error_type(exception, span)
