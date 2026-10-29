@@ -5,6 +5,13 @@
 OpenAI client instrumentation supporting `openai`, it can be enabled by
 using ``OpenAIInstrumentor``.
 
+.. deprecated:: 2.5b0
+    Use `opentelemetry-instrumentation-genai-openai
+    <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
+    instead. This package only supports `Semantic Conventions v1.30.0
+    <https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_
+    and won't receive new features.
+
 .. _openai: https://pypi.org/project/openai/
 
 Usage
