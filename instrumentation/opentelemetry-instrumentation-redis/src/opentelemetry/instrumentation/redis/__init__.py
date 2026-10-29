@@ -170,6 +170,7 @@ from opentelemetry.instrumentation._semconv import (
     _get_semconv_opt_in_modes,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _record_error_type,
     _set_db_statement,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -284,7 +285,8 @@ def _traced_execute_factory(
                     _add_create_attributes(span, args)
             if callable(request_hook):
                 _execute_hook(request_hook, span, instance, args, kwargs)
-            response = func(*args, **kwargs)
+            with _record_error_type(span):
+                response = func(*args, **kwargs)
             if span.is_recording():
                 if span.name == "redis.search":
                     _add_search_attributes(span, response, args)
@@ -341,11 +343,12 @@ def _traced_execute_pipeline_factory(
                 )
 
             response = None
-            try:
-                response = func(*args, **kwargs)
-            except redis.WatchError as watch_exception:
-                span.set_status(StatusCode.UNSET)
-                exception = watch_exception
+            with _record_error_type(span):
+                try:
+                    response = func(*args, **kwargs)
+                except redis.WatchError as watch_exception:
+                    span.set_status(StatusCode.UNSET)
+                    exception = watch_exception
 
             if callable(response_hook):
                 _execute_hook(response_hook, span, instance, response)
@@ -401,7 +404,8 @@ def _async_traced_execute_factory(
                 )
             if callable(request_hook):
                 _execute_hook(request_hook, span, instance, args, kwargs)
-            response = await func(*args, **kwargs)
+            with _record_error_type(span):
+                response = await func(*args, **kwargs)
             if callable(response_hook):
                 _execute_hook(response_hook, span, instance, response)
             return response
@@ -457,11 +461,12 @@ def _async_traced_execute_pipeline_factory(
                 )
 
             response = None
-            try:
-                response = await func(*args, **kwargs)
-            except redis.WatchError as watch_exception:
-                span.set_status(StatusCode.UNSET)
-                exception = watch_exception
+            with _record_error_type(span):
+                try:
+                    response = await func(*args, **kwargs)
+                except redis.WatchError as watch_exception:
+                    span.set_status(StatusCode.UNSET)
+                    exception = watch_exception
 
             if callable(response_hook):
                 _execute_hook(response_hook, span, instance, response)

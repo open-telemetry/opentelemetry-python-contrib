@@ -42,6 +42,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
     NetworkTransportValues,
@@ -471,6 +472,52 @@ class TestRedis(TestBase):
         self.assertEqual(span.kind, SpanKind.CLIENT)
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
 
+    def test_error_type_on_a_connection_error(self):
+        server = fakeredis.FakeServer()
+        server.connected = False
+        redis_client = fakeredis.FakeStrictRedis(server=server)
+        with self.assertRaises(redis_ConnectionError):
+            redis_client.set("foo", "bar")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ConnectionError")
+        self.assertIs(type(error_type), str)
+
+    def test_error_type_on_a_response_error(self):
+        redis_client = fakeredis.FakeStrictRedis()
+        redis_client.lpush("mylist", "value")
+        with self.assertRaises(redis.ResponseError):
+            redis_client.incr("mylist")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+        self.assertEqual(spans[1].attributes[ERROR_TYPE], "ResponseError")
+
+    def test_no_error_type_on_a_successful_command(self):
+        redis_client = fakeredis.FakeStrictRedis()
+        redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+
+    def test_no_error_type_on_a_watch_error(self):
+        with pytest.raises(WatchError):
+            redis_client = fakeredis.FakeStrictRedis()
+            pipe = redis_client.pipeline(transaction=True)
+            pipe.watch("a")
+            redis_client.set("a", "bad")
+            pipe.multi()
+            pipe.set("a", "1")
+            pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
+
     def test_watch_error_sync(self):
         def redis_operations():
             with pytest.raises(WatchError):
@@ -604,6 +651,31 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
                 pipe.multi()
                 await pipe.set("a", "1")
                 await pipe.execute()
+
+    @pytest.mark.asyncio
+    async def test_error_type_on_an_async_response_error(self):
+        self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+        redis_client = FakeRedis()
+        await redis_client.lpush("mylist", "value")
+        with self.assertRaises(redis.ResponseError):
+            await redis_client.incr("mylist")
+
+        spans = self.assert_span_count(2)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+        error_type = spans[1].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ResponseError")
+        self.assertIs(type(error_type), str)
+        RedisInstrumentor().uninstrument()
+
+    @pytest.mark.asyncio
+    async def test_no_error_type_on_a_successful_async_command(self):
+        self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+        redis_client = FakeRedis()
+        await redis_client.set("key", "value")
+
+        spans = self.assert_span_count(1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+        RedisInstrumentor().uninstrument()
 
     @pytest.mark.asyncio
     async def test_watch_error_async(self):
