@@ -1,1 +1,3 @@
 `opentelemetry-instrumentation-dbapi`: set `error.type` on the span as well as the duration metric
+`opentelemetry-instrumentation-urllib3`: set `error.type` on the span when the request fails
+`opentelemetry-instrumentation-pyramid`: set `error.type` on the duration metric as well as the span
