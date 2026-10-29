@@ -186,6 +186,39 @@ def test_build_agent_disconnect_message(client):
     assert message.capabilities == _DEFAULT_CAPABILITIES
 
 
+def test_update_instance_uid(client: OpAMPClient) -> None:
+    heartbeat = client.build_heartbeat_message()
+    original_uid = heartbeat.instance_uid
+    first = opamp_pb2.AgentToServer.FromString(client.prepare_message(heartbeat))
+    new_uid = b"\x01" * 16
+    client.update_instance_uid(new_uid)
+
+    updated = opamp_pb2.AgentToServer.FromString(client.prepare_message(heartbeat))
+
+    assert first.instance_uid == original_uid
+    assert updated.instance_uid == new_uid
+    assert [first.sequence_num, updated.sequence_num] == [0, 1]
+    assert heartbeat.instance_uid == original_uid
+    assert client.build_heartbeat_message().instance_uid == new_uid
+
+
+@pytest.mark.parametrize("length", [0, 1, 8, 15, 17, 32])
+def test_update_instance_uid_rejects_wrong_length(client: OpAMPClient, length: int) -> None:
+    old_uid = client._instance_uid
+    with pytest.raises(ValueError, match=f"must be 16 bytes, got {length}"):
+        client.update_instance_uid(b"\x01" * length)
+    assert client._instance_uid == old_uid
+    assert client._sequence_num == 0
+
+
+def test_update_instance_uid_rejects_all_zeros(client: OpAMPClient) -> None:
+    old_uid = client._instance_uid
+    with pytest.raises(ValueError, match="must not be all zeros"):
+        client.update_instance_uid(bytes(16))
+    assert client._instance_uid == old_uid
+    assert client._sequence_num == 0
+
+
 def test_build_heartbeat_message(client):
     message = client.build_heartbeat_message()
 
