@@ -36,7 +36,10 @@ Run instrumented actor
 
 """
 
+from __future__ import annotations
+
 from collections.abc import Collection
+from contextlib import AbstractContextManager
 
 from remoulade import Middleware, broker
 
@@ -48,6 +51,7 @@ from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.trace import Span
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
 _REMOULADE_MESSAGE_SEND = "send"
@@ -58,7 +62,11 @@ _REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
 _REMOULADE_MESSAGE_RETRY_COUNT_KEY = "remoulade.retry_count"
 
 
-def _exit_activation(span, activation, exception):
+def _exit_activation(
+    span: Span,
+    activation: AbstractContextManager[Span],
+    exception: BaseException | None,
+) -> None:
     """Close the span activation, recording error.type when the operation failed.
 
     A :class:`BaseException` that is not an :class:`Exception` closes the activation

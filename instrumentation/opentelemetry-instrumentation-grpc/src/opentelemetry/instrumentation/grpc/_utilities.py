@@ -3,10 +3,13 @@
 
 """Internal utilities."""
 
+from __future__ import annotations
+
 import grpc
 
 from opentelemetry.instrumentation._semconv import _set_error_type
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -42,7 +45,11 @@ def _server_status(code, details):
     return status_codes.get(code, Status(status_code=StatusCode.UNSET, description=""))
 
 
-def _set_grpc_error_type(span, error=None, status_code=None):
+def _set_grpc_error_type(
+    span: Span,
+    error: BaseException | None = None,
+    status_code: grpc.StatusCode | None = None,
+) -> None:
     """Record ``error.type`` for a failed gRPC call.
 
     The RPC semantic conventions ask for the gRPC status code when the call returned one,
@@ -56,7 +63,7 @@ def _set_grpc_error_type(span, error=None, status_code=None):
     _set_error_type(error, span)
 
 
-def _set_server_status(span, code, details):
+def _set_server_status(span: Span, code: grpc.StatusCode, details: str) -> None:
     """Set the span status for a gRPC server call, recording ``error.type`` when it failed."""
     status = _server_status(code, details)
     if status.status_code is StatusCode.ERROR:
