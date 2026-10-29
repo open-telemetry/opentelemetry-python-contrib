@@ -5,6 +5,7 @@ import remoulade
 from remoulade.brokers.local import LocalBroker
 
 from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
@@ -83,6 +84,25 @@ class TestRemouladeInstrumentation(TestBase):
         self.assertEqual(producer_spans[1].name, "remoulade/send(retry-2)")
         self.assertSpanHasAttributes(producer_spans[1], {"remoulade.retry_count": 2})
         self.assertEqual(producer_spans[3].name, "remoulade/send")
+
+    def test_error_type_recorded_on_a_failed_message(self):
+        with self.assertRaises(ZeroDivisionError):
+            actor_div.send(1, 0)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        consumer_spans = spans[::2]
+        final_attempt = consumer_spans[-1]
+        error_type = final_attempt.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ZeroDivisionError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_message(self):
+        actor_div.send(2, 3)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_uninstrument(self):
         RemouladeInstrumentor().instrument()
