@@ -325,6 +325,36 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.name, "name set from hook")
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
+    def test_request_hook_raising_does_not_break_request(self):
+        def request_hook(span, request_obj):
+            raise ValueError("request hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(request_hook=request_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING") as logs:
+            result = self.perform_request(self.URL)
+
+        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.status_code, 200)
+        self.assert_span()
+        self.assertIn("Exception raised by hook", logs.output[0])
+
+    def test_response_hook_raising_does_not_break_request(self):
+        def response_hook(span, request_obj, response):
+            raise ValueError("response hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING") as logs:
+            result = self.perform_request(self.URL)
+
+        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.status_code, 200)
+        self.assert_span()
+        self.assertIn("Exception raised by hook", logs.output[0])
+
     def test_excluded_urls_explicit(self):
         url_404 = "http://mock/status/404"
         Entry.single_register(
