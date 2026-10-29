@@ -491,20 +491,6 @@ class TestRedis(TestBase):
         self.assertEqual(len(spans), 1)
         self.assertNotIn(ERROR_TYPE, spans[0].attributes)
 
-    def test_no_error_type_on_a_watch_error(self):
-        with pytest.raises(WatchError):
-            redis_client = fakeredis.FakeStrictRedis()
-            pipe = redis_client.pipeline(transaction=True)
-            pipe.watch("a")
-            redis_client.set("a", "bad")
-            pipe.multi()
-            pipe.set("a", "1")
-            pipe.execute()
-
-        spans = self.memory_exporter.get_finished_spans()
-        for span in spans:
-            self.assertNotIn(ERROR_TYPE, span.attributes)
-
     def test_watch_error_sync(self):
         def redis_operations():
             with pytest.raises(WatchError):
@@ -1027,6 +1013,23 @@ class TestRedisSemconvConfiguration(TestBase):
         error_type = spans[-1].attributes[ERROR_TYPE]
         self.assertEqual(error_type, "ResponseError")
         self.assertIs(type(error_type), str)
+
+    @stability_mode("database")
+    def test_no_error_type_on_a_watch_error_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        with pytest.raises(WatchError):
+            redis_client = fakeredis.FakeStrictRedis()
+            pipe = redis_client.pipeline(transaction=True)
+            pipe.watch("a")
+            redis_client.set("a", "bad")
+            pipe.multi()
+            pipe.set("a", "1")
+            pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
 
     @stability_mode("")
     def test_pipeline_default_mode(self):
