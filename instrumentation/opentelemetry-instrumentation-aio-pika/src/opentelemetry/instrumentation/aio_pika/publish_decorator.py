@@ -7,6 +7,7 @@ from aio_pika import Exchange
 from aio_pika.abc import AbstractMessage
 
 from opentelemetry import propagate, trace
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.trace import Span, Tracer
 
@@ -33,7 +34,8 @@ class PublishDecorator:
                 return await publish(message, routing_key, **kwargs)
             with trace.use_span(span, end_on_exit=True):
                 propagate.inject(message.properties.headers)
-                return_value = await publish(message, routing_key, **kwargs)
+                with _record_error_type(span):
+                    return_value = await publish(message, routing_key, **kwargs)
             return return_value
 
         return decorated_publish
