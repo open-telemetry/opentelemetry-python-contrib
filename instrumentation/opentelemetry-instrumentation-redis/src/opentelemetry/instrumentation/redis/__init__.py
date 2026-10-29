@@ -171,6 +171,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _record_error_type,
+    _report_new,
     _set_db_statement,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -285,7 +286,7 @@ def _traced_execute_factory(
                     _add_create_attributes(span, args)
             if callable(request_hook):
                 _execute_hook(request_hook, span, instance, args, kwargs)
-            with _record_error_type(span):
+            with _record_error_type(span if _report_new(db_sem_conv_opt_in_mode) else None):
                 response = func(*args, **kwargs)
             if span.is_recording():
                 if span.name == "redis.search":
@@ -343,7 +344,7 @@ def _traced_execute_pipeline_factory(
                 )
 
             response = None
-            with _record_error_type(span):
+            with _record_error_type(span if _report_new(db_sem_conv_opt_in_mode) else None):
                 try:
                     response = func(*args, **kwargs)
                 except redis.WatchError as watch_exception:
@@ -404,7 +405,7 @@ def _async_traced_execute_factory(
                 )
             if callable(request_hook):
                 _execute_hook(request_hook, span, instance, args, kwargs)
-            with _record_error_type(span):
+            with _record_error_type(span if _report_new(db_sem_conv_opt_in_mode) else None):
                 response = await func(*args, **kwargs)
             if callable(response_hook):
                 _execute_hook(response_hook, span, instance, response)
@@ -461,7 +462,7 @@ def _async_traced_execute_pipeline_factory(
                 )
 
             response = None
-            with _record_error_type(span):
+            with _record_error_type(span if _report_new(db_sem_conv_opt_in_mode) else None):
                 try:
                     response = await func(*args, **kwargs)
                 except redis.WatchError as watch_exception:

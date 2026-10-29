@@ -57,6 +57,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _record_error_type,
+    _report_new,
     _set_db_name,
     _set_db_statement,
     _set_db_system,
@@ -100,7 +101,7 @@ def _instrument(tracer_provider, include_db_statement=False, sem_conv_opt_in_mod
                     query = args[0]
                     _set_db_statement(attrs, str(query), sem_conv_opt_in_mode)
                 span.set_attributes(attrs)
-            with _record_error_type(span):
+            with _record_error_type(span if _report_new(sem_conv_opt_in_mode) else None):
                 response = func(*args, **kwargs)
             return response
 

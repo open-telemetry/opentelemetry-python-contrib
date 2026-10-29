@@ -55,6 +55,7 @@ def connect_and_execute_query():
 class TestCassandraIntegration(TestBase):
     def tearDown(self):
         super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         with self.disable_logging():
             CassandraInstrumentor().uninstrument()
 
@@ -72,17 +73,22 @@ class TestCassandraIntegration(TestBase):
         failure = RuntimeError("no host available")
         mock_create_response_future.side_effect = failure
 
-        CassandraInstrumentor().instrument()
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument()
 
-        with self.assertRaises(RuntimeError) as raised:
-            connect_and_execute_query()
-        self.assertIs(raised.exception, failure)
+            with self.assertRaises(RuntimeError) as raised:
+                connect_and_execute_query()
+            self.assertIs(raised.exception, failure)
 
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        error_type = spans_list[0].attributes[ERROR_TYPE]
-        self.assertEqual(error_type, "RuntimeError")
-        self.assertIs(type(error_type), str)
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            error_type = spans_list[0].attributes[ERROR_TYPE]
+            self.assertEqual(error_type, "RuntimeError")
+            self.assertIs(type(error_type), str)
 
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
@@ -276,6 +282,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
 class TestCassandraSemconvStability(TestBase):
     def tearDown(self):
         super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         with self.disable_logging():
             CassandraInstrumentor().uninstrument()
         _OpenTelemetrySemanticConventionStability._initialized = False

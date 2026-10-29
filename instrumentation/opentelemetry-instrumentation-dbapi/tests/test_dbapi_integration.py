@@ -634,21 +634,22 @@ class TestDBApiIntegration(TestBase):
         self.assertIsNone(rows_metric)
 
     def test_span_and_duration_metric_agree_on_error_type(self):
-        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
-        mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
-        cursor = mock_connection.cursor()
-        with self.assertRaises(Exception):
-            cursor.execute("SELECT 1", throw_exception=True)
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+            mock_connection = db_integration.wrapped_connection(mock_connect, (), {})
+            cursor = mock_connection.cursor()
+            with self.assertRaises(Exception):
+                cursor.execute("SELECT 1", throw_exception=True)
 
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span_error_type = spans_list[0].attributes[ERROR_TYPE]
-        self.assertEqual(span_error_type, "Exception")
-        self.assertIs(type(span_error_type), str)
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span_error_type = spans_list[0].attributes[ERROR_TYPE]
+            self.assertEqual(span_error_type, "Exception")
+            self.assertIs(type(span_error_type), str)
 
-        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
-        metric_attributes = dict(list(duration_metric.data.data_points)[0].attributes)
-        self.assertEqual(metric_attributes[ERROR_TYPE], span_error_type)
+            duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+            metric_attributes = dict(list(duration_metric.data.data_points)[0].attributes)
+            self.assertEqual(metric_attributes[ERROR_TYPE], span_error_type)
 
     def test_span_carries_no_error_type_when_the_query_succeeds(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
@@ -661,23 +662,24 @@ class TestDBApiIntegration(TestBase):
         self.assertNotIn(ERROR_TYPE, spans_list[0].attributes)
 
     def test_async_span_and_duration_metric_agree_on_error_type(self) -> None:
-        db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
-        cursor_tracer = dbapi.CursorTracer(db_integration)
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")
+            cursor_tracer = dbapi.CursorTracer(db_integration)
 
-        async def async_execute(_query: str) -> None:
-            raise RuntimeError("query failed")
+            async def async_execute(_query: str) -> None:
+                raise RuntimeError("query failed")
 
-        with self.assertRaises(RuntimeError):
-            asyncio.run(cursor_tracer.traced_execution_async(MockCursor(), async_execute, "SELECT 1"))
+            with self.assertRaises(RuntimeError):
+                asyncio.run(cursor_tracer.traced_execution_async(MockCursor(), async_execute, "SELECT 1"))
 
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span_error_type = spans_list[0].attributes[ERROR_TYPE]
-        self.assertEqual(span_error_type, "RuntimeError")
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span_error_type = spans_list[0].attributes[ERROR_TYPE]
+            self.assertEqual(span_error_type, "RuntimeError")
 
-        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
-        metric_attributes = dict(list(duration_metric.data.data_points)[0].attributes)
-        self.assertEqual(metric_attributes[ERROR_TYPE], span_error_type)
+            duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+            metric_attributes = dict(list(duration_metric.data.data_points)[0].attributes)
+            self.assertEqual(metric_attributes[ERROR_TYPE], span_error_type)
 
     def test_returned_rows_recorded(self):
         db_integration = dbapi.DatabaseApiIntegration("instrumenting_module_test_name", "testcomponent")

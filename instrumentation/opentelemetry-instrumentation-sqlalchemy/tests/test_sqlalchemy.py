@@ -82,7 +82,9 @@ class TestSqlalchemyInstrumentation(TestBase):
             # span name falls back to just the db name.
             self.assertEqual(span.name, ":memory:")
 
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_error_type_recorded_on_a_failed_statement(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
             engine=engine,
