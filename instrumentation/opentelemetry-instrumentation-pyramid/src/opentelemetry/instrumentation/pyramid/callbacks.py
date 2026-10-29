@@ -18,6 +18,7 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _report_new,
     _report_old,
+    _set_error_type,
     _set_http_url,
     _StabilityMode,
 )
@@ -27,9 +28,6 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv._incubating.attributes.error_attributes import (
-    ERROR_TYPE,
-)
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
@@ -271,12 +269,7 @@ def trace_tween_factory(handler, registry):
 
                     if recordable_exc is not None:
                         if _report_new(_sem_conv_opt_in_mode):
-                            duration_attrs[ERROR_TYPE] = type(recordable_exc).__qualname__
-                            if span.is_recording():
-                                span.set_attribute(
-                                    ERROR_TYPE,
-                                    type(recordable_exc).__qualname__,
-                                )
+                            _set_error_type(recordable_exc, span, duration_attrs)
                         span.set_status(Status(StatusCode.ERROR, str(recordable_exc)))
                         span.record_exception(recordable_exc)
 
