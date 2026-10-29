@@ -211,6 +211,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_error_type,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
 )
@@ -905,6 +906,7 @@ class CursorTracer(Generic[CursorT]):
                 return query_method(*args, **kwargs)
             except Exception as exc:
                 error = exc
+                _set_error_type(exc, span)
                 raise
             finally:
                 self._record_metrics(cursor, operation_name, start_time, error)
@@ -952,6 +954,7 @@ class CursorTracer(Generic[CursorT]):
                 return await query_method(*args, **kwargs)
             except Exception as exc:
                 error = exc
+                _set_error_type(exc, span)
                 raise
             finally:
                 self._record_metrics(cursor, operation_name, start_time, error)
