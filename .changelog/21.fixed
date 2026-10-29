@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-dbapi`: set `error.type` on the span as well as the duration metric
