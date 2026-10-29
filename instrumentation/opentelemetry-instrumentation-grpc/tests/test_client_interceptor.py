@@ -252,6 +252,16 @@ class TestClientProto(TestBase):
         self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
         self.assertIs(type(error_type), str)
 
+    def test_error_type_is_the_grpc_status_code_on_a_future_call(self):
+        with self.assertRaises(grpc.RpcError):
+            simple_method_future(self._stub, error=True).result()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
+
     def test_no_error_type_on_a_successful_call(self):
         simple_method(self._stub)
 
@@ -274,6 +284,9 @@ class TestClientProto(TestBase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
 
     def test_error_unary_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -290,6 +303,9 @@ class TestClientProto(TestBase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
 
     def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -306,6 +322,9 @@ class TestClientProto(TestBase):
             span.attributes[RPC_GRPC_STATUS_CODE],
             grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, grpc.StatusCode.INVALID_ARGUMENT.name)
+        self.assertIs(type(error_type), str)
 
     def test_client_interceptor_falsy_response(
         self,
