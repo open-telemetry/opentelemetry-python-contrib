@@ -4,6 +4,7 @@
 # pylint: disable=too-many-lines
 
 import abc
+from logging import Handler, LogRecord, getLogger
 from unittest import mock
 
 import requests
@@ -22,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.utils import (
+    is_http_instrumentation_enabled,
     suppress_http_instrumentation,
     suppress_instrumentation,
 )
@@ -358,6 +360,28 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(len(span.events), 0)
         self.assertIn("Exception raised by hook", logs.output[0])
+
+    def test_hook_warning_is_logged_with_instrumentation_suppressed(self):
+        def request_hook(span, request_obj):
+            raise ValueError("request hook failed")
+
+        enabled_during_emit = []
+
+        class RecordingHandler(Handler):
+            def emit(self, record: LogRecord) -> None:
+                enabled_during_emit.append(is_http_instrumentation_enabled())
+
+        handler = RecordingHandler()
+        logger = getLogger("opentelemetry.instrumentation.requests")
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(request_hook=request_hook)
+        result = self.perform_request(self.URL)
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(enabled_during_emit, [False])
 
     def test_excluded_urls_explicit(self):
         url_404 = "http://mock/status/404"

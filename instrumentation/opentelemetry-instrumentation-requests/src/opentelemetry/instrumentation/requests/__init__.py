@@ -262,7 +262,8 @@ def _call_hook_and_log_exception(hook: Callable[..., None], *args: Any) -> None:
         hook(*args)
     # pylint: disable-next=broad-exception-caught
     except Exception:
-        _logger.warning("Exception raised by hook %r", hook, exc_info=True)
+        with suppress_http_instrumentation():
+            _logger.warning("Exception raised by hook %r", hook, exc_info=True)
 
 
 def _set_http_status_code_attribute(
