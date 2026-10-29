@@ -405,7 +405,7 @@ def _instrument(
         ):
             exception = None
             if callable(request_hook):
-                request_hook(span, request)
+                _call_hook_and_log_exception(request_hook, span, request)
 
             inject(headers)
 
@@ -451,7 +451,7 @@ def _instrument(
                 span.set_attributes(span_attributes)
 
                 if callable(response_hook):
-                    response_hook(span, request, result)
+                    _call_hook_and_log_exception(response_hook, span, request, result)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
