@@ -700,6 +700,25 @@ class RequestsIntegrationTestBase(abc.ABC):
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
+    @mock.patch(
+        "requests.adapters.HTTPAdapter.send",
+        side_effect=requests.RequestException(response=mocked_response),
+    )
+    def test_response_hook_raising_preserves_the_send_exception(self, *_, **__):
+        def response_hook(span, request_obj, response):
+            raise ValueError("response hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING"):
+            with self.assertRaises(requests.RequestException):
+                self.perform_request(self.URL)
+
+        span = self.assert_span()
+        self.assertEqual(span.attributes[HTTP_STATUS_CODE], 500)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
     @mock.patch("requests.adapters.HTTPAdapter.send", side_effect=Exception)
     def test_requests_basic_exception(self, *_, **__):
         with self.assertRaises(Exception):
