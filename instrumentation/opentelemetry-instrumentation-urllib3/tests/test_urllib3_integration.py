@@ -499,6 +499,18 @@ class TestURLLib3Instrumentor(TestBase):
         response = self.perform_request(url)
         self.assert_success_span(response, self.HTTP_URL + "?AWSAccessKeyId=REDACTED")
 
+    def test_excluded_urls_match_the_unredacted_url(self):
+        url = "http://username:password@mock:666/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(excluded_urls="username:password@")
+
+        pool = urllib3.HTTPConnectionPool("mock", port=666)
+        pool.request("GET", url)
+
+        self.assert_span(num_spans=0)
+
     def test_hooks(self):
         def request_hook(span, pool, request_info):
             span.update_name("name set from hook")
