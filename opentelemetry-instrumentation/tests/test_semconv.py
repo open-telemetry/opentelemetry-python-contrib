@@ -4,7 +4,7 @@
 import os
 from asyncio import CancelledError
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from opentelemetry.instrumentation._semconv import (
     _LEGACY_SCHEMA_VERSION,
@@ -901,7 +901,7 @@ class TestSetErrorType(TestCase):
 
         _set_error_type(ValueError("boom"), span)
 
-        span.set_attribute.assert_not_called()
+        self.assertEqual(span.set_attribute.call_args_list, [])
 
     def test_accepts_a_span_without_metric_attributes(self):
         span = Mock()
@@ -909,7 +909,7 @@ class TestSetErrorType(TestCase):
 
         _set_error_type(KeyError("boom"), span)
 
-        span.set_attribute.assert_called_once_with(ERROR_TYPE, "KeyError")
+        self.assertEqual(span.set_attribute.call_args_list, [call(ERROR_TYPE, "KeyError")])
 
     def test_accepts_metric_attributes_without_a_span(self):
         metric_attributes = {}
