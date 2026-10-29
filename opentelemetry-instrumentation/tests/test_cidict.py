@@ -3,7 +3,7 @@
 
 # pylint: disable=redefined-outer-name
 
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -24,7 +24,7 @@ def simple_cidict() -> CIDict[str, int]:
         ({"A": 1, "a": 2}, 1),
     ],
 )
-def test_init_from_mapping(data: Optional[dict[str, int]], expected_len: int) -> None:
+def test_init_from_mapping(data: dict[str, int] | None, expected_len: int) -> None:
     assert len(CIDict(data)) == expected_len
 
 

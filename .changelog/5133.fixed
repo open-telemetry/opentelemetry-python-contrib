@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: switch from using `InMemoryLogExporter` to `InMemoryLogRecordExporter` in tests

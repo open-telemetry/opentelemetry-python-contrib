@@ -42,7 +42,7 @@ class _SamplingRule:
         self.URLPath = URLPath if URLPath is not None else ""
         self.Version = Version if Version is not None else 0
 
-    def __lt__(self, other: "_SamplingRule") -> bool:
+    def __lt__(self, other: _SamplingRule) -> bool:
         if self.Priority == other.Priority:
             # String order priority example:
             # "A","Abc","a","ab","abc","abcdef"

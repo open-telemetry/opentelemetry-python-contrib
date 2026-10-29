@@ -82,7 +82,7 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Collection
 
 import kafka
 from wrapt import wrap_function_wrapper

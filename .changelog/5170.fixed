@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: sanitize captured headers and match header names with regexes

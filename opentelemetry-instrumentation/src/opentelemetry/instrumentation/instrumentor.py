@@ -1,6 +1,5 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# type: ignore
 
 """
 OpenTelemetry Base Instrumentor
@@ -9,8 +8,9 @@ OpenTelemetry Base Instrumentor
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Collection
 from logging import getLogger
-from typing import Any, Collection
+from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
@@ -103,7 +103,7 @@ class BaseInstrumentor(ABC):
                 if raise_exception_on_conflict:
                     raise DependencyConflictError(conflict)
                 # manual instrumentation path: log the conflict as error
-                _LOG.error(conflict)
+                _LOG.error(conflict._format_message(self.__class__.__name__))
                 return None
 
         # initialize semantic conventions opt-in if needed

@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Callable
 from logging import getLogger
-from typing import Callable, Dict, List, Optional
 
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
@@ -52,12 +53,12 @@ class KafkaPropertiesExtractor:
             return None
 
 
-ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
-ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
+ProduceHookT = Callable[[Span, list, dict], None] | None
+ConsumeHookT = Callable[[Span, ABCRecord, list, dict], None] | None
 
 
 class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -67,7 +68,7 @@ class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
                     return [value.decode()]
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
         return [key for (key, value) in carrier]
@@ -94,7 +95,7 @@ def _enrich_span(
     partition: int | None,
 ):
     if span.is_recording():
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
+        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
         if partition is not None:
             span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
