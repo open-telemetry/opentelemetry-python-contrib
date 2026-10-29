@@ -16,6 +16,7 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -292,6 +293,31 @@ class TestWrapSendSpanLifetime(TestBase):
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
         self.assertEqual(span.events[0].attributes["exception.type"], "ConnectionError")
+
+    def test_wrap_send_records_error_type_on_a_failed_send(self, _extract_send_partition: mock.MagicMock) -> None:
+        def failing_send(*args, **kwargs):
+            raise ConnectionError("broker unavailable")
+
+        wrapped_send = _wrap_send(self.tracer, None)
+
+        with self.assertRaises(ConnectionError):
+            wrapped_send(failing_send, self.producer, self.args, self.kwargs)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ConnectionError")
+        self.assertIs(type(error_type), str)
+
+    def test_wrap_send_records_no_error_type_on_a_successful_send(
+        self, _extract_send_partition: mock.MagicMock
+    ) -> None:
+        wrapped_send = _wrap_send(self.tracer, None)
+        wrapped_send(mock.MagicMock(), self.producer, self.args, self.kwargs)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
 
     def test_wrap_send_leaves_successful_send_unchanged(self, _extract_send_partition: mock.MagicMock) -> None:
         original_send = mock.MagicMock()
