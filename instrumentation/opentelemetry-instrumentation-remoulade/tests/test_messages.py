@@ -9,6 +9,7 @@ from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
 
 
 @remoulade.actor(max_retries=3)
@@ -102,6 +103,11 @@ class TestRemouladeInstrumentation(TestBase):
         error_type = final_attempt.attributes[ERROR_TYPE]
         self.assertEqual(error_type, "ZeroDivisionError")
         self.assertIs(type(error_type), str)
+        self.assertIs(final_attempt.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            [event.attributes["exception.type"] for event in final_attempt.events],
+            ["ZeroDivisionError"],
+        )
 
     def test_no_error_type_when_the_message_is_interrupted(self):
         with self.assertRaises(Shutdown):

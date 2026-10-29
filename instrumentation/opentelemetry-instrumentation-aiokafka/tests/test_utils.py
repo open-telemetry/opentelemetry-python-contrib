@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
 
 
 class TestUtils(IsolatedAsyncioTestCase):
@@ -334,6 +335,11 @@ class TestWrapSendErrorType(TestBase, IsolatedAsyncioTestCase):
         error_type = spans[0].attributes[ERROR_TYPE]
         self.assertEqual(error_type, "ConnectionError")
         self.assertIs(type(error_type), str)
+        self.assertIs(spans[0].status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            [event.attributes["exception.type"] for event in spans[0].events],
+            ["ConnectionError"],
+        )
 
     async def test_no_error_type_on_a_successful_send(self, *_mocks: mock.MagicMock) -> None:
         wrapped_send = _wrap_send(self.tracer, None)
