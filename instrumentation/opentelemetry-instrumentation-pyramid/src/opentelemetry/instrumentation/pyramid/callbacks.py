@@ -250,6 +250,7 @@ def trace_tween_factory(handler, registry):
                 duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
             active_requests_counter.add(-1, active_requests_count_attrs)
+            active_metric_ctx = None
             span = request.environ.get(_ENVIRON_SPAN_KEY)
             enabled = request.environ.get(_ENVIRON_ENABLED_KEY)
             if not span and enabled:
@@ -291,6 +292,7 @@ def trace_tween_factory(handler, registry):
                     propagator.inject(response.headers)
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
+                active_metric_ctx = trace.set_span_in_context(span)
 
                 # Only considering HTTPServerError
                 # to make sure 200, 300 and 400 exceptions are not reported as error
@@ -310,12 +312,20 @@ def trace_tween_factory(handler, registry):
             # Record metrics for old semconv (milliseconds)
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
-                duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
+                duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=active_metric_ctx,
+                )
 
             # Record metrics for new semconv (seconds)
             if duration_histogram_new:
                 duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
-                duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
+                duration_histogram_new.record(
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=active_metric_ctx,
+                )
 
         return response
 
