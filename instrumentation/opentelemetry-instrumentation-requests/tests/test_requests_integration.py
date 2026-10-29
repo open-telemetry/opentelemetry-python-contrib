@@ -337,7 +337,9 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(result.text, "Hello!")
         self.assertEqual(result.status_code, 200)
-        self.assert_span()
+        span = self.assert_span()
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
         self.assertIn("Exception raised by hook", logs.output[0])
 
     def test_response_hook_raising_does_not_break_request(self):
@@ -352,7 +354,9 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(result.text, "Hello!")
         self.assertEqual(result.status_code, 200)
-        self.assert_span()
+        span = self.assert_span()
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
         self.assertIn("Exception raised by hook", logs.output[0])
 
     def test_excluded_urls_explicit(self):
