@@ -682,6 +682,32 @@ class TestSemConvNew(_SemConvTestBase):
 
         self._verify_duration_attributes(metrics)
 
+    def test_error_type_on_duration_metric_for_a_500_response_new_semconv(self):
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+
+        duration_points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == HTTP_SERVER_REQUEST_DURATION
+            for point in metric.data.data_points
+        ]
+        self.assertEqual(len(duration_points), 1)
+        self.assertEqual(duration_points[0].attributes[ERROR_TYPE], "500")
+
+    def test_no_error_type_on_duration_metric_for_a_404_response_new_semconv(self):
+        resp = self.client.get("/hello/404")
+        self.assertEqual(404, resp.status_code)
+
+        duration_points = [
+            point
+            for metric in self.get_sorted_metrics(SCOPE)
+            if metric.name == HTTP_SERVER_REQUEST_DURATION
+            for point in metric.data.data_points
+        ]
+        self.assertEqual(len(duration_points), 1)
+        self.assertNotIn(ERROR_TYPE, duration_points[0].attributes)
+
     def test_error_type_on_span_and_duration_metric_new_semconv(self):
         with self.assertRaises(NotImplementedError):
             self.client.get("/hello/900")

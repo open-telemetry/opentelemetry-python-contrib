@@ -545,3 +545,33 @@ class TestErrorType(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertNotIn(ERROR_TYPE, spans[0].attributes)
+
+    def _consume(self, callback) -> None:
+        method = mock.MagicMock(spec=Basic.Deliver)
+        method.exchange = "test-exchange"
+        decorated = utils._decorate_callback(callback, self.tracer, "test-task")
+        decorated(self.channel, method, self.properties, b"body")
+
+    def test_error_type_recorded_on_a_failed_callback(self, _enrich_span: mock.MagicMock) -> None:
+        error = ValueError("cannot handle this message")
+
+        def failing_callback(*args, **kwargs):
+            raise error
+
+        with self.assertRaises(ValueError) as raised:
+            self._consume(failing_callback)
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.CONSUMER)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ValueError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_callback(self, _enrich_span: mock.MagicMock) -> None:
+        self._consume(mock.MagicMock())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)
