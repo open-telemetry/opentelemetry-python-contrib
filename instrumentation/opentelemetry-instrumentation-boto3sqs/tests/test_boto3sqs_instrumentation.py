@@ -253,6 +253,22 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(error_type, "RuntimeError")
         self.assertIs(type(error_type), str)
 
+    def test_error_type_recorded_on_a_failed_receive_message(self):
+        error = RuntimeError("endpoint unreachable")
+        with mock.patch.object(
+            self._client.meta.events,
+            "emit",
+            side_effect=error,
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                self._client.receive_message(QueueUrl=self._queue_url)
+        self.assertIs(raised.exception, error)
+
+        span = self._get_only_span()
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "RuntimeError")
+        self.assertIs(type(error_type), str)
+
     def test_no_error_type_on_a_successful_send_message(self):
         mock_response = {"MessageId": "123456789"}
         with self._mocked_endpoint(mock_response):
