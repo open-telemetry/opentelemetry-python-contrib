@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: vendored `packaging` under `opentelemetry.instrumentation._vendor`, removing it as a runtime dependency

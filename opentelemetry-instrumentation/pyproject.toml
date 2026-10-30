@@ -28,7 +28,6 @@ dependencies = [
   "opentelemetry-api ~= 1.4",
   "opentelemetry-semantic-conventions == 0.67b0.dev",
   "wrapt >= 1.0.0, < 3.0.0",
-  "packaging >= 18.0",
 ]
 
 [project.scripts]
@@ -53,3 +52,23 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[tool.vendoring]
+destination = "src/opentelemetry/instrumentation/_vendor/"
+requirements = "vendor.txt"
+namespace = "opentelemetry.instrumentation._vendor"
+protected-files = ["__init__.py", "README.rst", "sbom.json", "vendor.txt"]
+sbom-file = "src/opentelemetry/instrumentation/_vendor/sbom.json"
+
+[tool.vendoring.transformations]
+drop = [
+  "packaging/dependency_groups.py",
+  "packaging/direct_url.py",
+  "packaging/errors.py",
+  "packaging/licenses",
+  "packaging/metadata.py",
+  "packaging/pylock.py",
+  "packaging/ranges.py",
+  "packaging/_structures.py",
+  "packaging-*.dist-info",
+]

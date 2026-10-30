@@ -18,6 +18,7 @@ SKIP_DIRS = (
     ".venv",
     "__pycache__",
     "node_modules",
+    "_vendor",
 )
 
 GENERATED_MARKERS = (
