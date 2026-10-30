@@ -4,4 +4,3 @@ wrapt==1.16.0
 zipp==3.19.2
 pytest==7.4.4
 Deprecated==1.2.14
--e processor/opentelemetry-processor-baggage

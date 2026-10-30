@@ -16,7 +16,3 @@ typing_extensions==4.12.2
 Werkzeug==3.0.6
 wrapt==1.16.0
 zipp==3.19.2
--e opentelemetry-instrumentation
--e instrumentation/opentelemetry-instrumentation-wsgi
--e util/opentelemetry-util-http
--e instrumentation/opentelemetry-instrumentation-flask

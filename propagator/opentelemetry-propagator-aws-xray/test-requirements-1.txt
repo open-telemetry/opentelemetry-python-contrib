@@ -16,5 +16,3 @@ urllib3==2.7.0
 wrapt==1.16.0
 zipp==3.19.2
 # test with the latest version of opentelemetry-api, sdk, and semantic conventions
-
--e propagator/opentelemetry-propagator-aws-xray
