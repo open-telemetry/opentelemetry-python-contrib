@@ -735,7 +735,15 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        span_name, additional_attributes = self.default_span_details(scope)
+        # This runs before the app, so an exception here would fail the request
+        # without a response. Fall back to the default span details instead and
+        # record the exception on the span, like the failsafe hooks do.
+        span_details_exception = None
+        try:
+            span_name, additional_attributes = self.default_span_details(scope)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            span_details_exception = exc
+            span_name, additional_attributes = get_default_span_details(scope)
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
         attributes.update(additional_attributes)
@@ -762,6 +770,9 @@ class OpenTelemetryMiddleware:
             with trace.use_span(span, end_on_exit=False) as current_span:
                 if current_span.is_recording():
                     current_span.set_attributes(attributes)
+
+                if span_details_exception is not None:
+                    current_span.record_exception(span_details_exception)
 
                 if callable(self.server_request_hook):
                     self.server_request_hook(current_span, scope)
