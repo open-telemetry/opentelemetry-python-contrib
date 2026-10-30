@@ -39,10 +39,12 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_new,
     _set_db_name,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_error_type,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
 )
@@ -296,6 +298,8 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 raise
             finally:
                 if span.is_recording() and exception is not None:
+                    if _report_new(self._sem_conv_opt_in_mode):
+                        _set_error_type(exception, span)
                     span.set_status(Status(StatusCode.ERROR))
 
         return result
@@ -333,6 +337,8 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                 raise
             finally:
                 if span.is_recording() and exception is not None:
+                    if _report_new(self._sem_conv_opt_in_mode):
+                        _set_error_type(exception, span)
                     span.set_status(Status(StatusCode.ERROR))
 
         return result

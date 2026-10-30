@@ -14,11 +14,13 @@ from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_new,
     _set_db_name,
     _set_db_operation,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_error_type,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
 )
@@ -409,6 +411,7 @@ class EngineTracer:
                     self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
+        context._otel_report_new_db = _report_new(self._sem_conv_opt_in_mode_db)
 
         return statement, params
 
@@ -428,6 +431,8 @@ def _handle_error(context):
         return
 
     if span.is_recording():
+        if getattr(context.execution_context, "_otel_report_new_db", False):
+            _set_error_type(context.original_exception, span)
         span.set_status(
             Status(
                 StatusCode.ERROR,

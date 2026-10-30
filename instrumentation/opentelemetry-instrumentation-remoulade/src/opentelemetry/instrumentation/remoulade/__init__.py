@@ -36,17 +36,22 @@ Run instrumented actor
 
 """
 
+from __future__ import annotations
+
 from collections.abc import Collection
+from contextlib import AbstractContextManager
 
 from remoulade import Middleware, broker
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _set_error_type
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.trace import Span
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
 _REMOULADE_MESSAGE_SEND = "send"
@@ -55,6 +60,30 @@ _REMOULADE_MESSAGE_RUN = "run"
 _REMOULADE_MESSAGE_NAME_KEY = "remoulade.actor_name"
 
 _REMOULADE_MESSAGE_RETRY_COUNT_KEY = "remoulade.retry_count"
+
+
+def _exit_activation(
+    span: Span,
+    activation: AbstractContextManager[Span],
+    exception: BaseException | None,
+) -> None:
+    """Close the span activation, recording error.type when the operation failed.
+
+    A :class:`BaseException` that is not an :class:`Exception` closes the activation
+    without being recorded. remoulade signals an interrupted message that way, through
+    ``remoulade.middleware.threading.Interrupt`` and its subclasses ``Shutdown`` and
+    ``TimeLimitExceeded``, and the conventions treat an interruption as something other
+    than a failed operation.
+    """
+    if not isinstance(exception, Exception):
+        activation.__exit__(None, None, None)
+        return
+    _set_error_type(exception, span)
+    activation.__exit__(
+        type(exception),
+        exception,
+        getattr(exception, "__traceback__", None),
+    )
 
 
 class _InstrumentationMiddleware(Middleware):
@@ -99,7 +128,7 @@ class _InstrumentationMiddleware(Middleware):
                 }
             )
 
-        activation.__exit__(None, None, None)
+        _exit_activation(span, activation, exception)
         utils.detach_span(self._span_registry, message.message_id)
 
     def before_enqueue(self, _broker, message, delay):
@@ -137,13 +166,13 @@ class _InstrumentationMiddleware(Middleware):
         inject(message.options["trace_ctx"])
 
     def after_enqueue(self, _broker, message, delay, exception=None):
-        _, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
+        span, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
 
         if activation is None:
             # no existing span found for message_id
             return
 
-        activation.__exit__(None, None, None)
+        _exit_activation(span, activation, exception)
         utils.detach_span(self._span_registry, message.message_id, is_publish=True)
 
 

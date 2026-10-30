@@ -24,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -512,6 +513,68 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 },
             )
 
+    async def test_error_type_is_the_class_name_on_an_uncaught_servicer_error(self):
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+        failure_message = "failure message"
+
+        class FailingServicer(GRPCTestServerServicer):
+            async def SimpleMethod(self, request, context):
+                raise ValueError(failure_message)
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data=failure_message)
+            msg = request.SerializeToString()
+
+            with testcase.assertRaises(grpc.RpcError):
+                await channel.unary_unary(rpc_call)(msg)
+
+        await run_with_test_server(
+            request,
+            servicer=FailingServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        error_type = spans_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ValueError")
+        self.assertIs(type(error_type), str)
+
+    async def test_error_type_is_the_class_name_on_an_uncaught_streaming_servicer_error(self):
+        rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+        failure_message = "failure message"
+
+        class FailingServicer(GRPCTestServerServicer):
+            async def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=request.client_id, response_data="one")
+                raise ValueError(failure_message)
+
+        testcase = self
+        received = []
+
+        async def request(channel):
+            request = Request(client_id=1, request_data=failure_message)
+            msg = request.SerializeToString()
+
+            with testcase.assertRaises(grpc.RpcError):
+                async for response in channel.unary_stream(rpc_call)(msg):
+                    received.append(response)
+
+        await run_with_test_server(
+            request,
+            servicer=FailingServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        self.assertEqual(len(received), 1)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        error_type = spans_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ValueError")
+        self.assertIs(type(error_type), str)
+
     async def test_abort(self):
         """Check that we can catch an abort properly"""
         rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -556,6 +619,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.status.description,
             f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
+        self.assertEqual(span.attributes[ERROR_TYPE], "INTERNAL")
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -616,6 +680,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.status.description, None)
+        self.assertNotIn(ERROR_TYPE, span.attributes)
 
         # Check attributes
         self.assertSpanHasAttributes(

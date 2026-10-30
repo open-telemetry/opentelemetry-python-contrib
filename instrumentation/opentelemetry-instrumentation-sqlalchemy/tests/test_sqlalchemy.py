@@ -40,6 +40,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 
 
@@ -80,6 +81,57 @@ class TestSqlalchemyInstrumentation(TestBase):
             # No operation token survives comment/whitespace stripping, so the
             # span name falls back to just the db name.
             self.assertEqual(span.name, ":memory:")
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_error_type_recorded_on_a_failed_statement(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        with self.assertRaises(Exception):
+            cnx.execute(text("SELECT * FROM a_table_that_does_not_exist;"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        failed_span = spans[1]
+        self.assertEqual(failed_span.status.status_code, trace.StatusCode.ERROR)
+        error_type = failed_span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "OperationalError")
+        self.assertIs(type(error_type), str)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: ""})
+    def test_no_error_type_on_a_failed_statement_in_the_default_semconv_mode(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        with self.assertRaises(Exception):
+            cnx.execute(text("SELECT * FROM a_table_that_does_not_exist;"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        failed_span = spans[1]
+        self.assertEqual(failed_span.status.status_code, trace.StatusCode.ERROR)
+        self.assertNotIn(ERROR_TYPE, failed_span.attributes)
+
+    def test_no_error_type_on_a_successful_statement(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+
+        spans = self.memory_exporter.get_finished_spans()
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")

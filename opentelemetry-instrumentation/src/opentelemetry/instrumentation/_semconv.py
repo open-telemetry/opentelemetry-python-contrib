@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Container, Mapping, MutableMapping
+from collections.abc import Container, Iterator, Mapping, MutableMapping
+from contextlib import contextmanager
 from enum import Enum
 from urllib.parse import urlparse
 
@@ -736,6 +737,59 @@ def _set_status(
                 metrics_attributes[ERROR_TYPE] = status_code_str
         if span.is_recording():
             span.set_status(Status(status))
+
+
+def _set_error_type(
+    error: BaseException,
+    span: Span | None = None,
+    metric_attributes: MutableMapping[str, AttributeValue] | None = None,
+) -> str:
+    """Record the class of ``error`` as the ``error.type`` attribute.
+
+    The database, messaging, RPC and HTTP semantic conventions all mark ``error.type`` as
+    ``Conditionally Required`` when the operation fails, on the span describing the operation
+    and on the operation duration histogram alike. Both destinations are written here so that
+    the two stay consistent, as the conventions also require.
+
+    The recorded value is the canonical class name of the exception, which the registry entry
+    for ``error.type`` asks for and which in Python is ``type(error).__qualname__``.
+
+    Args:
+        error: the exception the instrumented operation ended with.
+        span: the span describing the operation, when the instrumentation records one.
+        metric_attributes: the attributes of the operation duration histogram, when the
+            instrumentation records one.
+
+    Returns:
+        The value written as ``error.type``.
+    """
+    error_type = type(error).__qualname__
+    if span is not None and span.is_recording():
+        span.set_attribute(ERROR_TYPE, error_type)
+    if metric_attributes is not None:
+        metric_attributes[ERROR_TYPE] = error_type
+    return error_type
+
+
+@contextmanager
+def _record_error_type(
+    span: Span | None = None,
+    metric_attributes: MutableMapping[str, AttributeValue] | None = None,
+) -> Iterator[None]:
+    """Set ``error.type`` on ``span`` and on ``metric_attributes`` if the block raises.
+
+    The exception is re-raised unmodified, so an instrumented call keeps the failure
+    behaviour it had before being instrumented.
+
+    Only :class:`Exception` is caught. A :class:`BaseException` such as
+    :class:`asyncio.CancelledError` passes through untouched, because the conventions treat an
+    intentional cancellation as something other than a failed operation.
+    """
+    try:
+        yield
+    except Exception as error:
+        _set_error_type(error, span, metric_attributes)
+        raise
 
 
 def _get_schema_url(mode: _StabilityMode) -> str:

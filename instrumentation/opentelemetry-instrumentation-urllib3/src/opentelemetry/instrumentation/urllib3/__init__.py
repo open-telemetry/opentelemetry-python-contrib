@@ -196,6 +196,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _set_error_type,
     _set_http_host_client,
     _set_http_method,
     _set_http_net_peer_name_client,
@@ -481,10 +482,14 @@ def _instrument(
             inject(headers)
             bound_args.arguments["headers"] = headers
 
-            # TODO: add error handling to also set exception `error.type` in new semconv
             with suppress_http_instrumentation():
                 start_time = default_timer()
-                response = wrapped(*bound_args.args[1:], **bound_args.kwargs)
+                try:
+                    response = wrapped(*bound_args.args[1:], **bound_args.kwargs)
+                except Exception as exception:
+                    if _report_new(sem_conv_opt_in_mode):
+                        _set_error_type(exception, span)
+                    raise
                 duration_s = default_timer() - start_time
             # set http status code based on semconv
             metric_attributes = {}

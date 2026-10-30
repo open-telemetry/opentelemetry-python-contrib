@@ -25,6 +25,7 @@ from opentelemetry.instrumentation.utils import (
     suppress_instrumentation,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span
@@ -129,6 +130,7 @@ class TestURLLib3Instrumentor(TestBase):
         self,
         url: str,
         sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+        error_type: str = "ConnectTimeoutError",
     ):
         span = self.assert_span()
 
@@ -140,7 +142,7 @@ class TestURLLib3Instrumentor(TestBase):
         expected_attr_new = {
             "http.request.method": "GET",
             "url.full": url,
-            # TODO: Add `error.type` attribute when supported
+            ERROR_TYPE: error_type,
         }
 
         attributes = {

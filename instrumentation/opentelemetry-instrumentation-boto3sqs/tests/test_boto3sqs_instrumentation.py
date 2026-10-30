@@ -18,6 +18,7 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSSetter,
 )
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
@@ -26,6 +27,7 @@ from opentelemetry.semconv.trace import (
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, TraceFlags
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
+from opentelemetry.trace.status import StatusCode
 
 
 def _make_sqs_client(*, session=False):
@@ -235,6 +237,50 @@ class TestBoto3SQSInstrumentation(TestBase):
             "DataType": "String",
         }
 
+    def test_error_type_recorded_on_a_failed_send_message(self):
+        error = RuntimeError("endpoint unreachable")
+        with mock.patch.object(
+            self._client.meta.events,
+            "emit",
+            side_effect=error,
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                self._client.send_message(QueueUrl=self._queue_url, MessageBody="hello msg")
+        self.assertIs(raised.exception, error)
+
+        span = self._get_only_span()
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "RuntimeError")
+        self.assertIs(type(error_type), str)
+
+    def test_error_type_recorded_on_a_failed_receive_message(self):
+        error = RuntimeError("endpoint unreachable")
+        with mock.patch.object(
+            self._client.meta.events,
+            "emit",
+            side_effect=error,
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                self._client.receive_message(QueueUrl=self._queue_url)
+        self.assertIs(raised.exception, error)
+
+        span = self._get_only_span()
+        error_type = span.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "RuntimeError")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_send_message(self):
+        mock_response = {"MessageId": "123456789"}
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=self._queue_url,
+                MessageBody="hello msg",
+                MessageAttributes={},
+            )
+
+        span = self._get_only_span()
+        self.assertNotIn(ERROR_TYPE, span.attributes)
+
     def test_send_message(self):
         message_id = "123456789"
         mock_response = {
@@ -323,12 +369,47 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(
             {
                 SpanAttributes.MESSAGING_CONVERSATION_ID: "1",
+                ERROR_TYPE: "InvalidParameterValue",
                 **self._default_span_attrs(),
             },
             span.attributes,
         )
+        self.assertIs(span.status.status_code, StatusCode.ERROR)
         self.assertNotIn(messaging_attributes.MESSAGING_MESSAGE_ID, span.attributes)
         self._assert_injected_span(entries[0]["MessageAttributes"], span)
+
+    def test_error_type_recorded_on_every_span_of_a_failed_send_message_batch(self):
+        error = RuntimeError("endpoint unreachable")
+        entries = [
+            {"Id": "1", "MessageBody": "hello 1"},
+            {"Id": "2", "MessageBody": "hello 2"},
+        ]
+        with mock.patch.object(
+            self._client.meta.events,
+            "emit",
+            side_effect=error,
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                self._client.send_message_batch(QueueUrl=self._queue_url, Entries=entries)
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        for span in spans:
+            self.assertEqual(span.attributes[ERROR_TYPE], "RuntimeError")
+            self.assertIs(span.status.status_code, StatusCode.ERROR)
+            self.assertEqual([event.name for event in span.events], ["exception"])
+
+    def test_no_error_type_on_a_successful_send_message_batch(self):
+        mock_response = {"Successful": [{"Id": "1", "MessageId": "msg-1"}]}
+        entries = [{"Id": "1", "MessageBody": "hello 1"}]
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(QueueUrl=self._queue_url, Entries=entries)
+
+        span = self._get_only_span()
+        self.assertNotIn(ERROR_TYPE, span.attributes)
+        self.assertIs(span.status.status_code, StatusCode.UNSET)
 
     def test_receive_message(self):
         msg_def = {
