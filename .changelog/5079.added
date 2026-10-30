@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-bootstrap`: add support for excluding packages when running opentelemetry-bootstrap

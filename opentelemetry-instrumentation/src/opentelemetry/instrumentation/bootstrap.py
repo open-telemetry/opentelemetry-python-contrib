@@ -151,6 +151,13 @@ def run(
                        be piped and appended to a requirements.txt file.
         """,
     )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        action="extend",
+        help="packages to exclude from installation",
+        type=lambda s: [item.strip().lower() for item in s.split(",") if item.strip()],
+    )
     args = parser.parse_args()
 
     if libraries is None:
@@ -159,8 +166,26 @@ def run(
     if default_instrumentations is None:
         default_instrumentations = gen_default_instrumentations
 
+    def _is_excluded(name: str, excluded_packages: set[str]) -> bool:
+        instrumentor_name = Requirement(name).name.lower().removeprefix("opentelemetry-instrumentation-")
+        return instrumentor_name in excluded_packages
+
+    _normalized_packages_to_exclude = set(args.exclude or [])
+
+    filtered_libraries = [
+        library
+        for library in libraries
+        if not (_is_excluded(library["instrumentation"], _normalized_packages_to_exclude))
+    ]
+
+    filtered_default_instrumentations = [
+        instrumentation
+        for instrumentation in default_instrumentations
+        if not _is_excluded(instrumentation, _normalized_packages_to_exclude)
+    ]
+
     cmd = {
         action_install: _run_install,
         action_requirements: _run_requirements,
     }[args.action]
-    cmd(default_instrumentations, libraries)
+    cmd(filtered_default_instrumentations, filtered_libraries)
