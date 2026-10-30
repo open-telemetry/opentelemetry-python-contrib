@@ -279,8 +279,24 @@ showcontent = true
 
 [dependency-groups]
 dev = [
+    { include-group = "tox" },
+    { include-group = "towncrier" },
+    "pre-commit",
+]
+build = [
+    "build",
+    "packaging",
+    "pip",
+    "setuptools",
+    "wheel",
+]
+tox = [
     "tox",
     "tox-uv>=1",
-    "pre-commit",
+]
+towncrier = [
     "towncrier",
+]
+twine = [
+    "twine",
 ]
