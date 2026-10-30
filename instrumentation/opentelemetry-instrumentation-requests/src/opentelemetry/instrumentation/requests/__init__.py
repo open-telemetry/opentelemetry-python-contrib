@@ -175,6 +175,7 @@ from __future__ import annotations
 import functools
 import types
 from collections.abc import Callable, Collection
+from logging import getLogger
 from timeit import default_timer
 from typing import Any
 from urllib.parse import urlparse
@@ -248,10 +249,21 @@ from opentelemetry.util.http import (
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
+_logger = getLogger(__name__)
+
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Callable[[Span, PreparedRequest], None] | None
 _ResponseHookT = Callable[[Span, PreparedRequest, Response], None] | None
+
+
+def _call_hook_and_log_exception(hook: Callable[..., None], *args: Any) -> None:
+    try:
+        hook(*args)
+    # pylint: disable-next=broad-exception-caught
+    except Exception:
+        with suppress_http_instrumentation():
+            _logger.warning("Exception raised by hook %r", hook, exc_info=True)
 
 
 def _set_http_status_code_attribute(
@@ -395,7 +407,7 @@ def _instrument(
         ):
             exception = None
             if callable(request_hook):
-                request_hook(span, request)
+                _call_hook_and_log_exception(request_hook, span, request)
 
             inject(headers)
 
@@ -441,7 +453,7 @@ def _instrument(
                 span.set_attributes(span_attributes)
 
                 if callable(response_hook):
-                    response_hook(span, request, result)
+                    _call_hook_and_log_exception(response_hook, span, request, result)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
