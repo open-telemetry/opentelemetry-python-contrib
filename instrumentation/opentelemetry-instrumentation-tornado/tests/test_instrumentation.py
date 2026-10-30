@@ -240,6 +240,17 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
+    def test_no_op_tracer_provider(self):
+        TornadoInstrumentor().uninstrument()
+        TornadoInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
+
+        response = self.fetch("/parametrized/hello/")
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.body, b"hello")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_async_handler(self):
         self._test_async_handler("/async", "AsyncHandler")
 
