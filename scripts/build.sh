@@ -8,7 +8,7 @@ set -ev
 BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
 
-# Get the latest versions of packaging tools
+# Get the versions of packaging tools recorded in the lockfile
 uv sync --locked --only-group build --project "$BASEDIR"
 PATH="$BASEDIR/.venv/bin:$PATH"
 export PATH
