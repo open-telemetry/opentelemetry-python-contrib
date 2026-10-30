@@ -117,9 +117,11 @@ The Azure Functions Resource Detector is currently experimental. It sets the fol
  * ``process.id`` set to the process ID collected from the running process.
  * ``cloud.platform`` set to ``azure_functions``.
  * ``cloud.provider`` set to ``azure``.
+ * ``cloud.account.id`` set to the subscription ID parsed from the ``WEBSITE_OWNER_NAME`` environment variable.
  * ``cloud.resource_id`` set using the ``WEBSITE_RESOURCE_GROUP``, ``WEBSITE_OWNER_NAME``, and ``WEBSITE_SITE_NAME`` environment variables.
  * ``cloud.region`` set to the value of the ``REGION_NAME`` environment variable.
- * ``faas.instance`` set to the value of the ``WEBSITE_INSTANCE_ID`` environment variable.
+ * ``azure.resource_group.name`` set to the value of the ``WEBSITE_RESOURCE_GROUP`` environment variable.
+ * ``faas.instance`` set to the first non-empty value of the ``WEBSITE_INSTANCE_ID``, ``WEBSITE_POD_NAME``, or ``CONTAINER_NAME`` environment variables.
  * ``faas.max_memory`` set to the value of the ``WEBSITE_MEMORY_LIMIT_MB`` environment variable.
 
 For more information, see the `Semantic Conventions for Cloud Resource Attributes <https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/cloud/>`_.
