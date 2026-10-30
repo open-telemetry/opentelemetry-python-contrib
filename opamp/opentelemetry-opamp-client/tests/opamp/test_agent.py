@@ -474,22 +474,31 @@ def test_dropped_message_leaves_a_gap_in_sequence_nums(agent_factory):
     assert transport.sequence_nums() == [0, 2, 3]
 
 
-def test_queued_message_takes_the_instance_uid_when_sent(agent_factory):
-    transport = _RecordingTransport(hold=1)
+@pytest.mark.parametrize("encoded", [False, True], ids=["protobuf", "bytes"])
+@pytest.mark.parametrize("retry", [False, True], ids=["first-attempt", "retry"])
+def test_queued_message_takes_the_instance_uid_when_sent(
+    agent_factory: Callable[..., OpAMPAgent], encoded: bool, retry: bool
+) -> None:
+    new_uid = b"\x01" * 16
+    response = opamp_pb2.ServerToAgent(agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid))
+    transport = _RecordingTransport(hold=1, fail={2} if retry else (), responses=[response])
     client = _client(transport)
-    agent = agent_factory(interval=30, client=client, callbacks=_NoOpCallbacks())
+    agent = agent_factory(interval=30, client=client, callbacks=_NoOpCallbacks(), initial_backoff=0)
     agent.start()
     assert transport.held.wait(5)
-    # queued while the connection message is in flight, then the instance UID changes
-    agent.send(client.build_heartbeat_message())
-    client._instance_uid = b"\x01" * 16
+    # Queue an old-UID payload before the server's response assigns a new UID.
+    heartbeat = client.build_heartbeat_message()
+    agent.send(heartbeat.SerializeToString() if encoded else heartbeat)
     transport.release.set()
     _wait_until_idle(agent)
     agent.stop()
 
     assert transport.sequence_nums() == [0, 1, 2]
-    assert transport.sent[0].instance_uid != b"\x01" * 16
-    assert transport.sent[1].instance_uid == b"\x01" * 16
+    assert transport.sent[0].instance_uid == heartbeat.instance_uid != new_uid
+    assert all(message.instance_uid == new_uid for message in transport.attempts[1:])
+    assert [message.sequence_num for message in transport.attempts] == ([0, 1, 1, 2] if retry else [0, 1, 2])
+    if retry:
+        assert transport.attempts[1] == transport.attempts[2]
 
 
 def test_full_state_report_follows_messages_sent_from_on_message(agent_factory):
@@ -599,6 +608,106 @@ def test_invalid_connection_payload_does_not_enable_heartbeats(agent_factory, ca
     assert agent._worker.is_alive()
     assert not transport.attempts
     assert "Failed to prepare message" in caplog.text
+
+
+def test_agent_identification_updates_instance_uid_before_on_message() -> None:
+    new_uid = b"\x01" * 16
+    observed_uids: list[bytes] = []
+    client = _client(_RecordingTransport())
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    cb.on_message.side_effect = lambda _agent, callback_client, _message: observed_uids.append(
+        callback_client._instance_uid
+    )
+    agent = OpAMPAgent(interval=30, client=client, callbacks=cb)
+    agent._process_message(
+        opamp_pb2.ServerToAgent(agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid))
+    )
+
+    assert observed_uids == [new_uid]
+    cb.on_message.assert_called_once()
+    cb.on_error.assert_not_called()
+
+
+def test_agent_identification_applies_to_full_state_report(agent_factory: Callable[..., OpAMPAgent]) -> None:
+    new_uid = b"\x01" * 16
+    response = opamp_pb2.ServerToAgent(
+        agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid),
+        flags=opamp_pb2.ServerToAgentFlags_ReportFullState,
+    )
+    transport = _RecordingTransport(responses=[response])
+    agent = agent_factory(interval=30, client=_client(transport), callbacks=_NoOpCallbacks())
+    agent.start()
+    _wait_for(lambda: len(transport.sent) == 2)
+    _wait_until_idle(agent)
+    agent.stop()
+
+    assert transport.sequence_nums() == [0, 1, 2]
+    assert transport.sent[0].instance_uid != new_uid
+    assert transport.sent[1].HasField("agent_description")
+    assert transport.sent[1].instance_uid == new_uid
+
+
+def test_agent_identification_applied_with_error_response() -> None:
+    new_uid = b"\x01" * 16
+    observed_uids: list[bytes] = []
+    client = _client(_RecordingTransport())
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    cb.on_error.side_effect = lambda _agent, callback_client, _error: observed_uids.append(
+        callback_client._instance_uid
+    )
+    agent = OpAMPAgent(interval=30, client=client, callbacks=cb)
+
+    error_response = opamp_pb2.ServerErrorResponse(error_message="duplicate instance_uid")
+    agent._process_message(
+        opamp_pb2.ServerToAgent(
+            error_response=error_response,
+            agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid),
+        )
+    )
+
+    assert observed_uids == [new_uid]
+    cb.on_error.assert_called_once_with(agent, client, error_response)
+    cb.on_message.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "new_uid, error",
+    [
+        (b"", "instance_uid must be 16 bytes, got 0"),
+        (b"\x01" * 8, "instance_uid must be 16 bytes, got 8"),
+        (b"\x01" * 17, "instance_uid must be 16 bytes, got 17"),
+        (bytes(16), "instance_uid must not be all zeros"),
+    ],
+    ids=["empty", "short", "long", "zero"],
+)
+@pytest.mark.parametrize("with_error_response", [False, True])
+def test_invalid_agent_identification_is_ignored(
+    caplog: pytest.LogCaptureFixture, new_uid: bytes, error: str, with_error_response: bool
+) -> None:
+    client = _client(_RecordingTransport())
+    old_uid = client._instance_uid
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
+    agent = OpAMPAgent(interval=30, client=client, callbacks=cb)
+    response = opamp_pb2.ServerToAgent(agent_identification=opamp_pb2.AgentIdentification(new_instance_uid=new_uid))
+    if with_error_response:
+        response.error_response.error_message = "duplicate instance_uid"
+
+    agent._process_message(response)
+
+    assert client._instance_uid == old_uid
+    assert caplog.record_tuples == [
+        (
+            "opentelemetry._opamp.agent",
+            logging.WARNING,
+            f"Ignoring agent_identification: {error}",
+        )
+    ]
+    if with_error_response:
+        cb.on_error.assert_called_once_with(agent, client, response.error_response)
+        cb.on_message.assert_not_called()
+    else:
+        cb.on_message.assert_called_once()
+        cb.on_error.assert_not_called()
 
 
 def test_safe_invoke_logs_error(caplog):
