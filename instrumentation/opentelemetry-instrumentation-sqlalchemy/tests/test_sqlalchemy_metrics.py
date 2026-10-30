@@ -5,6 +5,7 @@ import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
@@ -147,3 +148,34 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertIn(CONNECTION_COUNT, metric_names)
         self.assertNotIn(CONNECTIONS_USAGE, metric_names)
+
+    def test_pool_straddle_suppress_instrumentation(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            pool_size=5,
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        # Warm pool with 1 idle connection
+        with engine.connect():
+            pass
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
+
+        # Checkout inside suppress_instrumentation, checkin outside
+        with suppress_instrumentation():
+            conn = engine.connect()
+        conn.close()
+
+        # Counter must not drift (used must not be negative)
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
+
+        # Checkout outside, checkin inside suppress_instrumentation
+        conn = engine.connect()
+        with suppress_instrumentation():
+            conn.close()
+
+        # Counter must still not drift
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
+
