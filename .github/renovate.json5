@@ -53,11 +53,6 @@
         enabled: false,
       },
       {
-        groupName: "docs deps",
-        matchFileNames: ["docs/**"],
-        semanticCommitScope: "docs",
-      },
-      {
         groupName: "ci",
         matchManagers: [
           "github-actions",
