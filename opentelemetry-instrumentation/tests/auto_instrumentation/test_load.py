@@ -274,7 +274,7 @@ class TestLoad(TestCase):
                     "Instrumentation skipped for library %s",
                     ep_mock1.name,
                 ),
-                call("Instrumented %s", ep_mock2.name),
+                call("Loaded OpenTelemetry instrumentation for %s", ep_mock2.name),
                 call(
                     "Instrumentation skipped for library %s",
                     ep_mock3.name,
@@ -311,7 +311,7 @@ class TestLoad(TestCase):
         distro_mock.load_instrumentor.assert_called_once_with(ep_mock1, skip_dep_check=True)
         mock_logger.debug.assert_has_calls(
             [
-                call("Instrumented %s", ep_mock1.name),
+                call("Loaded OpenTelemetry instrumentation for %s", ep_mock1.name),
                 self._instrumentation_failed_to_load_call(
                     ep_mock2.name,
                     dependency_conflict,
@@ -352,7 +352,7 @@ class TestLoad(TestCase):
             ep_mock1.name,
         )
 
-        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
+        mock_logger.debug.assert_any_call("Loaded OpenTelemetry instrumentation for %s", ep_mock2.name)
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.entry_points")
@@ -418,7 +418,7 @@ class TestLoad(TestCase):
             "No module named 'fake_module'",
         )
 
-        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
+        mock_logger.debug.assert_any_call("Loaded OpenTelemetry instrumentation for %s", ep_mock2.name)
 
     def test_load_instrumentors_no_entry_point_mocks(self):
         distro_mock = Mock()
