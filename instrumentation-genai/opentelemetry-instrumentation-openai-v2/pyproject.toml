@@ -25,9 +25,10 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.40",
-  "opentelemetry-instrumentation ~= 0.61b0",
-  "opentelemetry-semantic-conventions ~= 0.61b0",
+  "opentelemetry-api ~= 1.43",
+  "opentelemetry-instrumentation ~= 0.64b0",
+  "opentelemetry-semantic-conventions ~= 0.64b0",
+  "opentelemetry-instrumentation-genai-openai ~= 1.3.0b0",
   "typing-extensions >= 4.5.0",
 ]
 

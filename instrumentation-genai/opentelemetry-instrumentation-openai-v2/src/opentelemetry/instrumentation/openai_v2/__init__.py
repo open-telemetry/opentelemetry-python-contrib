@@ -8,8 +8,9 @@ using ``OpenAIInstrumentor``.
 .. deprecated:: 2.5b0
     Use `opentelemetry-instrumentation-genai-openai
     <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
-    instead. This package won't receive new features for `Semantic Conventions v1.30.0
-    <https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_.
+    instead. This package only supports `Semantic Conventions v1.30.0
+    <https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_
+    and won't receive new features.
 
 .. _openai: https://pypi.org/project/openai/
 
@@ -36,42 +37,27 @@ Configuration
 
 By default, the instrumentation aligns with `Semantic Conventions v1.30.0
 <https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_
-and does not capture prompt or completion content. Behavior is controlled
-via environment variables:
+and does not capture prompt or completion content.
 
+- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` - capture
+  prompts, completions, tool arguments, and return values on log events.
 - ``OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`` - opt into the
-  latest GenAI semantic conventions. Required to access the newer attributes
-  and the ``span_only`` / ``event_only`` / ``span_and_event`` content modes.
-  Without this flag, the instrumentation stays on v1.30.0 conventions.
-- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` - enable capture of
-  prompts, completions, tool arguments, and return values. Set to ``true``
-  on the legacy path, or one of ``span_only``, ``event_only``,
-  ``span_and_event`` when experimental conventions are enabled.
-- ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK=upload`` together with
-  ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH=<fsspec-uri>`` - upload
-  prompts and completions to an ``fsspec``-compatible destination
-  (local filesystem, ``gs://``, ``s3://``, etc.) and record reference URIs as
-  ``gen_ai.input.messages.ref`` / ``gen_ai.output.messages.ref`` attributes.
-  Inline content is not captured unless
-  ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` is also set.
-
-See the `opentelemetry-util-genai README
-<https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/util/opentelemetry-util-genai/README.rst>`_
-for the full list of GenAI configuration variables.
-
-A custom ``CompletionHook`` implementation can also be passed programmatically::
-
-    OpenAIInstrumentor().instrument(completion_hook=my_hook)
-
-When provided, this takes precedence over the hook resolved from
-``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK``.
+  latest GenAI semantic conventions. This package turns itself off and enables
+  `opentelemetry-instrumentation-genai-openai
+  <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
+  (installed as a dependency) instead. All ``instrument()`` arguments
+  (e.g. ``completion_hook``) are forwarded to it. See its documentation for
+  content capturing modes and completion hooks.
 
 API
 ---
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Collection
+from typing import Any
 
 from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper
@@ -111,6 +97,17 @@ def _is_latest_experimental_enabled() -> bool:
     )
 
 
+def _get_genai_openai_instrumentor() -> BaseInstrumentor | None:
+    try:
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module
+        from opentelemetry.instrumentation.genai.openai import (  # noqa: PLC0415
+            OpenAIInstrumentor as GenAIOpenAIInstrumentor,
+        )
+    except ImportError:
+        return None
+    return GenAIOpenAIInstrumentor()
+
+
 @deprecated(
     "opentelemetry-instrumentation-openai-v2 is deprecated. Use the "
     "opentelemetry-instrumentation-genai-openai package instead. This package "
@@ -127,78 +124,120 @@ class OpenAIInstrumentor(BaseInstrumentor):
     # BaseInstrumentor is a singleton and __init__ re-runs on every
     # OpenAIInstrumentor() call, so state lives on the class.
     _legacy_instrumented: bool = False
-
-    def __init__(self):
-        self._meter = None
+    _delegate: BaseInstrumentor | None = None
+    _blocked: BaseInstrumentor | None = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any) -> None:
         """Enable OpenAI instrumentation."""
 
         if _is_latest_experimental_enabled():
-            _logger.warning(
-                "opentelemetry-instrumentation-openai-v2 does not support "
-                "gen_ai_latest_experimental and is disabled. Use "
-                "opentelemetry-instrumentation-genai-openai to get the latest "
-                "GenAI semantic conventions."
-            )
+            self._instrument_latest(**kwargs)
             return
 
-        tracer_provider = kwargs.get("tracer_provider")
+        self._block_genai_openai()
+
         tracer = get_tracer(
             __name__,
             "",
-            tracer_provider,
-            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
+            kwargs.get("tracer_provider"),
+            schema_url=Schemas.V1_30_0.value,
         )
-        logger_provider = kwargs.get("logger_provider")
         logger = get_logger(
             __name__,
             "",
-            logger_provider=logger_provider,
-            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
+            logger_provider=kwargs.get("logger_provider"),
+            schema_url=Schemas.V1_30_0.value,
         )
-        meter_provider = kwargs.get("meter_provider")
-        self._meter = get_meter(
+        meter = get_meter(
             __name__,
             "",
-            meter_provider,
-            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
+            kwargs.get("meter_provider"),
+            schema_url=Schemas.V1_30_0.value,
         )
 
-        instruments = Instruments(self._meter)
+        instruments = Instruments(meter)
+        capture_content = is_content_enabled()
 
         wrap_function_wrapper(
             "openai.resources.chat.completions",
             "Completions.create",
-            chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled()),
+            chat_completions_create_v_old(tracer, logger, instruments, capture_content),
         )
-
         wrap_function_wrapper(
             "openai.resources.chat.completions",
             "AsyncCompletions.create",
-            async_chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled()),
+            async_chat_completions_create_v_old(tracer, logger, instruments, capture_content),
         )
-
-        # Add instrumentation for the embeddings API
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "Embeddings.create",
             embeddings_create(tracer, instruments, False),
         )
-
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "AsyncEmbeddings.create",
             async_embeddings_create(tracer, instruments, False),
         )
-
         type(self)._legacy_instrumented = True
 
-    def _uninstrument(self, **kwargs):
-        if not type(self)._legacy_instrumented:
+    def _instrument_latest(self, **kwargs: Any) -> None:
+        delegate = _get_genai_openai_instrumentor()
+        if delegate is None:
+            _logger.warning(
+                "opentelemetry-instrumentation-openai-v2 does not support "
+                "gen_ai_latest_experimental and is disabled. Install "
+                "opentelemetry-instrumentation-genai-openai to get the latest "
+                "GenAI semantic conventions."
+            )
+            return
+
+        # Auto-instrumentation may have already enabled it via its own entry point.
+        if delegate.is_instrumented_by_opentelemetry:
+            return
+
+        delegate.instrument(**kwargs)
+        type(self)._delegate = delegate
+
+    def _block_genai_openai(self) -> None:
+        """Keep opentelemetry-instrumentation-genai-openai off while the legacy path is active.
+
+        Both packages register the ``openai`` entry point and auto-instrumentation loads them
+        in no particular order, so undo it if it ran first and turn its ``instrument()`` into
+        a no-op if it runs later. Its ``_is_instrumented_by_opentelemetry`` flag is left
+        untouched so a stray ``uninstrument()`` can't unwrap our wrappers.
+        """
+        delegate = _get_genai_openai_instrumentor()
+        if delegate is None:
+            return
+        if delegate.is_instrumented_by_opentelemetry:
+            delegate.uninstrument()
+
+        def _blocked_instrument(**kwargs: Any) -> None:
+            _logger.warning(
+                "opentelemetry-instrumentation-genai-openai is disabled because "
+                "opentelemetry-instrumentation-openai-v2 is active. Set "
+                "OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental or uninstall "
+                "opentelemetry-instrumentation-openai-v2 to use it."
+            )
+
+        # instance attribute shadows BaseInstrumentor.instrument on the singleton
+        setattr(delegate, "instrument", _blocked_instrument)
+        type(self)._blocked = delegate
+
+    def _uninstrument(self, **kwargs: Any) -> None:
+        cls = type(self)
+        if cls._delegate is not None:
+            cls._delegate.uninstrument(**kwargs)
+            cls._delegate = None
+
+        if cls._blocked is not None:
+            cls._blocked.__dict__.pop("instrument", None)
+            cls._blocked = None
+
+        if not cls._legacy_instrumented:
             return
 
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
@@ -207,4 +246,4 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
-        type(self)._legacy_instrumented = False
+        cls._legacy_instrumented = False
