@@ -35,7 +35,7 @@ fi
 
 basedir=$(git rev-parse --show-toplevel)
 
-# Get the latest versions of packaging tools
+# Get the versions of packaging tools recorded in the lockfile
 uv sync --locked --only-group build --project "$basedir"
 PATH="$basedir/.venv/bin:$PATH"
 export PATH
