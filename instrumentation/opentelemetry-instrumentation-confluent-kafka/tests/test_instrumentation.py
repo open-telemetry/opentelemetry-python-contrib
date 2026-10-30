@@ -1,8 +1,8 @@
-import asyncio
-
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=no-name-in-module,import-outside-toplevel
+import asyncio
+
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -514,9 +514,28 @@ class TestConfluentKafka(TestBase):
         async def _run():
             instrumentation = ConfluentKafkaInstrumentor()
             tracer = self.tracer_provider.get_tracer(__name__)
-            consumer = MockedAIOConsumer({"bootstrap.servers": "localhost:9092"})
-            consumer._queue.append(MockedMessage("test-topic", 0, 0, []))
 
+            # MockedAIOConsumer wraps an inner MockConsumer, mirroring how
+            # the real AIOConsumer delegates to an inner Consumer internally.
+            # The inner Consumer is patched with wrap_poll below to simulate
+            # AutoInstrumentedConsumer — this is the only layer that should
+            # create spans; wrap_aio_poll must not produce a second set.
+            queue = [MockedMessage("test-topic", 0, 0, [])]
+            consumer = MockedAIOConsumer(
+                queue,
+                {"bootstrap.servers": "localhost:9092", "group.id": "g", "auto.offset.reset": "earliest"},
+            )
+
+            # Instrument the inner consumer's poll so spans are produced there.
+            inner = consumer._inner
+            raw_poll = inner.poll
+
+            def instrumented_inner_poll(timeout=None):
+                return ConfluentKafkaInstrumentor.wrap_poll(raw_poll, inner, tracer, (timeout,), {})
+
+            inner.poll = instrumented_inner_poll
+
+            # wrap_aio_poll is a pass-through; span is created by instrumented_inner_poll.
             msg = await instrumentation.wrap_aio_poll(
                 consumer.poll,
                 consumer,
@@ -526,6 +545,7 @@ class TestConfluentKafka(TestBase):
             )
             self.assertIsNotNone(msg)
 
+            # Second (empty) poll causes the inner consumer to end the previous span.
             await instrumentation.wrap_aio_poll(
                 consumer.poll,
                 consumer,
@@ -535,7 +555,9 @@ class TestConfluentKafka(TestBase):
             )
 
             spans = self.memory_exporter.get_finished_spans()
-            self.assertTrue(any(s.name == "test-topic process" for s in spans))
+            process_spans = [s for s in spans if s.name == "test-topic process"]
+            # Exactly ONE process span — no duplicates from the AIO wrapper layer.
+            self.assertEqual(len(process_spans), 1)
 
         asyncio.run(_run())
 

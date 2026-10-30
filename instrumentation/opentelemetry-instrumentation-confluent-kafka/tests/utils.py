@@ -9,6 +9,8 @@ class MockConsumer(Consumer):
     def __init__(self, queue, config):
         self._queue = queue
         self.config = config
+        self._current_consume_span = None
+        self._current_context_token = None
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -88,7 +90,7 @@ class MockedAIOProducer:
         self._queue = []
         self.config = config or {}
 
-    async def produce(self, topic, value=None, *args, **kwargs):
+    async def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         msg = MockedMessage(
             topic=topic,
             partition=0,
@@ -102,15 +104,21 @@ class MockedAIOProducer:
 
 
 class MockedAIOConsumer:
-    def __init__(self, config=None):
-        self._queue = []
+    """Mock of confluent_kafka.AIOConsumer.
+
+    The real AIOConsumer delegates polling to an inner sync Consumer, which when
+    instrumented already creates spans via wrap_poll.  This mock mirrors that
+    structure so tests can verify that no duplicate spans are produced at the
+    AIO layer.
+    """
+
+    def __init__(self, queue, config=None):
+        self._inner = MockConsumer(queue, config or {})
         self.config = config or {}
-        self._current_consume_span = None
 
     async def poll(self, timeout=None):
-        if len(self._queue) > 0:
-            return self._queue.pop(0)
-        return None
+        # Delegate to the inner consumer, just like the real AIOConsumer does.
+        return self._inner.poll(timeout)
 
     async def close(self):
         pass

@@ -204,7 +204,8 @@ if AIOConsumer is not None:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.config = _capture_config(args, kwargs)
-            self._current_consume_span = None
+            # Span lifecycle is managed by the inner Consumer layer, which is
+            # already instrumented via AutoInstrumentedConsumer.
 
         # Deliberately implemented so wrapt can intercept the async poll call
         async def poll(self, timeout=-1):
@@ -561,28 +562,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     async def wrap_aio_poll(func, instance, tracer, args, kwargs):
-        if instance._current_consume_span:
-            _end_current_consume_span(instance)
-
-        record = await func(*args, **kwargs)
-        if record:
-            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, [record])
-                _enrich_span(
-                    instance._current_consume_span,
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
-            instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
-
-        return record
+        # AIOConsumer delegates to an inner Consumer that is already instrumented
+        # via AutoInstrumentedConsumer. Creating spans here would produce duplicates,
+        # so this wrapper is intentionally a pass-through.
+        return await func(*args, **kwargs)
 
     @staticmethod
     async def wrap_aio_close(func, instance, args, kwargs):
-        if instance._current_consume_span:
-            _end_current_consume_span(instance)
         return await func(*args, **kwargs)
