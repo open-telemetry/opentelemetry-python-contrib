@@ -1,1 +1,0 @@
-`opentelemetry-opamp-client`: replaced uuid-utils with a pure Python UUIDv7 backport from CPython
