@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-confluent-kafka`: add messaging semantic convention stability opt-in (`OTEL_SEMCONV_STABILITY_OPT_IN=messaging` / `messaging/dup`) with dual reporting of old and new messaging attributes
