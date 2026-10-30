@@ -13,7 +13,6 @@ from multidict import CIMultiDict
 from pytest_aiohttp.plugin import AiohttpClient
 
 from opentelemetry import trace
-
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
