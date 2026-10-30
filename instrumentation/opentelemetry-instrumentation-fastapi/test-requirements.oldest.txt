@@ -60,9 +60,15 @@ packaging==18.0
     #   pytest
 pluggy==1.6.0
     # via pytest
-pydantic==2.12.5
+pydantic==2.12.5 ; python_full_version < '3.15'
     # via fastapi
-pydantic-core==2.41.5
+pydantic==2.14.0 ; python_full_version >= '3.15'
+    # via fastapi
+pydantic-core==2.41.5 ; python_full_version < '3.15'
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
+    #   pydantic
+pydantic-core==2.50.0 ; python_full_version >= '3.15'
     # via
     #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
     #   pydantic
@@ -82,7 +88,7 @@ starlette==0.48.0
     # via fastapi
 tomli==2.4.1 ; python_full_version < '3.11'
     # via pytest
-typing-extensions==4.15.0
+typing-extensions==4.15.0 ; python_full_version < '3.15'
     # via
     #   anyio
     #   exceptiongroup
@@ -93,7 +99,20 @@ typing-extensions==4.15.0
     #   pydantic-core
     #   starlette
     #   typing-inspection
-typing-inspection==0.4.2
+typing-extensions==4.16.0 ; python_full_version >= '3.15'
+    # via
+    #   anyio
+    #   exceptiongroup
+    #   fastapi
+    #   opentelemetry-api
+    #   opentelemetry-semantic-conventions
+    #   pydantic
+    #   pydantic-core
+    #   starlette
+    #   typing-inspection
+typing-inspection==0.4.2 ; python_full_version < '3.15'
+    # via pydantic
+typing-inspection==0.4.4 ; python_full_version >= '3.15'
     # via pydantic
 urllib3==2.7.0
     # via
