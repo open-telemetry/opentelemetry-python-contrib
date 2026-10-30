@@ -13,7 +13,7 @@ authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 7 - Inactive",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = ["openai >= 1.26.0"]
+instruments = ["openai >= 1.26.0, < 3"]
 
 [project.entry-points.opentelemetry_instrumentor]
 openai = "opentelemetry.instrumentation.openai_v2:OpenAIInstrumentor"
