@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import io
 import sys
 import unittest
 import wsgiref.util as wsgiref_util
@@ -78,6 +79,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
+from opentelemetry.util.http.body_capture import HTTP_REQUEST_BODY_CONTENT
 
 
 class Response:
@@ -1331,6 +1333,145 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             "http.response.header.my_custom_header": ("my-custom-value-1,my-custom-value-2",),
         }
         self.assertSpanHasAttributes(span, expected)
+
+
+def read_body_wsgi(environ, start_response):
+    environ["wsgi.input"].read()
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    return [b"*"]
+
+
+def read_body_lazily_wsgi(environ, start_response):
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    environ["wsgi.input"].read()
+    yield b"*"
+
+
+def read_body_then_raise_wsgi(environ, start_response):
+    environ["wsgi.input"].read()
+    raise ValueError
+
+
+class TestWsgiRequestBodyCapture(WsgiTestBase):
+    def setUp(self):
+        super().setUp()
+        self.set_sem_conv_mode("default")
+        self.environ["REQUEST_METHOD"] = "POST"
+        self.set_body(b'{"hello": "world"}', "application/json")
+
+    def tearDown(self):
+        super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def set_sem_conv_mode(self, mode):
+        env_patch = mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: mode})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def set_body(self, body, content_type):
+        self.environ["wsgi.input"] = io.BytesIO(body)
+        self.environ["CONTENT_LENGTH"] = str(len(body))
+        self.environ["CONTENT_TYPE"] = content_type
+
+    def get_span(self, app, **kwargs):
+        middleware = otel_wsgi.OpenTelemetryMiddleware(app, **kwargs)
+        response = middleware(self.environ, self.start_response)
+        self.assertEqual(list(response), [b"*"])
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        return span_list[0]
+
+    def test_not_captured_by_default(self):
+        original_input = self.environ["wsgi.input"]
+        span = self.get_span(read_body_wsgi)
+        self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+        self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_not_captured_with_non_positive_size(self):
+        original_input = self.environ["wsgi.input"]
+        for size in (0, -1):
+            with self.subTest(size=size):
+                self.memory_exporter.clear()
+                span = self.get_span(read_body_wsgi, captured_request_body_size=size)
+                self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+                self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_text_body_captured_as_string(self):
+        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hello": "world"}')
+        self.assertIsInstance(span.attributes[HTTP_REQUEST_BODY_CONTENT], str)
+
+    def test_binary_body_captured_as_bytes(self):
+        self.set_body(b"\x00\x01\xff", "application/octet-stream")
+        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], b"\x00\x01\xff")
+        self.assertIsInstance(span.attributes[HTTP_REQUEST_BODY_CONTENT], bytes)
+
+    def test_body_truncated_to_captured_request_body_size(self):
+        span = self.get_span(read_body_wsgi, captured_request_body_size=6)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hell')
+
+    def test_application_reads_full_body_past_limit(self):
+        def app(environ, start_response):
+            self.assertEqual(environ["wsgi.input"].read(), b'{"hello": "world"}')
+            return read_body_wsgi(environ, start_response)
+
+        span = self.get_span(app, captured_request_body_size=6)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hell')
+
+    def test_unread_body_not_captured(self):
+        span = self.get_span(simple_wsgi, captured_request_body_size=1024)
+        self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+        self.assertEqual(self.environ["wsgi.input"].tell(), 0)
+
+    def test_body_read_while_iterating_response(self):
+        span = self.get_span(read_body_lazily_wsgi, captured_request_body_size=1024)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hello": "world"}')
+
+    def test_body_captured_when_application_raises(self):
+        app = otel_wsgi.OpenTelemetryMiddleware(read_body_then_raise_wsgi, captured_request_body_size=1024)
+        with self.assertRaises(ValueError):
+            app(self.environ, self.start_response)
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hello": "world"}')
+
+    def test_content_encoded_body_not_captured(self):
+        self.environ["HTTP_CONTENT_ENCODING"] = "gzip"
+        original_input = self.environ["wsgi.input"]
+        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+        self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_not_captured_on_internal_span(self):
+        tracer = self.tracer_provider.get_tracer(__name__)
+        original_input = self.environ["wsgi.input"]
+        with tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER):
+            app = otel_wsgi.OpenTelemetryMiddleware(read_body_wsgi, captured_request_body_size=1024)
+            self.assertEqual(list(app(self.environ, self.start_response)), [b"*"])
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.kind, trace_api.SpanKind.INTERNAL)
+        self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+        self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_not_captured_when_not_recording(self):
+        original_input = self.environ["wsgi.input"]
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            read_body_wsgi,
+            tracer_provider=trace_api.NoOpTracerProvider(),
+            captured_request_body_size=1024,
+        )
+        self.assertEqual(list(app(self.environ, self.start_response)), [b"*"])
+        self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_sem_conv_modes(self):
+        for mode, captured in (("http", False), ("http/dup", True)):
+            with self.subTest(mode=mode):
+                self.memory_exporter.clear()
+                self.set_sem_conv_mode(mode)
+                self.set_body(b"hello", "text/plain")
+                span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+                self.assertEqual(HTTP_REQUEST_BODY_CONTENT in span.attributes, captured)
 
 
 if __name__ == "__main__":

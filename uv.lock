@@ -4230,6 +4230,12 @@ provides-extras = ["test", "upload"]
 [[package]]
 name = "opentelemetry-util-http"
 source = { editable = "util/opentelemetry-util-http" }
+dependencies = [
+    { name = "wrapt" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "wrapt", specifier = ">=1.0.0,<3.0.0" }]
 
 [[package]]
 name = "packaging"
