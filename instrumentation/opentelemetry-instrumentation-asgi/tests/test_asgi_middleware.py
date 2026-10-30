@@ -662,6 +662,38 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 for excluded_span in excluded_spans:
                     self.assertNotEqual(span.name, excluded_span)
 
+    async def test_exclude_internal_spans_from_env(self):
+        cases = [
+            ("receive,send", {"GET /"}),
+            (" send ", {"GET /", "GET / http receive"}),
+            ("receive", {"GET /", "GET / http send"}),
+            ("", {"GET /", "GET / http receive", "GET / http send"}),
+        ]
+        for env_value, expected_span_names in cases:
+            with self.subTest(env_value=env_value):
+                with mock.patch.dict(
+                    "os.environ",
+                    {otel_asgi.OTEL_PYTHON_ASGI_EXCLUDE_SPANS: env_value},
+                ):
+                    app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                await self.get_all_output()
+                span_names = {span.name for span in self.get_finished_spans()}
+                self.assertEqual(span_names, expected_span_names)
+
+    async def test_exclude_spans_argument_overrides_env(self):
+        with mock.patch.dict(
+            "os.environ",
+            {otel_asgi.OTEL_PYTHON_ASGI_EXCLUDE_SPANS: "receive,send"},
+        ):
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, exclude_spans=[])
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        span_names = {span.name for span in self.get_finished_spans()}
+        self.assertEqual(span_names, {"GET /", "GET / http receive", "GET / http send"})
+
     async def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""

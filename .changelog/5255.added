@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asgi`: add `OTEL_PYTHON_ASGI_EXCLUDE_SPANS` environment variable to exclude internal `send`/`receive` spans

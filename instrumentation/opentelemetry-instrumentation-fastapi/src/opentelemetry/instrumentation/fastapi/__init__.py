@@ -67,6 +67,19 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 
     FastAPIInstrumentor.instrument_app(app, excluded_urls="client/.*/info,healthcheck")
 
+To skip the internal ``http send`` and ``http receive`` spans, set the environment variable
+``OTEL_PYTHON_ASGI_EXCLUDE_SPANS`` to a comma delimited list of ``send`` and/or ``receive``:
+
+::
+
+    export OTEL_PYTHON_ASGI_EXCLUDE_SPANS="send,receive"
+
+or pass the ``exclude_spans`` keyword argument, which takes precedence over the environment variable:
+
+.. code-block:: python
+
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["send", "receive"])
+
 Request/Response hooks
 **********************
 
