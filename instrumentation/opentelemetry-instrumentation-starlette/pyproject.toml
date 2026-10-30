@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = ["starlette >= 0.13"]
+instruments = ["starlette"]
 
 [project.entry-points.opentelemetry_instrumentor]
 starlette = "opentelemetry.instrumentation.starlette:StarletteInstrumentor"

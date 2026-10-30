@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "requests ~= 2.0",
+  "requests",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

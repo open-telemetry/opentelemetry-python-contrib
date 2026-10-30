@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = ["openai >= 1.26.0"]
+instruments = ["openai"]
 
 [project.entry-points.opentelemetry_instrumentor]
 openai = "opentelemetry.instrumentation.openai_v2:OpenAIInstrumentor"

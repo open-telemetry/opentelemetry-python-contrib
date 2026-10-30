@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "asyncpg >= 0.12.0",
+  "asyncpg",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
