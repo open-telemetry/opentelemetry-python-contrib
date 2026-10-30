@@ -128,7 +128,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             logging.WARN
             logging.ERROR
             logging.FATAL
-        log_hook: execute custom logic when record is created
+        log_hook: execute custom logic when record is created. The span argument is
+            ``INVALID_SPAN`` when no span is active.
 
     See `BaseInstrumentor`
     """
@@ -192,13 +193,13 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                         record.otelTraceID = format(ctx.trace_id, "032x")
                         record.otelTraceSampled = ctx.trace_flags.sampled
 
-                    if callable(LoggingInstrumentor._log_hook):
-                        try:
-                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
-                                span, record
-                            )
-                        except Exception:  # pylint: disable=W0703
-                            pass
+            if callable(LoggingInstrumentor._log_hook):
+                try:
+                    LoggingInstrumentor._log_hook(  # pylint: disable=E1102
+                        span, record
+                    )
+                except Exception:  # pylint: disable=W0703
+                    pass
 
             return record
 
