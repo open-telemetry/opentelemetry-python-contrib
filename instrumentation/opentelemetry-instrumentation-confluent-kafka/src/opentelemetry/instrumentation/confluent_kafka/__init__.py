@@ -103,6 +103,21 @@ import confluent_kafka
 import wrapt
 from confluent_kafka import Consumer, Producer
 
+try:
+    import confluent_kafka.aio as _aio_module
+    from confluent_kafka.aio import AIOConsumer, AIOProducer
+except ImportError:
+    try:
+        import confluent_kafka.experimental.aio as _aio_module
+        from confluent_kafka.experimental.aio import (
+            AIOConsumer,
+            AIOProducer,
+        )
+    except ImportError:
+        AIOProducer = None
+        AIOConsumer = None
+        _aio_module = None
+
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
@@ -166,6 +181,41 @@ class AutoInstrumentedConsumer(Consumer):
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def close(self):  # pylint: disable=useless-super-delegation
         return super().close()
+
+
+# Instrument asynchronous AIOProducer and AIOConsumer if available in confluent-kafka
+if AIOProducer is not None:
+
+    class AutoInstrumentedAIOProducer(AIOProducer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.config = _capture_config(args, kwargs)
+
+        # Deliberately implemented so wrapt can intercept the async produce call
+        async def produce(self, topic, value=None, *args, **kwargs):
+            return await super().produce(topic, value, *args, **kwargs)
+else:
+    AutoInstrumentedAIOProducer = None
+
+
+if AIOConsumer is not None:
+
+    class AutoInstrumentedAIOConsumer(AIOConsumer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.config = _capture_config(args, kwargs)
+            # Span lifecycle is managed by the inner Consumer layer, which is
+            # already instrumented via AutoInstrumentedConsumer.
+
+        # Deliberately implemented so wrapt can intercept the async poll call
+        async def poll(self, timeout=-1):
+            return await super().poll(timeout)
+
+        # Deliberately implemented so wrapt can intercept the async close call
+        async def close(self):
+            return await super().close()
+else:
+    AutoInstrumentedAIOConsumer = None
 
 
 class ProxiedProducer(Producer):
@@ -296,6 +346,21 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         confluent_kafka.Producer = AutoInstrumentedProducer
         confluent_kafka.Consumer = AutoInstrumentedConsumer
 
+        if _aio_module is not None:
+            if hasattr(_aio_module, "AIOProducer") and AutoInstrumentedAIOProducer is not None:
+                self._original_kafka_aio_producer = _aio_module.AIOProducer
+                _aio_module.AIOProducer = AutoInstrumentedAIOProducer
+            if hasattr(_aio_module, "AIOConsumer") and AutoInstrumentedAIOConsumer is not None:
+                self._original_kafka_aio_consumer = _aio_module.AIOConsumer
+                _aio_module.AIOConsumer = AutoInstrumentedAIOConsumer
+
+        if hasattr(confluent_kafka, "AIOProducer") and AutoInstrumentedAIOProducer is not None:
+            self._original_kafka_top_aio_producer = confluent_kafka.AIOProducer
+            confluent_kafka.AIOProducer = AutoInstrumentedAIOProducer
+        if hasattr(confluent_kafka, "AIOConsumer") and AutoInstrumentedAIOConsumer is not None:
+            self._original_kafka_top_aio_consumer = confluent_kafka.AIOConsumer
+            confluent_kafka.AIOConsumer = AutoInstrumentedAIOConsumer
+
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
             __name__,
@@ -341,13 +406,58 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             "close",
             _inner_wrap_close,
         )
+        if AutoInstrumentedAIOProducer is not None:
+
+            def _inner_wrap_aio_produce(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_produce(func, instance, self._tracer, args, kwargs)
+
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOProducer,
+                "produce",
+                _inner_wrap_aio_produce,
+            )
+
+        if AutoInstrumentedAIOConsumer is not None:
+
+            def _inner_wrap_aio_poll(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_poll(func, instance, self._tracer, args, kwargs)
+
+            def _inner_wrap_aio_close(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_close(func, instance, args, kwargs)
+
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOConsumer,
+                "poll",
+                _inner_wrap_aio_poll,
+            )
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOConsumer,
+                "close",
+                _inner_wrap_aio_close,
+            )
 
     def _uninstrument(self, **kwargs):
         confluent_kafka.Producer = self._original_kafka_producer
         confluent_kafka.Consumer = self._original_kafka_consumer
 
+        if _aio_module is not None:
+            if hasattr(self, "_original_kafka_aio_producer") and self._original_kafka_aio_producer is not None:
+                _aio_module.AIOProducer = self._original_kafka_aio_producer
+            if hasattr(self, "_original_kafka_aio_consumer") and self._original_kafka_aio_consumer is not None:
+                _aio_module.AIOConsumer = self._original_kafka_aio_consumer
+
+        if hasattr(self, "_original_kafka_top_aio_producer") and self._original_kafka_top_aio_producer is not None:
+            confluent_kafka.AIOProducer = self._original_kafka_top_aio_producer
+        if hasattr(self, "_original_kafka_top_aio_consumer") and self._original_kafka_top_aio_consumer is not None:
+            confluent_kafka.AIOConsumer = self._original_kafka_top_aio_consumer
+
         unwrap(AutoInstrumentedProducer, "produce")
         unwrap(AutoInstrumentedConsumer, "poll")
+        if AutoInstrumentedAIOProducer is not None:
+            unwrap(AutoInstrumentedAIOProducer, "produce")
+        if AutoInstrumentedAIOConsumer is not None:
+            unwrap(AutoInstrumentedAIOConsumer, "poll")
+            unwrap(AutoInstrumentedAIOConsumer, "close")
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
@@ -420,6 +530,43 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_close(func, instance, args, kwargs):
+
         if instance._current_consume_span:
             _end_current_consume_span(instance)
         func(*args, **kwargs)
+
+    @staticmethod
+    async def wrap_aio_produce(func, instance, tracer, args, kwargs):
+        topic = kwargs.get("topic")
+        if not topic:
+            topic = args[0]
+
+        span_name = _get_span_name("send", topic)
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
+            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+            if headers is not None:
+                propagate.inject(
+                    headers,
+                    setter=_kafka_setter,
+                )
+
+            topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            _enrich_span(
+                span,
+                topic,
+                operation=MessagingOperationTypeValues.PUBLISH,
+                bootstrap_servers=bootstrap_servers,
+            )
+            return await func(*args, **kwargs)
+
+    @staticmethod
+    async def wrap_aio_poll(func, instance, tracer, args, kwargs):
+        # AIOConsumer delegates to an inner Consumer that is already instrumented
+        # via AutoInstrumentedConsumer. Creating spans here would produce duplicates,
+        # so this wrapper is intentionally a pass-through.
+        return await func(*args, **kwargs)
+
+    @staticmethod
+    async def wrap_aio_close(func, instance, args, kwargs):
+        return await func(*args, **kwargs)

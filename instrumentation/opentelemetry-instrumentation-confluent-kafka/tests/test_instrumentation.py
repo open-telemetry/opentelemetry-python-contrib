@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-
 # pylint: disable=no-name-in-module,import-outside-toplevel
+import asyncio
 
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
@@ -470,3 +470,121 @@ class TestConfluentKafka(TestBase):
         process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+    def test_aio_produce(self) -> None:
+        from .utils import MockedAIOProducer  # noqa: PLC0415
+
+        async def _run():
+            instrumentation = ConfluentKafkaInstrumentor()
+            tracer = self.tracer_provider.get_tracer(__name__)
+            producer = MockedAIOProducer({"bootstrap.servers": "localhost:9092"})
+
+            # Without headers: verify produce succeeds and headers kwarg is NOT forced
+            # (confluent-kafka AIOProducer raises NotImplementedError if headers is passed)
+            call_kwargs = {"topic": "test-topic", "value": b"test-value"}
+            await instrumentation.wrap_aio_produce(
+                producer.produce,
+                producer,
+                tracer,
+                args=(),
+                kwargs=call_kwargs,
+            )
+            self.assertNotIn("headers", call_kwargs)
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "test-topic send")
+
+            # With headers: verify traceparent is injected into supplied headers
+            self.memory_exporter.clear()
+            supplied_headers = []
+            await instrumentation.wrap_aio_produce(
+                producer.produce,
+                producer,
+                tracer,
+                args=(),
+                kwargs={"topic": "test-topic", "value": b"test-value", "headers": supplied_headers},
+            )
+            self.assertTrue(any("traceparent" in str(h) for h in supplied_headers))
+
+        asyncio.run(_run())
+
+    def test_aio_poll(self) -> None:
+        from .utils import MockedAIOConsumer, MockedMessage  # noqa: PLC0415
+
+        async def _run():
+            instrumentation = ConfluentKafkaInstrumentor()
+            tracer = self.tracer_provider.get_tracer(__name__)
+
+            # MockedAIOConsumer wraps an inner MockConsumer, mirroring how
+            # the real AIOConsumer delegates to an inner Consumer internally.
+            # The inner Consumer is patched with wrap_poll below to simulate
+            # AutoInstrumentedConsumer — this is the only layer that should
+            # create spans; wrap_aio_poll must not produce a second set.
+            queue = [MockedMessage("test-topic", 0, 0, [])]
+            consumer = MockedAIOConsumer(
+                queue,
+                {"bootstrap.servers": "localhost:9092", "group.id": "g", "auto.offset.reset": "earliest"},
+            )
+
+            # Instrument the inner consumer's poll so spans are produced there.
+            inner = consumer._inner
+            raw_poll = inner.poll
+
+            def instrumented_inner_poll(timeout=None):
+                return ConfluentKafkaInstrumentor.wrap_poll(raw_poll, inner, tracer, (timeout,), {})
+
+            inner.poll = instrumented_inner_poll
+
+            # wrap_aio_poll is a pass-through; span is created by instrumented_inner_poll.
+            msg = await instrumentation.wrap_aio_poll(
+                consumer.poll,
+                consumer,
+                tracer,
+                args=(),
+                kwargs={},
+            )
+            self.assertIsNotNone(msg)
+
+            # Second (empty) poll causes the inner consumer to end the previous span.
+            await instrumentation.wrap_aio_poll(
+                consumer.poll,
+                consumer,
+                tracer,
+                args=(),
+                kwargs={},
+            )
+
+            spans = self.memory_exporter.get_finished_spans()
+            process_spans = [s for s in spans if s.name == "test-topic process"]
+            # Exactly ONE process span — no duplicates from the AIO wrapper layer.
+            self.assertEqual(len(process_spans), 1)
+
+        asyncio.run(_run())
+
+    def test_aio_instrument_and_uninstrument(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka import (  # noqa: PLC0415
+            AutoInstrumentedAIOConsumer,
+            AutoInstrumentedAIOProducer,
+            _aio_module,
+        )
+
+        if _aio_module is None or AutoInstrumentedAIOProducer is None:
+            return
+
+        instrumentor = ConfluentKafkaInstrumentor()
+        orig_producer = getattr(_aio_module, "AIOProducer", None)
+        orig_consumer = getattr(_aio_module, "AIOConsumer", None)
+
+        instrumentor.instrument()
+        try:
+            if orig_producer is not None:
+                self.assertIs(_aio_module.AIOProducer, AutoInstrumentedAIOProducer)
+            if orig_consumer is not None:
+                self.assertIs(_aio_module.AIOConsumer, AutoInstrumentedAIOConsumer)
+        finally:
+            instrumentor.uninstrument()
+
+        if orig_producer is not None:
+            self.assertIs(_aio_module.AIOProducer, orig_producer)
+        if orig_consumer is not None:
+            self.assertIs(_aio_module.AIOConsumer, orig_consumer)
