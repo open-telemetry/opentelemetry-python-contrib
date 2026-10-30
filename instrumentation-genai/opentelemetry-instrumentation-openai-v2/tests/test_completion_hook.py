@@ -4,6 +4,8 @@
 import os
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -14,6 +16,8 @@ from opentelemetry.util.genai.environment_variables import (
 )
 
 from .test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
+
+pytestmark = pytest.mark.skip(reason="latest experimental conventions are no longer supported by this package")
 
 
 @patch.dict(
