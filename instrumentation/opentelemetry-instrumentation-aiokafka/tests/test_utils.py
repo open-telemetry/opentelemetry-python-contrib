@@ -48,35 +48,35 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_send_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_arg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_send_attributes: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
         await self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_send_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
 
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_send_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_kwarg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_send_attributes: mock.MagicMock,
         extract_send_partition: mock.AsyncMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -85,7 +85,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         await self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_send_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
@@ -94,7 +94,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         extract_send_partition: mock.AsyncMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -109,11 +109,12 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer.client)
         extract_send_partition.assert_awaited_once_with(kafka_producer, self.args, self.kwargs)
-        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
+        tracer.start_as_current_span.assert_called_once_with(
+            expected_span_name, kind=SpanKind.PRODUCER, attributes=get_attributes.return_value
+        )
 
         span = tracer.start_as_current_span().__enter__.return_value
-        enrich_span.assert_called_once_with(
-            span,
+        get_attributes.assert_called_once_with(
             bootstrap_servers=extract_bootstrap_servers.return_value,
             client_id=kafka_producer.client._client_id,
             topic=self.topic_name,
@@ -180,8 +181,8 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_topic_attributes")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_poll_attributes")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
@@ -191,8 +192,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_consumer_group: mock.MagicMock,
         extract_client_id: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
-        _enrich_getmany_poll_span: mock.MagicMock,
-        _enrich_getmany_topic_span: mock.MagicMock,
+        _get_poll_attributes: mock.MagicMock,
+        _get_topic_attributes: mock.MagicMock,
         _create_consumer_span: mock.AsyncMock,
         extract: mock.MagicMock,
     ) -> None:
@@ -237,12 +238,12 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_receive_attributes")
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
         self,
         detach: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_receive_attributes: mock.MagicMock,
         attach: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
     ) -> None:
@@ -272,13 +273,13 @@ class TestUtils(IsolatedAsyncioTestCase):
             expected_span_name,
             context=extracted_context,
             kind=SpanKind.CONSUMER,
+            attributes=get_receive_attributes.return_value,
         )
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(
-            span,
+        get_receive_attributes.assert_called_once_with(
             bootstrap_servers=bootstrap_servers,
             client_id=client_id,
             consumer_group=consumer_group,
