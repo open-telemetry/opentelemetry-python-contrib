@@ -17,6 +17,7 @@ import aiohttp.test_utils
 import yarl
 from http_server_mock import HttpServerMock
 
+from opentelemetry import metrics as metrics_api
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation._semconv import (
@@ -54,6 +55,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_RESPONSE_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
+from opentelemetry.test.globals_test import (
+    reset_metrics_globals,
+    reset_trace_globals,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
@@ -1508,6 +1513,42 @@ class TestAioHttpClientInstrumentor(TestBase):
         run_with_test_server(self.get_default_request(url), url, self.default_handler)
         self._assert_spans(0)
         self._assert_metrics(0)
+
+    def test_instrument_creates_one_meter_and_tracer_for_all_sessions(self):
+        AioHttpClientInstrumentor().uninstrument()
+
+        async def open_and_close_sessions(count: int):
+            for _ in range(count):
+                await aiohttp.ClientSession().close()
+
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.aiohttp_client.get_meter",
+                wraps=aiohttp_client.get_meter,
+            ) as patched_get_meter,
+            mock.patch(
+                "opentelemetry.instrumentation.aiohttp_client.get_tracer",
+                wraps=aiohttp_client.get_tracer,
+            ) as patched_get_tracer,
+        ):
+            AioHttpClientInstrumentor().instrument()
+            asyncio.run(open_and_close_sessions(5))
+
+        self.assertEqual(1, patched_get_meter.call_count)
+        self.assertEqual(1, patched_get_tracer.call_count)
+
+    def test_providers_set_after_instrument_receive_telemetry(self):
+        AioHttpClientInstrumentor().uninstrument()
+        reset_trace_globals()
+        reset_metrics_globals()
+
+        AioHttpClientInstrumentor().instrument()
+        trace_api.set_tracer_provider(self.tracer_provider)
+        metrics_api.set_meter_provider(self.meter_provider)
+        run_with_test_server(self.get_default_request(), self.URL, self.default_handler)
+
+        self._assert_spans(1)
+        self._assert_metrics(1)
 
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):

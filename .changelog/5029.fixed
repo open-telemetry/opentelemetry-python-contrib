@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-client`: create the duration histograms and the tracer once instead of per `ClientSession`. `instrument()` now gets its tracer when it is called, matching `requests` and `httpx`. With `OTEL_PYTHON_TRACER_PROVIDER` set, that installs the configured provider at `instrument()` time, so a later `set_tracer_provider()` call is refused
