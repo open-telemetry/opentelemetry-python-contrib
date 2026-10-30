@@ -15,14 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
-## Version 0.5b0 (2026-10-26)
-
-### Changed
-
-- `opentelemetry-opamp-client`: replaced uuid-utils with a pure Python UUIDv7
-  backport from CPython
-  ([#5207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5207))
-
 ## Version 0.4b0 (2026-10-07)
 
 ### Added
