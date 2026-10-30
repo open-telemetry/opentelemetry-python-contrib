@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import unittest
 from collections import OrderedDict
 from os.path import dirname, join
@@ -21,6 +22,24 @@ MockEcsResourceAttributes = {
     ResourceAttributes.CONTAINER_NAME: "mock-container-name",
     ResourceAttributes.CONTAINER_ID: "a4d00c9dd675d67f866c786181419e1b44832d4696780152e61afd44a3e02856",
 }
+
+MockEcsContainerName = "curl"
+
+MockCgroupFileContents = f"""14:name=systemd:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
+13:rdma:/
+12:pids:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+11:hugetlb:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+10:net_prio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+9:perf_event:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+8:net_cls:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+7:freezer:/docker/
+6:devices:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+5:memory:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+4:blkio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+3:cpuacct:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+2:cpu:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+1:cpuset:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
+"""
 
 
 def _read_file(filename: str) -> str:
@@ -46,6 +65,16 @@ MetadataV4TaskResponseFargate = _read_file("metadatav4-response-task-fargate.jso
 def _http_get_function_ec2(url: str, *args, **kwargs) -> str:
     if url == MetadataV4Uri:
         return MetadataV4ContainerResponseEc2
+    if url == f"{MetadataV4Uri}/task":
+        return MetadataV4TaskResponseEc2
+    return None
+
+
+def _http_get_function_ec2_without_container_name(url: str, *args, **kwargs) -> str:
+    if url == MetadataV4Uri:
+        metadata = json.loads(MetadataV4ContainerResponseEc2)
+        metadata.pop("Name")
+        return json.dumps(metadata)
     if url == f"{MetadataV4Uri}/task":
         return MetadataV4TaskResponseEc2
     return None
@@ -77,21 +106,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data=f"""14:name=systemd:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
-13:rdma:/
-12:pids:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-11:hugetlb:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-10:net_prio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-9:perf_event:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-8:net_cls:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-7:freezer:/docker/
-6:devices:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-5:memory:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-4:blkio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-3:cpuacct:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-2:cpu:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-1:cpuset:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-""",
+        read_data=MockCgroupFileContents,
     )
     def test_simple_create_metadata_v3(
         self,
@@ -113,21 +128,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data=f"""14:name=systemd:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
-13:rdma:/
-12:pids:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-11:hugetlb:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-10:net_prio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-9:perf_event:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-8:net_cls:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-7:freezer:/docker/
-6:devices:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-5:memory:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-4:blkio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-3:cpuacct:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-2:cpu:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-1:cpuset:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-""",
+        read_data=MockCgroupFileContents,
     )
     @patch(
         "opentelemetry.sdk.extension.aws.resource.ecs._http_get",
@@ -145,6 +146,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
+                    ResourceAttributes.CONTAINER_NAME: MockEcsContainerName,
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/metadata",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata",
@@ -175,21 +177,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data=f"""14:name=systemd:/docker/{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_ID]}
-13:rdma:/
-12:pids:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-11:hugetlb:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-10:net_prio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-9:perf_event:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-8:net_cls:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-7:freezer:/docker/
-6:devices:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-5:memory:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-4:blkio:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-3:cpuacct:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-2:cpu:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-1:cpuset:/docker/bogusContainerIdThatShouldNotBeOneSetBecauseTheFirstOneWasPicked
-""",
+        read_data=MockCgroupFileContents,
     )
     @patch(
         "opentelemetry.sdk.extension.aws.resource.ecs._http_get",
@@ -207,6 +195,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
+                    ResourceAttributes.CONTAINER_NAME: MockEcsContainerName,
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/containerlogs",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs",
@@ -221,6 +210,55 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
                     ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/e9028f8d5d8e4f258373e7b93ce9a3c3",
                     ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
                     ResourceAttributes.AWS_ECS_TASK_REVISION: "3",
+                }
+            ),
+        )
+
+    @patch.dict(
+        "os.environ",
+        {"ECS_CONTAINER_METADATA_URI_V4": MetadataV4Uri},
+        clear=True,
+    )
+    @patch(
+        "socket.gethostname",
+        return_value=f"{MockEcsResourceAttributes[ResourceAttributes.CONTAINER_NAME]}",
+    )
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=MockCgroupFileContents,
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.ecs._http_get",
+    )
+    def test_simple_create_metadata_v4_missing_container_name_falls_back_to_hostname(
+        self,
+        mock_http_get_function,
+        mock_open_function,
+        mock_socket_gethostname,
+    ):
+        mock_http_get_function.side_effect = _http_get_function_ec2_without_container_name
+        actual = AwsEcsResourceDetector().detect()
+        self.assertDictEqual(
+            actual.attributes.copy(),
+            OrderedDict(
+                {
+                    **MockEcsResourceAttributes,
+                    ResourceAttributes.CONTAINER_NAME: MockEcsResourceAttributes[ResourceAttributes.CONTAINER_NAME],
+                    ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/metadata",),
+                    ResourceAttributes.AWS_LOG_GROUP_ARNS: (
+                        "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata",
+                    ),
+                    ResourceAttributes.AWS_LOG_STREAM_NAMES: ("ecs/curl/8f03e41243824aea923aca126495f665",),
+                    ResourceAttributes.AWS_LOG_STREAM_ARNS: (
+                        "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata:log-stream:ecs/curl/8f03e41243824aea923aca126495f665",
+                    ),
+                    ResourceAttributes.AWS_ECS_CONTAINER_ARN: "arn:aws:ecs:us-west-2:111122223333:container/0206b271-b33f-47ab-86c6-a0ba208a70a9",
+                    ResourceAttributes.AWS_ECS_CLUSTER_ARN: "arn:aws:ecs:us-west-2:111122223333:cluster/default",
+                    ResourceAttributes.AWS_ECS_LAUNCHTYPE: "ec2",
+                    ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/158d1c8083dd49d6b527399fd6414f5c",
+                    ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
+                    ResourceAttributes.AWS_ECS_TASK_REVISION: "26",
                 }
             ),
         )
