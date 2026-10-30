@@ -93,6 +93,7 @@ from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.schemas import Schemas
 
 
 class KafkaInstrumentor(BaseInstrumentor):
@@ -120,7 +121,7 @@ class KafkaInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=Schemas.V1_27_0.value,
         )
 
         wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
