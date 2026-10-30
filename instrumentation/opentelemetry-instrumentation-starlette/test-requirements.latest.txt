@@ -16,7 +16,7 @@
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-starlette
-anyio==4.8.0
+anyio==4.14.2
     # via
     #   httpx
     #   starlette
@@ -76,7 +76,7 @@ typing-extensions==4.12.2
     #   asgiref
     #   opentelemetry-api
     #   opentelemetry-semantic-conventions
-urllib3==2.7.0
+urllib3==2.8.0
     # via
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
     #   requests
