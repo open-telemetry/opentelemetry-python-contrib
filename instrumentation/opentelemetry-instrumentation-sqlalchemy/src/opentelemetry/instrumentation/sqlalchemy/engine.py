@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import re
+import time
 import weakref
 
 import sqlalchemy
@@ -115,6 +116,7 @@ def _wrap_create_async_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    connection_use_time=None,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -132,6 +134,7 @@ def _wrap_create_async_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            connection_use_time=connection_use_time,
         )
         return engine
 
@@ -144,6 +147,7 @@ def _wrap_create_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    connection_use_time=None,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -160,6 +164,7 @@ def _wrap_create_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            connection_use_time=connection_use_time,
         )
         return engine
 
@@ -199,6 +204,10 @@ def _wrap_connect(tracer):
     return _wrap_connect_internal
 
 
+# Key used to stash the checkout time on the pool's connection record.
+_CHECKOUT_TIME_KEY = "opentelemetry.checkout_time"
+
+
 class EngineTracer:
     _remove_event_listener_params = []
 
@@ -210,6 +219,7 @@ class EngineTracer:
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
+        connection_use_time=None,
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -226,6 +236,7 @@ class EngineTracer:
 
         self.tracer = tracer
         self.connection_count = connection_count
+        self.connection_use_time = connection_use_time
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
@@ -266,14 +277,32 @@ class EngineTracer:
         self._add_idle_to_connection_usage(-1)
 
     # Called when a connection returns to the pool.
-    def _pool_checkin(self, _dbapi_connection, _connection_record):
+    def _pool_checkin(self, _dbapi_connection, connection_record):
         self._add_used_to_connection_usage(-1)
         self._add_idle_to_connection_usage(1)
+        self._record_connection_use_time(connection_record)
 
     # Called when a connection is retrieved from the Pool.
-    def _pool_checkout(self, _dbapi_connection, _connection_record, _connection_proxy):
+    def _pool_checkout(self, _dbapi_connection, connection_record, _connection_proxy):
         self._add_idle_to_connection_usage(-1)
         self._add_used_to_connection_usage(1)
+        if self.connection_use_time is not None and is_instrumentation_enabled():
+            connection_record.info[_CHECKOUT_TIME_KEY] = time.perf_counter()
+
+    def _record_connection_use_time(self, connection_record):
+        # Always pop so a stale start time is never reused. A checkout made
+        # while instrumentation was suppressed stores no start time, so its
+        # checkin records nothing.
+        start_time = connection_record.info.pop(_CHECKOUT_TIME_KEY, None)
+        if start_time is None or self.connection_use_time is None:
+            return
+
+        self.connection_use_time.record(
+            time.perf_counter() - start_time,
+            attributes={
+                DB_CLIENT_CONNECTION_POOL_NAME: self._engine_attrs["pool.name"],
+            },
+        )
 
     @classmethod
     def _dispose_of_event_listener(cls, obj):
