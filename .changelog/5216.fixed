@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-urllib`: record `server.address` and `server.port` on HTTP client metrics, resolving default ports for implicit URLs
