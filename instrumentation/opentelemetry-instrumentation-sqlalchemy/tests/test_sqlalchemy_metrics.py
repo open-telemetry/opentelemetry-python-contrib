@@ -5,6 +5,7 @@ import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
@@ -123,6 +124,25 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         # After the two connections are closed
         self.assert_pool_idle_used_expected(pool_name=pool_name, idle=2, used=0)
+
+    def test_metrics_checkout_suppressed_checkin_not_suppressed(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            pool_size=5,
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with engine.connect():
+            pass
+
+        for _ in range(3):
+            with suppress_instrumentation():
+                conn = engine.connect()
+            conn.close()
+
+        self.assert_pool_idle_used_expected(pool_name=pool_name, idle=1, used=0)
 
     def test_metric_uninstrument(self):
         SQLAlchemyInstrumentor().uninstrument()

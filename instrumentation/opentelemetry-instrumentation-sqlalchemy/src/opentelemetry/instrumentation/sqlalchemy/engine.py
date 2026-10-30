@@ -247,10 +247,9 @@ class EngineTracer:
     def _add_used_to_connection_usage(self, value):
         self._add_connection_count(DbClientConnectionStateValues.USED.value, value)
 
+    # Pool usage is not suppressed: connect/close and checkout/checkin must be
+    # recorded in pairs, and suppress_instrumentation() can start or end between them.
     def _add_connection_count(self, state, value):
-        if not is_instrumentation_enabled():
-            return
-
         self.connection_count.add(
             value,
             attributes={
