@@ -439,9 +439,13 @@ class TestAioHttpIntegration(TestBase):
     def test_connection_errors(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
-        for url, expected_status in (
-            ("http://this-is-unknown.local/", StatusCode.ERROR),
-            ("http://127.0.0.1:1/", StatusCode.ERROR),
+        for url, expected_status, expected_error in (
+            (
+                "http://this-is-unknown.local/",
+                StatusCode.ERROR,
+                "ClientConnectorDNSError",
+            ),
+            ("http://127.0.0.1:1/", StatusCode.ERROR, "ClientConnectorError"),
         ):
             with self.subTest(expected_status=expected_status):
 
@@ -459,7 +463,7 @@ class TestAioHttpIntegration(TestBase):
                 [
                     (
                         "GET",
-                        (expected_status, "ClientConnectorError"),
+                        (expected_status, expected_error),
                         {
                             HTTP_METHOD: "GET",
                             HTTP_URL: url,
@@ -472,6 +476,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(),
@@ -508,6 +513,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception_new_semconv(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP),
@@ -547,6 +553,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception_both_semconv(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP),
