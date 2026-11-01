@@ -145,6 +145,19 @@ class TestStarletteManualInstrumentation(TestBase):
                 span.attributes[HTTP_URL],
             )
 
+    def test_host_route_attribute_omitted(self) -> None:
+        span_name, attributes = otel_starlette._get_default_span_details(
+            {
+                "app": self._app,
+                "type": "http",
+                "method": "GET",
+                "path": "/home",
+                "headers": [(b"host", b"testserver2")],
+            }
+        )
+        self.assertEqual("GET", span_name)
+        self.assertNotIn(HTTP_ROUTE, attributes)
+
     def test_starlette_route_attribute_added(self):
         """Ensure that starlette routes are used as the span name."""
         self._client.get("/user/123")
