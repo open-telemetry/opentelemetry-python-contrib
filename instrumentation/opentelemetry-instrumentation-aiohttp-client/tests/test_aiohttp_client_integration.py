@@ -286,11 +286,17 @@ class TestAioHttpIntegration(TestBase):
                 index += 1
 
     def test_metrics(self):
+        async def request_handler(request):
+            assert "traceparent" in request.headers
+            await asyncio.sleep(0.01)
+            return aiohttp.web.Response(status=200)
+
         with self.subTest(status_code=200):
             host, port = self._http_request(
                 trace_config=aiohttp_client.create_trace_config(),
                 url="/test-path?query=param#foobar",
                 status_code=200,
+                request_handler=request_handler,
             )
             metrics = self._assert_metrics(1)
             self.assertEqual(len(metrics[0].data.data_points), 1)
