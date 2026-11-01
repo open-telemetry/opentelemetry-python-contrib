@@ -21,7 +21,7 @@ MockLambdaResourceAttributes = {
     ResourceAttributes.FAAS_NAME: "mock-lambda-name",
     ResourceAttributes.FAAS_VERSION: "mock-version-42",
     ResourceAttributes.FAAS_INSTANCE: "mock-log-stream",
-    ResourceAttributes.FAAS_MAX_MEMORY: 128,
+    ResourceAttributes.FAAS_MAX_MEMORY: 128 * 1024 * 1024,
 }
 
 
@@ -33,7 +33,9 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
             "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_NAME],
             "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[ResourceAttributes.FAAS_VERSION],
             "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_INSTANCE],
-            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
+            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": str(
+                MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY] // (1024 * 1024)
+            ),
         },
         clear=True,
     )

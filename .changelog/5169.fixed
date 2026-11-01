@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-boto3sqs`: let `delete_message_batch` without `Entries` raise botocore's `ParamValidationError` instead of a `TypeError`

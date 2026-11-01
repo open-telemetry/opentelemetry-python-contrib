@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pyramid`: make captured request headers available to samplers

@@ -8,7 +8,7 @@ import unittest
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
+    InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
 
@@ -16,7 +16,7 @@ from opentelemetry.sdk._logs.export import (
 class TestLoggingHandlerRecursionGuard(unittest.TestCase):
     @staticmethod
     def _create_handler():
-        exporter = InMemoryLogExporter()
+        exporter = InMemoryLogRecordExporter()
         provider = LoggerProvider()
         provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
         handler = LoggingHandler(logger_provider=provider)

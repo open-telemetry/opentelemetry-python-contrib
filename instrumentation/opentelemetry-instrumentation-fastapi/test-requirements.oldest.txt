@@ -18,7 +18,7 @@
     #   opentelemetry-instrumentation-fastapi
 annotated-types==0.7.0
     # via pydantic
-anyio==4.14.0
+anyio==4.14.2
     # via
     #   httpx
     #   starlette
@@ -26,7 +26,7 @@ asgiref==3.0.0
     # via opentelemetry-instrumentation-asgi
 async-timeout==3.0.1
     # via asgiref
-certifi==2026.6.17
+certifi==2026.10.19
     # via
     #   httpcore
     #   httpx
@@ -95,7 +95,7 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-urllib3==2.7.0
+urllib3==2.8.0
     # via
     #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
     #   requests
