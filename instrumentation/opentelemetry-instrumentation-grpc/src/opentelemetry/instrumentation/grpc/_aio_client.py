@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import functools
 import logging
 
@@ -95,28 +96,49 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     async def _wrap_unary_response(self, continuation, span):
         try:
             call = await continuation()
-
-            # code and details are both coroutines that need to be await-ed,
-            # the callbacks added with add_done_callback do not allow async
-            # code so we need to get the code and details here then pass them
-            # to the callback.
-            code = await call.code()
-            details = await call.details()
-
-            callback = _unary_done_callback(span, code, details, self._call_response_hook)
-            try:
-                call.add_done_callback(callback)
-            except NotImplementedError:
-                # Some grpc.aio interceptors (e.g. interceptors that await the
-                # call object) wrap the call in a type that does not implement
-                # add_done_callback.  In that case call the callback immediately
-                # since code and details are already known.
-                callback(call)
-
-            return call
         except grpc.aio.AioRpcError as exc:
             self.add_error_details_to_span(span, exc)
+            span.end()
             raise exc
+
+        async def _finish_span():
+            try:
+                try:
+                    code = await call.code()
+                    details = await call.details()
+                except grpc.aio.AioRpcError as exc:
+                    self.add_error_details_to_span(span, exc)
+                    return
+                except asyncio.CancelledError:
+                    span.set_attribute(
+                        RPC_GRPC_STATUS_CODE,
+                        grpc.StatusCode.CANCELLED.value[0],
+                    )
+                    span.set_status(
+                        Status(
+                            status_code=StatusCode.ERROR,
+                            description="Locally cancelled by the client",
+                        )
+                    )
+                    return
+
+                callback = _unary_done_callback(span, code, details, self._call_response_hook)
+                callback(call)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self.add_error_details_to_span(span, exc)
+            finally:
+                if span.is_recording():
+                    span.end()
+
+        def _on_done(_):
+            asyncio.create_task(_finish_span())
+
+        try:
+            call.add_done_callback(_on_done)
+        except NotImplementedError:
+            asyncio.create_task(_finish_span())
+
+        return call
 
     async def _wrap_stream_response(self, span, call):
         try:
