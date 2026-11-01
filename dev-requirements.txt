@@ -11,6 +11,6 @@ markupsafe>=2.0.1
 codespell==2.1.0
 requests==2.33.1
 ruamel.yaml==0.17.21
-flaky==3.7.0
+flaky==3.8.1
 pre-commit==3.7.0
 ruff==0.16.1
