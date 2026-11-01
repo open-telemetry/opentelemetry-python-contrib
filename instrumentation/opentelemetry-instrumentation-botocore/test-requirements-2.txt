@@ -6,7 +6,7 @@ aiobotocore==2.8.0
 certifi==2026.10.19
 cffi==2.0.0
 charset-normalizer==3.3.2
-cryptography==49.0.0
+cryptography==50.0.0
 Deprecated==1.2.14
 docker==7.0.0
 idna==3.15
