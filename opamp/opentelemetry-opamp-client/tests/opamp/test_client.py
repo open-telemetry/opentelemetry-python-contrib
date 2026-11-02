@@ -9,6 +9,7 @@ from unittest import mock
 from uuid import RFC_4122, UUID
 
 import pytest
+import requests
 
 from opentelemetry._opamp import messages
 from opentelemetry._opamp.client import _DEFAULT_CAPABILITIES, OpAMPClient
@@ -130,7 +131,8 @@ def test_client_headers_override_defaults():
         headers={"User-Agent": "Custom"},
     )
     client._transport = mock.Mock()
-    client.send(b"")
+    data = client.prepare_message(client.build_heartbeat_message())
+    client.send(data)
 
     (send_call,) = client._transport.mock_calls
     assert send_call == mock.call.send(
@@ -138,8 +140,9 @@ def test_client_headers_override_defaults():
         headers={
             "Content-Type": "application/x-protobuf",
             "User-Agent": "Custom",
+            "OpAMP-Instance-UID": str(UUID(bytes=client._instance_uid)),
         },
-        data=b"",
+        data=data,
         timeout_millis=1000,
         tls_certificate=True,
         tls_client_certificate=None,
@@ -543,18 +546,20 @@ def test_send_preserves_prepared_bytes_and_sequence_num(client):
     client.send(prepared)
     client.send(prepared)
     client.send(client.prepare_message(client.build_heartbeat_message()))
-    client.send(b"prebuilt")
+    prebuilt = opamp_pb2.AgentToServer(instance_uid=b"\x02" * 16, sequence_num=41).SerializeToString()
+    client.send(prebuilt)
 
     sent = [call.kwargs["data"] for call in client._transport.send.call_args_list]
     assert sent[0] == sent[1] == prepared
     assert [opamp_pb2.AgentToServer.FromString(data).sequence_num for data in sent[:3]] == [0, 0, 1]
-    assert sent[3] == b"prebuilt"
+    assert sent[3] == prebuilt
     assert client._sequence_num == 2
 
 
 def test_send(client):
     client._transport = mock.Mock()
-    client.send(b"foo")
+    data = client.prepare_message(client.build_heartbeat_message())
+    client.send(data)
 
     (send_call,) = client._transport.mock_calls
     assert send_call == mock.call.send(
@@ -562,13 +567,85 @@ def test_send(client):
         headers={
             "Content-Type": "application/x-protobuf",
             "User-Agent": "OTel-OpAMP-Python/" + __version__,
+            "OpAMP-Instance-UID": str(UUID(bytes=client._instance_uid)),
         },
-        data=b"foo",
+        data=data,
         timeout_millis=1000,
         tls_certificate=True,
         tls_client_certificate=None,
         tls_client_key=None,
     )
+
+
+@pytest.mark.parametrize("header_name", ["OpAMP-Instance-UID", "opamp-instance-uid", "OPAMP-INSTANCE-UID"])
+def test_send_instance_uid_header_matches_body(header_name: str) -> None:
+    headers = {header_name: "stale", "Authorization": "Bearer token"}
+    client = OpAMPClient(endpoint="url", agent_identifying_attributes={}, headers=headers)
+    client._transport = mock.Mock()
+    uid = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+    data = opamp_pb2.AgentToServer(instance_uid=UUID(uid).bytes, sequence_num=42).SerializeToString()
+
+    client.send(data)
+
+    sent = client._transport.send.call_args.kwargs
+    assert sent["headers"] == {
+        "Content-Type": "application/x-protobuf",
+        "User-Agent": "OTel-OpAMP-Python/" + __version__,
+        "Authorization": "Bearer token",
+        "OpAMP-Instance-UID": uid,
+    }
+    assert sent["data"] == data
+    assert client._sequence_num == 0
+    assert headers == {header_name: "stale", "Authorization": "Bearer token"}
+    assert client._headers[header_name] == "stale"
+
+
+def test_retry_instance_uid_header_matches_prepared_body(client: OpAMPClient) -> None:
+    client._transport = mock.Mock()
+    client._transport.send.side_effect = [
+        ConnectionError("retry"),
+        opamp_pb2.ServerToAgent(),
+        opamp_pb2.ServerToAgent(),
+    ]
+    original_uid = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+    new_uid = "019a3e28-5b60-7000-8000-000000000001"
+    client._instance_uid = UUID(original_uid).bytes
+    prepared = client.prepare_message(client.build_heartbeat_message())
+
+    with pytest.raises(ConnectionError, match="retry"):
+        client.send(prepared)
+    client._instance_uid = UUID(new_uid).bytes
+    client.send(prepared)
+    client.send(client.prepare_message(client.build_heartbeat_message()))
+
+    sent = [call.kwargs for call in client._transport.send.call_args_list]
+    assert [call["headers"]["OpAMP-Instance-UID"] for call in sent] == [original_uid, original_uid, new_uid]
+    assert sent[0]["data"] == sent[1]["data"] == prepared
+    assert [opamp_pb2.AgentToServer.FromString(call["data"]).sequence_num for call in sent] == [0, 0, 1]
+    assert "OpAMP-Instance-UID" not in client._headers
+
+
+def test_instance_uid_header_reaches_http_request() -> None:
+    transport = RequestsTransport()
+    client = OpAMPClient(
+        endpoint="http://localhost/v1/opamp",
+        agent_identifying_attributes={},
+        headers={"opamp-instance-uid": "stale", "Authorization": "Bearer token"},
+        transport=transport,
+    )
+    data = client.prepare_message(client.build_full_state_message())
+    response = requests.Response()
+    response.status_code = 200
+    response._content = opamp_pb2.ServerToAgent().SerializeToString()
+
+    with mock.patch.object(transport.session, "send", return_value=response) as send:
+        client.send(data)
+
+    request = send.call_args.args[0]
+    assert request.body == data
+    assert request.headers["OpAMP-Instance-UID"] == str(UUID(bytes=client._instance_uid))
+    assert request.headers["Authorization"] == "Bearer token"
+    assert [name for name in request.headers if name.lower() == "opamp-instance-uid"] == ["OpAMP-Instance-UID"]
 
 
 def test_decode_remote_config(client):
