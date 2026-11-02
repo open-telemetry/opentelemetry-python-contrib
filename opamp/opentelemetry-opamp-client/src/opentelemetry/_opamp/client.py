@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Generator, Mapping
 from logging import getLogger
 from typing import Any, Final
 
-from uuid_utils import uuid7
-
 from opentelemetry._opamp import messages
+from opentelemetry._opamp._uuid import uuid7
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.transport.base import HttpTransport
 from opentelemetry._opamp.transport.requests import RequestsTransport
@@ -43,6 +43,9 @@ _DEFAULT_CAPABILITIES: Final = (
 class OpAMPClient:
     """
     OpAMPClient implement the helpers for building and sending messages that the agent will use.
+
+    The build_*_message methods return messages to pass to OpAMPAgent.send(). Direct client
+    users call prepare_message() before send() to set the instance UID and sequence number.
     """
 
     def __init__(
@@ -81,27 +84,47 @@ class OpAMPClient:
             non_identifying_attributes=agent_non_identifying_attributes,
         )
         self._sequence_num: int = 0
+        self._sequence_num_lock = threading.Lock()
         self._instance_uid: bytes = uuid7().bytes
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
         self._effective_config: opamp_pb2.EffectiveConfig | None = None
 
-    def build_agent_disconnect_message(self) -> bytes:
+    def prepare_message(self, message: opamp_pb2.AgentToServer | bytes) -> bytes:
+        """
+        Returns the message encoded for sending, with the current instance UID and the next
+        sequence number.
+
+        Call it once for each message, right before it is first sent: a message that is sent
+        again keeps its sequence number, so the server sees a gap only when a message never
+        reached it. Bytes are decoded as an AgentToServer message first. The message passed
+        in is not changed.
+        """
+        prepared = opamp_pb2.AgentToServer()
+        if isinstance(message, opamp_pb2.AgentToServer):
+            prepared.CopyFrom(message)
+        else:
+            prepared.ParseFromString(message)
+        with self._sequence_num_lock:
+            prepared.instance_uid = self._instance_uid
+            prepared.sequence_num = self._sequence_num
+            self._sequence_num += 1
+        return messages.encode_message(prepared)
+
+    def build_agent_disconnect_message(self) -> opamp_pb2.AgentToServer:
         message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=self._capabilities,
         )
-        data = messages.encode_message(message)
-        return data
+        return message
 
-    def build_heartbeat_message(self) -> bytes:
+    def build_heartbeat_message(self) -> opamp_pb2.AgentToServer:
         message = messages.build_heartbeat_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=self._capabilities,
         )
-        data = messages.encode_message(message)
-        return data
+        return message
 
     def update_effective_config(
         self,
@@ -140,17 +163,18 @@ class OpAMPClient:
 
         return None
 
-    def build_remote_config_status_response_message(self, remote_config_status: opamp_pb2.RemoteConfigStatus) -> bytes:
+    def build_remote_config_status_response_message(
+        self, remote_config_status: opamp_pb2.RemoteConfigStatus
+    ) -> opamp_pb2.AgentToServer:
         message = messages.build_remote_config_status_response_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=self._capabilities,
             remote_config_status=remote_config_status,
         )
-        data = messages.encode_message(message)
-        return data
+        return message
 
-    def build_full_state_message(self) -> bytes:
+    def build_full_state_message(self) -> opamp_pb2.AgentToServer:
         message = messages.build_full_state_message(
             instance_uid=self._instance_uid,
             agent_description=self._agent_description,
@@ -159,10 +183,15 @@ class OpAMPClient:
             effective_config=self._effective_config,
             capabilities=self._capabilities,
         )
-        data = messages.encode_message(message)
-        return data
+        return message
 
-    def send(self, data: bytes):
+    def send(self, data: bytes) -> opamp_pb2.ServerToAgent:
+        """
+        Sends a message to the server and returns its response.
+
+        Call prepare_message() before the first send. Prepared bytes are sent unchanged,
+        so retries keep the same instance UID and sequence number.
+        """
         token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         try:
             response = self._transport.send(
@@ -176,7 +205,6 @@ class OpAMPClient:
             )
             return response
         finally:
-            self._sequence_num += 1
             detach(token)
 
     @staticmethod
