@@ -21,7 +21,8 @@ def publish_context(resource: Resource, attributes: Attributes = None) -> None:
         readers.
     :raises OSError: If the memory mapping or clock could not be initialized
         or the mapping could not be made discoverable by readers.
-    :raises ValueError: If the encoded context exceeds 4 GiB.
+    :raises ValueError: If the encoded context exceeds 4 GiB or the attributes
+        are nested more than 32 levels deep or contain a cycle.
     """
 
 def unpublish_context() -> None:

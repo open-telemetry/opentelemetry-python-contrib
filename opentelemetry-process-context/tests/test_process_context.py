@@ -111,6 +111,22 @@ class TestPublishContext(unittest.TestCase):
         self.assertIsNone(publish_context(Resource({"service.name": "final"})))
         self.assertIsNone(unpublish_context())
 
+    def test_nested_attributes(self):
+        """Cycles and excessive nesting raise ValueError rather than crashing,
+        and nesting up to the limit is accepted."""
+        for case in (
+            "cyclic_mapping",
+            "cyclic_list",
+            "deep_mapping",
+            "deep_list",
+            "very_deep_mapping",
+            "mapping_at_limit",
+            "list_at_limit",
+        ):
+            with self.subTest(case=case):
+                result = subprocess.run([*_script_cmd("publish_nested.py"), case], check=False)
+                self.assertEqual(result.returncode, 0)
+
     @unittest.skipUnless(hasattr(os, "fork"), "requires os.fork")
     def test_publish_in_forked_child(self):
         """A child that re-publishes after fork must not crash and the parent

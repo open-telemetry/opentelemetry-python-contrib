@@ -18,7 +18,7 @@ fn publish_context(
     {
         let resource = convert::resource_from_py(resource)?;
         let attributes = match attributes {
-            Some(attributes) => convert::key_values_from_py(attributes)?,
+            Some(attributes) => convert::key_values_from_py(attributes, 0)?,
             None => Vec::new(),
         };
         context::publish(convert::encode_process_context(resource, attributes))?;

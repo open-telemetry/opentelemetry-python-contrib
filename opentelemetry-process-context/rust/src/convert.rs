@@ -5,11 +5,16 @@ use crate::proto::common::v1::{AnyValue, ArrayValue, KeyValue, KeyValueList, any
 use crate::proto::processcontext::v1development::ProcessContext;
 use crate::proto::resource::v1::Resource;
 use prost::Message;
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyByteArray, PyBytes, PyDict, PyFloat, PyInt, PyString};
 
-fn any_value_from_py(val: &Bound<'_, PyAny>) -> PyResult<AnyValue> {
+/// Maximum nesting of attribute mappings and sequences. Protobuf parsers commonly
+/// limit message recursion to 100, and each nested mapping uses three levels
+/// (`KeyValueList`, `KeyValue`, `AnyValue`), so deeper payloads may be unreadable.
+const MAX_NESTING_DEPTH: usize = 32;
+
+fn any_value_from_py(val: &Bound<'_, PyAny>, depth: usize) -> PyResult<AnyValue> {
     if val.is_none() {
         return Ok(AnyValue::default());
     }
@@ -41,13 +46,21 @@ fn any_value_from_py(val: &Bound<'_, PyAny>) -> PyResult<AnyValue> {
         });
     }
 
+    // Only containers recurse. Stopping here turns a cycle or excessive nesting
+    // into an exception rather than a stack overflow.
+    if depth >= MAX_NESTING_DEPTH {
+        return Err(PyValueError::new_err(format!(
+            "attributes are nested more than {MAX_NESTING_DEPTH} levels deep or contain a cycle"
+        )));
+    }
+
     let py = val.py();
     let collections_abc = py.import("collections.abc")?;
 
     if val.is_instance(collections_abc.getattr("Mapping")?.as_ref())? {
         return Ok(AnyValue {
             value: Some(any_value::Value::KvlistValue(KeyValueList {
-                values: key_values_from_py(val)?,
+                values: key_values_from_py(val, depth + 1)?,
             })),
         });
     }
@@ -55,7 +68,7 @@ fn any_value_from_py(val: &Bound<'_, PyAny>) -> PyResult<AnyValue> {
     if val.is_instance(collections_abc.getattr("Sequence")?.as_ref())? {
         let values = val
             .try_iter()?
-            .map(|item| any_value_from_py(&item?))
+            .map(|item| any_value_from_py(&item?, depth + 1))
             .collect::<PyResult<_>>()?;
         return Ok(AnyValue {
             value: Some(any_value::Value::ArrayValue(ArrayValue { values })),
@@ -69,8 +82,9 @@ fn any_value_from_py(val: &Bound<'_, PyAny>) -> PyResult<AnyValue> {
 }
 
 /// Convert a Python `Mapping[str, Any]` into a list of protobuf `KeyValue`s,
-/// recursing into nested values via [`any_value_from_py`].
-pub fn key_values_from_py(mapping: &Bound<'_, PyAny>) -> PyResult<Vec<KeyValue>> {
+/// recursing into nested values via [`any_value_from_py`]. `depth` is the number
+/// of containers enclosing `mapping`, `0` for top-level attributes.
+pub fn key_values_from_py(mapping: &Bound<'_, PyAny>, depth: usize) -> PyResult<Vec<KeyValue>> {
     let py = mapping.py();
     let py_dict = py
         .import("builtins")?
@@ -83,7 +97,7 @@ pub fn key_values_from_py(mapping: &Bound<'_, PyAny>) -> PyResult<Vec<KeyValue>>
         .map(|(key, val)| {
             Ok(KeyValue {
                 key: key.str()?.extract()?,
-                value: Some(any_value_from_py(&val)?),
+                value: Some(any_value_from_py(&val, depth)?),
                 ..Default::default()
             })
         })
@@ -92,7 +106,7 @@ pub fn key_values_from_py(mapping: &Bound<'_, PyAny>) -> PyResult<Vec<KeyValue>>
 
 pub fn resource_from_py(resource: &Bound<'_, PyAny>) -> PyResult<Resource> {
     Ok(Resource {
-        attributes: key_values_from_py(&resource.getattr("attributes")?)?,
+        attributes: key_values_from_py(&resource.getattr("attributes")?, 0)?,
         ..Default::default()
     })
 }
@@ -107,8 +121,8 @@ pub fn encode_process_context(resource: Resource, attributes: Vec<KeyValue>) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::encode_process_context;
-    use crate::proto::common::v1::{AnyValue, KeyValue, any_value};
+    use super::{MAX_NESTING_DEPTH, encode_process_context};
+    use crate::proto::common::v1::{AnyValue, KeyValue, KeyValueList, any_value};
     use crate::proto::processcontext::v1development::ProcessContext;
     use crate::proto::resource::v1::Resource;
     use prost::Message;
@@ -198,5 +212,27 @@ mod tests {
             attrs[0].value.as_ref().unwrap().value,
             Some(any_value::Value::BytesValue(ref b)) if b == &[1, 2, 3]
         ));
+    }
+
+    #[test]
+    fn encode_resource_at_nesting_limit_is_decodable() {
+        let mut kv = string_kv("leaf", "value");
+        for _ in 0..MAX_NESTING_DEPTH {
+            kv = KeyValue {
+                key: "nested".into(),
+                value: Some(AnyValue {
+                    value: Some(any_value::Value::KvlistValue(KeyValueList {
+                        values: vec![kv],
+                    })),
+                }),
+                ..Default::default()
+            };
+        }
+        let resource = Resource {
+            attributes: vec![kv],
+            ..Default::default()
+        };
+        let bytes = encode_process_context(resource, vec![]);
+        ProcessContext::decode(bytes.as_slice()).unwrap();
     }
 }

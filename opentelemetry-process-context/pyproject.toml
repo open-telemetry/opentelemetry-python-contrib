@@ -42,6 +42,7 @@ manifest-path = "rust/Cargo.toml"
 
 [tool.uv]
 cache-keys = [
+  { file = "pyproject.toml" },
   { file = "rust/Cargo.toml" },
   { file = "rust/Cargo.lock" },
   { file = "rust/src/**" },
