@@ -26,9 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "protobuf>=5.0, < 7.0",
+  "protobuf>=5.0, < 8.0",
   "requests ~= 2.0",
-  "uuid-utils>=0.11.0, <1"
 ]
 
 [project.urls]

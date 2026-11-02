@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-django`: make captured request headers available to samplers

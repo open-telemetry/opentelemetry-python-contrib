@@ -9,6 +9,8 @@ from sqlalchemy.exc import ProgrammingError
 
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_CLIENT_CONNECTION_POOL_NAME,
+    DB_CLIENT_CONNECTION_STATE,
     DB_NAME,
     DB_STATEMENT,
 )
@@ -109,16 +111,23 @@ class PostgresMetricsTestCase(PostgresTestCase):
         )
         metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
+        self.assertEqual(metrics[0].name, "db.client.connection.count")
         self.assert_metric_expected(
             metrics[0],
             [
                 self.create_number_data_point(
                     value=0,
-                    attributes={"pool.name": pool_name, "state": "idle"},
+                    attributes={
+                        DB_CLIENT_CONNECTION_POOL_NAME: pool_name,
+                        DB_CLIENT_CONNECTION_STATE: "idle",
+                    },
                 ),
                 self.create_number_data_point(
                     value=0,
-                    attributes={"pool.name": pool_name, "state": "used"},
+                    attributes={
+                        DB_CLIENT_CONNECTION_POOL_NAME: pool_name,
+                        DB_CLIENT_CONNECTION_STATE: "used",
+                    },
                 ),
             ],
         )

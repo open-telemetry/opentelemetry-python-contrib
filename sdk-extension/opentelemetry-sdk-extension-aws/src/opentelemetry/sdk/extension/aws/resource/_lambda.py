@@ -31,7 +31,7 @@ class AwsLambdaResourceDetector(ResourceDetector):
                     ResourceAttributes.FAAS_NAME: environ["AWS_LAMBDA_FUNCTION_NAME"],
                     ResourceAttributes.FAAS_VERSION: environ["AWS_LAMBDA_FUNCTION_VERSION"],
                     ResourceAttributes.FAAS_INSTANCE: environ["AWS_LAMBDA_LOG_STREAM_NAME"],
-                    ResourceAttributes.FAAS_MAX_MEMORY: int(environ["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]),
+                    ResourceAttributes.FAAS_MAX_MEMORY: int(environ["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]) * 1024 * 1024,
                 }
             )
         # pylint: disable=broad-except

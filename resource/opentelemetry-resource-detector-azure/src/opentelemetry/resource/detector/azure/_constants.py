@@ -8,6 +8,9 @@ from opentelemetry.semconv.resource import ResourceAttributes
 # Azure Kubernetes
 
 _AKS_ARM_NAMESPACE_ID = "AKS_ARM_NAMESPACE_ID"
+_AKS_CLUSTER_RESOURCE_ID = "CLUSTER_RESOURCE_ID"
+_AKS_CLUSTER_RESOURCE_ID_KEY = "clusterResourceId"
+_AKS_METADATA_FILE_PATH = "/etc/kubernetes/aks-cluster-metadata"
 
 # AppService
 

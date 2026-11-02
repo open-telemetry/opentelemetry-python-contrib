@@ -45,6 +45,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
@@ -63,8 +64,9 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -91,6 +93,14 @@ class HTTPMethod(Enum):
 
 
 SCOPE = "opentelemetry.instrumentation.aiohttp_server"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 @pytest.fixture(name="test_base", scope="function")
@@ -473,6 +483,82 @@ async def test_custom_request_headers(test_base: TestBase, aiohttp_server, monke
     assert "http.request.header.custom_test_header_3" not in span.attributes
 
     AioHttpServerInstrumentor().uninstrument()
+
+
+async def _create_server_with_sampler(aiohttp_server, monkeypatch, sampler):
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+        ".*my-secret.*",
+    )
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+        "Custom-Test-Header-1,Regex-Test-Header-.*,.*my-secret.*",
+    )
+    tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+    AioHttpServerInstrumentor().instrument(tracer_provider=tracer_provider)
+
+    app = aiohttp.web.Application()
+    app.router.add_get("/status/200", default_handler)
+    server = await aiohttp_server(app)
+    return server, exporter
+
+
+@pytest.mark.asyncio
+async def test_custom_request_headers_passed_to_sampler(test_base: TestBase, aiohttp_server, monkeypatch):
+    expected = {
+        "http.request.header.custom_test_header_1": ["test-header-value-1"],
+        "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+        "http.request.header.my_secret_header": ["[REDACTED]"],
+    }
+    sampler = CapturingSampler()
+    server, exporter = await _create_server_with_sampler(aiohttp_server, monkeypatch, sampler)
+
+    try:
+        url = f"http://{server.host}:{server.port}/status/200"
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                "custom-test-header-1": "test-header-value-1",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "My-Secret-Header": "My Secret Value",
+                "Uncaptured-Header": "Uncaptured Value",
+            }
+            async with session.get(url, headers=headers) as response:
+                assert response.status == 200
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+
+    assert sampler.kind == SpanKind.SERVER
+    assert _request_header_attributes(sampler.attributes) == expected
+
+    spans = exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert spans[0].kind == SpanKind.SERVER
+    assert _request_header_attributes(spans[0].attributes) == {key: tuple(value) for key, value in expected.items()}
+
+    metrics = test_base.get_sorted_metrics(SCOPE)
+    assert metrics
+    for metric in metrics:
+        for point in metric.data.data_points:
+            assert _request_header_attributes(point.attributes) == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value, expected_span_count", [("sample", 1), ("drop", 0)])
+async def test_custom_request_headers_control_sampling(
+    test_base: TestBase, aiohttp_server, monkeypatch, value, expected_span_count
+):
+    sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+    server, exporter = await _create_server_with_sampler(aiohttp_server, monkeypatch, sampler)
+
+    try:
+        url = f"http://{server.host}:{server.port}/status/200"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers={"custom-test-header-1": value}) as response:
+                assert response.status == 200
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+
+    assert len(exporter.get_finished_spans()) == expected_span_count
 
 
 @pytest.mark.asyncio
