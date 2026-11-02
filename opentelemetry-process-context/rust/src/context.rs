@@ -53,6 +53,9 @@ struct Region {
     /// PID of the process that created this region. Used to detect a region
     /// inherited across a `fork`, whose `ptr` must not be dereferenced.
     owner_pid: u32,
+    /// Timestamp most recently written to the header. Updates must publish a
+    /// strictly greater value so readers can always detect a change.
+    published_at_ns: u64,
     #[allow(unused)]
     payload: Vec<u8>,
 }
@@ -176,6 +179,7 @@ fn publish_new(
     *guard = Some(Region {
         ptr,
         owner_pid,
+        published_at_ns: timestamp,
         payload,
     });
     Ok(())
@@ -193,7 +197,9 @@ fn publish_existing(
     payload: Vec<u8>,
     payload_size: u32,
 ) -> Result<(), PublishError> {
-    let timestamp = get_boottime_ns()?;
+    // Always advance past the previous timestamp, even if the clock has not, so
+    // a reader comparing timestamps across this update detects the change.
+    let timestamp = get_boottime_ns()?.max(region.published_at_ns.saturating_add(1));
 
     // SAFETY: `region.ptr` points to the live header mapping with exactly
     // `HEADER_SIZE` bytes, writable for the process lifetime.
@@ -220,6 +226,7 @@ fn publish_existing(
     // Rename the mapping unconditionally (failures ignored per spec).
     name_mapping(region.ptr, HEADER_SIZE);
 
+    region.published_at_ns = timestamp;
     // Drop the old payload only after the new timestamp is live.
     region.payload = payload;
     Ok(())
@@ -414,6 +421,35 @@ mod tests {
         publish(b"test".to_vec()).unwrap();
         unpublish().unwrap();
         assert!(matches!(unpublish(), Err(PublishError::NotPublished)));
+    }
+
+    #[test]
+    #[serial]
+    fn update_advances_timestamp_when_clock_has_not() {
+        let _ = unpublish();
+        publish(b"first".to_vec()).unwrap();
+
+        // Place the previous timestamp ahead of the clock (by an hour), since
+        // the real clock cannot be forced to repeat a value.
+        let previous = super::get_boottime_ns().unwrap() + 3_600_000_000_000;
+        super::lock_mapping().as_mut().unwrap().published_at_ns = previous;
+
+        publish(b"second".to_vec()).unwrap();
+
+        {
+            let guard = super::lock_mapping();
+            let region = guard.as_ref().unwrap();
+            assert_eq!(region.published_at_ns, previous + 1);
+            // SAFETY: the mapping stays live while the guard is held.
+            let header_timestamp = unsafe {
+                let header = region.ptr.as_ptr().cast::<super::Header>();
+                (*std::ptr::addr_of!((*header).monotonic_published_at_ns))
+                    .load(std::sync::atomic::Ordering::Acquire)
+            };
+            assert_eq!(header_timestamp, previous + 1);
+        }
+
+        unpublish().unwrap();
     }
 
     #[test]

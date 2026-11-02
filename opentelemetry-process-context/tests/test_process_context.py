@@ -223,7 +223,7 @@ class TestPublishContext(unittest.TestCase):
             self.assertEqual(after["version"], 2)
             self.assertNotEqual(after["payload_ptr"], 0)
             self.assertGreater(before["timestamp_ns"], 0)
-            self.assertGreaterEqual(after["timestamp_ns"], before["timestamp_ns"])
+            self.assertGreater(after["timestamp_ns"], before["timestamp_ns"])
             self.assertIn(b"otel-second", after["payload"])
 
     @unittest.skipUnless(sys.platform.startswith("linux"), "requires /proc/<pid>/{maps,mem}")
