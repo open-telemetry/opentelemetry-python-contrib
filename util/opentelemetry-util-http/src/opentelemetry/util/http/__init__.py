@@ -56,7 +56,15 @@ _active_requests_count_attrs = {
     HTTP_SERVER_NAME,
 }
 
-PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
+PARAMS_TO_REDACT = [
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature",
+    "X-Amz-Signature",
+    "X-Amz-Credential",
+    "X-Amz-Security-Token",
+]
 
 
 class ExcludeList:
