@@ -6,6 +6,7 @@ from unittest import TestCase, mock
 
 from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
 
+from opentelemetry.context import Context
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
@@ -18,7 +19,14 @@ from opentelemetry.instrumentation.kafka.utils import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind, StatusCode
+from opentelemetry.trace import (
+    NonRecordingSpan,
+    SpanContext,
+    SpanKind,
+    StatusCode,
+    TraceFlags,
+    set_span_in_context,
+)
 
 
 class TestUtils(TestCase):
@@ -147,24 +155,59 @@ class TestUtils(TestCase):
             bootstrap_servers,
             self.args,
             self.kwargs,
+            use_message_context_as_parent=False,
         )
 
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    def test_wrap_next_with_opt_in(
+        self,
+        extract_bootstrap_servers: mock.MagicMock,
+        _create_consumer_span: mock.MagicMock,
+        extract: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.MagicMock()
+        original_next_callback = mock.MagicMock()
+        kafka_consumer = mock.MagicMock()
+
+        wrapped_next = _wrap_next(tracer, consume_hook, use_message_context_as_parent=True)
+        record = wrapped_next(original_next_callback, kafka_consumer, self.args, self.kwargs)
+
+        _create_consumer_span.assert_called_once_with(
+            tracer,
+            consume_hook,
+            record,
+            extract.return_value,
+            extract_bootstrap_servers.return_value,
+            self.args,
+            self.kwargs,
+            use_message_context_as_parent=True,
+        )
+
+    @mock.patch("opentelemetry.trace.get_current_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.context.detach")
-    def test_create_consumer_span(
+    def test_create_consumer_span_default(
         self,
         detach: mock.MagicMock,
         enrich_span: mock.MagicMock,
         attach: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
+        get_current_span: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+
+        mock_span_context = mock.MagicMock()
+        mock_span_context.is_valid = True
+        get_current_span.return_value.get_span_context.return_value = mock_span_context
 
         _create_consumer_span(
             tracer,
@@ -178,17 +221,80 @@ class TestUtils(TestCase):
 
         expected_span_name = _get_span_name("receive", record.topic)
 
-        tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name,
-            context=extracted_context,
-            kind=SpanKind.CONSUMER,
-        )
+        tracer.start_as_current_span.assert_called_once()
+        call_args = tracer.start_as_current_span.call_args
+        self.assertEqual(call_args.args[0], expected_span_name)
+        self.assertIsNone(call_args.kwargs["context"])
+        self.assertEqual(call_args.kwargs["kind"], SpanKind.CONSUMER)
+        self.assertEqual(len(call_args.kwargs["links"]), 1)
+        self.assertEqual(call_args.kwargs["links"][0].context, mock_span_context)
+
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
         enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
+        detach.assert_called_once_with(attach.return_value)
+
+    @mock.patch("opentelemetry.trace.get_current_span")
+    @mock.patch("opentelemetry.trace.set_span_in_context")
+    @mock.patch("opentelemetry.context.attach")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.context.detach")
+    def test_create_consumer_span_opt_in(
+        self,
+        detach: mock.MagicMock,
+        enrich_span: mock.MagicMock,
+        attach: mock.MagicMock,
+        set_span_in_context: mock.MagicMock,
+        get_current_span: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.MagicMock()
+        bootstrap_servers = mock.MagicMock()
+        extracted_context = mock.MagicMock()
+        record = mock.MagicMock()
+
+        mock_span_context = mock.MagicMock()
+        mock_span_context.is_valid = True
+        ambient_span_context = mock.MagicMock()
+        ambient_span_context.is_valid = True
+
+        def fake_get_current_span(ctx=None):
+            mock_s = mock.MagicMock()
+            if ctx is extracted_context:
+                mock_s.get_span_context.return_value = mock_span_context
+            else:
+                mock_s.get_span_context.return_value = ambient_span_context
+            return mock_s
+
+        get_current_span.side_effect = fake_get_current_span
+
+        _create_consumer_span(
+            tracer,
+            consume_hook,
+            record,
+            extracted_context,
+            bootstrap_servers,
+            self.args,
+            self.kwargs,
+            use_message_context_as_parent=True,
+        )
+
+        expected_span_name = _get_span_name("receive", record.topic)
+
+        tracer.start_as_current_span.assert_called_once()
+        call_args = tracer.start_as_current_span.call_args
+        self.assertEqual(call_args.args[0], expected_span_name)
+        self.assertEqual(call_args.kwargs["context"], extracted_context)
+        self.assertEqual(call_args.kwargs["kind"], SpanKind.CONSUMER)
+        self.assertEqual(len(call_args.kwargs["links"]), 1)
+        self.assertEqual(call_args.kwargs["links"][0].context, ambient_span_context)
+
+        span = tracer.start_as_current_span.return_value.__enter__()
+        set_span_in_context.assert_called_once_with(span, extracted_context)
+        attach.assert_called_once_with(set_span_in_context.return_value)
         detach.assert_called_once_with(attach.return_value)
 
     def test_extract_send_partition_reads_actual_partition_from_future(self):
@@ -309,3 +415,132 @@ class TestWrapSendSpanLifetime(TestBase):
         self.assertEqual(span.kind, SpanKind.PRODUCER)
         self.assertIs(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(len(span.events), 0)
+
+
+class TestConsumerSpanParenting(TestBase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.topic_name = "test_topic"
+        self.producer_trace_id = 0x12345678123456781234567812345678
+        self.producer_span_id = 0x1234567812345678
+        self.remote_span_context = SpanContext(
+            trace_id=self.producer_trace_id,
+            span_id=self.producer_span_id,
+            is_remote=True,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED),
+        )
+        self.record = mock.MagicMock()
+        self.record.topic = self.topic_name
+        self.record.partition = 0
+        self.extracted_context = set_span_in_context(NonRecordingSpan(self.remote_span_context))
+
+    def test_default_uses_ambient_and_links_message_context(self) -> None:
+        with self.tracer.start_as_current_span("ambient"):
+            _create_consumer_span(
+                self.tracer,
+                None,
+                self.record,
+                self.extracted_context,
+                ["localhost:9092"],
+                [self.topic_name],
+                {},
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        consumer_span = spans[0]
+        ambient_finished = spans[1]
+
+        self.assertEqual(consumer_span.name, f"{self.topic_name} receive")
+        self.assertEqual(consumer_span.parent.span_id, ambient_finished.context.span_id)
+        self.assertEqual(len(consumer_span.links), 1)
+        self.assertEqual(consumer_span.links[0].context.trace_id, self.producer_trace_id)
+        self.assertEqual(consumer_span.links[0].context.span_id, self.producer_span_id)
+
+    def test_explicit_false_behaves_identically_to_omitted(self) -> None:
+        _create_consumer_span(
+            self.tracer,
+            None,
+            self.record,
+            self.extracted_context,
+            ["localhost:9092"],
+            [self.topic_name],
+            {},
+            use_message_context_as_parent=False,
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        consumer_span = spans[0]
+
+        self.assertIsNone(consumer_span.parent)
+        self.assertNotEqual(consumer_span.context.trace_id, self.producer_trace_id)
+        self.assertEqual(len(consumer_span.links), 1)
+        self.assertEqual(consumer_span.links[0].context.trace_id, self.producer_trace_id)
+
+    def test_opt_in_uses_message_context_as_parent_and_links_ambient(self) -> None:
+        with self.tracer.start_as_current_span("ambient"):
+            _create_consumer_span(
+                self.tracer,
+                None,
+                self.record,
+                self.extracted_context,
+                ["localhost:9092"],
+                [self.topic_name],
+                {},
+                use_message_context_as_parent=True,
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        consumer_span = spans[0]
+        ambient_finished = spans[1]
+
+        self.assertEqual(consumer_span.context.trace_id, self.producer_trace_id)
+        self.assertEqual(consumer_span.parent.span_id, self.producer_span_id)
+        self.assertEqual(len(consumer_span.links), 1)
+        self.assertEqual(consumer_span.links[0].context.span_id, ambient_finished.context.span_id)
+
+    def test_opt_in_without_ambient_span(self) -> None:
+        _create_consumer_span(
+            self.tracer,
+            None,
+            self.record,
+            self.extracted_context,
+            ["localhost:9092"],
+            [self.topic_name],
+            {},
+            use_message_context_as_parent=True,
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        consumer_span = spans[0]
+
+        self.assertEqual(consumer_span.context.trace_id, self.producer_trace_id)
+        self.assertEqual(consumer_span.parent.span_id, self.producer_span_id)
+        self.assertEqual(len(consumer_span.links), 0)
+
+    def test_opt_in_with_invalid_context_creates_root_or_uses_ambient(self) -> None:
+        invalid_context = Context()
+
+        with self.tracer.start_as_current_span("ambient"):
+            _create_consumer_span(
+                self.tracer,
+                None,
+                self.record,
+                invalid_context,
+                ["localhost:9092"],
+                [self.topic_name],
+                {},
+                use_message_context_as_parent=True,
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        consumer_span = spans[0]
+        ambient_finished = spans[1]
+
+        self.assertEqual(consumer_span.parent.span_id, ambient_finished.context.span_id)
+        self.assertEqual(len(consumer_span.links), 0)

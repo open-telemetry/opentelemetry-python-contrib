@@ -22,7 +22,7 @@ from opentelemetry.context import Context
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.attributes import server_attributes
-from opentelemetry.trace import Tracer
+from opentelemetry.trace import Link, Tracer
 from opentelemetry.trace.span import Span
 
 if TYPE_CHECKING:
@@ -426,11 +426,26 @@ async def _create_consumer_span(
     consumer_group: str | None,
     args: tuple[aiokafka.TopicPartition, ...],
     kwargs: dict[str, Any],
+    use_message_context_as_parent: bool = False,
+    is_single_record: bool = True,
 ) -> trace.Span:
+    parent_context = None
+    links: list[Link] = []
+
+    message_span_context = trace.get_current_span(extracted_context).get_span_context()
+    if use_message_context_as_parent and is_single_record and message_span_context.is_valid:
+        parent_context = extracted_context
+        ambient_span_context = trace.get_current_span().get_span_context()
+        if ambient_span_context.is_valid:
+            links.append(Link(context=ambient_span_context))
+    elif message_span_context.is_valid:
+        links.append(Link(context=message_span_context))
+
     span_name = _get_span_name("receive", record.topic)
     with tracer.start_as_current_span(
         span_name,
-        context=extracted_context,
+        context=parent_context,
+        links=links,
         kind=trace.SpanKind.CONSUMER,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
@@ -457,7 +472,9 @@ async def _create_consumer_span(
 
 
 def _wrap_getone(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
+    use_message_context_as_parent: bool = False,
 ) -> Callable[..., Awaitable[aiokafka.ConsumerRecord[object, object]]]:
     async def _traced_getone(
         func: AIOKafkaGetOneProto,
@@ -483,6 +500,8 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
                 consumer_group,
                 args,
                 kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
+                is_single_record=True,
             )
         return record
 
@@ -490,7 +509,9 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
 
 
 def _wrap_getmany(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
+    use_message_context_as_parent: bool = False,
 ) -> Callable[
     ...,
     Awaitable[
@@ -512,6 +533,8 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
+            total_records = sum(len(r) for r in records.values())
+            is_single_record = total_records == 1
 
             span_name = _get_span_name(
                 "receive",
@@ -523,7 +546,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                     bootstrap_servers=bootstrap_servers,
                     client_id=client_id,
                     consumer_group=consumer_group,
-                    message_count=sum(len(r) for r in records.values()),
+                    message_count=total_records,
                 )
 
                 for topic, topic_records in records.items():
@@ -551,6 +574,8 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                                 consumer_group,
                                 args,
                                 kwargs,
+                                use_message_context_as_parent=use_message_context_as_parent,
+                                is_single_record=is_single_record,
                             )
                             topic_span.add_link(record_span.get_span_context())
         return records

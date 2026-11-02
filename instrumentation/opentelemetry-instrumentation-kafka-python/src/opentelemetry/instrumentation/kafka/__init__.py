@@ -47,6 +47,12 @@ The ``_instrument()`` method accepts the following keyword args:
 
       def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
 
+- **use_message_context_as_parent** (bool) - an optional boolean keyword argument (default: False) to control
+  whether the message creation context is used as the parent for the consumer span. When False (the default),
+  consumer spans use the ambient context as parent (or create a root span) and link to the message creation
+  context. When True, single-record consumer spans use the message creation context as parent and link to any
+  active ambient context.
+
 For example:
 
 .. code:: python
@@ -111,10 +117,12 @@ class KafkaInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global.
                 ``produce_hook``: a callable to be executed just before producing a message
                 ``consume_hook``: a callable to be executed just after consuming a message
+                ``use_message_context_as_parent``: a bool (default: False) to control consumer span parenting
         """
         tracer_provider = kwargs.get("tracer_provider")
         produce_hook = kwargs.get("produce_hook")
         consume_hook = kwargs.get("consume_hook")
+        use_message_context_as_parent = kwargs.get("use_message_context_as_parent", False)
 
         tracer = trace.get_tracer(
             __name__,
@@ -127,7 +135,11 @@ class KafkaInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",
-            _wrap_next(tracer, consume_hook),
+            _wrap_next(
+                tracer,
+                consume_hook,
+                use_message_context_as_parent=use_message_context_as_parent,
+            ),
         )
 
     def _uninstrument(self, **kwargs):

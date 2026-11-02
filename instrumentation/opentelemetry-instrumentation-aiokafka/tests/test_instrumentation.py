@@ -180,8 +180,15 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         next_record_mock.assert_awaited_with(())
 
         first_span = self.memory_exporter.get_finished_spans()[0]
-        self.assertEqual(
+        # By default, use_message_context_as_parent is False:
+        # The consumer span is a root (or uses ambient) and links to the message context
+        self.assertNotEqual(
             format_trace_id(first_span.get_span_context().trace_id),
+            "03afa25236b8cd948fa853d67038ac79",
+        )
+        self.assertEqual(len(first_span.links), 1)
+        self.assertEqual(
+            format_trace_id(first_span.links[0].context.trace_id),
             "03afa25236b8cd948fa853d67038ac79",
         )
 
@@ -474,3 +481,80 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             )
         finally:
             await producer.stop()
+
+    async def test_getone_opt_in_message_context_as_parent(self) -> None:
+        AIOKafkaInstrumentor().uninstrument()
+        AIOKafkaInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            use_message_context_as_parent=True,
+        )
+
+        consumer = await self.consumer_factory()
+        self.addAsyncCleanup(consumer.stop)
+        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
+
+        self.memory_exporter.clear()
+
+        next_record_mock.side_effect = [
+            self.consumer_record_factory(
+                1,
+                headers=(
+                    (
+                        "traceparent",
+                        b"00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01",
+                    ),
+                ),
+            ),
+        ]
+
+        await consumer.getone()
+        first_span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(
+            format_trace_id(first_span.get_span_context().trace_id),
+            "03afa25236b8cd948fa853d67038ac79",
+        )
+        self.assertEqual(len(first_span.links), 0)
+
+    async def test_getmany_opt_in_multi_record_batch_still_uses_links(self) -> None:
+        AIOKafkaInstrumentor().uninstrument()
+        AIOKafkaInstrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            use_message_context_as_parent=True,
+        )
+
+        consumer = await self.consumer_factory()
+        self.addAsyncCleanup(consumer.stop)
+        fetched_records_mock = cast(mock.AsyncMock, consumer._fetcher.fetched_records)
+
+        self.memory_exporter.clear()
+
+        fetched_records_mock.side_effect = [
+            self.consumer_batch_factory(
+                (
+                    (
+                        "traceparent",
+                        b"00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01",
+                    ),
+                ),
+                (),
+            ),
+        ]
+
+        await consumer.getmany()
+        spans = self.memory_exporter.get_finished_spans()
+        # Find the record span for topic_1
+        topic1_record_span = next(
+            s
+            for s in spans
+            if s.name == "topic_1 receive" and messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT not in s.attributes
+        )
+        # Multi-record batch span never adopts message context as parent even if opt-in is True
+        self.assertNotEqual(
+            format_trace_id(topic1_record_span.get_span_context().trace_id),
+            "03afa25236b8cd948fa853d67038ac79",
+        )
+        self.assertEqual(len(topic1_record_span.links), 1)
+        self.assertEqual(
+            format_trace_id(topic1_record_span.links[0].context.trace_id),
+            "03afa25236b8cd948fa853d67038ac79",
+        )

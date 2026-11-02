@@ -58,6 +58,12 @@ The ``_instrument()`` method accepts the following keyword args:
 
       async def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
 
+- **use_message_context_as_parent** (bool) - an optional boolean keyword argument (default: False) to control
+  whether the message creation context is used as the parent for the consumer span. When False (the default),
+  consumer spans use the ambient context as parent (or create a root span) and link to the message creation
+  context. When True, single-record consumer spans use the message creation context as parent and link to any
+  active ambient context.
+
 For example:
 
 .. code:: python
@@ -127,6 +133,7 @@ if TYPE_CHECKING:
         tracer_provider: trace.TracerProvider
         async_produce_hook: ProduceHookT
         async_consume_hook: ConsumeHookT
+        use_message_context_as_parent: bool
 
     class UninstrumentKwargs(TypedDict, total=False):
         pass
@@ -148,6 +155,7 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global.
                 ``async_produce_hook``: a callable to be executed just before producing a message
                 ``async_consume_hook``: a callable to be executed just after consuming a message
+                ``use_message_context_as_parent``: a bool (default: False) to control consumer span parenting
         """
         tracer_provider = kwargs.get("tracer_provider")
 
@@ -166,6 +174,8 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_27_0.value,
         )
 
+        use_message_context_as_parent = kwargs.get("use_message_context_as_parent", False)
+
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
             "send",
@@ -174,12 +184,20 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
             "getone",
-            _wrap_getone(tracer, async_consume_hook),
+            _wrap_getone(
+                tracer,
+                async_consume_hook,
+                use_message_context_as_parent=use_message_context_as_parent,
+            ),
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
             "getmany",
-            _wrap_getmany(tracer, async_consume_hook),
+            _wrap_getmany(
+                tracer,
+                async_consume_hook,
+                use_message_context_as_parent=use_message_context_as_parent,
+            ),
         )
 
     def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):

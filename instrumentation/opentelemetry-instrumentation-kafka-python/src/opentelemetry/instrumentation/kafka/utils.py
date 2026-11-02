@@ -11,7 +11,7 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Tracer
+from opentelemetry.trace import Link, Tracer
 from opentelemetry.trace.span import Span
 
 _LOG = getLogger(__name__)
@@ -144,11 +144,25 @@ def _create_consumer_span(
     bootstrap_servers,
     args,
     kwargs,
+    use_message_context_as_parent: bool = False,
 ):
+    parent_context = None
+    links = []
+
+    message_span_context = trace.get_current_span(extracted_context).get_span_context()
+    if use_message_context_as_parent and message_span_context.is_valid:
+        parent_context = extracted_context
+        ambient_span_context = trace.get_current_span().get_span_context()
+        if ambient_span_context.is_valid:
+            links.append(Link(context=ambient_span_context))
+    elif message_span_context.is_valid:
+        links.append(Link(context=message_span_context))
+
     span_name = _get_span_name("receive", record.topic)
     with tracer.start_as_current_span(
         span_name,
-        context=extracted_context,
+        context=parent_context,
+        links=links,
         kind=trace.SpanKind.CONSUMER,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
@@ -166,6 +180,7 @@ def _create_consumer_span(
 def _wrap_next(
     tracer: Tracer,
     consume_hook: ConsumeHookT,
+    use_message_context_as_parent: bool = False,
 ) -> Callable:
     def _traced_next(func, instance, args, kwargs):
         record = func(*args, **kwargs)
@@ -182,6 +197,7 @@ def _wrap_next(
                 bootstrap_servers,
                 args,
                 kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
             )
         return record
 

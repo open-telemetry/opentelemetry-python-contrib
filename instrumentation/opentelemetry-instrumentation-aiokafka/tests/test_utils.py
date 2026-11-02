@@ -176,6 +176,43 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group,
             self.args,
             self.kwargs,
+            use_message_context_as_parent=False,
+            is_single_record=True,
+        )
+
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
+    async def test_wrap_getone_with_opt_in(
+        self,
+        extract_consumer_group: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
+        extract_bootstrap_servers: mock.MagicMock,
+        _create_consumer_span: mock.AsyncMock,
+        extract: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.AsyncMock()
+        original_getone_callback = mock.AsyncMock()
+        kafka_consumer = mock.MagicMock()
+
+        wrapped_getone = _wrap_getone(tracer, consume_hook, use_message_context_as_parent=True)
+        record = await wrapped_getone(original_getone_callback, kafka_consumer, self.args, self.kwargs)
+
+        _create_consumer_span.assert_called_once_with(
+            tracer,
+            consume_hook,
+            record,
+            extract.return_value,
+            extract_bootstrap_servers.return_value,
+            extract_client_id.return_value,
+            extract_consumer_group.return_value,
+            self.args,
+            self.kwargs,
+            use_message_context_as_parent=True,
+            is_single_record=True,
         )
 
     @mock.patch("opentelemetry.propagate.extract")
@@ -233,18 +270,56 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group,
             self.args,
             self.kwargs,
+            use_message_context_as_parent=False,
+            is_single_record=True,
         )
 
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
+    async def test_wrap_getmany_multi_record_batch(
+        self,
+        extract_consumer_group: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
+        extract_bootstrap_servers: mock.MagicMock,
+        _enrich_getmany_poll_span: mock.MagicMock,
+        _enrich_getmany_topic_span: mock.MagicMock,
+        _create_consumer_span: mock.AsyncMock,
+        extract: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.AsyncMock()
+        rec1, rec2 = mock.MagicMock(), mock.MagicMock()
+        original_getmany_callback = mock.AsyncMock(
+            return_value={aiokafka.TopicPartition(topic="topic_1", partition=0): [rec1, rec2]}
+        )
+        kafka_consumer = mock.MagicMock()
+        _create_consumer_span.return_value = mock.MagicMock()
+
+        wrapped_getmany = _wrap_getmany(tracer, consume_hook, use_message_context_as_parent=True)
+        await wrapped_getmany(original_getmany_callback, kafka_consumer, self.args, self.kwargs)
+
+        self.assertEqual(_create_consumer_span.call_count, 2)
+        for c in _create_consumer_span.call_args_list:
+            self.assertFalse(c.kwargs["is_single_record"])
+            self.assertTrue(c.kwargs["use_message_context_as_parent"])
+
+    @mock.patch("opentelemetry.trace.get_current_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
     @mock.patch("opentelemetry.context.detach")
-    async def test_create_consumer_span(
+    async def test_create_consumer_span_default(
         self,
         detach: mock.MagicMock,
         enrich_span: mock.MagicMock,
         attach: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
+        get_current_span: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.AsyncMock()
@@ -253,6 +328,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         record = mock.MagicMock()
         client_id = mock.MagicMock()
         consumer_group = mock.MagicMock()
+
+        mock_span_context = mock.MagicMock()
+        mock_span_context.is_valid = True
+        get_current_span.return_value.get_span_context.return_value = mock_span_context
 
         await _create_consumer_span(
             tracer,
@@ -268,11 +347,14 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         expected_span_name = _get_span_name("receive", record.topic)
 
-        tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name,
-            context=extracted_context,
-            kind=SpanKind.CONSUMER,
-        )
+        tracer.start_as_current_span.assert_called_once()
+        call_args = tracer.start_as_current_span.call_args
+        self.assertEqual(call_args.args[0], expected_span_name)
+        self.assertIsNone(call_args.kwargs["context"])
+        self.assertEqual(call_args.kwargs["kind"], SpanKind.CONSUMER)
+        self.assertEqual(len(call_args.kwargs["links"]), 1)
+        self.assertEqual(call_args.kwargs["links"][0].context, mock_span_context)
+
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
@@ -289,6 +371,108 @@ class TestUtils(IsolatedAsyncioTestCase):
         )
         consume_hook.assert_awaited_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
+
+    @mock.patch("opentelemetry.trace.get_current_span")
+    @mock.patch("opentelemetry.trace.set_span_in_context")
+    @mock.patch("opentelemetry.context.attach")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
+    @mock.patch("opentelemetry.context.detach")
+    async def test_create_consumer_span_opt_in_single_record(
+        self,
+        detach: mock.MagicMock,
+        enrich_span: mock.MagicMock,
+        attach: mock.MagicMock,
+        set_span_in_context: mock.MagicMock,
+        get_current_span: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.AsyncMock()
+        bootstrap_servers = mock.MagicMock()
+        extracted_context = mock.MagicMock()
+        record = mock.MagicMock()
+        client_id = mock.MagicMock()
+        consumer_group = mock.MagicMock()
+
+        mock_span_context = mock.MagicMock()
+        mock_span_context.is_valid = True
+        ambient_span_context = mock.MagicMock()
+        ambient_span_context.is_valid = True
+
+        def fake_get_current_span(ctx=None):
+            mock_s = mock.MagicMock()
+            if ctx is extracted_context:
+                mock_s.get_span_context.return_value = mock_span_context
+            else:
+                mock_s.get_span_context.return_value = ambient_span_context
+            return mock_s
+
+        get_current_span.side_effect = fake_get_current_span
+
+        await _create_consumer_span(
+            tracer,
+            consume_hook,
+            record,
+            extracted_context,
+            bootstrap_servers,
+            client_id,
+            consumer_group,
+            self.args,
+            self.kwargs,
+            use_message_context_as_parent=True,
+            is_single_record=True,
+        )
+
+        tracer.start_as_current_span.assert_called_once()
+        call_args = tracer.start_as_current_span.call_args
+        self.assertEqual(call_args.kwargs["context"], extracted_context)
+        self.assertEqual(len(call_args.kwargs["links"]), 1)
+        self.assertEqual(call_args.kwargs["links"][0].context, ambient_span_context)
+
+    @mock.patch("opentelemetry.trace.get_current_span")
+    @mock.patch("opentelemetry.trace.set_span_in_context")
+    @mock.patch("opentelemetry.context.attach")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
+    @mock.patch("opentelemetry.context.detach")
+    async def test_create_consumer_span_opt_in_multi_record(
+        self,
+        detach: mock.MagicMock,
+        enrich_span: mock.MagicMock,
+        attach: mock.MagicMock,
+        set_span_in_context: mock.MagicMock,
+        get_current_span: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.AsyncMock()
+        bootstrap_servers = mock.MagicMock()
+        extracted_context = mock.MagicMock()
+        record = mock.MagicMock()
+        client_id = mock.MagicMock()
+        consumer_group = mock.MagicMock()
+
+        mock_span_context = mock.MagicMock()
+        mock_span_context.is_valid = True
+        get_current_span.return_value.get_span_context.return_value = mock_span_context
+
+        await _create_consumer_span(
+            tracer,
+            consume_hook,
+            record,
+            extracted_context,
+            bootstrap_servers,
+            client_id,
+            consumer_group,
+            self.args,
+            self.kwargs,
+            use_message_context_as_parent=True,
+            is_single_record=False,
+        )
+
+        tracer.start_as_current_span.assert_called_once()
+        call_args = tracer.start_as_current_span.call_args
+        # Multi-record batch span never adopts message context as parent
+        self.assertIsNone(call_args.kwargs["context"])
+        self.assertEqual(len(call_args.kwargs["links"]), 1)
+        self.assertEqual(call_args.kwargs["links"][0].context, mock_span_context)
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()
