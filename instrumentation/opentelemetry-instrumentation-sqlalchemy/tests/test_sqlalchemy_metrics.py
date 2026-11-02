@@ -206,7 +206,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
     def test_create_time_recorded_for_async_engine(self):
         async def run():
-            from sqlalchemy.ext.asyncio import (  # noqa: PLC0415
+            from sqlalchemy.ext.asyncio import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
                 create_async_engine,
             )
 

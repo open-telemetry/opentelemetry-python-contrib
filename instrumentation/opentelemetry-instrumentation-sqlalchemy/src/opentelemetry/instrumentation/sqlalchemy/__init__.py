@@ -53,6 +53,9 @@ takes to open a new DBAPI connection is reported as the
 `database semantic conventions
 <https://opentelemetry.io/docs/specs/semconv/database/>`_ for more information.
 
+``db.client.connection.idle.min`` is not reported, because SQLAlchemy pools
+have no minimum idle setting.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
