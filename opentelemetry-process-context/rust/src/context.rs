@@ -98,6 +98,9 @@ pub enum PublishError {
     Alloc,
     /// `madvise(MADV_DONTFORK)` failed.
     Madvise,
+    /// `prctl` could not name a mapping that has no memfd name either, so no
+    /// reader could discover it.
+    NameMapping,
     /// The monotonic clock could not be read for the publish timestamp.
     Clock,
     /// `munmap` of the header mapping failed during unpublish.
@@ -117,6 +120,9 @@ impl From<PublishError> for PyErr {
             PublishError::Madvise => {
                 PyOSError::new_err("madvise(MADV_DONTFORK) failed for the process context mapping")
             }
+            PublishError::NameMapping => PyOSError::new_err(
+                "failed to name the process context mapping and no memfd was available",
+            ),
             PublishError::Clock => {
                 PyOSError::new_err("failed to read the monotonic clock for the process context")
             }
@@ -143,7 +149,12 @@ fn publish_new(
 ) -> Result<(), PublishError> {
     let timestamp = get_boottime_ns()?;
 
-    let ptr = alloc_region()?;
+    let len = NonZeroUsize::new(HEADER_SIZE).unwrap();
+    let memfd_ptr = try_memfd_mapping(len);
+    let ptr = match memfd_ptr {
+        Some(ptr) => ptr,
+        None => alloc_anonymous_region(len)?,
+    };
 
     // `ptr` is now a live mapping we own but have not yet stored in `guard`.
     // If advising fails, unmap it before propagating so it does not leak.
@@ -172,9 +183,15 @@ fn publish_new(
         published_at.store(timestamp, Ordering::Release);
     }
 
-    // Best effort naming so readers can find the mapping even without a memfd
-    // path, failures are ignored per the spec.
-    name_mapping(ptr, HEADER_SIZE);
+    // The mapping is discoverable through its memfd name or its prctl name. With
+    // neither, no reader can find it, so publication has failed.
+    if !name_mapping(ptr, HEADER_SIZE) && memfd_ptr.is_none() {
+        // SAFETY: `ptr`/`HEADER_SIZE` describe the mapping we just created.
+        unsafe {
+            let _ = nix::sys::mman::munmap(ptr, HEADER_SIZE);
+        }
+        return Err(PublishError::NameMapping);
+    }
 
     *guard = Some(Region {
         ptr,
@@ -223,7 +240,8 @@ fn publish_existing(
         published_at.store(timestamp, Ordering::Release);
     }
 
-    // Rename the mapping unconditionally (failures ignored per spec).
+    // Rename the mapping unconditionally. Failures are ignored per spec: the
+    // mapping was already made discoverable when it was created.
     name_mapping(region.ptr, HEADER_SIZE);
 
     region.published_at_ns = timestamp;
@@ -286,15 +304,9 @@ pub fn unpublish() -> Result<(), PublishError> {
     unsafe { nix::sys::mman::munmap(region.ptr, HEADER_SIZE) }.map_err(|_| PublishError::Munmap)
 }
 
-/// Allocate the 32-byte header mapping: a `memfd`-backed mapping on Linux (so
-/// it shows up in `/proc/<pid>/maps`), falling back to an anonymous mapping.
-fn alloc_region() -> Result<NonNull<c_void>, PublishError> {
-    let len = NonZeroUsize::new(HEADER_SIZE).unwrap();
-
-    if let Some(ptr) = try_memfd_mapping(len) {
-        return Ok(ptr);
-    }
-
+/// Allocate an anonymous header mapping, the fallback for when a `memfd`-backed
+/// mapping is unavailable. It is only discoverable once named by `name_mapping`.
+fn alloc_anonymous_region(len: NonZeroUsize) -> Result<NonNull<c_void>, PublishError> {
     // SAFETY: a fresh anonymous mapping with a valid, non-zero length.
     unsafe {
         mmap_anonymous(
@@ -370,23 +382,27 @@ fn try_memfd_mapping(_len: NonZeroUsize) -> Option<NonNull<c_void>> {
     None
 }
 
-/// Name the mapping `OTEL_CTX` via `prctl(PR_SET_VMA_ANON_NAME)`.
+/// Name the mapping `OTEL_CTX` via `prctl(PR_SET_VMA_ANON_NAME)`, returning
+/// whether the kernel accepted the name.
 #[cfg(target_os = "linux")]
-fn name_mapping(ptr: NonNull<c_void>, len: usize) {
+fn name_mapping(ptr: NonNull<c_void>, len: usize) -> bool {
     const NAME: &core::ffi::CStr = c"OTEL_CTX";
     unsafe {
-        let _ = nix::libc::prctl(
+        nix::libc::prctl(
             PR_SET_VMA,
             PR_SET_VMA_ANON_NAME,
             ptr.as_ptr() as nix::libc::c_ulong,
             len as nix::libc::c_ulong,
             NAME.as_ptr() as nix::libc::c_ulong,
-        );
+        ) == 0
     }
 }
 
+/// Mappings cannot be named outside Linux, so this is not treated as a failure.
 #[cfg(not(target_os = "linux"))]
-fn name_mapping(_ptr: NonNull<c_void>, _len: usize) {}
+fn name_mapping(_ptr: NonNull<c_void>, _len: usize) -> bool {
+    true
+}
 
 #[cfg(test)]
 mod tests {

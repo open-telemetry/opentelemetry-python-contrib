@@ -19,7 +19,8 @@ def publish_context(resource: Resource, attributes: Attributes = None) -> None:
     :param resource: The SDK resource whose attributes are to be published.
     :param attributes: Optional supplementary attributes to share with external
         readers.
-    :raises OSError: If the memory mapping or clock could not be initialized.
+    :raises OSError: If the memory mapping or clock could not be initialized
+        or the mapping could not be made discoverable by readers.
     :raises ValueError: If the encoded context exceeds 4 GiB.
     """
 

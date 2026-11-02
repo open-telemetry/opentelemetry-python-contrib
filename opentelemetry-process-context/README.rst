@@ -28,7 +28,9 @@ Platform Requirements
 
 This package targets Linux. On Linux the mapping is created via ``memfd`` so it
 appears as a named entry (``/memfd:OTEL_CTX``) in ``/proc/<pid>/maps``, and
-``MADV_DONTFORK`` prevents child processes from inheriting it. A fallback to an
+``MADV_DONTFORK`` prevents child processes from inheriting it. If ``memfd`` is
+unavailable, an anonymous ``mmap`` named via ``prctl`` is used instead.
+``publish_context`` raises ``OSError`` if that naming also fails. A fallback to an
 anonymous ``mmap`` is provided for other Unix-like systems, non-Unix and 32-bit
 platforms raise ``RuntimeError``.
 
