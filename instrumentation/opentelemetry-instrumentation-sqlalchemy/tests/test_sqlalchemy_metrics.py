@@ -1,16 +1,23 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import sqlite3
+import time
+
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.sdk.metrics.export import Histogram
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
 CONNECTION_COUNT = "db.client.connection.count"
 CONNECTIONS_USAGE = "db.client.connections.usage"
+CONNECTION_CREATE_TIME = "db.client.connection.create_time"
 POOL_NAME = "db.client.connection.pool.name"
 STATE = "db.client.connection.state"
 
@@ -26,12 +33,16 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    def get_metric(self, name):
+        metrics = [m for m in self.get_sorted_metrics(SCOPE) if m.name == name]
+        self.assertLessEqual(len(metrics), 1)
+        return metrics[0] if metrics else None
+
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
-        metrics = self.get_sorted_metrics(SCOPE)
-        self.assertEqual(len(metrics), 1)
-        self.assertEqual(metrics[0].name, CONNECTION_COUNT)
+        metric = self.get_metric(CONNECTION_COUNT)
+        self.assertIsNotNone(metric)
         self.assert_metric_expected(
-            metrics[0],
+            metric,
             [
                 self.create_number_data_point(
                     value=idle,
@@ -147,3 +158,120 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertIn(CONNECTION_COUNT, metric_names)
         self.assertNotIn(CONNECTIONS_USAGE, metric_names)
+
+    def test_create_time_recorded_on_new_connection(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        self.assertIsNone(self.get_metric(CONNECTION_CREATE_TIME))
+
+        with engine.connect():
+            pass
+        # Reusing the pooled connection does not create a new one
+        with engine.connect():
+            pass
+
+        metric = self.get_metric(CONNECTION_CREATE_TIME)
+        self.assertIsNotNone(metric)
+        self.assertEqual(metric.unit, "s")
+        self.assertIsInstance(metric.data, Histogram)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        point = data_points[0]
+        self.assertEqual(dict(point.attributes), {POOL_NAME: pool_name})
+        self.assertIsInstance(point.attributes[POOL_NAME], str)
+        self.assertEqual(point.count, 1)
+        self.assertIsInstance(point.sum, float)
+        self.assertGreaterEqual(point.sum, 0)
+
+    def test_create_time_recorded_per_new_connection(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        with engine.connect():
+            with engine.connect():
+                pass
+
+        metric = self.get_metric(CONNECTION_CREATE_TIME)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        self.assertEqual(data_points[0].count, 2)
+
+    def test_create_time_recorded_for_async_engine(self):
+        async def run():
+            from sqlalchemy.ext.asyncio import (  # noqa: PLC0415
+                create_async_engine,
+            )
+
+            engine = create_async_engine(
+                "sqlite+aiosqlite:///:memory:",
+                pool_logging_name="pool_test_name",
+            )
+            async with engine.connect():
+                pass
+            await engine.dispose()
+
+        asyncio.run(run())
+
+        metric = self.get_metric(CONNECTION_CREATE_TIME)
+        self.assertIsNotNone(metric)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: "pool_test_name"})
+
+    def test_create_time_excludes_other_connect_listeners(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+        slow_listener_seconds = 0.2
+
+        def slow_connect_listener(_dbapi_connection, _connection_record):
+            time.sleep(slow_listener_seconds)
+
+        sqlalchemy.event.listen(engine, "connect", slow_connect_listener)
+        SQLAlchemyInstrumentor().instrument(engine=engine)
+
+        with engine.connect():
+            pass
+
+        point = list(self.get_metric(CONNECTION_CREATE_TIME).data.data_points)[0]
+        self.assertEqual(point.count, 1)
+        self.assertLess(point.sum, slow_listener_seconds)
+
+    def test_create_time_not_recorded_when_suppressed(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        with suppress_instrumentation():
+            with engine.connect():
+                pass
+
+        self.assertIsNone(self.get_metric(CONNECTION_CREATE_TIME))
+
+    def test_create_time_not_recorded_with_custom_creator(self):
+        # A custom creator bypasses the do_connect event, so there is no
+        # start time to measure from.
+        engine = sqlalchemy.create_engine(
+            "sqlite://",
+            creator=lambda: sqlite3.connect(":memory:"),
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        with engine.connect():
+            pass
+
+        self.assertIsNone(self.get_metric(CONNECTION_CREATE_TIME))
