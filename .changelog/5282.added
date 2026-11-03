@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`, `opentelemetry-instrumentation-aiokafka`: add opt-in `use_message_context_as_parent` parameter to align consumer span parenting with messaging semantic conventions.
