@@ -438,8 +438,7 @@ def _instrument(
                         normalise_response_header_name,
                     )
                 )
-                for key, val in span_attributes.items():
-                    span.set_attribute(key, val)
+                span.set_attributes(span_attributes)
 
                 if callable(response_hook):
                     response_hook(span, request, result)

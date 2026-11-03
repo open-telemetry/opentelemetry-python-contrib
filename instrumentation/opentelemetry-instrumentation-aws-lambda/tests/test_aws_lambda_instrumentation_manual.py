@@ -658,6 +658,29 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
 # pylint: disable-next=too-many-public-methods
 class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
+    def test_http_response_status_sets_server_span_status(self) -> None:
+        for code, expected_status in [
+            (200, StatusCode.UNSET),
+            (404, StatusCode.UNSET),
+            (500, StatusCode.ERROR),
+            (503, StatusCode.ERROR),
+        ]:
+            with self.subTest(code=code):
+                self.memory_exporter.clear()
+                response = {"statusCode": code, "body": "response"}
+                with mock.patch("tests.mocks.lambda_function.handler", autospec=True, return_value=response):
+                    AwsLambdaInstrumentor().instrument()
+                    try:
+                        result = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
+                    finally:
+                        AwsLambdaInstrumentor().uninstrument()
+                self.assertIs(result, response)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes[HTTP_STATUS_CODE], code)
+                self.assertEqual(spans[0].status.status_code, expected_status)
+                self.assertEqual(len(spans[0].events), 0)
+
     def test_api_gateway_proxy_event_sets_attributes(self):
         handler_patch = mock.patch.dict(
             "os.environ",

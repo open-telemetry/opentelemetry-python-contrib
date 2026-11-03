@@ -349,7 +349,13 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = time_ns()
 
-        attributes = otel_wsgi.collect_request_attributes(env, self._sem_conv_opt_in_mode)
+        attributes = otel_wsgi.collect_request_attributes(
+            env,
+            self._sem_conv_opt_in_mode,
+            # Custom headers are only recorded on SERVER spans, which are
+            # created when there is no current span.
+            capture_custom_headers=trace.get_current_span() is trace.INVALID_SPAN,
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
@@ -362,12 +368,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             attributes, self._sem_conv_opt_in_mode
         )
         self.active_requests_counter.add(1, active_requests_count_attrs)
-
-        if span.is_recording():
-            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
-                custom_attributes = otel_wsgi.collect_custom_request_headers_attributes(env)
-                if len(custom_attributes) > 0:
-                    span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()
@@ -434,8 +434,7 @@ class _TraceMiddleware:
             return
 
         attributes = extract_attributes_from_object(req, self._traced_request_attrs)
-        for key, value in attributes.items():
-            span.set_attribute(key, value)
+        span.set_attributes(attributes)
 
     def process_resource(self, req, resp, resource, params):
         span = req.env.get(_ENVIRON_SPAN_KEY)

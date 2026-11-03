@@ -266,6 +266,9 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(len(spans), 1)
 
         span = spans[0]
+        self.assertIs(type(span.attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(span.attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(span.attributes[CODE_LINE_NUMBER]), int)
         self.assertEqual(
             span.attributes[CODE_FUNCTION_NAME],
             f"{traced.__module__}.traced",
@@ -278,6 +281,12 @@ class TestMiddleware(WsgiTestBase):
             span.attributes[CODE_LINE_NUMBER],
             traced.__code__.co_firstlineno,
         )
+
+    def test_code_attributes_function_view_new_semconv(self):
+        self.test_code_attributes_function_view()
+
+    def test_code_attributes_function_view_both_semconv(self):
+        self.test_code_attributes_function_view()
 
     def test_code_attributes_class_based_view(self):
         self._enable_code_attributes()
@@ -343,7 +352,8 @@ class TestMiddleware(WsgiTestBase):
             wrapped.__code__.co_firstlineno,
         )
 
-    def _enable_code_attributes(self):
+    @staticmethod
+    def _enable_code_attributes():
         _django_instrumentor.uninstrument()
         with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "true"}):
             _django_instrumentor.instrument()

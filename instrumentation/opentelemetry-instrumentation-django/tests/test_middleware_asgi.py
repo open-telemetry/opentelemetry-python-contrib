@@ -282,6 +282,9 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(len(spans), 1)
 
         span = spans[0]
+        self.assertIs(type(span.attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(span.attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(span.attributes[CODE_LINE_NUMBER]), int)
         self.assertEqual(
             span.attributes[CODE_FUNCTION_NAME],
             f"{async_traced.__module__}.async_traced",
@@ -294,6 +297,12 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             span.attributes[CODE_LINE_NUMBER],
             async_traced.__code__.co_firstlineno,
         )
+
+    async def test_code_attributes_async_view_new_semconv(self):
+        await self.test_code_attributes_async_view()
+
+    async def test_code_attributes_async_view_both_semconv(self):
+        await self.test_code_attributes_async_view()
 
     async def test_code_attributes_disabled(self):
         _django_instrumentor.uninstrument()
