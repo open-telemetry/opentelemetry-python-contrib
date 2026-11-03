@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
+import time
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
@@ -344,6 +345,15 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             },
         )
 
+    async def _wait_for_spans(self, expected_count=1, timeout=5.0):
+        start = time.time()
+        while time.time() - start < timeout:
+            spans = self.memory_exporter.get_finished_spans()
+            if len(spans) >= expected_count:
+                return spans
+            await asyncio.sleep(0.01)
+        return self.memory_exporter.get_finished_spans()
+
     async def test_stream_unary_write(self):
         """Ensure StreamUnary call.write() does not deadlock."""
         call = self._stub.ClientStreamingMethod()
@@ -353,8 +363,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         response = await call
         self.assertEqual(response.response_data, "data")
 
-        await asyncio.sleep(0.05)
-        spans = self.memory_exporter.get_finished_spans()
+        spans = await self._wait_for_spans(1)
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.name, "/GRPCTestServer/ClientStreamingMethod")
@@ -374,8 +383,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             grpc.StatusCode.CANCELLED,
         )
 
-        await asyncio.sleep(0.05)
-        spans = self.memory_exporter.get_finished_spans()
+        spans = await self._wait_for_spans(1)
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")

@@ -45,6 +45,10 @@ def _unary_done_callback(span, code, details, response_hook):
 
 
 class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._background_tasks = set()
+
     @staticmethod
     def propagate_trace_in_details(client_call_details: ClientCallDetails):
         metadata = client_call_details.metadata
@@ -101,6 +105,8 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             span.end()
             raise exc
 
+        loop = asyncio.get_running_loop()
+
         async def _finish_span():
             try:
                 try:
@@ -130,13 +136,27 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
                 if span.is_recording():
                     span.end()
 
+        def _schedule_task():
+            if loop.is_closed():
+                return
+            task = loop.create_task(_finish_span())
+            background_tasks = getattr(self, "_background_tasks", None)
+            if background_tasks is None:
+                self._background_tasks = set()
+                background_tasks = self._background_tasks
+            background_tasks.add(task)
+            task.add_done_callback(background_tasks.discard)
+
         def _on_done(_):
-            asyncio.create_task(_finish_span())
+            try:
+                loop.call_soon_threadsafe(_schedule_task)
+            except RuntimeError:
+                pass
 
         try:
             call.add_done_callback(_on_done)
         except NotImplementedError:
-            asyncio.create_task(_finish_span())
+            _schedule_task()
 
         return call
 
