@@ -33,10 +33,14 @@ def _patch_cluster_id_capture(instance) -> None:
     """Capture the cluster id from the client's own metadata responses.
 
     Reads from the client's already-resolved metadata; opens no extra broker
-    connection. kafka-python < 2.1 does not persist ``cluster_id`` on
-    ``ClusterMetadata``, but the ``MetadataResponse`` (v2+) passed to
-    ``update_metadata`` carries it, so wrap ``update_metadata`` to store it.
-    Guarded so each client's metadata object is patched at most once.
+    connection. ``ClusterMetadata`` only persists ``cluster_id`` from 2.1
+    onwards, so wrap ``update_metadata`` to store it from the
+    ``MetadataResponse``. Guarded so each client's metadata object is patched
+    at most once.
+
+    Only ``MetadataResponse`` v2+ carries a ``cluster_id``. 2.0.x caps its
+    request at v1, so the attribute is unavailable there and the span is left
+    without it; 2.1+ requests a new enough version.
     """
     cluster = _get_cluster_metadata(instance)
     if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):

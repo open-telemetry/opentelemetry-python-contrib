@@ -290,6 +290,34 @@ class TestUtils(TestCase):
                 keys = [c.args[0] for c in span.set_attribute.call_args_list]
                 self.assertNotIn(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, keys)
 
+    def test_patch_cluster_id_capture_ignores_response_without_cluster_id(
+        self,
+    ) -> None:
+        """A v0/v1 MetadataResponse has no cluster id; leave the attribute alone.
+
+        kafka-python 2.0.x caps its metadata request at v1, so the hook must
+        not invent a value or crash when the field is simply absent.
+        """
+
+        class FakeCluster:
+            def update_metadata(self, metadata) -> None:
+                pass
+
+        class ResponseWithoutClusterId:
+            """Mirrors MetadataResponse_v0/v1: brokers and topics only."""
+
+            brokers = ()
+            topics = ()
+
+        instance = mock.MagicMock()
+        instance._metadata = FakeCluster()
+
+        _patch_cluster_id_capture(instance)
+        instance._metadata.update_metadata(ResponseWithoutClusterId())
+
+        self.assertIsNone(getattr(instance._metadata, "cluster_id", None))
+        self.assertIsNone(_extract_cluster_id(instance))
+
     def test_extract_cluster_id_from_producer_metadata(self) -> None:
         producer = mock.MagicMock()
         producer._metadata.cluster_id = "test-cluster-id"

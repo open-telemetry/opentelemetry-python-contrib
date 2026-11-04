@@ -90,12 +90,18 @@ def _extract_cluster_id_from_client(
 
 _CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
 
+# The builder, not a versioned struct: aiokafka 0.13 sends through
+# request.prepare(self._versions) to pick the wire version, and only the
+# builder has prepare(). aiokafka vendored this module in 0.9; 0.8.x still
+# takes it from kafka-python.
+_MetadataRequest: Any = None
 try:
-    from aiokafka.protocol.metadata import (
-        MetadataRequest_v5 as _MetadataRequestV5,
-    )
+    from aiokafka.protocol.metadata import MetadataRequest as _MetadataRequest
 except ImportError:
-    _MetadataRequestV5 = None
+    try:
+        from kafka.protocol.metadata import MetadataRequest as _MetadataRequest
+    except ImportError:
+        pass
 
 
 async def _fetch_and_cache_cluster_id(
@@ -108,7 +114,7 @@ async def _fetch_and_cache_cluster_id(
     if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
         return
 
-    if _MetadataRequestV5 is None:
+    if _MetadataRequest is None:
         return
 
     try:
@@ -120,7 +126,7 @@ async def _fetch_and_cache_cluster_id(
             return
         response: object = await cast(Any, client).send(
             node_id,
-            _MetadataRequestV5(topics=[], allow_auto_topic_creation=False),
+            _MetadataRequest(topics=[], allow_auto_topic_creation=False),
         )
         cluster_id: str = getattr(response, "cluster_id", "") or ""
         if cluster_id:

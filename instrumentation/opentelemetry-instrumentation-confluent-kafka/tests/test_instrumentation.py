@@ -838,6 +838,36 @@ class TestConfluentKafka(TestBase):
         # every later client on this bootstrap address.
         self.assertNotIn("localhost:29092", _cluster_id_by_bootstrap)
 
+    def test_get_real_instance_unwraps_a_falsy_client(self) -> None:
+        """A wrapped client must be selected even when it is falsy.
+
+        ``confluent_kafka.Producer`` grew ``__bool__`` in 2.0; before that only
+        ``__len__`` existed, so an idle producer with nothing queued is falsy
+        and a truthiness test picks the proxy instead of the real client.
+        """
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _get_real_instance,
+        )
+
+        class FalsyWhenIdle:
+            def __len__(self) -> int:
+                return 0
+
+        inner = FalsyWhenIdle()
+        self.assertFalse(inner)
+
+        class Proxy:
+            def __init__(self, producer) -> None:
+                self._producer = producer
+
+        self.assertIs(_get_real_instance(Proxy(inner)), inner)
+
+        class ConsumerProxy:
+            def __init__(self, consumer) -> None:
+                self._consumer = consumer
+
+        self.assertIs(_get_real_instance(ConsumerProxy(inner)), inner)
+
     def test_extract_cluster_id_returns_none_for_none_instance(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
             _extract_cluster_id,

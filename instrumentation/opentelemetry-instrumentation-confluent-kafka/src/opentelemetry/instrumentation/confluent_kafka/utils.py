@@ -30,7 +30,13 @@ _LOG = getLogger(__name__)
 
 
 def _get_real_instance(instance: Any) -> Any:
-    return getattr(instance, "_producer", None) or getattr(instance, "_consumer", None) or instance
+    # Identity checks, not truthiness: a confluent_kafka.Producer before 2.0
+    # has only __len__, so an idle one is falsy and would be skipped here.
+    for attr in ("_producer", "_consumer"):
+        wrapped = getattr(instance, attr, None)
+        if wrapped is not None:
+            return wrapped
+    return instance
 
 
 # list_topics() always issues a metadata request, so the timeout must be

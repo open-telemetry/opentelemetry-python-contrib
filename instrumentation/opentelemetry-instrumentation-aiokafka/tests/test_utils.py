@@ -467,6 +467,35 @@ class TestUtils(IsolatedAsyncioTestCase):
         self.assertEqual(client._otel_cluster_id, "abc-cluster-id")
         client.send.assert_awaited_once()
 
+    async def test_fetch_and_cache_cluster_id_request_is_preparable(
+        self,
+    ) -> None:
+        """The request must survive ``AIOKafkaConnection.send``.
+
+        That method calls ``request.prepare(self._versions)``; a versioned
+        request struct has no ``prepare``, so mocking ``client.send`` -- as the
+        tests above do -- hides a lookup that always fails at runtime.
+        """
+        sent: list[object] = []
+
+        async def fake_send(node_id, request, **kwargs):
+            # Mirror what AIOKafkaConnection.send does to the request.
+            prepared = request.prepare({3: (0, 9)})
+            sent.append(prepared)
+            return mock.MagicMock(cluster_id="prepared-cluster-id")
+
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = fake_send
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "prepared-cluster-id")
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(getattr(sent[0], "API_KEY", None), 3)
+
     async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
         self,
     ) -> None:
