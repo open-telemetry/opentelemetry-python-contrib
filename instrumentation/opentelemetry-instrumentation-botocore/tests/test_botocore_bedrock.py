@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import io
 import json
 from typing import Any
@@ -3112,28 +3113,13 @@ def test_bedrock_runtime_extension_deprecation_warning():
 
 
 def test_is_genai_bedrock_active():
-    with mock.patch("importlib.util.find_spec", return_value=None):
-        assert not _is_genai_bedrock_active()
-
-    mock_instrumentor_cls = mock.MagicMock()
-    mock_instrumentor_cls.return_value.is_instrumented_by_opentelemetry = False
-    with (
-        mock.patch("importlib.util.find_spec", return_value=mock.MagicMock()),
-        mock.patch.dict(
-            "sys.modules",
-            {"opentelemetry.instrumentation.genai.bedrock": mock.MagicMock(BedrockInstrumentor=mock_instrumentor_cls)},
-        ),
+    with mock.patch(
+        "importlib.metadata.version",
+        side_effect=importlib.metadata.PackageNotFoundError,
     ):
         assert not _is_genai_bedrock_active()
 
-    mock_instrumentor_cls.return_value.is_instrumented_by_opentelemetry = True
-    with (
-        mock.patch("importlib.util.find_spec", return_value=mock.MagicMock()),
-        mock.patch.dict(
-            "sys.modules",
-            {"opentelemetry.instrumentation.genai.bedrock": mock.MagicMock(BedrockInstrumentor=mock_instrumentor_cls)},
-        ),
-    ):
+    with mock.patch("importlib.metadata.version", return_value="0.1.0"):
         assert _is_genai_bedrock_active()
 
 

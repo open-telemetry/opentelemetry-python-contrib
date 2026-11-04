@@ -8,8 +8,7 @@
 
 from __future__ import annotations
 
-import importlib
-import importlib.util
+import importlib.metadata
 import io
 import json
 import logging
@@ -108,14 +107,9 @@ _MODEL_ID_KEY: str = "modelId"
 
 def _is_genai_bedrock_active() -> bool:
     try:
-        if importlib.util.find_spec("opentelemetry.instrumentation.genai.bedrock") is None:
-            return False
-        mod = importlib.import_module("opentelemetry.instrumentation.genai.bedrock")
-        bedrock_instrumentor_cls = getattr(mod, "BedrockInstrumentor", None)
-        if bedrock_instrumentor_cls is None:
-            return False
-        return bedrock_instrumentor_cls().is_instrumented_by_opentelemetry
-    except Exception:  # pylint: disable=broad-exception-caught
+        importlib.metadata.version("opentelemetry-instrumentation-genai-bedrock")
+        return True
+    except importlib.metadata.PackageNotFoundError:
         return False
 
 
