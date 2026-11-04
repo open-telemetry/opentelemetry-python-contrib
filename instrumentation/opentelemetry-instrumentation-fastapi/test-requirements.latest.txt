@@ -20,7 +20,7 @@ annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
     # via pydantic
-anyio==4.14.0
+anyio==4.14.2
     # via
     #   httpx
     #   starlette
@@ -116,7 +116,7 @@ typing-inspection==0.4.4 ; python_full_version >= '3.15'
     # via
     #   fastapi
     #   pydantic
-urllib3==2.7.0
+urllib3==2.8.0
     # via
     #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
     #   requests

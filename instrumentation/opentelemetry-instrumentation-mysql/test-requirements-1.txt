@@ -1,7 +1,7 @@
 asgiref==3.8.1
 Deprecated==1.2.14
 iniconfig==2.0.0
-mysql-connector-python==9.0.0
+mysql-connector-python==9.1.0
 packaging==24.0
 pluggy==1.6.0
 py-cpuinfo==9.0.0

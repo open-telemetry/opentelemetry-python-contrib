@@ -1,7 +1,7 @@
 asgiref==3.8.1
 click==8.1.7
 Deprecated==1.2.14
-Flask==2.2.0
+Flask==2.2.5
 iniconfig==2.0.0
 itsdangerous==2.1.2
 Jinja2==3.1.6
