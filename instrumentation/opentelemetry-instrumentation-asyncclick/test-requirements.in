@@ -1,6 +1,6 @@
 # Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
 pytest~=7.4
-anyio~=4.5
+anyio>=4.14.2,<5
 Flask~=3.0
 wrapt>=1.16.0,<3.0.0
 -e opentelemetry-instrumentation
