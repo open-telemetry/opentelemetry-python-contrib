@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest import mock
+
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
@@ -229,3 +231,24 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         data_points = list(metric.data.data_points)
         self.assertEqual(data_points[0].count, 1)
         self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: pool_name})
+
+    def test_use_time_records_exact_duration(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        # The clock is read once on checkout and once on checkin
+        with mock.patch("opentelemetry.instrumentation.sqlalchemy.engine.time") as mock_time:
+            mock_time.perf_counter.side_effect = [100.0, 102.5, 200.0, 201.0]
+            with engine.connect():
+                pass
+            with engine.connect():
+                pass
+
+        point = list(self.get_metric(CONNECTION_USE_TIME).data.data_points)[0]
+        self.assertEqual(point.count, 2)
+        self.assertEqual(point.sum, 3.5)
+        self.assertEqual(point.min, 1.0)
+        self.assertEqual(point.max, 2.5)
