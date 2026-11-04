@@ -5,6 +5,7 @@ import botocore.session
 from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -33,14 +34,14 @@ class TestSqsExtension(TestBase):
         assert spans
         self.assertEqual(len(spans), 2)
         span = spans[1]
-        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "aws.sqs")
         self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_MESSAGE_ID],
+            span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID],
             response["MessageId"],
         )
 
@@ -61,14 +62,14 @@ class TestSqsExtension(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         self.assertEqual(span.attributes["rpc.method"], "SendMessageBatch")
-        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "aws.sqs")
         self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_MESSAGE_ID],
+            span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID],
             response["Successful"][0]["MessageId"],
         )
 
@@ -84,14 +85,14 @@ class TestSqsExtension(TestBase):
         self.assertEqual(len(spans), 3)
         span = spans[-1]
         self.assertEqual(span.attributes["rpc.method"], "ReceiveMessage")
-        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "aws.sqs")
         self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], queue_url)
         self.assertEqual(
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             "test_queue_name",
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_MESSAGE_ID],
+            span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID],
             message_result["Messages"][0]["MessageId"],
         )
 
@@ -105,5 +106,5 @@ class TestSqsExtension(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.attributes["rpc.method"], "SendMessage")
-        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "aws.sqs")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_SYSTEM], "aws.sqs")
         self.assertEqual(span.attributes[SpanAttributes.MESSAGING_URL], "non-existing")

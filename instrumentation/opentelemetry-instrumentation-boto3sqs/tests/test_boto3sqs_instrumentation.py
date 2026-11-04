@@ -9,6 +9,7 @@ from unittest import TestCase, mock
 
 import boto3
 from botocore.awsrequest import AWSResponse
+from botocore.exceptions import ParamValidationError
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.boto3sqs import (
@@ -16,6 +17,7 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
@@ -200,7 +202,7 @@ class TestBoto3SQSInstrumentation(TestBase):
 
     def _default_span_attrs(self):
         return {
-            SpanAttributes.MESSAGING_SYSTEM: "aws.sqs",
+            messaging_attributes.MESSAGING_SYSTEM: "aws.sqs",
             SpanAttributes.MESSAGING_DESTINATION: self._queue_name,
             SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
             SpanAttributes.MESSAGING_URL: self._queue_url,
@@ -257,7 +259,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(
             {
-                SpanAttributes.MESSAGING_MESSAGE_ID: message_id,
+                messaging_attributes.MESSAGING_MESSAGE_ID: message_id,
                 **self._default_span_attrs(),
             },
             span.attributes,
@@ -292,7 +294,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             self.assertEqual(
                 {
                     SpanAttributes.MESSAGING_CONVERSATION_ID: entry_id,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: expected_message_ids[entry_id],
+                    messaging_attributes.MESSAGING_MESSAGE_ID: expected_message_ids[entry_id],
                     **self._default_span_attrs(),
                 },
                 span.attributes,
@@ -325,7 +327,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             },
             span.attributes,
         )
-        self.assertNotIn(SpanAttributes.MESSAGING_MESSAGE_ID, span.attributes)
+        self.assertNotIn(messaging_attributes.MESSAGING_MESSAGE_ID, span.attributes)
         self._assert_injected_span(entries[0]["MessageAttributes"], span)
 
     def test_receive_message(self):
@@ -378,7 +380,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             # processing span attributes
             self.assertEqual(
                 {
-                    SpanAttributes.MESSAGING_MESSAGE_ID: msg_id,
+                    messaging_attributes.MESSAGING_MESSAGE_ID: msg_id,
                     SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.PROCESS.value,
                     **self._default_span_attrs(),
                 },
@@ -416,3 +418,9 @@ class TestBoto3SQSInstrumentation(TestBase):
             )
             spans = self.get_finished_spans()
             self.assertEqual(0, len(spans))
+
+    def test_delete_message_batch_without_entries(self):
+        # botocore reports the missing parameter; the wrapper must not fail first
+        with self._mocked_endpoint({"Successful": [], "Failed": []}):
+            with self.assertRaises(ParamValidationError):
+                self._client.delete_message_batch(QueueUrl=self._queue_url)

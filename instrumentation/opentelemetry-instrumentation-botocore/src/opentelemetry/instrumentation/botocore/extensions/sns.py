@@ -16,6 +16,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
     _BotoResultT,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.aws_attributes import (
     AWS_SNS_TOPIC_ARN,
 )
@@ -142,7 +143,7 @@ class _SnsExtension(_AwsSdkExtension):
             call_context.span_kind = self._op.span_kind()
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sns"
+        attributes[messaging_attributes.MESSAGING_SYSTEM] = "aws.sns"
         topic_arn = self._call_context.params.get("TopicArn")
         if topic_arn:
             attributes[AWS_SNS_TOPIC_ARN] = topic_arn

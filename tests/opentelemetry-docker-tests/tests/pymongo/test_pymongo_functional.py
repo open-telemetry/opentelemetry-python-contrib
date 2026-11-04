@@ -123,8 +123,8 @@ class TestFunctionalPymongo(TestBase):
             self._collection.update_one({"name": "testName"}, {"$set": {"value": "someOtherValue"}})
 
         expected_db_statement = (
-            "update [SON([('q', {'name': 'testName'}), ('u', "
-            "{'$set': {'value': 'someOtherValue'}}), ('multi', False), ('upsert', False)])]"
+            "update [{'q': {'name': 'testName'}, 'u': "
+            "{'$set': {'value': 'someOtherValue'}}, 'multi': False, 'upsert': False}]"
         )
         self.validate_spans(expected_db_statement)
 
@@ -141,7 +141,7 @@ class TestFunctionalPymongo(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.delete_one({"name": "testName"})
 
-        expected_db_statement = "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
+        expected_db_statement = "delete [{'q': {'name': 'testName'}, 'limit': 1}]"
         self.validate_spans(expected_db_statement)
 
     def test_find_without_capture_statement(self):

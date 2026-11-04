@@ -340,7 +340,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             if "ca_file" in self.tls_config:
                 verify = self.tls_config["ca_file"]
             elif "insecure_skip_verify" in self.tls_config:
-                verify = self.tls_config["insecure_skip_verify"]
+                verify = not self.tls_config["insecure_skip_verify"]
 
             if "cert_file" in self.tls_config and "key_file" in self.tls_config:
                 cert = (

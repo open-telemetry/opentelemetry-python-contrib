@@ -10,6 +10,7 @@ from botocore.awsrequest import AWSResponse
 from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.aws_attributes import (
     AWS_SNS_TOPIC_ARN,
 )
@@ -66,7 +67,7 @@ class TestSnsExtension(TestBase):
 
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(name, span.name)
-        self.assertEqual("aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM])
+        self.assertEqual("aws.sns", span.attributes[messaging_attributes.MESSAGING_SYSTEM])
 
         return span
 
