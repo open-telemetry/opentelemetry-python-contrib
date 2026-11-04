@@ -746,8 +746,7 @@ def _apply_response_client_attributes_to_span(
             semconv,
         )
 
-    for key, val in span_attributes.items():
-        span.set_attribute(key, val)
+    span.set_attributes(span_attributes)
 
 
 def _apply_response_client_attributes_to_metrics(
