@@ -4,19 +4,21 @@
 import threading
 import time
 
-from celery.signals import after_task_publish, before_task_publish
-from kombu import Exchange
+from celery.signals import after_task_publish, before_task_publish, task_postrun, task_prerun
+from kombu import Exchange, Queue
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import baggage, context
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import MESSAGING_MESSAGE_ID
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_STACKTRACE,
     EXCEPTION_TYPE,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
@@ -52,6 +54,130 @@ class TestCeleryPublishSignal(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].attributes["celery.exchange"], "celery_delayed_27")
+
+
+class TestCelerySampling(TestBase):
+    def tearDown(self) -> None:
+        CeleryInstrumentor().uninstrument()
+        super().tearDown()
+
+    def _instrument_with_sampler(self, sampler: CapturingSampler, use_span_links: bool = False) -> None:
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+        instrumentor = CeleryInstrumentor()
+        if instrumentor.is_instrumented_by_opentelemetry:
+            instrumentor.uninstrument()
+        instrumentor.instrument(tracer_provider=self.tracer_provider, use_span_links=use_span_links)
+
+    def test_publish_attributes_passed_to_sampler(self) -> None:
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
+        signal_kwargs = {
+            "sender": task_add.name,
+            "headers": {"id": "task-id"},
+            "body": None,
+            "exchange": Exchange("celery", type="direct"),
+            "routing_key": "celery",
+            "declare": [Queue("celery", exchange=Exchange("celery", type="direct"))],
+            "priority": 4,
+        }
+
+        before_task_publish.send(**signal_kwargs)
+        after_task_publish.send(**signal_kwargs)
+
+        expected = {
+            "celery.action": "apply_async",
+            MESSAGING_MESSAGE_ID: "task-id",
+            "celery.task_name": task_add.name,
+            "celery.exchange": "celery",
+            SpanAttributes.MESSAGING_DESTINATION: "celery",
+            SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
+            "celery.priority": 4,
+        }
+        self.assertEqual(sampler.kind, SpanKind.PRODUCER)
+        self.assertEqual(sampler.attributes, expected)
+        for key, value in expected.items():
+            self.assertIs(type(sampler.attributes[key]), type(value))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes, expected)
+
+    def test_prerun_attributes_passed_to_sampler(self) -> None:
+        for use_span_links in (False, True):
+            with self.subTest(use_span_links=use_span_links):
+                sampler = CapturingSampler()
+                self._instrument_with_sampler(sampler, use_span_links=use_span_links)
+                task_add.push_request(
+                    id="task-id",
+                    correlation_id="correlation-id",
+                    hostname="worker",
+                    origin="publisher",
+                    delivery_info={"routing_key": "celery"},
+                    retries=2,
+                    timelimit=(None, 10),
+                    traceparent="00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01",
+                )
+                self.addCleanup(task_add.pop_request)
+                signal_kwargs = {"sender": task_add, "task": task_add, "task_id": "task-id"}
+
+                task_prerun.send(**signal_kwargs)
+                task_postrun.send(**signal_kwargs, state="SUCCESS")
+
+                expected = {
+                    "celery.action": "run",
+                    "celery.task_name": task_add.name,
+                    MESSAGING_MESSAGE_ID: "task-id",
+                    SpanAttributes.MESSAGING_CONVERSATION_ID: "correlation-id",
+                    "celery.hostname": "worker",
+                    "celery.origin": "publisher",
+                    "celery.delivery_info": str({"routing_key": "celery"}),
+                    SpanAttributes.MESSAGING_DESTINATION: "celery",
+                    "celery.retries": 2,
+                    "celery.timelimit": ["", "10"],
+                }
+                self.assertEqual(sampler.kind, SpanKind.CONSUMER)
+                self.assertEqual(sampler.attributes, expected)
+                for key, value in expected.items():
+                    self.assertIs(type(sampler.attributes[key]), type(value))
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                expected["celery.timelimit"] = ("", "10")
+                expected["celery.state"] = "SUCCESS"
+                self.assertEqual(spans[0].attributes, expected)
+                if use_span_links:
+                    self.assertIsNone(spans[0].parent)
+                    self.assertEqual(len(spans[0].links), 1)
+                else:
+                    self.assertEqual(spans[0].parent.span_id, 0x405FF022E8247C46)
+
+    def test_attributes_control_sampling_apply_async(self) -> None:
+        for routing_key, expected_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(routing_key=routing_key):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                signal_kwargs = {
+                    "sender": task_add.name,
+                    "headers": {"id": "task-id"},
+                    "body": None,
+                    "routing_key": routing_key,
+                }
+                before_task_publish.send(**signal_kwargs)
+                after_task_publish.send(**signal_kwargs)
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), expected_count)
+                self.assertIsNone(utils.retrieve_context(task_add, "task-id", is_publish=True))
+
+    def test_attributes_control_sampling_run(self) -> None:
+        for routing_key, expected_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(routing_key=routing_key):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                task_add.push_request(id="task-id", hostname="worker", delivery_info={"routing_key": routing_key})
+                self.addCleanup(task_add.pop_request)
+                signal_kwargs = {"sender": task_add, "task": task_add, "task_id": "task-id"}
+                task_prerun.send(**signal_kwargs)
+                task_postrun.send(**signal_kwargs, state="SUCCESS")
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), expected_count)
+                self.assertIsNone(utils.retrieve_context(task_add, "task-id", is_publish=False))
 
 
 class TestCeleryInstrumentation(TestBase):

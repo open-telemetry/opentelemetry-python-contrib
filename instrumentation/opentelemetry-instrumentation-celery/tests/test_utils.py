@@ -20,7 +20,7 @@ class TestUtils(unittest.TestCase):
     def setUp(self):
         self.app = Celery("celery.test_app")
 
-    def test_set_attributes_from_context(self):
+    def test_get_attributes_from_context(self):
         # it should extract only relevant keys
         context = {
             "correlation_id": "44b7f305",
@@ -37,41 +37,39 @@ class TestUtils(unittest.TestCase):
             "routing_key": "celery",
         }
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_attributes_from_context(context)
 
         self.assertEqual(
-            span.attributes.get(MESSAGING_MESSAGE_ID),
+            attributes.get(MESSAGING_MESSAGE_ID),
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
+            attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
             "44b7f305",
         )
-        self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery")
+        self.assertEqual(attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery")
 
-        self.assertEqual(span.attributes["celery.delivery_info"], str({"eager": True}))
-        self.assertEqual(span.attributes.get("celery.eta"), "soon")
-        self.assertEqual(span.attributes.get("celery.expires"), "later")
-        self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
-        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
+        self.assertEqual(attributes["celery.delivery_info"], str({"eager": True}))
+        self.assertEqual(attributes.get("celery.eta"), "soon")
+        self.assertEqual(attributes.get("celery.expires"), "later")
+        self.assertEqual(attributes.get("celery.hostname"), "localhost")
+        self.assertEqual(attributes.get("celery.origin"), "gen8@localhost")
 
-        self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
-        self.assertEqual(span.attributes.get("celery.retries"), 4)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
-        self.assertNotIn("custom_meta", span.attributes)
+        self.assertEqual(attributes.get("celery.reply_to"), "44b7f305")
+        self.assertEqual(attributes.get("celery.retries"), 4)
+        self.assertEqual(attributes.get("celery.timelimit"), ("now", "later"))
+        self.assertNotIn("custom_meta", attributes)
 
-    def test_set_attributes_from_context_origin_not_aliased_to_hostname(self):
+    def test_get_attributes_from_context_origin_not_aliased_to_hostname(self):
         # `origin` is the publisher's nodename, not the worker hostname
         context = {"origin": "gen8@localhost"}
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_attributes_from_context(context)
 
-        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
-        self.assertNotIn("celery.hostname", span.attributes)
+        self.assertEqual(attributes.get("celery.origin"), "gen8@localhost")
+        self.assertNotIn("celery.hostname", attributes)
 
-    def test_set_attributes_from_context_kombu_routing_objects(self):
+    def test_get_attributes_from_context_kombu_routing_objects(self):
         context = {
             "exchange": Exchange("celery_delayed_27", type="topic"),
             "queue": Queue("celery_queue"),
@@ -79,64 +77,37 @@ class TestUtils(unittest.TestCase):
             "timelimit": ("soft", "hard"),
         }
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
         with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
-            utils.set_attributes_from_context(span, context)
+            attributes = utils.get_attributes_from_context(context)
 
         self.assertEqual(
-            span.attributes.get("celery.exchange"),
+            attributes.get("celery.exchange"),
             "celery_delayed_27",
         )
-        self.assertEqual(span.attributes.get("celery.queue"), "celery_queue")
-        self.assertEqual(span.attributes.get("celery.priority"), 4)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("soft", "hard"))
+        self.assertEqual(attributes.get("celery.queue"), "celery_queue")
+        self.assertEqual(attributes.get("celery.priority"), 4)
+        self.assertEqual(attributes.get("celery.timelimit"), ("soft", "hard"))
 
-    def test_set_attributes_from_context_string_exchange(self):
+    def test_get_attributes_from_context_string_exchange(self):
         context = {"exchange": "celery"}
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_attributes_from_context(context)
 
-        self.assertEqual(span.attributes.get("celery.exchange"), "celery")
+        self.assertEqual(attributes.get("celery.exchange"), "celery")
 
-    def test_set_attributes_from_context_empty_kombu_names(self):
+    def test_get_attributes_from_context_empty_kombu_names(self):
         context = {
             "exchange": Exchange(""),
             "queue": Queue(""),
         }
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
         with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
-            utils.set_attributes_from_context(span, context)
+            attributes = utils.get_attributes_from_context(context)
 
-        self.assertNotIn("celery.exchange", span.attributes)
-        self.assertNotIn("celery.queue", span.attributes)
+        self.assertNotIn("celery.exchange", attributes)
+        self.assertNotIn("celery.queue", attributes)
 
-    def test_set_attributes_not_recording(self):
-        # it should extract only relevant keys
-        context = {
-            "correlation_id": "44b7f305",
-            "delivery_info": {"eager": True},
-            "eta": "soon",
-            "expires": "later",
-            "hostname": "localhost",
-            "id": "44b7f305",
-            "reply_to": "44b7f305",
-            "retries": 4,
-            "timelimit": ("now", "later"),
-            "custom_meta": "custom_value",
-            "routing_key": "celery",
-        }
-
-        mock_span = mock.Mock()
-        mock_span.is_recording.return_value = False
-        utils.set_attributes_from_context(mock_span, context)
-        self.assertFalse(mock_span.is_recording())
-        self.assertTrue(mock_span.is_recording.called)
-        self.assertFalse(mock_span.set_attribute.called)
-        self.assertFalse(mock_span.set_status.called)
-
-    def test_set_attributes_partial_timelimit_hard_limit(self):
+    def test_get_attributes_partial_timelimit_hard_limit(self):
         # it should extract only relevant keys
         context = {
             "correlation_id": "44b7f305",
@@ -151,11 +122,10 @@ class TestUtils(unittest.TestCase):
             "custom_meta": "custom_value",
             "routing_key": "celery",
         }
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", ""))
+        attributes = utils.get_attributes_from_context(context)
+        self.assertEqual(attributes.get("celery.timelimit"), ["now", ""])
 
-    def test_set_attributes_partial_timelimit_soft_limit(self):
+    def test_get_attributes_partial_timelimit_soft_limit(self):
         # it should extract only relevant keys
         context = {
             "correlation_id": "44b7f305",
@@ -170,11 +140,10 @@ class TestUtils(unittest.TestCase):
             "custom_meta": "custom_value",
             "routing_key": "celery",
         }
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("", "later"))
+        attributes = utils.get_attributes_from_context(context)
+        self.assertEqual(attributes.get("celery.timelimit"), ["", "later"])
 
-    def test_set_attributes_from_context_empty_keys(self):
+    def test_get_attributes_from_context_empty_keys(self):
         # it should not extract empty keys
         context = {
             "correlation_id": None,
@@ -183,18 +152,17 @@ class TestUtils(unittest.TestCase):
             "retries": 0,
         }
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_attributes_from_context(context)
 
-        self.assertEqual(len(span.attributes), 0)
+        self.assertEqual(len(attributes), 0)
         # edge case: `timelimit` can also be a list of None values
         context = {
             "timelimit": [None, None],
         }
 
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_attributes_from_context(context)
 
-        self.assertEqual(len(span.attributes), 0)
+        self.assertEqual(len(attributes), 0)
 
     def test_span_propagation(self):
         # ensure spans getter and setter works properly

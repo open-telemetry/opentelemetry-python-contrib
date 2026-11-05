@@ -14,8 +14,9 @@ from kombu import Exchange, Queue
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessagingDestinationKindValues, SpanAttributes
 from opentelemetry.trace import Span
+from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
@@ -59,13 +60,11 @@ CELERY_CONTEXT_ATTRIBUTES = (
 
 
 # pylint:disable=too-many-branches
-def set_attributes_from_context(
-    span: Span,
+def get_attributes_from_context(
     context: ContextCarrier,
-) -> None:
+) -> dict[str, AttributeValue]:
     """Helper to extract meta values from a Celery Context"""
-    if not span.is_recording():
-        return
+    attributes: dict[str, AttributeValue] = {}
     for key in CELERY_CONTEXT_ATTRIBUTES:
         value = context.get(key)
 
@@ -92,7 +91,7 @@ def set_attributes_from_context(
             routing_key = value.get("routing_key")
 
             if routing_key is not None:
-                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, routing_key)
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = routing_key
 
             value = str(value)
 
@@ -110,10 +109,10 @@ def set_attributes_from_context(
             attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
             for declare in value:
                 if declare.exchange.type == "direct":
-                    value = "queue"
+                    value = MessagingDestinationKindValues.QUEUE.value
                     break
                 if declare.exchange.type == "topic":
-                    value = "topic"
+                    value = MessagingDestinationKindValues.TOPIC.value
                     break
 
         # set attribute name if not set specially for a key
@@ -125,7 +124,9 @@ def set_attributes_from_context(
             if value == "":
                 continue
 
-        span.set_attribute(attribute_name, value)
+        attributes[attribute_name] = value
+
+    return attributes
 
 
 def attach_context(
