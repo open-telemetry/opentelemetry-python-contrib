@@ -3,6 +3,7 @@
 # pylint: disable=no-name-in-module,import-outside-toplevel
 import asyncio
 
+from opentelemetry import trace
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -515,19 +516,18 @@ class TestConfluentKafka(TestBase):
             instrumentation = ConfluentKafkaInstrumentor()
             tracer = self.tracer_provider.get_tracer(__name__)
 
-            # MockedAIOConsumer wraps an inner MockConsumer, mirroring how
-            # the real AIOConsumer delegates to an inner Consumer internally.
-            # The inner Consumer is patched with wrap_poll below to simulate
-            # AutoInstrumentedConsumer — this is the only layer that should
-            # create spans; wrap_aio_poll must not produce a second set.
+            # MockedAIOConsumer dispatches the inner poll to a ThreadPoolExecutor,
+            # matching the real AIOConsumer's behaviour.  This exercises the path
+            # where the span is created on a worker thread and must be re-attached
+            # to the caller's async-task context by wrap_aio_poll.
             queue = [MockedMessage("test-topic", 0, 0, [])]
             consumer = MockedAIOConsumer(
                 queue,
                 {"bootstrap.servers": "localhost:9092", "group.id": "g", "auto.offset.reset": "earliest"},
             )
 
-            # Instrument the inner consumer's poll so spans are produced there.
-            inner = consumer._inner
+            # Instrument the inner consumer's poll to simulate AutoInstrumentedConsumer.
+            inner = consumer._consumer
             raw_poll = inner.poll
 
             def instrumented_inner_poll(timeout=None):
@@ -535,7 +535,8 @@ class TestConfluentKafka(TestBase):
 
             inner.poll = instrumented_inner_poll
 
-            # wrap_aio_poll is a pass-through; span is created by instrumented_inner_poll.
+            # First poll: inner Consumer creates a span on a worker thread;
+            # wrap_aio_poll re-attaches it to the caller's async task context.
             msg = await instrumentation.wrap_aio_poll(
                 consumer.poll,
                 consumer,
@@ -545,7 +546,12 @@ class TestConfluentKafka(TestBase):
             )
             self.assertIsNotNone(msg)
 
-            # Second (empty) poll causes the inner consumer to end the previous span.
+            # The span must now be current in the caller's async task.
+            active_span = trace.get_current_span()
+            self.assertTrue(active_span.is_recording())
+            self.assertEqual(active_span.name, "test-topic process")
+
+            # Second (empty) poll detaches the previous context and ends the span.
             await instrumentation.wrap_aio_poll(
                 consumer.poll,
                 consumer,
@@ -556,8 +562,10 @@ class TestConfluentKafka(TestBase):
 
             spans = self.memory_exporter.get_finished_spans()
             process_spans = [s for s in spans if s.name == "test-topic process"]
-            # Exactly ONE process span — no duplicates from the AIO wrapper layer.
+            # Exactly one process span — no duplicates from the AIO wrapper layer.
             self.assertEqual(len(process_spans), 1)
+
+            await consumer.close()
 
         asyncio.run(_run())
 

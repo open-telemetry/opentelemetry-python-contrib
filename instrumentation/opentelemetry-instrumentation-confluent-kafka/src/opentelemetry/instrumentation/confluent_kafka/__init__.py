@@ -204,8 +204,9 @@ if AIOConsumer is not None:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.config = _capture_config(args, kwargs)
-            # Span lifecycle is managed by the inner Consumer layer, which is
-            # already instrumented via AutoInstrumentedConsumer.
+            # Token for the span re-attached to the caller's async task context.
+            # Managed by wrap_aio_poll / wrap_aio_close.
+            self._aio_context_token = None
 
         # Deliberately implemented so wrapt can intercept the async poll call
         async def poll(self, timeout=-1):
@@ -562,11 +563,39 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     async def wrap_aio_poll(func, instance, tracer, args, kwargs):
-        # AIOConsumer delegates to an inner Consumer that is already instrumented
-        # via AutoInstrumentedConsumer. Creating spans here would produce duplicates,
-        # so this wrapper is intentionally a pass-through.
-        return await func(*args, **kwargs)
+        # Detach any span attached to the caller's async context from a
+        # previous poll call.  Keeping the token lifetime to a single poll
+        # prevents stale context if the caller never calls close().
+        if getattr(instance, "_aio_context_token", None):
+            context.detach(instance._aio_context_token)
+            instance._aio_context_token = None
+
+        # The real AIOConsumer runs Consumer.poll() inside a ThreadPoolExecutor
+        # via loop.run_in_executor().  Any context.attach() done in that worker
+        # thread is confined to the thread's context copy and is NOT visible in
+        # the caller's async task.  We therefore await first and then
+        # re-attach the span to the caller's async task context ourselves.
+        record = await func(*args, **kwargs)
+
+        if record:
+            # Read the span created by the instrumented inner Consumer on the
+            # worker thread and attach it to the caller's async task context.
+            inner = getattr(instance, "_consumer", None)
+            if inner is not None:
+                span = getattr(inner, "_current_consume_span", None)
+                if span is not None:
+                    # Clear the thread-level token so it is never detached
+                    # from a different thread or async context (which would
+                    # raise ValueError / silently corrupt the context chain).
+                    inner._current_context_token = None
+                    instance._aio_context_token = context.attach(trace.set_span_in_context(span))
+
+        return record
 
     @staticmethod
     async def wrap_aio_close(func, instance, args, kwargs):
+        # Detach any span still attached to the async task before closing.
+        if getattr(instance, "_aio_context_token", None):
+            context.detach(instance._aio_context_token)
+            instance._aio_context_token = None
         return await func(*args, **kwargs)

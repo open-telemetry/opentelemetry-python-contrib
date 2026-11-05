@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import concurrent.futures
 
 from confluent_kafka import Consumer, Producer
 
@@ -106,19 +108,20 @@ class MockedAIOProducer:
 class MockedAIOConsumer:
     """Mock of confluent_kafka.AIOConsumer.
 
-    The real AIOConsumer delegates polling to an inner sync Consumer, which when
-    instrumented already creates spans via wrap_poll.  This mock mirrors that
-    structure so tests can verify that no duplicate spans are produced at the
-    AIO layer.
+    Dispatches the inner Consumer poll to a ThreadPoolExecutor to replicate
+    the thread-pool behaviour of the real AIOConsumer, so that tests cover
+    the async-task context-management in wrap_aio_poll.
     """
 
     def __init__(self, queue, config=None):
-        self._inner = MockConsumer(queue, config or {})
+        self._consumer = MockConsumer(queue, config or {})
         self.config = config or {}
+        self._aio_context_token = None
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
     async def poll(self, timeout=None):
-        # Delegate to the inner consumer, just like the real AIOConsumer does.
-        return self._inner.poll(timeout)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, self._consumer.poll, timeout)
 
     async def close(self):
-        pass
+        self._executor.shutdown(wait=False)
