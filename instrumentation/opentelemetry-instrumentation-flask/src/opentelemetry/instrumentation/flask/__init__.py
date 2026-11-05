@@ -481,8 +481,7 @@ def _wrapped_before_request(
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
+            span.set_attributes(attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call

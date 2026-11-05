@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 from celery import Celery
+from kombu import Exchange, Queue
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import utils
@@ -28,6 +29,7 @@ class TestUtils(unittest.TestCase):
             "expires": "later",
             "hostname": "localhost",
             "id": "44b7f305",
+            "origin": "gen8@localhost",
             "reply_to": "44b7f305",
             "retries": 4,
             "timelimit": ("now", "later"),
@@ -52,11 +54,63 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
+        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
         self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
         self.assertNotIn("custom_meta", span.attributes)
+
+    def test_set_attributes_from_context_origin_not_aliased_to_hostname(self):
+        # `origin` is the publisher's nodename, not the worker hostname
+        context = {"origin": "gen8@localhost"}
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
+        self.assertNotIn("celery.hostname", span.attributes)
+
+    def test_set_attributes_from_context_kombu_routing_objects(self):
+        context = {
+            "exchange": Exchange("celery_delayed_27", type="topic"),
+            "queue": Queue("celery_queue"),
+            "priority": 4,
+            "timelimit": ("soft", "hard"),
+        }
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
+            utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(
+            span.attributes.get("celery.exchange"),
+            "celery_delayed_27",
+        )
+        self.assertEqual(span.attributes.get("celery.queue"), "celery_queue")
+        self.assertEqual(span.attributes.get("celery.priority"), 4)
+        self.assertEqual(span.attributes.get("celery.timelimit"), ("soft", "hard"))
+
+    def test_set_attributes_from_context_string_exchange(self):
+        context = {"exchange": "celery"}
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(span.attributes.get("celery.exchange"), "celery")
+
+    def test_set_attributes_from_context_empty_kombu_names(self):
+        context = {
+            "exchange": Exchange(""),
+            "queue": Queue(""),
+        }
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
+            utils.set_attributes_from_context(span, context)
+
+        self.assertNotIn("celery.exchange", span.attributes)
+        self.assertNotIn("celery.queue", span.attributes)
 
     def test_set_attributes_not_recording(self):
         # it should extract only relevant keys
