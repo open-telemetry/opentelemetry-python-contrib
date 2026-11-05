@@ -68,14 +68,18 @@ class _Job:
         return self.attempt <= self.max_retries
 
     def delay(self) -> float:
-        """Calculate the delay before next retry"""
-        assert self.attempt > 0
+        """Calculate the delay before next retry
+
+        Delay is capped at 60 seconds before applying 20% jitter"""
+        max_delay = 60.0
+        jitter = random.uniform(0.8, 1.2)
         if self.is_initial:
-            # Startup retries are unbounded, so cap backoff before applying jitter.
-            delay = min(self._backoff, 60.0)
-            self._backoff = min(delay * 2, 60.0)
-            return delay * random.uniform(0.8, 1.2)
-        return self.initial_backoff * (2 ** (self.attempt - 1)) * random.uniform(0.8, 1.2)
+            delay = min(self._backoff, max_delay)
+            self._backoff = min(delay * 2, max_delay)
+            return delay * jitter
+        assert self.attempt > 0
+        delay = min(self.initial_backoff * (2 ** (self.attempt - 1)), max_delay)
+        return delay * jitter
 
 
 class OpAMPAgent:
