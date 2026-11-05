@@ -52,6 +52,21 @@ class TestCaptureCustomHeaders(unittest.TestCase):
 
     @patch.dict(
         "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header, ,"},
+    )
+    def test_sanitize_ignores_trailing_comma(self):
+        sanitized_fields = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
+        self.assertEqual(sanitized_fields, ["My-Secret-Header"])
+
+        sanitize = SanitizeValue(sanitized_fields)
+
+        self.assertEqual(
+            sanitize.sanitize_header_value(header="My-Not-Secret-Header", value="My-Not-Secret-Value"),
+            "My-Not-Secret-Value",
+        )
+
+    @patch.dict(
+        "os.environ",
         {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header,My-Secret-Header-2"},
     )
     def test_sanitize(self):
