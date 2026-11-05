@@ -14,7 +14,7 @@ Extensions
 The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
 for the following AWS services:
 
-- Bedrock Runtime (botocore only)
+- Bedrock Runtime (botocore only) [Deprecated]
 - DynamoDB
 - Lambda
 - SNS
@@ -25,8 +25,8 @@ Bedrock Runtime (botocore only) [Deprecated]
 
 .. note::
     The Bedrock extension in ``opentelemetry-instrumentation-botocore`` is deprecated
-    and will be removed in a future release. Please use `opentelemetry-instrumentation-genai-bedrock <https://pypi.org/project/opentelemetry-instrumentation-genai-bedrock/>`_
-    instead. When ``opentelemetry-instrumentation-genai-bedrock`` is active, this extension
+    and will be removed in a future release. Please use `opentelemetry-instrumentation-genai-bedrock <https://pypi.org/project/opentelemetry-instrumentation-genai-bedrock/>`_.
+    When ``opentelemetry-instrumentation-genai-bedrock`` is active, this extension
     is automatically suppressed to avoid duplicate telemetry.
 
 This extension implements the GenAI semantic conventions for the following API calls:

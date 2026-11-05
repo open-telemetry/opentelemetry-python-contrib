@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib.metadata
 import io
 import json
+import warnings
 from typing import Any
 from unittest import mock
 
@@ -3128,12 +3129,17 @@ def test_bedrock_extension_suppressed_when_genai_active():
         operation="ConverseStream",
         params={"modelId": "amazon.titan-text-lite-v1"},
     )
-    with mock.patch(
-        "opentelemetry.instrumentation.botocore.extensions.bedrock._is_genai_bedrock_active",
-        return_value=True,
+    with (
+        mock.patch(
+            "opentelemetry.instrumentation.botocore.extensions.bedrock._is_genai_bedrock_active",
+            return_value=True,
+        ),
+        warnings.catch_warnings(record=True) as recorded_warnings,
     ):
+        warnings.simplefilter("always", DeprecationWarning)
         extension = _BedrockRuntimeExtension(call_context)
 
+    assert not any(issubclass(w.category, DeprecationWarning) for w in recorded_warnings)
     assert extension._disabled is True
     # When disabled, should_end_span_on_exit should be True (standard botocore behavior)
     assert extension.should_end_span_on_exit() is True

@@ -133,13 +133,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
     def __init__(self, call_context: _AwsSdkCallContext):
         super().__init__(call_context)
-        warnings.warn(
-            "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated "
-            "and will be removed in a future release. "
-            "Please use 'opentelemetry-instrumentation-genai-bedrock' instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
         if _is_genai_bedrock_active():
             _logger.debug(
                 "opentelemetry-instrumentation-genai-bedrock is active; "
@@ -148,6 +141,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             self._handled_operations: set[str] = set()
             self._dont_close_span_on_end_operations: set[str] = set()
         else:
+            warnings.warn(
+                "The Bedrock extension in 'opentelemetry-instrumentation-botocore' is deprecated "
+                "and will be removed in a future release. "
+                "Please install 'opentelemetry-instrumentation-genai-bedrock' that would take over this extension.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             self._handled_operations = self._HANDLED_OPERATIONS
             self._dont_close_span_on_end_operations = self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
 
