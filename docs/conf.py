@@ -121,6 +121,14 @@ nitpicky = True
 nitpick_ignore = [
     (
         "py:class",
+        "opamp_pb2.AgentToServer",
+    ),
+    (
+        "py:class",
+        "opamp_pb2.ServerToAgent",
+    ),
+    (
+        "py:class",
         "opamp_pb2.RemoteConfigStatus",
     ),
     (
