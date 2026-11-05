@@ -118,12 +118,11 @@ def _set_connection_attributes(
         or not hasattr(conn.connection_pool, "connection_kwargs")
     ):
         return
-    for key, value in _extract_conn_attributes(
-        conn.connection_pool.connection_kwargs,
-        db_sem_conv_opt_in_mode,
-        http_sem_conv_opt_in_mode,
-    ).items():
-        span.set_attribute(key, value)
+    span.set_attributes(
+        _extract_conn_attributes(
+            conn.connection_pool.connection_kwargs, db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode
+        )
+    )
 
 
 def _build_span_name(instance: RedisInstance | AsyncRedisInstance, cmd_args: tuple[Any, ...]) -> str:
