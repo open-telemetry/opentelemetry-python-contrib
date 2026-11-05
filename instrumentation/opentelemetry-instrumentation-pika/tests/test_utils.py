@@ -21,16 +21,16 @@ from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
-from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.trace import SpanKind, Tracer
 
 
 class TestUtils(TestCase):
     @staticmethod
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_attributes")
     def test_get_span(
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         generate_span_name: mock.MagicMock,
         get_value: mock.MagicMock,
     ) -> None:
@@ -43,9 +43,10 @@ class TestUtils(TestCase):
         get_value.return_value = None
         _ = utils._get_span(tracer, channel, properties, task_name, destination, span_kind)
         generate_span_name.assert_called_once()
-        tracer.start_span.assert_called_once_with(name=generate_span_name.return_value, kind=span_kind)
-        enrich_span.assert_called_once_with(
-            tracer.start_span.return_value,
+        tracer.start_span.assert_called_once_with(
+            name=generate_span_name.return_value, kind=span_kind, attributes=get_attributes.return_value
+        )
+        get_attributes.assert_called_once_with(
             channel,
             properties,
             destination,
@@ -54,10 +55,10 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_attributes")
     def test_get_span_suppressed(
         self,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         generate_span_name: mock.MagicMock,
         get_value: mock.MagicMock,
     ) -> None:
@@ -71,7 +72,7 @@ class TestUtils(TestCase):
         span = utils._get_span(tracer, channel, properties, task_name, span_kind, ctx)
         self.assertEqual(span, None)
         generate_span_name.assert_not_called()
-        enrich_span.assert_not_called()
+        get_attributes.assert_not_called()
 
     def test_generate_span_name_no_operation(self) -> None:
         task_name = "test.test"
@@ -86,85 +87,47 @@ class TestUtils(TestCase):
         span_name = utils._generate_span_name(task_name, operation)
         self.assertEqual(span_name, f"{task_name} {operation.value}")
 
-    @staticmethod
-    def test_enrich_span_basic_values() -> None:
+    def test_get_attributes_basic_values(self) -> None:
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_destination = "test.test"
-        span = mock.MagicMock(spec=Span)
-        utils._enrich_span(span, channel, properties, task_destination)
-        span.set_attribute.assert_has_calls(
-            any_order=True,
-            calls=[
-                mock.call(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq"),
-                mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True),
-                mock.call(SpanAttributes.MESSAGING_DESTINATION, task_destination),
-                mock.call(
-                    messaging_attributes.MESSAGING_MESSAGE_ID,
-                    properties.message_id,
-                ),
-                mock.call(
-                    SpanAttributes.MESSAGING_CONVERSATION_ID,
-                    properties.correlation_id,
-                ),
-                mock.call(
-                    NET_PEER_NAME,
-                    channel.connection.params.host,
-                ),
-                mock.call(
-                    NET_PEER_PORT,
-                    channel.connection.params.port,
-                ),
-            ],
+        attributes = utils._get_attributes(channel, properties, task_destination)
+        self.assertEqual(
+            attributes,
+            {
+                messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.RABBITMQ.value,
+                SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+                SpanAttributes.MESSAGING_DESTINATION: task_destination,
+                messaging_attributes.MESSAGING_MESSAGE_ID: properties.message_id,
+                SpanAttributes.MESSAGING_CONVERSATION_ID: properties.correlation_id,
+                NET_PEER_NAME: channel.connection.params.host,
+                NET_PEER_PORT: channel.connection.params.port,
+            },
         )
 
-    @staticmethod
-    def test_enrich_span_with_operation() -> None:
-        channel = mock.MagicMock()
-        properties = mock.MagicMock()
-        task_destination = "test.test"
-        operation = mock.MagicMock()
-        span = mock.MagicMock(spec=Span)
-        utils._enrich_span(span, channel, properties, task_destination, operation)
-        span.set_attribute.assert_has_calls(
-            any_order=True,
-            calls=[mock.call(SpanAttributes.MESSAGING_OPERATION, operation.value)],
+    def test_get_attributes_with_operation(self) -> None:
+        attributes = utils._get_attributes(None, BasicProperties(), "test.test", MessagingOperationValues.RECEIVE)
+        self.assertEqual(attributes[SpanAttributes.MESSAGING_OPERATION], MessagingOperationValues.RECEIVE.value)
+        self.assertNotIn(SpanAttributes.MESSAGING_TEMP_DESTINATION, attributes)
+
+    def test_get_attributes_without_optional_properties(self) -> None:
+        attributes = utils._get_attributes(None, BasicProperties(), "test.test")
+        self.assertEqual(
+            attributes,
+            {
+                messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.RABBITMQ.value,
+                SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
+                SpanAttributes.MESSAGING_DESTINATION: "test.test",
+            },
         )
 
-    @staticmethod
-    def test_enrich_span_without_operation() -> None:
+    def test_get_attributes_unique_connection(self) -> None:
         channel = mock.MagicMock()
-        properties = mock.MagicMock()
-        task_destination = "test.test"
-        span = mock.MagicMock(spec=Span)
-        utils._enrich_span(span, channel, properties, task_destination)
-        span.set_attribute.assert_has_calls(
-            any_order=True,
-            calls=[mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)],
-        )
-
-    @staticmethod
-    def test_enrich_span_unique_connection() -> None:
-        channel = mock.MagicMock()
-        properties = mock.MagicMock()
-        task_destination = "test.test"
-        span = mock.MagicMock(spec=Span)
-        # We do this to create the behaviour of hasattr(channel.connection, "params") == False
+        # Blocking connections expose parameters through their implementation.
         del channel.connection.params
-        utils._enrich_span(span, channel, properties, task_destination)
-        span.set_attribute.assert_has_calls(
-            any_order=True,
-            calls=[
-                mock.call(
-                    NET_PEER_NAME,
-                    channel.connection._impl.params.host,
-                ),
-                mock.call(
-                    NET_PEER_PORT,
-                    channel.connection._impl.params.port,
-                ),
-            ],
-        )
+        attributes = utils._get_attributes(channel, BasicProperties(), "test.test")
+        self.assertEqual(attributes[NET_PEER_NAME], channel.connection._impl.params.host)
+        self.assertEqual(attributes[NET_PEER_PORT], channel.connection._impl.params.port)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
     @mock.patch("opentelemetry.propagate.extract")
