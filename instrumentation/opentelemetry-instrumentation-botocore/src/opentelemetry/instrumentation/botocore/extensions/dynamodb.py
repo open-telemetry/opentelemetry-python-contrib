@@ -353,19 +353,10 @@ class _DynamoDbExtension(_AwsSdkExtension):
             attributes[key] = value
 
         self._add_attributes(self._call_context.params, self._op.start_attributes, attr_setter)
+        self._add_attributes(self._call_context.params, self._op.request_attributes, attr_setter)
 
     def _get_peer_name(self) -> str:
         return urlparse(self._call_context.endpoint_url).netloc
-
-    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
-        if not span.is_recording() or self._op is None:
-            return
-
-        self._add_attributes(
-            self._call_context.params,
-            self._op.request_attributes,
-            span.set_attribute,
-        )
 
     def on_success(
         self,
