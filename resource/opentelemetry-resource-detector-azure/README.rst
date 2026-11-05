@@ -7,6 +7,7 @@ OpenTelemetry Resource detectors for Azure
    :target: https://pypi.org/project/opentelemetry-resource-detector-azure/
 
 This library contains OpenTelemetry `Resource Detectors <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`_ for the following Azure resources:
+ * `Azure Kubernetes Service <https://learn.microsoft.com/azure/aks/>`_
  * `Azure App Service <https://azure.microsoft.com/en-us/products/app-service>`_
  * `Azure Virtual Machines <https://azure.microsoft.com/en-us/products/virtual-machines>`_
  * `Azure Functions (Experimental) <https://azure.microsoft.com/en-us/products/functions>`_
@@ -26,11 +27,9 @@ Usage example for ``opentelemetry-resource-detector-azure``
 
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.resource.detector.azure.app_service import (
+    from opentelemetry.resource.detector.azure import (
+        AzureAKSResourceDetector,
         AzureAppServiceResourceDetector,
-        AzureVMResourceDetector,
-    )
-    from opentelemetry.resource.detector.azure.vm import (
         AzureVMResourceDetector,
     )
     from opentelemetry.sdk.resources import get_aggregated_resources
@@ -40,6 +39,7 @@ Usage example for ``opentelemetry-resource-detector-azure``
         TracerProvider(
             resource=get_aggregated_resources(
                 [
+                    AzureAKSResourceDetector(),
                     AzureAppServiceResourceDetector(),
                     AzureVMResourceDetector(),
                 ]
@@ -49,6 +49,75 @@ Usage example for ``opentelemetry-resource-detector-azure``
 
 Mappings
 --------
+
+The Azure Kubernetes Service Resource Detector reads the cluster resource ID from the
+``CLUSTER_RESOURCE_ID`` environment variable or from a mounted ``aks-cluster-metadata``
+ConfigMap at ``/etc/kubernetes/aks-cluster-metadata``. It sets the following Resource
+Attributes:
+
+ * ``cloud.platform`` set to ``azure.aks``.
+ * ``cloud.provider`` set to ``azure``.
+ * ``cloud.resource_id`` set to the full Azure Resource Manager cluster resource ID.
+ * ``k8s.pod.name`` set to the value of the ``K8S_POD_NAME`` environment variable, when present.
+ * ``k8s.pod.uid`` set to the value of the ``K8S_POD_UID`` environment variable, when present.
+
+The native AKS ConfigMap is named ``aks-cluster-metadata`` and contains a
+``clusterResourceId`` key. It can be exposed to a pod as an environment variable:
+
+.. code-block:: yaml
+
+    env:
+      - name: CLUSTER_RESOURCE_ID
+        valueFrom:
+          configMapKeyRef:
+            name: aks-cluster-metadata
+            key: clusterResourceId
+
+Alternatively, mount the ConfigMap as a volume:
+
+.. code-block:: yaml
+
+    volumes:
+      - name: aks-cluster-metadata
+        configMap:
+          name: aks-cluster-metadata
+    volumeMounts:
+      - name: aks-cluster-metadata
+        mountPath: /etc/kubernetes/aks-cluster-metadata
+
+Kubernetes resolves ConfigMap references within the pod's namespace. Because the native
+ConfigMap is in ``kube-public``, copy it into the workload namespace or use tooling such
+as an init container to expose its value through one of the supported locations.
+
+To also populate pod identity, add these environment variables to your application
+container alongside either cluster metadata configuration above:
+
+.. code-block:: yaml
+
+    env:
+      - name: K8S_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: K8S_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
+
+The Kubernetes Downward API supplies the pod name and UID. Each attribute is optional
+and omitted if its environment variable is missing or empty. Pod identity is only
+populated when AKS cluster metadata is detected; the pod environment variables alone
+do not identify AKS. The detector does not infer pod identity from the hostname.
+
+The detector is process-dependent so SDK post-fork resource refresh can re-run it
+in child processes.
+
+The pod UID identifies the pod, not an individual service instance within it. It
+remains the same across container restarts within that pod and changes when the pod
+is replaced. The detector does not set or overwrite ``service.instance.id``, since
+multiple containers or worker processes can run instances of the same service in one
+pod. Configure that attribute separately through your SDK resource or
+``OTEL_RESOURCE_ATTRIBUTES`` with ``OTELResourceDetector``.
 
 The Azure App Service Resource Detector sets the following Resource Attributes:
  * ``service.name`` set to the value of the ``WEBSITE_SITE_NAME`` environment variable.

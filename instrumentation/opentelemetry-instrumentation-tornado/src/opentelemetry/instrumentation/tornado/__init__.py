@@ -116,6 +116,18 @@ will extract ``content-type`` and ``custom_request_header`` from request headers
 It is recommended that you should give the correct names of the headers to be captured in the environment variable.
 Request header names in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
 
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
+
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
 The value of the attribute will be single item list containing all the header values.
 
@@ -138,11 +150,37 @@ will extract ``content-type`` and ``custom_response_header`` from response heade
 It is recommended that you should give the correct names of the headers to be captured in the environment variable.
 Response header names captured in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
 
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
+
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
 The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
 
 Note:
     Environment variable names to capture http headers are still experimental, and thus are subject to change.
@@ -152,11 +190,11 @@ API
 """
 
 from collections import namedtuple
+from collections.abc import Collection, Mapping
 from functools import partial
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Collection, Dict
 
 import tornado.web
 import tornado.websocket
@@ -229,8 +267,10 @@ from opentelemetry.semconv.attributes.url_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
     _parse_url_query,
     get_custom_headers,
     get_excluded_urls,
@@ -381,7 +421,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> Dict[str, Histogram]:
+def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics
@@ -428,14 +468,14 @@ def _create_server_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> Dic
     if active_meter is not None:
         histograms["active_requests"] = active_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
+            unit="{request}",
             description="measures the number of concurrent HTTP requests that are currently in-flight",
         )
 
     return histograms
 
 
-def _create_client_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> Dict[str, Histogram]:
+def _create_client_histograms(meter_old, meter_new, sem_conv_opt_in_mode) -> dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics
@@ -624,26 +664,30 @@ def _log_exception(
     return func(*args, **kwargs)
 
 
-def _collect_custom_request_headers_attributes(request_headers):
-    custom_request_headers_name = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
-    attributes = {}
-    for header_name in custom_request_headers_name:
-        header_values = request_headers.get(header_name)
-        if header_values:
-            key = normalise_request_header_name(header_name.lower())
-            attributes[key] = [header_values]
-    return attributes
+def _collect_custom_request_headers_attributes(request_headers: Mapping[str, str]) -> dict[str, list[str]]:
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+    if not captured_headers:
+        return {}
+
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
+    return sanitize.sanitize_header_values(
+        request_headers,
+        captured_headers,
+        normalise_request_header_name,
+    )
 
 
-def _collect_custom_response_headers_attributes(response_headers):
-    custom_response_headers_name = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
-    attributes = {}
-    for header_name in custom_response_headers_name:
-        header_values = response_headers.get(header_name)
-        if header_values:
-            key = normalise_response_header_name(header_name.lower())
-            attributes[key] = [header_values]
-    return attributes
+def _collect_custom_response_headers_attributes(response_headers: Mapping[str, str]) -> dict[str, list[str]]:
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
+    if not captured_headers:
+        return {}
+
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
+    return sanitize.sanitize_header_values(
+        response_headers,
+        captured_headers,
+        normalise_response_header_name,
+    )
 
 
 def _get_attributes_from_request(request, sem_conv_opt_in_mode):
@@ -728,6 +772,10 @@ def _get_full_handler_name(handler):
 
 def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     attributes = _get_attributes_from_request(handler.request, sem_conv_opt_in_mode)
+    # Captured request headers are only added to SERVER spans, which
+    # _start_internal_or_server_span creates when there is no current span.
+    if trace.get_current_span() is trace.INVALID_SPAN:
+        attributes.update(_collect_custom_request_headers_attributes(handler.request.headers))
     span, token = _start_internal_or_server_span(
         tracer=tracer,
         span_name=_get_default_span_name(handler),
@@ -739,10 +787,6 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
 
     if span.is_recording():
         span.set_attribute("tornado.handler", _get_full_handler_name(handler))
-        if span.kind == trace.SpanKind.SERVER:
-            custom_attributes = _collect_custom_request_headers_attributes(handler.request.headers)
-            if len(custom_attributes) > 0:
-                span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
     activation.__enter__()  # pylint: disable=unnecessary-dunder-call

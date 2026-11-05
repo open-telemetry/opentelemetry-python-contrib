@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Mapping
-from typing import Tuple
 from unittest.mock import patch
 
 import fastapi
@@ -21,7 +20,7 @@ from opentelemetry.util.http import (
 
 
 class MultiMapping(Mapping):
-    def __init__(self, *items: Tuple[str, str]):
+    def __init__(self, *items: tuple[str, str]):
         self._items = items
 
     def __len__(self):

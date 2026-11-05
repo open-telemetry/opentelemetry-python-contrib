@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from openai import AsyncStream, Stream
 from openai.types.chat import ChatCompletionChunk
@@ -32,11 +31,11 @@ class _ChatStreamMixin:
     _self_invocation: InferenceInvocation
     _self_capture_content: bool
     _self_choice_buffers: list[ChoiceBuffer]
-    _self_response_id: Optional[str]
-    _self_response_model: Optional[str]
-    _self_service_tier: Optional[str]
-    _self_prompt_tokens: Optional[int]
-    _self_completion_tokens: Optional[int]
+    _self_response_id: str | None
+    _self_response_model: str | None
+    _self_service_tier: str | None
+    _self_prompt_tokens: int | None
+    _self_completion_tokens: int | None
 
     def _set_response_model(self, chunk: ChatCompletionChunk) -> None:
         if self._self_response_model:
@@ -137,7 +136,7 @@ class _ChatStreamMixin:
         """Called when using with_raw_response with stream=True."""
         return self
 
-    def _cleanup(self, error: Optional[BaseException] = None) -> None:
+    def _cleanup(self, error: BaseException | None = None) -> None:
         self._self_invocation.response_model_name = self._self_response_model
         self._self_invocation.response_id = self._self_response_id
         self._self_invocation.input_tokens = self._self_prompt_tokens

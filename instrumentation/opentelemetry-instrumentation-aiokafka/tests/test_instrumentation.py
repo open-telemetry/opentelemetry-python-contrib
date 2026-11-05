@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, cast
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 import aiokafka
@@ -129,7 +130,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -146,7 +147,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -259,7 +260,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -276,7 +277,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -291,7 +292,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -308,7 +309,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -323,7 +324,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1, topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME: group_id,

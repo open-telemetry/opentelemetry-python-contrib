@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import timeit
-from typing import Optional
 
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -32,7 +31,7 @@ class InvocationMetricsRecorder:
         attributes = invocation._get_metric_attributes()
         token_counts = invocation._get_metric_token_counts()
 
-        duration_seconds: Optional[float] = None
+        duration_seconds: float | None = None
         if invocation._monotonic_start_s is not None:
             duration_seconds = max(
                 timeit.default_timer() - invocation._monotonic_start_s,

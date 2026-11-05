@@ -95,12 +95,13 @@ API
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING
 
 import aiokafka
 from wrapt import (
-    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+    wrap_function_wrapper,
 )
 
 from opentelemetry import trace

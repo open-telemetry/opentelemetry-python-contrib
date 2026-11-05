@@ -6,8 +6,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator, Mapping
 from logging import getLogger
-from typing import Any, Generator, Mapping
+from typing import Any
 
 from opentelemetry._opamp.exceptions import (
     OpAMPRemoteConfigDecodeException,

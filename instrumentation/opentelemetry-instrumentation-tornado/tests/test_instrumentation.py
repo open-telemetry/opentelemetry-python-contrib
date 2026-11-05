@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=too-many-lines
 
 import asyncio
 from unittest.mock import Mock, patch
@@ -33,10 +34,15 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
 )
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
+)
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_excluded_urls,
@@ -49,6 +55,24 @@ from .tornado_test_app import (
     MainHandler,
     make_app,
 )
+
+SCOPE = "opentelemetry.instrumentation.tornado"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
+
+
+def _instrument_with_sampler(test_case, sampler):
+    TornadoInstrumentor().uninstrument()
+    tracer_provider, exporter = TestBase.create_tracer_provider(sampler=sampler)
+    test_case.addCleanup(tracer_provider.shutdown)
+    TornadoInstrumentor().instrument(tracer_provider=tracer_provider)
+    return tracer_provider, exporter
 
 
 class TornadoTest(AsyncHTTPTestCase, TestBase):
@@ -656,6 +680,20 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         self.memory_exporter.clear()
 
+    def test_invalid_request_uri_does_not_break_request(self):
+        # `request.uri` comes straight off the request line and need not be a
+        # parsable URL. Instrumentation must not change the outcome of such a
+        # request; this target matches no route, so the app answers 404. It
+        # previously became a 500 from urlparse raising in _parse_url_query.
+        response = self.fetch("//exa[mple", raise_error=False)
+
+        self.assertEqual(response.code, 404)
+
+        spans = self.memory_exporter.get_finished_spans()
+        server = next(span for span in spans if span.kind is SpanKind.SERVER)
+        self.assertEqual(server.attributes[HTTP_TARGET], "//exa[mple")
+        self.assertEqual(server.attributes[HTTP_STATUS_CODE], 404)
+
 
 class TestTornadoInstrumentationWithXHeaders(TornadoTest):
     def get_httpserver_options(self):  # pylint: disable=no-self-use
@@ -846,6 +884,62 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
 
     @patch.dict(
         "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2"},
+    )
+    def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.custom_test_header_2": ["test-header-value-2"],
+        }
+        sampler = CapturingSampler()
+        _, exporter = _instrument_with_sampler(self, sampler)
+
+        # This handler starts no spans of its own, so the server span is the
+        # last span passed to the sampler.
+        response = self.fetch(
+            "/test_custom_response_headers",
+            headers={
+                "Custom-Test-Header-1": "test-header-value-1",
+                "Custom-Test-Header-2": "test-header-value-2",
+                "Uncaptured-Header": "Uncaptured Value",
+            },
+        )
+        self.assertEqual(response.code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = [span for span in exporter.get_finished_spans() if span.kind == SpanKind.SERVER]
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    @patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
+    )
+    def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                # The client span from fetch has no captured headers, so this
+                # sampler drops it and only the server span can be kept.
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter = _instrument_with_sampler(self, sampler)
+
+                response = self.fetch("/test_custom_response_headers", headers={"Custom-Test-Header-1": value})
+                self.assertEqual(response.code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    @patch.dict(
+        "os.environ",
         {
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,my-custom-header,invalid-header"
         },
@@ -861,6 +955,55 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
         }
         self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
         self.assertSpanHasAttributes(tornado_span, expected)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        },
+    )
+    def test_custom_request_headers_regex_match_and_sanitize_in_server_span(self):
+        headers = {
+            "Custom-Test-Header-1": "Test Value 1",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
+            "Dont-Capture-Me": "test-value",
+        }
+        response = self.fetch("/", headers=headers)
+        self.assertEqual(response.code, 201)
+        _, tornado_span, _ = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        expected = {
+            "http.request.header.custom_test_header_1": ("Test Value 1",),
+            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
+            "http.request.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+        self.assertNotIn("http.request.header.dont_capture_me", tornado_span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,my-custom-regex-header-.*,invalid-header,.*my-secret.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+        },
+    )
+    def test_custom_response_headers_regex_match_and_sanitize_in_server_span(self):
+        response = self.fetch("/test_custom_response_headers")
+        self.assertEqual(response.code, 200)
+        tornado_span, _ = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        expected = {
+            "http.response.header.content_type": ("text/plain; charset=utf-8",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
+            "http.response.header.my_secret_header": ("[REDACTED]",),
+        }
+        self.assertEqual(tornado_span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(tornado_span, expected)
+        self.assertNotIn("http.response.header.dont_capture_me", tornado_span.attributes)
 
 
 class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(TornadoTest):
@@ -896,6 +1039,28 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(TornadoTes
         self.assertEqual(tornado_span.kind, trace.SpanKind.INTERNAL)
         for key, _ in not_expected.items():
             self.assertNotIn(key, tornado_span.attributes)
+
+    @patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
+    )
+    def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        _, exporter = _instrument_with_sampler(self, sampler)
+
+        response = self.fetch("/test_custom_response_headers", headers={"Custom-Test-Header-1": "test-header-value-1"})
+        self.assertEqual(response.code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        # The parent span comes from the global tracer provider used by get_app.
+        (parent_span,) = self.memory_exporter.get_finished_spans()
+        spans = [span for span in exporter.get_finished_spans() if span.kind == SpanKind.INTERNAL]
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
 
     @patch.dict(
         "os.environ",

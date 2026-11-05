@@ -64,8 +64,8 @@ API
 ---
 """
 
+from collections.abc import Collection
 from importlib import import_module
-from typing import Collection
 
 from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper

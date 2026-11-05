@@ -1,14 +1,15 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from opentelemetry.trace import Span
 
-_Scope = Dict[str, Any]
-_Message = Dict[str, Any]
+_Scope = dict[str, Any]
+_Message = dict[str, Any]
 
-ServerRequestHook = Optional[Callable[[Span, _Scope], None]]
+ServerRequestHook = Callable[[Span, _Scope], None] | None
 """
 Incoming request callback type.
 
@@ -17,7 +18,7 @@ Args:
     - ASGI scope as a mapping
 """
 
-ClientRequestHook = Optional[Callable[[Span, _Scope, _Message], None]]
+ClientRequestHook = Callable[[Span, _Scope, _Message], None] | None
 """
 Receive callback type.
 
@@ -27,7 +28,7 @@ Args:
     - ASGI event as a mapping
 """
 
-ClientResponseHook = Optional[Callable[[Span, _Scope, _Message], None]]
+ClientResponseHook = Callable[[Span, _Scope, _Message], None] | None
 """
 Send callback type.
 

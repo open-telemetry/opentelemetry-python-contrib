@@ -59,7 +59,7 @@ from opentelemetry.trace import Span, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 
 
-def run_with_test_server(runnable: typing.Callable, url: str, handler: typing.Callable) -> typing.Tuple[str, int]:
+def run_with_test_server(runnable: typing.Callable, url: str, handler: typing.Callable) -> tuple[str, int]:
     async def do_request():
         app = aiohttp.web.Application()
         parsed_url = urllib.parse.urlparse(url)
@@ -129,7 +129,7 @@ class TestAioHttpIntegration(TestBase):
         status_code: int = HTTPStatus.OK,
         request_handler: typing.Callable = None,
         **kwargs,
-    ) -> typing.Tuple[str, int]:
+    ) -> tuple[str, int]:
         """Helper to start an aiohttp test server and send an actual HTTP request to it."""
 
         async def default_handler(request):
@@ -286,11 +286,17 @@ class TestAioHttpIntegration(TestBase):
                 index += 1
 
     def test_metrics(self):
+        async def request_handler(request):
+            assert "traceparent" in request.headers
+            await asyncio.sleep(0.01)
+            return aiohttp.web.Response(status=200)
+
         with self.subTest(status_code=200):
             host, port = self._http_request(
                 trace_config=aiohttp_client.create_trace_config(),
                 url="/test-path?query=param#foobar",
                 status_code=200,
+                request_handler=request_handler,
             )
             metrics = self._assert_metrics(1)
             self.assertEqual(len(metrics[0].data.data_points), 1)
@@ -381,10 +387,7 @@ class TestAioHttpIntegration(TestBase):
 
         def response_hook(
             span: Span,
-            params: typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ],
+            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 
@@ -442,9 +445,13 @@ class TestAioHttpIntegration(TestBase):
     def test_connection_errors(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
-        for url, expected_status in (
-            ("http://this-is-unknown.local/", StatusCode.ERROR),
-            ("http://127.0.0.1:1/", StatusCode.ERROR),
+        for url, expected_status, expected_error in (
+            (
+                "http://this-is-unknown.local/",
+                StatusCode.ERROR,
+                "ClientConnectorDNSError",
+            ),
+            ("http://127.0.0.1:1/", StatusCode.ERROR, "ClientConnectorError"),
         ):
             with self.subTest(expected_status=expected_status):
 
@@ -462,7 +469,7 @@ class TestAioHttpIntegration(TestBase):
                 [
                     (
                         "GET",
-                        (expected_status, "ClientConnectorError"),
+                        (expected_status, expected_error),
                         {
                             HTTP_METHOD: "GET",
                             HTTP_URL: url,
@@ -475,6 +482,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(),
@@ -511,6 +519,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception_new_semconv(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP),
@@ -550,6 +559,7 @@ class TestAioHttpIntegration(TestBase):
     def test_basic_exception_both_semconv(self):
         async def request_handler(request):
             assert "traceparent" in request.headers
+            request.transport.close()
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP),
@@ -1213,7 +1223,7 @@ class TestAioHttpClientInstrumentor(TestBase):
     @staticmethod
     # pylint:disable=unused-argument
     async def default_handler(request):
-        return aiohttp.web.Response(status=int(200))
+        return aiohttp.web.Response(status=200)
 
     @staticmethod
     def get_default_request(url: str = URL):
@@ -1487,10 +1497,7 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         def response_hook(
             span: Span,
-            params: typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ],
+            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 

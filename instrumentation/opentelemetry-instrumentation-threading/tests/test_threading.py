@@ -3,17 +3,26 @@
 
 from __future__ import annotations
 
+import functools
 import threading
+from collections.abc import Callable
 from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )
-from typing import List
 from unittest.mock import MagicMock, patch
+
+from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.test.test_base import TestBase
+
+
+def charge_customer(order_id: int, *, retries: int = 0) -> str:
+    """Charge the customer for the given order."""
+    return f"charged {order_id} after {retries} retries"
 
 
 # pylint: disable=too-many-public-methods
@@ -21,7 +30,7 @@ class TestThreading(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        self._mock_span_contexts: List[trace.SpanContext] = []
+        self._mock_span_contexts: list[trace.SpanContext] = []
         ThreadingInstrumentor().instrument()
 
     def tearDown(self):
@@ -53,8 +62,8 @@ class TestThreading(TestBase):
         max_workers = 10
         executor = ThreadPoolExecutor(max_workers=max_workers)
 
-        expected_span_contexts: List[trace.SpanContext] = []
-        futures_list: List[Future[trace.SpanContext]] = []
+        expected_span_contexts: list[trace.SpanContext] = []
+        futures_list: list[Future[trace.SpanContext]] = []
         for num in range(max_workers):
             with self._tracer.start_as_current_span(f"trace_{num}") as span:
                 expected_span_context = span.get_span_context()
@@ -103,15 +112,15 @@ class TestThreading(TestBase):
     def get_current_span_context_for_test() -> trace.SpanContext:
         return trace.get_current_span().get_span_context()
 
-    def print_square(self, num: int | float) -> int | float:
+    def print_square(self, num: float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             return num * num
 
-    def print_cube(self, num: int | float) -> int | float:
+    def print_cube(self, num: float) -> int | float:
         with self._tracer.start_as_current_span("cube"):
             return num * num * num
 
-    def print_square_with_thread(self, num: int | float) -> int | float:
+    def print_square_with_thread(self, num: float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             cube_thread = threading.Thread(target=self.print_cube, args=(10,))
 
@@ -119,7 +128,7 @@ class TestThreading(TestBase):
             cube_thread.join()
             return num * num
 
-    def calculate(self, num: int | float) -> None:
+    def calculate(self, num: float) -> None:
         with self._tracer.start_as_current_span("calculate"):
             square_thread = threading.Thread(target=self.print_square, args=(num,))
             cube_thread = threading.Thread(target=self.print_cube, args=(num,))
@@ -282,6 +291,77 @@ class TestThreading(TestBase):
         square_span = next(span for span in spans if span.name == "square")
         self.assertIsNotNone(square_span)
         self.assertIs(square_span.parent, root_span.get_span_context())
+
+    def _record_callables_forwarded_to_submit(self) -> list[Callable[..., object]]:
+        """Record the callables this instrumentation forwards to ``submit``.
+
+        ``setUp`` has already instrumented, so the spy is installed while
+        uninstrumented: re-instrumenting then places the instrumentation's own
+        wrapper *outside* it, and the spy sees what the instrumentation passes
+        down rather than what the caller passed in.
+        """
+        seen: list[Callable[..., object]] = []
+
+        def spy(
+            wrapped: Callable[..., object],
+            _instance: ThreadPoolExecutor,
+            args: tuple[Callable[..., object], ...],
+            kwargs: dict[str, object],
+        ) -> object:
+            seen.append(args[0])
+            return wrapped(*args, **kwargs)
+
+        instrumentor = ThreadingInstrumentor()
+        instrumentor.uninstrument()
+        wrap_function_wrapper(ThreadPoolExecutor, "submit", spy)
+        instrumentor.instrument()
+        # cleanups run after tearDown has removed the instrumentation's wrapper,
+        # so only the spy is left to peel off here
+        self.addCleanup(unwrap, ThreadPoolExecutor, "submit")
+
+        return seen
+
+    def test_thread_pool_submit_preserves_callable_identity(self) -> None:
+        seen = self._record_callables_forwarded_to_submit()
+        bound_method = self.print_square
+        partial_charge = functools.partial(charge_customer, 7)
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(charge_customer, 1).result()
+            executor.submit(bound_method, 10).result()
+            executor.submit(partial_charge).result()
+
+        self.assertEqual(len(seen), 3)
+        # pylint: disable=unbalanced-tuple-unpacking
+        plain, bound, partial_func = seen
+
+        # a plain function carries every attribute functools.wraps copies
+        self.assertIs(plain.__wrapped__, charge_customer)
+        self.assertEqual(plain.__name__, "charge_customer")
+        self.assertEqual(plain.__doc__, charge_customer.__doc__)
+
+        # a bound method is rebuilt on every attribute access, so compare its
+        # __wrapped__ by equality rather than identity
+        self.assertEqual(bound.__wrapped__, bound_method)
+        self.assertEqual(bound.__name__, "print_square")
+
+        # a partial has no __name__ to copy, but must still be reachable
+        self.assertIs(partial_func.__wrapped__, partial_charge)
+
+    def test_thread_pool_submit_accepts_callables_without_metadata(self) -> None:
+        """``functools.wraps`` must not reject callables that lack ``__name__``."""
+
+        class Doubler:
+            def __call__(self, num: int) -> int:
+                return num * 2
+
+        for label, func, expected in (
+            ("partial", functools.partial(self.print_square), 100),
+            ("callable instance", Doubler(), 20),
+        ):
+            with self.subTest(label):
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    self.assertEqual(executor.submit(func, 10).result(), expected)
 
     def test_threading_run_with_custom_run(self):
         _tracer = self._tracer

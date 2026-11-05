@@ -33,7 +33,7 @@ class AwsEcsResourceDetector(ResourceDetector):
             container_id = ""
             try:
                 with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
-                    for raw_line in container_info_file.readlines():
+                    for raw_line in container_info_file:
                         line = raw_line.strip()
                         # Subsequent IDs should be the same, exit if found one
                         if len(line) > _CONTAINER_ID_LENGTH:
@@ -61,7 +61,7 @@ class AwsEcsResourceDetector(ResourceDetector):
             metadata_task = json.loads(_http_get(f"{metadata_v4_endpoint}/task"))
 
             task_arn = metadata_task["TaskARN"]
-            base_arn = task_arn[0 : task_arn.rindex(":")]  # noqa
+            base_arn = task_arn[0 : task_arn.rindex(":")]
             cluster: str = metadata_task["Cluster"]
             cluster_arn = cluster if cluster.startswith("arn:") else f"{base_arn}:cluster/{cluster}"
 

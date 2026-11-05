@@ -20,6 +20,11 @@ TEST_WEBSITE_OWNER_NAME = "TEST_WEBSITE_OWNER_NAME"
 
 
 class TestAzureAppServiceResourceDetector(unittest.TestCase):
+    def test_is_process_dependent(self):
+        detector = AzureAppServiceResourceDetector()
+
+        self.assertTrue(detector.is_process_dependent())
+
     @patch.dict(
         "os.environ",
         {

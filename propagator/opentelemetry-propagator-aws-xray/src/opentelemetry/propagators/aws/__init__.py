@@ -6,4 +6,4 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     AwsXRayPropagator,
 )
 
-__all__ = ["AwsXRayPropagator", "AwsXRayLambdaPropagator"]
+__all__ = ["AwsXRayLambdaPropagator", "AwsXRayPropagator"]
