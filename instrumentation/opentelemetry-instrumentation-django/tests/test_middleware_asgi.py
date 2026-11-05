@@ -878,7 +878,6 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
             # of the middleware
             with patch(
                 "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_response",
-                #
                 side_effect=asyncio.CancelledError,
             ):
                 await self.async_client.get("/traced-custom-error/")
