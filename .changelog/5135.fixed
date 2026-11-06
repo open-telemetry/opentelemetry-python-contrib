@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: make `opentelemetry-bootstrap` skip unsupported library versions

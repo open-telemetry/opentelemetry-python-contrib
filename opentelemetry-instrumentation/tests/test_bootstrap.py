@@ -7,6 +7,8 @@ from random import sample
 from unittest import TestCase
 from unittest.mock import call, patch
 
+from packaging.version import InvalidVersion
+
 from opentelemetry.instrumentation import bootstrap
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations,
@@ -102,3 +104,42 @@ class TestBootstrap(TestCase):
             any_order=True,
         )
         self.mock_pip_check.assert_called_once()
+
+
+class TestIsInstalled(TestCase):
+    @patch("opentelemetry.instrumentation.bootstrap.version", return_value="1.5.0")
+    def test_version_in_range(self, mock_version):
+        with self.assertNoLogs(bootstrap.logger, level="WARNING"):
+            self.assertTrue(bootstrap._is_installed("foo >= 1.0, < 2.0"))
+        mock_version.assert_called_once_with("foo")
+
+    @patch("opentelemetry.instrumentation.bootstrap.version", return_value="2.1.0")
+    def test_version_out_of_range(self, _):
+        with self.assertLogs(bootstrap.logger, level="WARNING") as logs:
+            self.assertFalse(bootstrap._is_installed("foo >= 1.0, < 2.0"))
+        self.assertIn("version 2.1.0 is installed", logs.output[0])
+
+    # packaging 22-25 raise InvalidVersion for non-PEP 440 versions
+    @patch("opentelemetry.instrumentation.bootstrap.version", return_value="1.0-SNAPSHOT")
+    @patch("packaging.specifiers.SpecifierSet.contains", side_effect=InvalidVersion)
+    def test_invalid_version(self, mock_contains, _):
+        with self.assertLogs(bootstrap.logger, level="WARNING") as logs:
+            self.assertFalse(bootstrap._is_installed("foo >= 1.0, < 2.0"))
+        mock_contains.assert_called_once()
+        self.assertIn("version 1.0-SNAPSHOT is installed", logs.output[0])
+
+    # For a dist-info without a Version field, version() returns None on
+    # Python 3.10-3.14, while 3.15+ raise KeyError or MetadataNotFound
+    def test_missing_version(self):
+        for kwargs in (
+            {"return_value": None},
+            {"side_effect": KeyError("Version")},
+            {"side_effect": FileNotFoundError("No package metadata was found.")},
+        ):
+            with (
+                self.subTest(**kwargs),
+                patch("opentelemetry.instrumentation.bootstrap.version", **kwargs),
+                self.assertLogs(bootstrap.logger, level="WARNING") as logs,
+            ):
+                self.assertFalse(bootstrap._is_installed("foo >= 1.0, < 2.0"))
+            self.assertIn("version None is installed", logs.output[0])
