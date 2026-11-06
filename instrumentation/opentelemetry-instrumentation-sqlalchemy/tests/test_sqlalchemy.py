@@ -666,6 +666,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             with suppress_instrumentation():
                 engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            await engine.dispose()
 
             self.assertTrue(not isinstance(engine, EngineTracer))
 
