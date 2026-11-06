@@ -174,12 +174,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "Embeddings.create",
-            embeddings_create(tracer, instruments, False),
+            embeddings_create(tracer, instruments),
         )
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "AsyncEmbeddings.create",
-            async_embeddings_create(tracer, instruments, False),
+            async_embeddings_create(tracer, instruments),
         )
         type(self)._legacy_instrumented = True
 
