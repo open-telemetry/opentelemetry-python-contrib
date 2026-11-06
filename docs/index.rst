@@ -72,6 +72,14 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
 .. toctree::
     :maxdepth: 2
+    :caption: OpenTelemetry Exporters
+    :name: Exporters
+    :glob:
+
+    exporter/**
+
+.. toctree::
+    :maxdepth: 2
     :caption: OpenTelemetry Propagators
     :name: Propagators
     :glob:
