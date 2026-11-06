@@ -166,6 +166,8 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
