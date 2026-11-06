@@ -1,0 +1,1 @@
+`opentelemetry-util-http`, `opentelemetry-instrumentation-wsgi`: add opt-in request body capture as `http.request.body.content`
