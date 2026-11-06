@@ -269,9 +269,9 @@ class TestLoggingInstrumentor(TestBase):
                 after_record = self.caplog.records[1]
                 self.assertFalse(hasattr(after_record, "otelTraceID"))
                 # Format with all active root handlers should not raise
-                for h in root_logger.handlers:
-                    if h.formatter:
-                        formatted = h.format(after_record)
+                for handler in root_logger.handlers:
+                    if handler.formatter:
+                        formatted = handler.format(after_record)
                         self.assertIn("after uninstrument", formatted)
         finally:
             LoggingInstrumentor().uninstrument()

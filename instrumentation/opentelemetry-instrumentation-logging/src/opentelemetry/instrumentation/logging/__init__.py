@@ -142,6 +142,24 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
+    @staticmethod
+    def _configure_logging(log_format: str, log_level: int) -> None:
+        root = logging.getLogger()
+        old_level = root.level
+        old_handlers = list(root.handlers)
+        logging.basicConfig(format=log_format, level=log_level)
+        # Record only the handlers basicConfig actually added so that
+        # uninstrument removes exactly those and does not drop handlers the
+        # application added while instrumented.
+        added_handlers = [handler for handler in root.handlers if handler not in old_handlers]
+        LoggingInstrumentor._old_handlers_state = {
+            "old_level": old_level,
+            "added_handlers": added_handlers,
+            # basicConfig is a no-op when the root logger already has a
+            # handler. Only restore a level that instrumentation changed.
+            "configured_level": (log_level if added_handlers and old_level != log_level else None),
+        }
+
     def _instrument(self, **kwargs):
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
@@ -160,21 +178,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
-            root = logging.getLogger()
-            old_level = root.level
-            old_handlers = list(root.handlers)
-            logging.basicConfig(format=log_format, level=log_level)
-            # Record only the handlers basicConfig actually added so that
-            # uninstrument removes exactly those and does not drop handlers the
-            # application added while instrumented.
-            added_handlers = [handler for handler in root.handlers if handler not in old_handlers]
-            LoggingInstrumentor._old_handlers_state = {
-                "old_level": old_level,
-                "added_handlers": added_handlers,
-                # basicConfig is a no-op when the root logger already has a
-                # handler. Only restore a level that instrumentation changed.
-                "configured_level": (log_level if added_handlers and old_level != log_level else None),
-            }
+            LoggingInstrumentor._configure_logging(log_format, log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
