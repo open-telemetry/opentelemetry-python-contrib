@@ -267,18 +267,21 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assertEqual(point.count, 1)
         self.assertLess(point.sum, slow_listener_seconds)
 
-    def test_create_time_not_recorded_when_suppressed(self):
+    def test_create_time_recorded_when_suppressed(self):
+        pool_name = "pool_test_name"
         engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             poolclass=QueuePool,
-            pool_logging_name="pool_test_name",
+            pool_logging_name=pool_name,
         )
 
         with suppress_instrumentation():
             with engine.connect():
                 pass
 
-        self.assertIsNone(self.get_metric(CONNECTION_CREATE_TIME))
+        point = list(self.get_metric(CONNECTION_CREATE_TIME).data.data_points)[0]
+        self.assertEqual(point.count, 1)
+        self.assertEqual(dict(point.attributes), {POOL_NAME: pool_name})
 
     def test_create_time_not_recorded_with_custom_creator(self):
         # A custom creator bypasses the do_connect event, so there is no

@@ -290,9 +290,10 @@ class EngineTracer:
         self._add_used_to_connection_usage(1)
 
     # Called right before a new DBAPI connection is created. Returning None
-    # lets SQLAlchemy create the connection as usual.
+    # lets SQLAlchemy create the connection as usual. Like the pool usage
+    # counter, this is not suppressed, since it measures the pool's state.
     def _dialect_do_connect(self, _dialect, connection_record, _cargs, _cparams):
-        if self.connection_create_time is not None and connection_record is not None and is_instrumentation_enabled():
+        if self.connection_create_time is not None and connection_record is not None:
             connection_record.info[_CONNECT_START_TIME_KEY] = time.perf_counter()
 
     # Called once the new DBAPI connection has been created.
