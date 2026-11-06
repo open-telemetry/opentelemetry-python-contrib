@@ -167,7 +167,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             # Record only the handlers basicConfig actually added so that
             # uninstrument removes exactly those and does not drop handlers the
             # application added while instrumented.
-            added_handlers = [h for h in root.handlers if h not in old_handlers]
+            added_handlers = [handler for handler in root.handlers if handler not in old_handlers]
             LoggingInstrumentor._old_handlers_state = {
                 "old_level": old_level,
                 "added_handlers": added_handlers,
@@ -290,6 +290,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             if state["configured_level"] is not None and root.level == state["configured_level"]:
                 root.setLevel(state["old_level"])
 
-            for h in list(root.handlers):
-                if h in state["added_handlers"]:
-                    root.removeHandler(h)
+            for handler in list(root.handlers):
+                if handler in state["added_handlers"]:
+                    root.removeHandler(handler)
