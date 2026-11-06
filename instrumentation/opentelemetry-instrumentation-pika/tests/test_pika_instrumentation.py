@@ -14,6 +14,7 @@ from pika.connection import Connection
 from pika.spec import BasicProperties
 from wrapt import BoundFunctionWrapper
 
+from opentelemetry.instrumentation._semconv import _StabilityMode
 from opentelemetry.instrumentation.pika import PikaInstrumentor
 from opentelemetry.instrumentation.pika.pika_instrumentor import (
     _consumer_callback_attribute_name,
@@ -96,7 +97,7 @@ class TestPika(TestCase):
         tracer = mock.MagicMock(spec=Tracer)
         callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
         expected_decoration_calls = [
-            mock.call(getattr(value, callback_attr), tracer, key, dummy_callback)
+            mock.call(getattr(value, callback_attr), tracer, key, dummy_callback, _StabilityMode.DEFAULT)
             for key, value in self.blocking_channel._consumer_infos.items()
         ]
         PikaInstrumentor._instrument_channel_consumers(self.blocking_channel, tracer)
@@ -114,7 +115,7 @@ class TestPika(TestCase):
         tracer = mock.MagicMock(spec=Tracer)
         callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
         expected_decoration_calls = [
-            mock.call(getattr(value, callback_attr), tracer, key, dummy_callback)
+            mock.call(getattr(value, callback_attr), tracer, key, dummy_callback, _StabilityMode.DEFAULT)
             for key, value in self.channel._consumers.items()
         ]
         PikaInstrumentor._instrument_channel_consumers(self.channel, tracer)
@@ -174,6 +175,7 @@ class TestPika(TestCase):
                     tracer,
                     "new-consumer-tag",
                     dummy_callback,
+                    _StabilityMode.DEFAULT,
                 )
                 self.assertIs(
                     getattr(decorated_consumer_info, callback_attr),
@@ -264,7 +266,9 @@ class TestPika(TestCase):
         tracer = mock.MagicMock(spec=Tracer)
         original_function = self.blocking_channel.basic_publish
         PikaInstrumentor._instrument_basic_publish(self.blocking_channel, tracer)
-        decorate_basic_publish.assert_called_once_with(original_function, self.blocking_channel, tracer, dummy_callback)
+        decorate_basic_publish.assert_called_once_with(
+            original_function, self.blocking_channel, tracer, dummy_callback, _StabilityMode.DEFAULT
+        )
         self.assertEqual(
             self.blocking_channel.basic_publish,
             decorate_basic_publish.return_value,
@@ -275,7 +279,9 @@ class TestPika(TestCase):
         tracer = mock.MagicMock(spec=Tracer)
         original_function = self.channel.basic_publish
         PikaInstrumentor._instrument_basic_publish(self.channel, tracer)
-        decorate_basic_publish.assert_called_once_with(original_function, self.channel, tracer, dummy_callback)
+        decorate_basic_publish.assert_called_once_with(
+            original_function, self.channel, tracer, dummy_callback, _StabilityMode.DEFAULT
+        )
         self.assertEqual(self.channel.basic_publish, decorate_basic_publish.return_value)
 
     def test_instrument_queue_consumer_generator(self) -> None:

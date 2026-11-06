@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from logging import getLogger
 from typing import Any
@@ -14,19 +16,25 @@ from pika.spec import Basic, BasicProperties
 from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _report_new,
+    _report_old,
+    _set_messaging_conversation_id,
+    _set_messaging_destination,
+    _set_messaging_operation,
+    _set_messaging_temp_destination,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
-from opentelemetry.semconv._incubating.attributes import messaging_attributes
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes,
+    server_attributes,
 )
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
+from opentelemetry.util.types import AttributeValue
 
 _LOG = getLogger(__name__)
 
@@ -55,7 +63,8 @@ def _decorate_callback(
     tracer: Tracer,
     task_name: str,
     consume_hook: HookT = dummy_callback,
-):
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> Callable[[Channel, Basic.Deliver, BasicProperties, bytes], Any]:
     def decorated_callback(
         channel: Channel,
         method: Basic.Deliver,
@@ -78,6 +87,9 @@ def _decorate_callback(
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
             operation=MessagingOperationValues.RECEIVE,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+            destination_name=_get_destination_name(method.exchange, method.routing_key),
+            operation_type=messaging_attributes.MessagingOperationTypeValues.PROCESS,
         )
         try:
             with trace.use_span(span, end_on_exit=True):
@@ -99,12 +111,13 @@ def _decorate_basic_publish(
     channel: Channel,
     tracer: Tracer,
     publish_hook: HookT = dummy_callback,
-):
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> Callable[..., Any]:
     def decorated_function(
         exchange: str,
         routing_key: str,
         body: bytes,
-        properties: BasicProperties = None,
+        properties: BasicProperties | None = None,
         mandatory: bool = False,
     ) -> Any:
         if not properties:
@@ -119,6 +132,9 @@ def _decorate_basic_publish(
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+            destination_name=_get_destination_name(exchange, routing_key),
+            operation_type=messaging_attributes.MessagingOperationTypeValues.SEND,
         )
         if not span:
             return original_function(exchange, routing_key, body, properties, mandatory)
@@ -142,23 +158,67 @@ def _get_span(
     destination: str,
     span_kind: SpanKind,
     operation: MessagingOperationValues | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    destination_name: str | None = None,
+    operation_type: messaging_attributes.MessagingOperationTypeValues | None = None,
 ) -> Span | None:
     if not is_instrumentation_enabled():
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
-        name=_generate_span_name(destination, operation),
-        kind=span_kind,
+        name=_generate_span_name(
+            destination_name if _report_new(sem_conv_opt_in_mode) and destination_name is not None else destination,
+            operation,
+            sem_conv_opt_in_mode,
+            operation_type,
+        ),
+        kind=(
+            SpanKind.CLIENT
+            if _report_new(sem_conv_opt_in_mode)
+            and operation_type == messaging_attributes.MessagingOperationTypeValues.RECEIVE
+            else span_kind
+        ),
     )
     if span.is_recording():
-        _enrich_span(span, channel, properties, destination, operation)
+        _enrich_span(
+            span,
+            channel,
+            properties,
+            destination,
+            operation,
+            sem_conv_opt_in_mode,
+            destination_name,
+            operation_type,
+        )
     return span
 
 
-def _generate_span_name(task_name: str, operation: MessagingOperationValues | None) -> str:
+def _generate_span_name(
+    task_name: str,
+    operation: MessagingOperationValues | None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    operation_type: messaging_attributes.MessagingOperationTypeValues | None = None,
+) -> str:
+    if _report_new(sem_conv_opt_in_mode):
+        return f"{_get_operation_name(operation, operation_type)} {task_name}"
     if not operation:
         return f"{task_name} send"
     return f"{task_name} {operation.value}"
+
+
+def _get_destination_name(exchange: str, routing_key: str) -> str:
+    if exchange and routing_key:
+        return f"{exchange}:{routing_key}"
+    return exchange or routing_key or "amq.default"
+
+
+def _get_operation_name(
+    operation: MessagingOperationValues | None,
+    operation_type: messaging_attributes.MessagingOperationTypeValues | None,
+) -> str:
+    if operation is None:
+        return MessagingOperationValues.PUBLISH.value
+    return operation_type.value if operation_type is not None else operation.value
 
 
 def _enrich_span(
@@ -167,28 +227,56 @@ def _enrich_span(
     properties: BasicProperties,
     task_destination: str,
     operation: MessagingOperationValues | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    destination_name: str | None = None,
+    operation_type: messaging_attributes.MessagingOperationTypeValues | None = None,
 ) -> None:
-    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq")
-    if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
-    else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
+    attributes: dict[str, AttributeValue] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.RABBITMQ.value,
+    }
     if properties.message_id:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_MESSAGE_ID,
-            properties.message_id,
+        attributes[messaging_attributes.MESSAGING_MESSAGE_ID] = properties.message_id
+
+    if _report_old(sem_conv_opt_in_mode):
+        _set_messaging_destination(attributes, task_destination, _StabilityMode.DEFAULT)
+        # The legacy instrumentation also recorded an empty destination.
+        if not task_destination:
+            attributes[SpanAttributes.MESSAGING_DESTINATION] = task_destination
+        if operation is None:
+            _set_messaging_temp_destination(attributes, True, _StabilityMode.DEFAULT)
+        else:
+            _set_messaging_operation(attributes, operation.value, _StabilityMode.DEFAULT)
+
+    if _report_new(sem_conv_opt_in_mode):
+        _set_messaging_destination(
+            attributes,
+            destination_name if destination_name is not None else task_destination,
+            _StabilityMode.MESSAGING,
         )
+        operation_name = _get_operation_name(operation, operation_type)
+        _set_messaging_operation(attributes, operation_name, _StabilityMode.MESSAGING)
+        attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = operation_name
+        # Publishing alone does not tell us whether a destination is temporary.
+
     if properties.correlation_id:
-        span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id)
-    if not channel:
+        _set_messaging_conversation_id(attributes, properties.correlation_id, sem_conv_opt_in_mode)
+
+    for key, value in attributes.items():
+        span.set_attribute(key, value)
+
+    if channel is None:
         return
-    if not hasattr(channel.connection, "params"):
-        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
-    else:
-        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
+
+    connection = channel.connection
+    params = connection.params if hasattr(connection, "params") else connection._impl.params
+
+    if _report_old(sem_conv_opt_in_mode):
+        span.set_attribute(SpanAttributes.NET_PEER_NAME, params.host)
+        span.set_attribute(SpanAttributes.NET_PEER_PORT, params.port)
+
+    if _report_new(sem_conv_opt_in_mode):
+        span.set_attribute(server_attributes.SERVER_ADDRESS, params.host)
+        span.set_attribute(server_attributes.SERVER_PORT, params.port)
 
 
 # pylint:disable=abstract-method
@@ -199,16 +287,17 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         queue_consumer_generator: _QueueConsumerGeneratorInfo,
         tracer: Tracer | None,
         consume_hook: HookT = dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         super().__init__(wrapped)
         self._self_active_token = None
         self._self_tracer = tracer
         self._self_consume_hook = consume_hook
+        self._self_sem_conv_opt_in_mode = sem_conv_opt_in_mode
         self._self_queue_consumer_generator = queue_consumer_generator
 
     def popleft(self, *args, **kwargs):
         try:
-            # end active context if exists
             if self._self_active_token:
                 context.detach(self._self_active_token)
         except Exception as inst_exception:  # pylint: disable=W0703
@@ -217,7 +306,6 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         evt = self.__wrapped__.popleft(*args, **kwargs)  # pylint:disable=no-member
 
         try:
-            # If a new message was received, create a span and set as active context
             if isinstance(evt, _ConsumerDeliveryEvt):
                 method = evt.method
                 properties = evt.properties
@@ -237,6 +325,9 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,
                     operation=MessagingOperationValues.RECEIVE,
+                    sem_conv_opt_in_mode=self._self_sem_conv_opt_in_mode,
+                    destination_name=_get_destination_name(method.exchange, method.routing_key),
+                    operation_type=messaging_attributes.MessagingOperationTypeValues.RECEIVE,
                 )
                 try:
                     if message_ctx_token:
@@ -246,11 +337,6 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
                 finally:
-                    # We must end the span here, because the next place we can hook
-                    # is not the end of the user code, but only when the next message
-                    # arrives. we still set this span's context as the active context
-                    # so spans created by user code that handles this message will be
-                    # children of this one.
                     span.end()
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
