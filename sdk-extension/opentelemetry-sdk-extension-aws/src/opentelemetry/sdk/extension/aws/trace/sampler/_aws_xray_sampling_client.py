@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 from logging import getLogger
-from typing import List
 
 import requests
 
@@ -41,8 +40,8 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
 
         self.__session = requests.Session()
 
-    def get_sampling_rules(self) -> List[_SamplingRule]:
-        sampling_rules: List["_SamplingRule"] = []
+    def get_sampling_rules(self) -> list[_SamplingRule]:
+        sampling_rules: list[_SamplingRule] = []
         headers = {"content-type": "application/json"}
 
         with suppress_instrumentation():
@@ -76,7 +75,7 @@ class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
 
             return sampling_rules
 
-    def get_sampling_targets(self, statistics: List["dict[str, str | float | int]"]) -> _SamplingTargetResponse:
+    def get_sampling_targets(self, statistics: list[dict[str, str | float | int]]) -> _SamplingTargetResponse:
         sampling_targets_response = _SamplingTargetResponse(
             LastRuleModification=None,
             SamplingTargetDocuments=None,

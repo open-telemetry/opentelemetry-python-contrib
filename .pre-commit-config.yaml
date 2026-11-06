@@ -1,7 +1,7 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.16.0
+    rev: v0.16.1
     hooks:
       # Run the linter.
       - id: ruff
@@ -15,7 +15,7 @@ repos:
         args: ["--preview"]
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 1ce7e7fa8aa6eda60e54755509a9380b0f1c5d08 # frozen: v0.9.30
+    rev: 8ff2449591c8de025b17661ba76d60237a1ae62b # frozen: 0.12.1
     hooks:
       - id: uv-lock
         args: ["--index-url", "https://pypi.org/simple"]

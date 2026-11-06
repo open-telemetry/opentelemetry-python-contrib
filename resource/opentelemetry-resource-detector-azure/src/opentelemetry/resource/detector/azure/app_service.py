@@ -18,6 +18,10 @@ from ._constants import _APP_SERVICE_ATTRIBUTE_ENV_VARS, _WEBSITE_SITE_NAME
 
 
 class AzureAppServiceResourceDetector(ResourceDetector):
+    # pylint: disable=no-self-use
+    def is_process_dependent(self) -> bool:
+        return True
+
     def detect(self) -> Resource:
         attributes = {}
         website_site_name = environ.get(_WEBSITE_SITE_NAME)

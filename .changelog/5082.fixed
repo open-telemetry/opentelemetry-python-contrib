@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aws-lambda`: mark HTTP 5xx responses as errors

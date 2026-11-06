@@ -17,7 +17,7 @@ def _get_container_id_v1():
     container_id = None
     try:
         with open(_DEFAULT_CGROUP_V1_PATH, encoding="utf8") as container_info_file:
-            for raw_line in container_info_file.readlines():
+            for raw_line in container_info_file:
                 line = raw_line.strip()
 
                 match = re.search(r"^.*/(?:.*[-:])?([0-9a-f]+)(?:\.|\s*$)", line)
@@ -34,7 +34,7 @@ def _get_container_id_v2():
     container_id = None
     try:
         with open(_DEFAULT_CGROUP_V2_PATH, encoding="utf8") as container_info_file:
-            for raw_line in container_info_file.readlines():
+            for raw_line in container_info_file:
                 line = raw_line.strip()
                 if any(key_word in line for key_word in ["containers", "hostname"]):
                     container_id_list = [id_ for id_ in line.split("/") if len(id_) == _CONTAINER_ID_LENGTH]

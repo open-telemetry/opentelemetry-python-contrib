@@ -12,7 +12,6 @@ This is part of an upcoming W3C spec and will eventually make it to the Otel spe
 https://w3c.github.io/trace-context/#trace-context-http-response-headers-format
 """
 
-import typing
 from abc import ABC, abstractmethod
 
 from opentelemetry import trace
@@ -80,7 +79,7 @@ class ResponsePropagator(ABC):
     def inject(
         self,
         carrier: textmap.CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Context | None = None,
         setter: textmap.Setter = default_setter,
     ) -> None:
         """Injects SpanContext into the HTTP response carrier."""
@@ -92,7 +91,7 @@ class TraceResponsePropagator(ResponsePropagator):
     def inject(
         self,
         carrier: textmap.CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Context | None = None,
         setter: textmap.Setter = default_setter,
     ) -> None:
         """Injects SpanContext into the HTTP response carrier."""

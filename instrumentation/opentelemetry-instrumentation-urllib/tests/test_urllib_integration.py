@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import abc
-import socket
 import urllib
 from unittest import mock
 from unittest.mock import patch
@@ -92,7 +91,7 @@ class URLLibIntegrationTestBase(abc.ABC):
         Entry.single_register(
             Entry.GET,
             self.URL_TIMEOUT,
-            exception=socket.timeout(),
+            exception=TimeoutError(),
         )
         Entry.single_register(
             Entry.GET,

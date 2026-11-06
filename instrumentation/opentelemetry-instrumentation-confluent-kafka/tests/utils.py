@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 
 from confluent_kafka import Consumer, Producer
 
@@ -30,8 +29,8 @@ class MockedMessage:
         partition: int,
         offset: int,
         headers,
-        key: Optional[str] = None,
-        value: Optional[str] = None,
+        key: str | None = None,
+        value: str | None = None,
     ):
         self._topic = topic
         self._partition = partition

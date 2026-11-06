@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
-from typing import Type
 from unittest import TestCase, mock, skipIf
 from unittest.mock import MagicMock
 
@@ -65,7 +64,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
         with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             with mock.patch.object(Exchange, "publish") as mock_publish:
@@ -130,7 +129,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_8, CHANNEL_8, EXCHANGE_NAME)
         with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
             with mock.patch.object(Exchange, "publish") as mock_publish:
