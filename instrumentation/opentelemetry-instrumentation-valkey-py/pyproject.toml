@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "valkey ~= 6.0",
+  "valkey",
 ]
 
 [project.urls]

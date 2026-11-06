@@ -35,8 +35,8 @@ dependencies = [
 [project.optional-dependencies]
 instruments = []
 instruments-any = [
-  "httpx >= 0.18.0",
-  "httpx2 >= 2.0.0",
+  "httpx",
+  "httpx2",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

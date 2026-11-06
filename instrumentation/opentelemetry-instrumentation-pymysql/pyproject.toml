@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "PyMySQL < 2",
+  "PyMySQL",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

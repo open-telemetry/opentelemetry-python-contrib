@@ -49,10 +49,18 @@ def get_instrumentation_packages(
         with open(pyproject_toml_path, "rb") as file:
             pyproject_toml = tomli.load(file)
 
-        optional_dependencies = pyproject_toml["project"]["optional-dependencies"]
-        instruments = optional_dependencies.get("instruments", [])
+        src_path = os.path.join(pkg_path, "src", "opentelemetry", "instrumentation")
+        src_pkgs = [entry for entry in os.listdir(src_path) if os.path.isdir(os.path.join(src_path, entry))]
+        assert len(src_pkgs) == 1
+        package_py_path = os.path.join(src_path, src_pkgs[0], "package.py")
+
+        package_py = {}
+        with open(package_py_path, encoding="utf-8") as file:
+            exec(file.read(), package_py)
+
+        instruments = list(package_py.get("_instruments", ()))
         # instruments-any is an optional field that can be used instead of or in addition to instruments. While instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
-        instruments_any = optional_dependencies.get("instruments-any", [])
+        instruments_any = list(package_py.get("_instruments_any", ()))
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
