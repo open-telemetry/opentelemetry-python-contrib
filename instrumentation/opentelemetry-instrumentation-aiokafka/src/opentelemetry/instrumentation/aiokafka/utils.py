@@ -19,6 +19,7 @@ import aiokafka
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.context import Context
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.attributes import server_attributes
@@ -411,7 +412,8 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
-        return await func(*args, **kwargs)
+            with _record_error_type(span):
+                return await func(*args, **kwargs)
 
     return _traced_send
 

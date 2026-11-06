@@ -11,6 +11,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import baggage, context
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_STACKTRACE,
@@ -134,6 +135,38 @@ class TestCeleryInstrumentation(TestBase):
         self.assertTrue(result.ready())
         self.assertEqual(result.result, 3)
         self.assertEqual(instrumentor.task_id_to_start_time, {})
+
+    def test_error_type_recorded_on_a_failed_task(self):
+        CeleryInstrumentor().instrument()
+
+        result = task_raises.delay()
+
+        timeout = time.time() + 60 * 1
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        consumer, _producer = spans
+        error_type = consumer.attributes[ERROR_TYPE]
+        self.assertEqual(error_type, CustomError.__qualname__)
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_task(self):
+        CeleryInstrumentor().instrument()
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        for span in spans:
+            self.assertNotIn(ERROR_TYPE, span.attributes)
 
     def test_task_raises(self):
         CeleryInstrumentor().instrument()

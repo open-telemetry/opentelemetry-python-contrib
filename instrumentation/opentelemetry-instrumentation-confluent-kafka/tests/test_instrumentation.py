@@ -3,6 +3,10 @@
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
+from unittest import mock
+
+from confluent_kafka import KafkaException
+
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -19,6 +23,7 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -432,6 +437,34 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._assert_span_count(span_list, 1)
         self._assert_topic(span_list[0], "topic-1")
+
+    def test_error_type_recorded_on_a_failed_produce(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        error = KafkaException("queue full")
+        producer.produce = mock.MagicMock(side_effect=error)
+
+        producer = instrumentation.instrument_producer(producer)
+        with self.assertRaises(KafkaException) as raised:
+            producer.produce(topic="topic-1", key="key-1", value="value-1")
+        self.assertIs(raised.exception, error)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._assert_span_count(span_list, 1)
+        error_type = span_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "KafkaException")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_produce(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="key-1", value="value-1")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._assert_span_count(span_list, 1)
+        self.assertNotIn(ERROR_TYPE, span_list[0].attributes)
 
     def test_producer_sets_bootstrap_servers_attributes(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()

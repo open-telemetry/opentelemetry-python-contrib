@@ -71,6 +71,7 @@ from celery.worker.request import Request  # pylint: disable=no-name-in-module
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _set_error_type
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
@@ -327,6 +328,7 @@ class CeleryInstrumentor(BaseInstrumentor):
                 ex = ex.exc
 
             status_kwargs["description"] = str(ex)
+            _set_error_type(ex, span)
             span.record_exception(ex)
         span.set_status(Status(**status_kwargs))
 

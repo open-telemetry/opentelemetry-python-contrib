@@ -14,6 +14,7 @@ from pika.spec import Basic, BasicProperties
 from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
@@ -85,7 +86,8 @@ def _decorate_callback(
                     consume_hook(span, body, properties)
                 except Exception as hook_exception:  # pylint: disable=W0703
                     _LOG.exception(hook_exception)
-                retval = callback(channel, method, properties, body)
+                with _record_error_type(span):
+                    retval = callback(channel, method, properties, body)
         finally:
             if token:
                 context.detach(token)
@@ -128,7 +130,8 @@ def _decorate_basic_publish(
                 publish_hook(span, body, properties)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
-            retval = original_function(exchange, routing_key, body, properties, mandatory)
+            with _record_error_type(span):
+                retval = original_function(exchange, routing_key, body, properties, mandatory)
         return retval
 
     return decorated_function

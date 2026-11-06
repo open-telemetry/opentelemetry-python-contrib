@@ -19,7 +19,10 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _wrap_getone,
     _wrap_send,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
 
 
 class TestUtils(IsolatedAsyncioTestCase):
@@ -299,3 +302,49 @@ class TestUtils(IsolatedAsyncioTestCase):
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
         aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None
+
+
+@mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
+@mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
+@mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
+@mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
+class TestWrapSendErrorType(TestBase, IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.topic_name = "test_topic"
+        self.args = [self.topic_name]
+        self.kwargs = {"partition": 0, "headers": []}
+        self.producer = mock.MagicMock()
+
+    async def test_error_type_recorded_on_a_failed_send(self, *_mocks: mock.MagicMock) -> None:
+        error = ConnectionError("broker unavailable")
+
+        async def failing_send(*args, **kwargs):
+            raise error
+
+        wrapped_send = _wrap_send(self.tracer, None)
+
+        with self.assertRaises(ConnectionError) as raised:
+            await wrapped_send(failing_send, self.producer, self.args, self.kwargs)
+        self.assertIs(raised.exception, error)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.PRODUCER)
+        error_type = spans[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "ConnectionError")
+        self.assertIs(type(error_type), str)
+        self.assertIs(spans[0].status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            [event.attributes["exception.type"] for event in spans[0].events],
+            ["ConnectionError"],
+        )
+
+    async def test_no_error_type_on_a_successful_send(self, *_mocks: mock.MagicMock) -> None:
+        wrapped_send = _wrap_send(self.tracer, None)
+        await wrapped_send(mock.AsyncMock(), self.producer, self.args, self.kwargs)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn(ERROR_TYPE, spans[0].attributes)

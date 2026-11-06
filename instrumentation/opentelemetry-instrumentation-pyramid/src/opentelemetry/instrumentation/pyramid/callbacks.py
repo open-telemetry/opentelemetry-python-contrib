@@ -18,6 +18,7 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _report_new,
     _report_old,
+    _set_error_type,
     _set_http_url,
     _StabilityMode,
 )
@@ -27,9 +28,6 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv._incubating.attributes.error_attributes import (
-    ERROR_TYPE,
-)
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
@@ -240,8 +238,6 @@ def trace_tween_factory(handler, registry):
             # should infer a internal server error and raise
             status = "500 InternalServerError"
             recordable_exc = exc
-            if _report_new(_sem_conv_opt_in_mode):
-                attributes[ERROR_TYPE] = type(exc).__qualname__
             raise
         finally:
             duration_s = default_timer() - start
@@ -251,17 +247,8 @@ def trace_tween_factory(handler, registry):
                 duration_attrs[HTTP_STATUS_CODE] = status_code
                 duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
-            # Record metrics for old semconv (milliseconds)
-            if duration_histogram_old:
-                duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
-                duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
-
-            # Record metrics for new semconv (seconds)
-            if duration_histogram_new:
-                duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
-                duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
-
             active_requests_counter.add(-1, active_requests_count_attrs)
+            active_metric_ctx = None
             span = request.environ.get(_ENVIRON_SPAN_KEY)
             enabled = request.environ.get(_ENVIRON_ENABLED_KEY)
             if not span and enabled:
@@ -281,11 +268,8 @@ def trace_tween_factory(handler, registry):
                     )
 
                     if recordable_exc is not None:
-                        if _report_new(_sem_conv_opt_in_mode) and span.is_recording():
-                            span.set_attribute(
-                                ERROR_TYPE,
-                                type(recordable_exc).__qualname__,
-                            )
+                        if _report_new(_sem_conv_opt_in_mode):
+                            _set_error_type(recordable_exc, span, duration_attrs)
                         span.set_status(Status(StatusCode.ERROR, str(recordable_exc)))
                         span.record_exception(recordable_exc)
 
@@ -301,6 +285,7 @@ def trace_tween_factory(handler, registry):
                     propagator.inject(response.headers)
 
                 activation = request.environ.get(_ENVIRON_ACTIVATION_KEY)
+                active_metric_ctx = trace.set_span_in_context(span)
 
                 # Only considering HTTPServerError
                 # to make sure 200, 300 and 400 exceptions are not reported as error
@@ -316,6 +301,24 @@ def trace_tween_factory(handler, registry):
                 env_token = request.environ.get(_ENVIRON_TOKEN, None)
                 if env_token is not None:
                     context.detach(env_token)
+
+            # Record metrics for old semconv (milliseconds)
+            if duration_histogram_old:
+                duration_attrs_old = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.DEFAULT)
+                duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=active_metric_ctx,
+                )
+
+            # Record metrics for new semconv (seconds)
+            if duration_histogram_new:
+                duration_attrs_new = otel_wsgi._parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
+                duration_histogram_new.record(
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=active_metric_ctx,
+                )
 
         return response
 
