@@ -1,0 +1,4 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+mocket >= 3.14
+-e sampler/opentelemetry-sampler-jaeger-remote[http,grpc]
