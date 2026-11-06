@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-starlette`: omit http.route when the matched route has no path template
