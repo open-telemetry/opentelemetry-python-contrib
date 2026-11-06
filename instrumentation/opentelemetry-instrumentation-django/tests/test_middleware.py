@@ -72,6 +72,7 @@ from .views import (
     route_span_name,
     traced,
     traced_decorated,
+    traced_decorated_partial,
     traced_partial,
     traced_template,
     traced_with_arg,
@@ -102,6 +103,7 @@ urlpatterns = [
     re_path(r"^traced_class/", TracedClassView.as_view()),
     re_path(r"^traced_partial/", traced_partial),
     re_path(r"^traced_decorated/", traced_decorated),
+    re_path(r"^traced_decorated_partial/", traced_decorated_partial),
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
@@ -351,6 +353,26 @@ class TestMiddleware(WsgiTestBase):
             span.attributes[CODE_LINE_NUMBER],
             wrapped.__code__.co_firstlineno,
         )
+
+    def test_code_attributes_decorated_partial_view(self) -> None:
+        self._enable_code_attributes()
+        response = Client().get("/traced_decorated_partial/")
+        self.assertEqual(response.status_code, 200)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertEqual(
+            {key: attributes.get(key) for key in (CODE_FUNCTION_NAME, CODE_FILE_PATH, CODE_LINE_NUMBER)},
+            {
+                CODE_FUNCTION_NAME: f"{traced_with_arg.__module__}.{traced_with_arg.__qualname__}",
+                CODE_FILE_PATH: traced_with_arg.__code__.co_filename,
+                CODE_LINE_NUMBER: traced_with_arg.__code__.co_firstlineno,
+            },
+        )
+        self.assertIs(type(attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(attributes[CODE_LINE_NUMBER]), int)
 
     @staticmethod
     def _enable_code_attributes():

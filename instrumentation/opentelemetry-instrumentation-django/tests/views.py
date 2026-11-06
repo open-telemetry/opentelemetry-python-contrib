@@ -3,7 +3,7 @@
 
 from functools import partial, wraps
 
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.views.generic import View
 
 
@@ -30,6 +30,9 @@ def _pass_through_decorator(func):
         return func(request, *args, **kwargs)
 
     return wrapper
+
+
+traced_decorated_partial = _pass_through_decorator(traced_partial)
 
 
 @_pass_through_decorator
@@ -73,6 +76,11 @@ def response_with_custom_header(request):
 
 async def async_traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
+
+
+@wraps(partial(async_traced))
+async def async_traced_decorated_partial(request: HttpRequest) -> HttpResponse:
+    return await async_traced(request)
 
 
 async def async_traced_template(request, year):  # pylint: disable=unused-argument

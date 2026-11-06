@@ -84,6 +84,7 @@ from .views import (
     async_excluded_noarg2,
     async_route_span_name,
     async_traced,
+    async_traced_decorated_partial,
     async_traced_template,
     async_with_custom_header,
 )
@@ -98,6 +99,7 @@ else:
 
 urlpatterns = [
     re_path(r"^traced/", async_traced),
+    re_path(r"^traced_decorated_partial/", async_traced_decorated_partial),
     re_path(r"^traced_custom_header/", async_with_custom_header),
     re_path(r"^route/(?P<year>[0-9]{4})/template/$", async_traced_template),
     re_path(r"^error/", async_error),
@@ -297,6 +299,29 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             span.attributes[CODE_LINE_NUMBER],
             async_traced.__code__.co_firstlineno,
         )
+
+    async def test_code_attributes_async_decorated_partial_view(self) -> None:
+        _django_instrumentor.uninstrument()
+        with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "true"}):
+            _django_instrumentor.instrument()
+        with override_settings(ROOT_URLCONF=modules[__name__]):
+            response = await self.async_client.get("/traced_decorated_partial/")
+        self.assertEqual(response.status_code, 200)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertEqual(
+            {key: attributes.get(key) for key in (CODE_FUNCTION_NAME, CODE_FILE_PATH, CODE_LINE_NUMBER)},
+            {
+                CODE_FUNCTION_NAME: f"{async_traced.__module__}.{async_traced.__qualname__}",
+                CODE_FILE_PATH: async_traced.__code__.co_filename,
+                CODE_LINE_NUMBER: async_traced.__code__.co_firstlineno,
+            },
+        )
+        self.assertIs(type(attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(attributes[CODE_LINE_NUMBER]), int)
 
     async def test_code_attributes_async_view_new_semconv(self):
         await self.test_code_attributes_async_view()

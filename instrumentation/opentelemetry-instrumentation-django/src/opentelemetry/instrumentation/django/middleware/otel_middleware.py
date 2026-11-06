@@ -130,24 +130,29 @@ def _collect_code_attributes(
     attributes: dict[str, str | int] = {}
     try:
         target: Any = view_func
-        while isinstance(target, functools.partial):
-            target = target.func
-        # View.as_view() exposes the class; dispatch is its request entry point.
-        view_class = getattr(target, "view_class", None)
-        if view_class is not None:
-            target = view_class.dispatch
-        # follow decorator chains (functools.wraps sets __wrapped__)
-        target = inspect.unwrap(target)
+        seen: set[int] = set()
+        while True:
+            if id(target) in seen:
+                return {}
+            seen.add(id(target))
+            if isinstance(target, functools.partial):
+                target = target.func
+                continue
+            # View.as_view() exposes the class; dispatch is its request entry point.
+            view_class = getattr(target, "view_class", None)
+            if view_class is not None:
+                target = view_class.dispatch
+            elif hasattr(target, "__wrapped__"):
+                target = target.__wrapped__
+            else:
+                break
         if not (inspect.isroutine(target) or inspect.isclass(target)):
             target = type(target).__call__
 
         qual_name = getattr(target, "__qualname__", None)
         if qual_name:
             module_name = getattr(target, "__module__", None)
-            if module_name:
-                attributes[CODE_FUNCTION_NAME] = f"{module_name}.{qual_name}"
-            else:
-                attributes[CODE_FUNCTION_NAME] = qual_name
+            attributes[CODE_FUNCTION_NAME] = f"{module_name}.{qual_name}" if module_name else qual_name
 
         code = getattr(target, "__code__", None)
         if code is not None:
