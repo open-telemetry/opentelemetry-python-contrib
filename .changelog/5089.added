@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aws-lambda`: add `request_hook` and `response_hook` callbacks to enrich the Lambda server span from user code
