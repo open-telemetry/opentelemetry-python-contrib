@@ -213,8 +213,7 @@ def _get_base_attributes(
     key: str | None,
 ) -> dict[str, Any]:
     attributes: dict[str, Any] = {
-        # pyright: ignore[reportDeprecated]
-        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,  # pyright: ignore[reportDeprecated]
         server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
         messaging_attributes.MESSAGING_CLIENT_ID: client_id,
         messaging_attributes.MESSAGING_DESTINATION_NAME: topic,
@@ -297,8 +296,7 @@ def _get_poll_attributes(
     message_count: int,
 ) -> dict[str, Any]:
     attributes: dict[str, Any] = {
-        # pyright: ignore[reportDeprecated]
-        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,  # pyright: ignore[reportDeprecated]
         server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
         messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT: message_count,
         messaging_attributes.MESSAGING_OPERATION_NAME: "receive",
