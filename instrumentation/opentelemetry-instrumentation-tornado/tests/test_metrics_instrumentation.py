@@ -8,6 +8,8 @@ from timeit import default_timer
 from unittest.mock import patch
 
 import tornado.testing
+import tornado.websocket
+from tornado.httpclient import HTTPClientError
 from tornado.testing import AsyncHTTPTestCase
 
 from opentelemetry import trace
@@ -302,12 +304,63 @@ class TornadoSemconvTestBase(AsyncHTTPTestCase, TestBase):
                 return span
         return None
 
+    def _assert_server_metric_samples(
+        self, expected_status: int, histogram_names: tuple[str, str], status_attribute: str, response_size: int
+    ) -> None:
+        metrics = {metric.name: metric for metric in self.get_sorted_metrics(SCOPE)}
+
+        for name in histogram_names:
+            data_points = metrics[name].data.data_points
+            self.assertEqual(len(data_points), 1, name)
+            self.assertEqual(data_points[0].count, 1, name)
+            self.assertEqual(data_points[0].attributes[status_attribute], expected_status, name)
+            self.assertIs(type(data_points[0].attributes[status_attribute]), int, name)
+
+        self.assertEqual(metrics[histogram_names[1]].data.data_points[0].sum, response_size)
+        self.assertIs(type(metrics[histogram_names[1]].data.data_points[0].sum), int)
+
+        active_requests = metrics["http.server.active_requests"].data.data_points
+        self.assertEqual(sum(data_point.value for data_point in active_requests), 0)
+
+    def _assert_server_metrics_recorded_once(
+        self, path: str, expected_status: int, histogram_names: tuple[str, str], status_attribute: str
+    ) -> None:
+        response = self.fetch(path)
+        self.assertEqual(response.code, expected_status)
+        self._assert_server_metric_samples(expected_status, histogram_names, status_attribute, len(response.body))
+
+    async def _assert_websocket_rejection_metrics(
+        self,
+        histogram_names: tuple[str, str],
+        status_attribute: str,
+    ) -> None:
+        with self.assertRaises(HTTPClientError) as raised:
+            await tornado.websocket.websocket_connect(f"ws://127.0.0.1:{self.get_http_port()}/ws_reject")
+        self.assertEqual(raised.exception.code, 403)
+        self._assert_server_metric_samples(403, histogram_names, status_attribute, 0)
+
 
 class TestTornadoSemconvDefault(TornadoSemconvTestBase):
+    HISTOGRAMS = ("http.server.duration", "http.server.response.size")
+    STATUS_ATTRIBUTE: str = HTTP_STATUS_CODE
+
     def setUp(self):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
         TornadoInstrumentor().instrument()
+
+    def test_server_metrics_recorded_once_on_unhandled_exception(self):
+        self._assert_server_metrics_recorded_once("/error", 500, self.HISTOGRAMS, HTTP_STATUS_CODE)
+
+    def test_server_metrics_recorded_once_on_http_error(self):
+        self._assert_server_metrics_recorded_once("/raise_403", 403, self.HISTOGRAMS, HTTP_STATUS_CODE)
+
+    def test_server_metrics_recorded_once_on_exception_after_finish(self):
+        self._assert_server_metrics_recorded_once("/raise_after_finish", 200, self.HISTOGRAMS, HTTP_STATUS_CODE)
+
+    @tornado.testing.gen_test()
+    async def test_server_metrics_on_websocket_rejection(self) -> None:
+        await self._assert_websocket_rejection_metrics(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     def test_server_span_attributes_old_semconv(self):
         response = self.fetch("/")
@@ -384,11 +437,29 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
 
 
 class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
+    HISTOGRAMS = ("http.server.request.duration", "http.server.response.body.size")
+    STATUS_ATTRIBUTE: str = HTTP_RESPONSE_STATUS_CODE
+
     def setUp(self):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
         with patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}):
             TornadoInstrumentor().instrument()
+
+    def test_server_metrics_recorded_once_on_unhandled_exception(self):
+        self._assert_server_metrics_recorded_once("/error", 500, self.HISTOGRAMS, HTTP_RESPONSE_STATUS_CODE)
+
+    def test_server_metrics_recorded_once_on_http_error(self):
+        self._assert_server_metrics_recorded_once("/raise_403", 403, self.HISTOGRAMS, HTTP_RESPONSE_STATUS_CODE)
+
+    def test_server_metrics_recorded_once_on_exception_after_finish(self):
+        self._assert_server_metrics_recorded_once(
+            "/raise_after_finish", 200, self.HISTOGRAMS, HTTP_RESPONSE_STATUS_CODE
+        )
+
+    @tornado.testing.gen_test()
+    async def test_server_metrics_on_websocket_rejection(self) -> None:
+        await self._assert_websocket_rejection_metrics(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     def test_server_span_attributes_new_semconv(self):
         response = self.fetch("/")

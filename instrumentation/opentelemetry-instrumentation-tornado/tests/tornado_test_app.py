@@ -124,6 +124,12 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class RaiseAfterFinishHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.finish("done")
+        raise ValueError("raised after finish")
+
+
 class ParametrizedHandler(tornado.web.RequestHandler):
     async def get(self, message: str):
         self.write(message)
@@ -145,6 +151,11 @@ class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
             time.sleep(0.05)
 
 
+class RejectWebSocketHandler(tornado.websocket.WebSocketHandler):
+    def prepare(self) -> None:
+        raise tornado.web.HTTPError(403)
+
+
 def make_app(tracer):
     app = tornado.web.Application(
         [
@@ -157,8 +168,10 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/raise_after_finish", RaiseAfterFinishHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
+            (r"/ws_reject", RejectWebSocketHandler),
             (r"/parametrized/(.*)/", ParametrizedHandler),
             (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
