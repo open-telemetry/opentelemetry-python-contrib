@@ -149,6 +149,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine, tracer_provider=self.tracer_provider)
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT	1 + 1;"))
+            await engine.dispose()
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
@@ -388,6 +389,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT	1 + 1;"))
+            await engine.dispose()
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
@@ -421,6 +423,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT  1;"))
+            await engine.dispose()
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -456,6 +459,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT  1;"))
+            await engine.dispose()
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -493,6 +497,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT  1;"))
+            await engine.dispose()
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -531,6 +536,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
                 await cnx.execute(text("SELECT  1;"))
+            await engine.dispose()
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -660,6 +666,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             with suppress_instrumentation():
                 engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+            await engine.dispose()
 
             self.assertTrue(not isinstance(engine, EngineTracer))
 
