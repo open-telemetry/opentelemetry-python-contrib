@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: flush tracer and meter providers when a worker process shuts down, including when `worker_max_tasks_per_child` recycles the pool child. Limit waiting to one second across both providers; slow exporters may still lose buffered telemetry when the child exits
