@@ -510,7 +510,7 @@ class TestConfluentKafka(TestBase):
         asyncio.run(_run())
 
     def test_aio_poll(self) -> None:
-        from .utils import MockedAIOConsumer, MockedMessage  # noqa: PLC0415
+        from .utils import MockedAIOConsumer  # noqa: PLC0415
 
         async def _run():
             instrumentation = ConfluentKafkaInstrumentor()

@@ -99,17 +99,17 @@ For example:
 
 from collections.abc import Collection
 
-import confluent_kafka
+import confluent_kafka  # pylint: disable=import-self
 import wrapt
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer  # pylint: disable=import-self
 
 try:
-    import confluent_kafka.aio as _aio_module
-    from confluent_kafka.aio import AIOConsumer, AIOProducer
+    import confluent_kafka.aio as _aio_module  # pylint: disable=no-name-in-module
+    from confluent_kafka.aio import AIOConsumer, AIOProducer  # pylint: disable=no-name-in-module
 except ImportError:
     try:
-        import confluent_kafka.experimental.aio as _aio_module
-        from confluent_kafka.experimental.aio import (
+        import confluent_kafka.experimental.aio as _aio_module  # pylint: disable=no-name-in-module
+        from confluent_kafka.experimental.aio import (  # pylint: disable=no-name-in-module
             AIOConsumer,
             AIOProducer,
         )
@@ -192,7 +192,7 @@ if AIOProducer is not None:
             self.config = _capture_config(args, kwargs)
 
         # Deliberately implemented so wrapt can intercept the async produce call
-        async def produce(self, topic, value=None, *args, **kwargs):
+        async def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
             return await super().produce(topic, value, *args, **kwargs)
 else:
     AutoInstrumentedAIOProducer = None
