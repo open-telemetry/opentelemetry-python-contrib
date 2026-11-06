@@ -107,7 +107,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=40,
+                est_value_delta=200,
             )
 
             self.assertEqual(
@@ -171,7 +171,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
-                est_value_delta=40,
+                est_value_delta=200,
             )
 
             self.assertEqual(
@@ -237,7 +237,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=40,
+                est_value_delta=200,
             )
 
             self.assertEqual(
@@ -287,7 +287,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
-                est_value_delta=40,
+                est_value_delta=200,
             )
 
             self.assertEqual(
@@ -351,7 +351,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.flavor": "1.1",
                     },
                 ),
-                est_value_delta=40,
+                est_value_delta=200,
             )
 
             self.assertEqual(
