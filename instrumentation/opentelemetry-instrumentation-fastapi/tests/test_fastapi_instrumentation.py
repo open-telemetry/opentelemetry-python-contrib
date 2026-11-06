@@ -1196,7 +1196,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     @staticmethod
     def _instrumentation_loaded_successfully_call():
-        return call("Instrumented %s", "fastapi")
+        return call("Loaded OpenTelemetry instrumentation for %s", "fastapi")
 
     @staticmethod
     def _instrumentation_failed_to_load_call(dependency_conflict):

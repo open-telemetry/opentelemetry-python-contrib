@@ -575,7 +575,7 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertIn("botocore", eps)
         mock_logger.debug.assert_has_calls(
             [
-                call("Instrumented %s", "botocore"),
+                call("Loaded OpenTelemetry instrumentation for %s", "botocore"),
                 call(
                     "Skipping instrumentation %s: %s",
                     "aiobotocore",
