@@ -27,11 +27,12 @@ packaging==24.0
 pytest==7.4.4
 pytest-vcr==1.0.2
 pytest-asyncio==0.21.0
-wrapt==1.16.0
-opentelemetry-exporter-otlp-proto-http~=1.30
-opentelemetry-api==1.40  # when updating, also update in pyproject.toml
-opentelemetry-sdk==1.40  # when updating, also update in pyproject.toml
-opentelemetry-semantic-conventions==0.61b0  # when updating, also update in pyproject.toml
+wrapt==1.17.0
+opentelemetry-exporter-otlp-proto-http==1.43.0
+opentelemetry-api==1.43.0  # when updating, also update in pyproject.toml
+opentelemetry-sdk==1.43.0  # when updating, also update in pyproject.toml
+opentelemetry-semantic-conventions==0.64b0  # when updating, also update in pyproject.toml
+opentelemetry-instrumentation==0.64b0  # when updating, also update in pyproject.toml
+opentelemetry-instrumentation-genai-openai==1.3b0  # when updating, also update in pyproject.toml
 
--e util/opentelemetry-util-genai
 -e instrumentation-genai/opentelemetry-instrumentation-openai-v2

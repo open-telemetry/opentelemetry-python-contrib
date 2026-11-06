@@ -14,6 +14,9 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
+from opentelemetry.instrumentation.genai.openai import (
+    OpenAIInstrumentor as GenAIOpenAIInstrumentor,
+)
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.util.genai.environment_variables import (
@@ -235,9 +238,13 @@ def fixture_reset_instrumentors(monkeypatch):
     monkeypatch.delenv(OTEL_SEMCONV_STABILITY_OPT_IN, raising=False)
     _OpenTelemetrySemanticConventionStability._initialized = False
     yield
-    instrumentor = OpenAIInstrumentor()
-    if instrumentor.is_instrumented_by_opentelemetry:
-        instrumentor.uninstrument()
+    v2, genai_openai = OpenAIInstrumentor(), GenAIOpenAIInstrumentor()
+    for instrumentor in (v2, genai_openai):
+        if instrumentor.is_instrumented_by_opentelemetry:
+            instrumentor.uninstrument()
+    genai_openai.__dict__.pop("instrument", None)
+    OpenAIInstrumentor._blocked = None
+    OpenAIInstrumentor._delegate = None
     _OpenTelemetrySemanticConventionStability._initialized = False
 
 

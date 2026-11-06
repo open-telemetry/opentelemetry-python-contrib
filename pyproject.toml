@@ -65,7 +65,6 @@ dependencies = [
   "opentelemetry-util-http",
   "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
-  "opentelemetry-instrumentation-openai-v2[instruments]",
 ]
 
 
@@ -137,7 +136,6 @@ opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
-opentelemetry-instrumentation-openai-v2 = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
@@ -150,6 +148,9 @@ members = [
   "propagator/*",
   "util/*",
 ]
+# Depends on opentelemetry-util-genai 1.x from PyPI (via opentelemetry-instrumentation-genai-openai),
+# which conflicts with the in-repo util/opentelemetry-util-genai. Tested via tox only.
+exclude = ["instrumentation-genai/opentelemetry-instrumentation-openai-v2"]
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/

@@ -1,0 +1,1 @@
+Bump minimum `opentelemetry-api` to 1.43 and `opentelemetry-instrumentation`/`opentelemetry-semantic-conventions` to 0.64b0, as required by `opentelemetry-instrumentation-genai-openai`.
