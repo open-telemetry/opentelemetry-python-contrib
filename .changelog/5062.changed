@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-boto3sqs`: send `delete_message_batch` requests for an empty `Entries` list
