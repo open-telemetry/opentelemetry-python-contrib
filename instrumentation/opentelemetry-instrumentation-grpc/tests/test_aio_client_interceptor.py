@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
@@ -33,6 +34,7 @@ from ._aio_client import (
 )
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
+from .protobuf.test_server_pb2 import Request  # pylint: disable=no-name-in-module
 
 
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
@@ -342,3 +344,48 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
+
+    async def test_unary_unary_does_not_await_call_that_never_terminates(self):
+        """The interceptor must hand the call back even if the RPC never terminates.
+
+        grpc.aio resolves the status future only when the RPC terminates. A call
+        that fails inside UnaryUnaryCall._invoke -- unencodable metadata, an
+        unserializable request -- never dispatches and never resolves it, so
+        awaiting code() here would block until the caller's deadline and would
+        stall any interceptor further out in the chain.
+        """
+
+        class NeverTerminatingCall:
+            async def code(self):
+                await asyncio.Event().wait()
+
+            async def details(self):
+                await asyncio.Event().wait()
+
+            def add_done_callback(self, callback):
+                pass  # the call never becomes done, so this never fires
+
+        never_terminating_call = NeverTerminatingCall()
+
+        async def continuation(client_call_details, request):
+            return never_terminating_call
+
+        interceptor = UnaryUnaryAioClientInterceptor(
+            trace.get_tracer(opentelemetry.instrumentation.grpc.__name__)
+        )
+        client_call_details = grpc.aio.ClientCallDetails(
+            method="/GRPCTestServer/SimpleMethod",
+            timeout=None,
+            metadata=None,
+            credentials=None,
+            wait_for_ready=None,
+        )
+
+        call = await asyncio.wait_for(
+            interceptor.intercept_unary_unary(
+                continuation, client_call_details, Request()
+            ),
+            timeout=5,
+        )
+
+        self.assertIs(call, never_terminating_call)
