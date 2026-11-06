@@ -1,0 +1,1 @@
+Remove the built-in latest experimental GenAI semantic conventions support (including Responses API instrumentation and completion hooks). With `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` the instrumentation now logs a warning and does nothing; use `opentelemetry-instrumentation-genai-openai` instead.

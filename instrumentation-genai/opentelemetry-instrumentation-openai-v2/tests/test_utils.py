@@ -3,8 +3,14 @@
 
 """Shared test utilities for OpenAI instrumentation tests."""
 
+from __future__ import annotations
+
 import json
 from typing import Any
+
+from openai.resources.chat.completions import AsyncCompletions, Completions
+from openai.resources.embeddings import AsyncEmbeddings, Embeddings
+from wrapt import FunctionWrapper
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
@@ -16,6 +22,25 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+
+V2_SCOPE = "opentelemetry.instrumentation.openai_v2"
+PATCHED_CLASSES = (Completions, AsyncCompletions, Embeddings, AsyncEmbeddings)
+
+
+def _wrapper_module(cls: type) -> str | None:
+    attr = cls.__dict__["create"]
+    if not isinstance(attr, FunctionWrapper):
+        return None
+    return attr._self_wrapper.__module__
+
+
+def wrapped_by_v2() -> bool:
+    return all(_wrapper_module(cls) == f"{V2_SCOPE}.patch" for cls in PATCHED_CLASSES)
+
+
+def not_wrapped() -> bool:
+    return all(_wrapper_module(cls) is None for cls in PATCHED_CLASSES)
+
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
