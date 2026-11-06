@@ -119,6 +119,20 @@ For example,
         client_response_hook=client_response_hook,
     )
 
+Exclude internal send/receive spans
+***********************************
+To skip the internal ``http send`` and ``http receive`` spans, set the environment variable
+``OTEL_PYTHON_ASGI_EXCLUDE_SPANS`` to a comma delimited list of ``send`` and/or ``receive``,
+or pass the ``exclude_spans`` keyword argument to ``OpenTelemetryMiddleware``.
+
+For example,
+::
+
+    export OTEL_PYTHON_ASGI_EXCLUDE_SPANS="send,receive"
+
+The ``exclude_spans`` argument takes precedence over the environment variable. The setting also applies
+to instrumentations built on this middleware, such as FastAPI and Starlette.
+
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
@@ -301,6 +315,8 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+OTEL_PYTHON_ASGI_EXCLUDE_SPANS = "OTEL_PYTHON_ASGI_EXCLUDE_SPANS"
 
 
 class ASGIGetter(Getter[dict]):
@@ -575,6 +591,7 @@ class OpenTelemetryMiddleware:
         meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
         exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
+            Defaults to the value of ``OTEL_PYTHON_ASGI_EXCLUDE_SPANS``.
     """
 
     # pylint: disable=too-many-branches,too-many-positional-arguments
@@ -697,8 +714,10 @@ class OpenTelemetryMiddleware:
             or (get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
             or []
         )
-        self.exclude_receive_span = "receive" in exclude_spans if exclude_spans else False
-        self.exclude_send_span = "send" in exclude_spans if exclude_spans else False
+        if exclude_spans is None:
+            exclude_spans = get_custom_headers(OTEL_PYTHON_ASGI_EXCLUDE_SPANS)
+        self.exclude_receive_span = "receive" in exclude_spans
+        self.exclude_send_span = "send" in exclude_spans
 
     def _collect_custom_request_headers_attributes(self, scope) -> dict[str, list[str]]:
         if not self.http_capture_headers_server_request:
