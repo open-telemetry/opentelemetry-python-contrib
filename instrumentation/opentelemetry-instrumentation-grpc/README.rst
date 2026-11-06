@@ -18,6 +18,17 @@ Installation
      pip install opentelemetry-instrumentation-grpc
 
 
+grpc metric types
+-----------------
+
+* `rpc.server.call.duration` (seconds) - Duration of incoming RPCs, recorded by the server interceptors
+* `rpc.client.call.duration` (seconds) - Duration of outgoing RPCs, recorded by the client interceptors
+
+Both metrics have the `rpc.system.name` (`grpc`), `rpc.method` (`package.Service/Method`),
+`rpc.response.status_code` (gRPC status name, e.g. `OK`) and `error.type` (the gRPC status
+name for failed calls, `None` otherwise) attributes.
+
+
 References
 ----------
 
