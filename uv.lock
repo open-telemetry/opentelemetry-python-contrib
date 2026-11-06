@@ -40,6 +40,7 @@ members = [
     "opentelemetry-instrumentation-flask",
     "opentelemetry-instrumentation-grpc",
     "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-ibmmq",
     "opentelemetry-instrumentation-jinja2",
     "opentelemetry-instrumentation-kafka-python",
     "opentelemetry-instrumentation-logging",
@@ -1971,6 +1972,17 @@ wheels = [
 ]
 
 [[package]]
+name = "ibmmq"
+version = "2.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/34/062ed9dcb9a2f4e97d80eeb6107e8e5646394086265f2b6af1c15fd23cd1/ibmmq-2.1.1.tar.gz", hash = "sha256:77de66a2dbe398cf332790f05d31573f940c00c5967a7183b2344f84ebfbbee3", size = 438072, upload-time = "2026-09-03T09:38:43.236Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/4c/9bf1544d1f6577fa29250b8ee451893a1d63459c348a01f49b850d63b548/ibmmq-2.1.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:acb2d19d16e532ad55738a94c45f97e06181bca4b9dc2cf097970f4a67cf2714", size = 396449, upload-time = "2026-09-03T09:38:36.893Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/e6/2738fba658a89ff4f12ef87141cafcb9489c7ccb56f14cde976d8b1974e3/ibmmq-2.1.1-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:979a014333bfd51878155b29b41ebc51e02ec779efa5ba702f110b08f636b980", size = 438393, upload-time = "2026-09-03T09:38:38.927Z" },
+    { url = "https://files.pythonhosted.org/packages/17/09/c1f756becce639a92d8d6d087147538d24e19c1301380079b40eae04baaa/ibmmq-2.1.1-cp39-abi3-win_amd64.whl", hash = "sha256:db877ab40d4f93d8afdef972ed8fad314acb89817fdbaa8367390604adb33cc6", size = 401239, upload-time = "2026-09-03T09:38:40.985Z" },
+]
+
+[[package]]
 name = "identify"
 version = "2.6.19"
 source = { registry = "https://pypi.org/simple" }
@@ -3349,6 +3361,33 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
+]
+provides-extras = ["instruments", "instruments-any"]
+
+[[package]]
+name = "opentelemetry-instrumentation-ibmmq"
+source = { editable = "instrumentation/opentelemetry-instrumentation-ibmmq" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "wrapt" },
+]
+
+[package.optional-dependencies]
+instruments-any = [
+    { name = "ibmmq" },
+    { name = "pymqi" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ibmmq", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "pymqi", marker = "extra == 'instruments-any'", specifier = ">=1.12,<2.0" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments", "instruments-any"]
@@ -5110,6 +5149,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/48/96b923a2d29456896c7f11f8e6104339818112f5a8621f42ba51f131a510/pymongo-4.19.0-cp315-cp315t-win_amd64.whl", hash = "sha256:f17b100fdc16b65c12997ec4fcc78eecc0a6395254c7ec92a4596e855ff1f33a", size = 835209, upload-time = "2026-10-14T19:48:14.063Z" },
     { url = "https://files.pythonhosted.org/packages/46/6b/2ede9f64d96393e8111d250620f5340d64e62f4617322a43800516027ce9/pymongo-4.19.0-cp315-cp315t-win_arm64.whl", hash = "sha256:bfcb5f8912edd9714a52564ad41c0dcd72e5408d1d3d67b41f6145df4a516318", size = 827452, upload-time = "2026-10-14T19:48:17.534Z" },
 ]
+
+[[package]]
+name = "pymqi"
+version = "1.12.13"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/a1/ab26ff7a6fa2a866bd2b50a49d8e3d2942d395ab59dfc1a9f9baf2ed6480/pymqi-1.12.13.tar.gz", hash = "sha256:a74a48d6f0c59180f678a926927b69d8d7e7df0b228f8903c08b95f54627051c", size = 90972, upload-time = "2025-11-18T16:27:39.588Z" }
 
 [[package]]
 name = "pymssql"
