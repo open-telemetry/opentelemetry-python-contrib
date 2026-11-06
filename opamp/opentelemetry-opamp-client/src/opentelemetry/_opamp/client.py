@@ -110,6 +110,15 @@ class OpAMPClient:
             self._sequence_num += 1
         return messages.encode_message(prepared)
 
+    def update_instance_uid(self, instance_uid: bytes) -> None:
+        """Adopt a server-assigned, nonzero 16-byte instance UID for subsequent messages."""
+        if len(instance_uid) != 16:
+            raise ValueError(f"instance_uid must be 16 bytes, got {len(instance_uid)}")
+        if instance_uid == bytes(16):
+            raise ValueError("instance_uid must not be all zeros")
+        with self._sequence_num_lock:
+            self._instance_uid = instance_uid
+
     def build_agent_disconnect_message(self) -> opamp_pb2.AgentToServer:
         message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,
