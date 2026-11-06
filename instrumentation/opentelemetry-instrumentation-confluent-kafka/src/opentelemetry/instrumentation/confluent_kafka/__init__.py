@@ -50,6 +50,7 @@ Usage
 The ``_instrument()`` method accepts the following keyword args:
 
 - **tracer_provider** (TracerProvider) - an optional tracer provider
+- **use_message_context_as_parent** (bool) - use the message trace context as the parent of the consumer ``process`` span when one message is returned. Defaults to ``False``. See `Trace context on the consumer`_.
 - **instrument_producer** (Callable) - a function with extra user-defined logic to be performed before sending the message
 
   Function signature:
@@ -64,7 +65,7 @@ The ``_instrument()`` method accepts the following keyword args:
 
   .. code:: python
 
-      def instrument_consumer(consumer: Consumer, tracer_provider=None): ...
+      def instrument_consumer(consumer: Consumer, tracer_provider=None, use_message_context_as_parent=False): ...
 
 For example:
 
@@ -94,6 +95,38 @@ For example:
     conf = {'bootstrap.servers': "localhost:9092"}
     p.produce('my-topic',b'raw_bytes')
     msg = c.poll()
+
+Trace context on the consumer
+-----------------------------
+
+The consumer creates one ``process`` span per ``poll()`` or ``consume()`` call
+that returns at least one message. The span stays current until the next call
+on the same consumer, so spans the application starts while it handles the
+messages become children of the ``process`` span.
+
+By default, the ``process`` span takes the context that is current when the
+application calls ``poll()`` or ``consume()`` as its parent, or is a root span
+when there is none. It adds a link to the trace context found in the headers of
+each message. The trace shape is the same for one message and for a batch.
+
+With ``use_message_context_as_parent=True``, a ``process`` span for one message
+uses the trace context from the message headers as its parent, so the producer
+span is its direct parent. If a span is current when the application calls the
+consumer, the ``process`` span links to it. A ``process`` span for more than one
+message keeps the default behavior, because the messages can belong to
+different traces. A message with no valid trace context also keeps the default
+behavior.
+
+.. code:: python
+
+    ConfluentKafkaInstrumentor().instrument(use_message_context_as_parent=True)
+    # or, for one consumer
+    c = inst.instrument_consumer(c, use_message_context_as_parent=True)
+
+A ``process`` span for more than one message carries no partition, offset or
+message id, because those identify one message. An application that needs one
+span per message can extract the context from the message headers and start a
+span with that context as the parent.
 
 """
 
@@ -198,9 +231,10 @@ class ProxiedProducer(Producer):
 
 
 class ProxiedConsumer(Consumer):
-    def __init__(self, consumer: Consumer, tracer: Tracer):
+    def __init__(self, consumer: Consumer, tracer: Tracer, use_message_context_as_parent: bool = False):
         self._consumer = consumer
         self._tracer = tracer
+        self._use_message_context_as_parent = use_message_context_as_parent
         self._current_consume_span = None
         self._current_context_token = None
         # See ProxiedProducer.__init__ for rationale.
@@ -222,6 +256,7 @@ class ProxiedConsumer(Consumer):
             self._tracer,
             args,
             kwargs,
+            use_message_context_as_parent=self._use_message_context_as_parent,
         )
 
     def get_watermark_offsets(self, partition, timeout=-1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -231,7 +266,14 @@ class ProxiedConsumer(Consumer):
         return self._consumer.offsets_for_times(partitions, timeout)
 
     def poll(self, timeout=-1):
-        return ConfluentKafkaInstrumentor.wrap_poll(self._consumer.poll, self, self._tracer, [timeout], {})
+        return ConfluentKafkaInstrumentor.wrap_poll(
+            self._consumer.poll,
+            self,
+            self._tracer,
+            [timeout],
+            {},
+            use_message_context_as_parent=self._use_message_context_as_parent,
+        )
 
     def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self._consumer.subscribe(topics, on_assign, *args, **kwargs)
@@ -259,7 +301,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return manual_producer
 
     @staticmethod
-    def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
+    def instrument_consumer(
+        consumer: Consumer,
+        tracer_provider=None,
+        use_message_context_as_parent: bool = False,
+    ) -> ProxiedConsumer:
         tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -267,7 +313,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-        manual_consumer = ProxiedConsumer(consumer, tracer)
+        manual_consumer = ProxiedConsumer(
+            consumer,
+            tracer,
+            use_message_context_as_parent=use_message_context_as_parent,
+        )
 
         return manual_consumer
 
@@ -305,15 +355,30 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         )
 
         self._tracer = tracer
+        use_message_context_as_parent = bool(kwargs.get("use_message_context_as_parent", False))
 
         def _inner_wrap_produce(func, instance, args, kwargs):
             return ConfluentKafkaInstrumentor.wrap_produce(func, instance, self._tracer, args, kwargs)
 
         def _inner_wrap_poll(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_poll(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_poll(
+                func,
+                instance,
+                self._tracer,
+                args,
+                kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
+            )
 
         def _inner_wrap_consume(func, instance, args, kwargs):
-            return ConfluentKafkaInstrumentor.wrap_consume(func, instance, self._tracer, args, kwargs)
+            return ConfluentKafkaInstrumentor.wrap_consume(
+                func,
+                instance,
+                self._tracer,
+                args,
+                kwargs,
+                use_message_context_as_parent=use_message_context_as_parent,
+            )
 
         def _inner_wrap_close(func, instance, args, kwargs):
             return ConfluentKafkaInstrumentor.wrap_close(func, instance, args, kwargs)
@@ -351,25 +416,28 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
-        topic = kwargs.get("topic")
-        if not topic:
-            topic = args[0]
+        topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+
+        headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+        if headers is None:
+            headers = []
+            kwargs["headers"] = headers
+
+        partition = KafkaPropertiesExtractor.extract_produce_partition(args, kwargs)
 
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
-            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
-            if headers is None:
-                headers = []
-                kwargs["headers"] = headers
-
-            topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=trace.SpanKind.PRODUCER,
+        ) as span:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationTypeValues.PUBLISH,
+                partition=partition,
+                operation=MessagingOperationTypeValues.SEND,
                 bootstrap_servers=bootstrap_servers,
-            )  # Publish
+            )
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
@@ -377,43 +445,74 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             return func(*args, **kwargs)
 
     @staticmethod
-    def wrap_poll(func, instance, tracer, args, kwargs):
+    def wrap_poll(func, instance, tracer, args, kwargs, use_message_context_as_parent: bool = False):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
+        ######
+        # Notes on Spans Surrounding Poll
+        # we don't wrap the poll operation in a span because there's no context to extract yet
+        # creating a span here would create a new span for each poll call
+        # if more work is done in poll() function, such as in the DeserializingConsumer,
+        # that is hard to trace for the same reason
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around poll should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        #####
         record = func(*args, **kwargs)
+
+        # create a new span for the message
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, [record])
-                _enrich_span(
-                    instance._current_consume_span,
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            _create_new_consume_span(instance, tracer, [record], use_message_context_as_parent)
+            _enrich_span(
+                instance._current_consume_span,
+                record.topic(),
+                partition=record.partition(),
+                offset=record.offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return record
 
     @staticmethod
-    def wrap_consume(func, instance, tracer, args, kwargs):
+    def wrap_consume(func, instance, tracer, args, kwargs, use_message_context_as_parent: bool = False):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
+        ######
+        # Notes on Spans Surrounding Consume
+        # since consume can return multiple records, we _could_ wrap the call in a span
+        # and then create a new span for each record
+        # however, this span is awkward because there is no obvious trace to assign to it
+        # before the messages are returned, and afterwards it cannot be modified
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around consume should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        ######
         records = func(*args, **kwargs)
+
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, records)
-                _enrich_span(
-                    instance._current_consume_span,
-                    records[0].topic(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            _create_new_consume_span(instance, tracer, records, use_message_context_as_parent)
+            # partition, offset and message id identify one record, so they are
+            # only set when consume returned exactly one record
+            partition = records[0].partition() if len(records) == 1 else None
+            offset = records[0].offset() if len(records) == 1 else None
+            _enrich_span(
+                instance._current_consume_span,
+                records[0].topic(),
+                partition=partition,
+                offset=offset,
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return records
