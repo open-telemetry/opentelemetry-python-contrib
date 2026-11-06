@@ -1,0 +1,44 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.4.schema.json",
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "bom-ref:opentelemetry",
+      "name": "opentelemetry",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:pypi/packaging@26.3",
+      "name": "packaging",
+      "purl": "pkg:pypi/packaging@26.3",
+      "type": "library",
+      "version": "26.3"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:pypi/packaging@26.3"
+      ],
+      "ref": "bom-ref:opentelemetry"
+    },
+    {
+      "ref": "pkg:pypi/packaging@26.3"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "bom-ref:opentelemetry",
+      "name": "opentelemetry",
+      "type": "library"
+    },
+    "tools": [
+      {
+        "name": "vendoring",
+        "version": "1.4.0"
+      }
+    ]
+  },
+  "specVersion": "1.4",
+  "version": 1
+}

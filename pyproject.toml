@@ -156,7 +156,7 @@ members = [
 target-version = "py310"
 line-length = 120
 force-exclude = true
-extend-exclude = ["_template", "*_pb2*.py*"]
+extend-exclude = ["_template", "_vendor", "*_pb2*.py*"]
 output-format = "concise"
 extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
 
