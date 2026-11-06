@@ -48,15 +48,18 @@ _expected_metric_names = [
 ]
 _recommended_attrs = {
     "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
-    "http.server.response.size": _duration_attrs,
-    "http.server.request.size": _duration_attrs,
+    "http.server.duration": {*_duration_attrs, HTTP_TARGET},
+    "http.server.response.size": {*_duration_attrs, HTTP_TARGET},
+    "http.server.request.size": {*_duration_attrs, HTTP_TARGET},
 }
 
 SCOPE = "opentelemetry.instrumentation.starlette"
 
 
 class TestStarletteManualInstrumentation(TestBase):
+    # Only the outer app is instrumented and http.route stops at the mount.
+    _mounted_sub_app_targets = {"/sub"}
+
     def _create_app(self):
         app = self._create_starlette_app()
         self._instrumentor.instrument_app(
@@ -129,6 +132,20 @@ class TestStarletteManualInstrumentation(TestBase):
                 span.attributes[HTTP_URL],
             )
 
+    def test_mounted_sub_app_metric_target(self):
+        resp = self._client.get("/sub/home")
+        self.assertEqual(200, resp.status_code)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        targets = {
+            point.attributes.get("http.target")
+            for metric in metrics
+            if metric.name == "http.server.duration"
+            for point in metric.data.data_points
+            if isinstance(point, HistogramDataPoint)
+        }
+        self.assertEqual(self._mounted_sub_app_targets, targets)
+
     def test_host_starlette_call(self):
         client = TestClient(self._app, base_url="http://testserver2")
         client.get("/home")
@@ -194,6 +211,7 @@ class TestStarletteManualInstrumentation(TestBase):
             "http.scheme": "http",
             "http.server_name": "testserver",
             "http.status_code": 405,
+            "http.target": "/foobar",
             "net.host.port": 80,
         }
         expected_requests_count_attributes = {
@@ -341,6 +359,9 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
     to both.
     """
 
+    # The sub app is instrumented too: http.route "/home" under root_path "/sub".
+    _mounted_sub_app_targets = {"/sub", "/sub/home"}
+
     def _create_app(self):
         # instrumentation is handled by the instrument call
         resource = Resource.create({"key1": "value1", "key2": "value2"})
@@ -460,6 +481,9 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     """
     Test the auto-instrumented variant for request and response hooks
     """
+
+    # The sub app is instrumented too: http.route "/home" under root_path "/sub".
+    _mounted_sub_app_targets = {"/sub", "/sub/home"}
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
