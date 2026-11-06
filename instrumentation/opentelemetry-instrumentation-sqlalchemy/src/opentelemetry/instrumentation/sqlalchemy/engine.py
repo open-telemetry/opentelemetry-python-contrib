@@ -285,13 +285,13 @@ class EngineTracer:
     def _pool_checkout(self, _dbapi_connection, connection_record, _connection_proxy):
         self._add_idle_to_connection_usage(-1)
         self._add_used_to_connection_usage(1)
-        if self.connection_use_time is not None and is_instrumentation_enabled():
+        if self.connection_use_time is not None:
             connection_record.info[_CHECKOUT_TIME_KEY] = time.perf_counter()
 
     def _record_connection_use_time(self, connection_record):
-        # Always pop so a stale start time is never reused. A checkout made
-        # while instrumentation was suppressed stores no start time, so its
-        # checkin records nothing.
+        # Always pop so a stale start time is never reused. Like the pool
+        # usage counter, this is not suppressed, since it measures the pool's
+        # state.
         start_time = connection_record.info.pop(_CHECKOUT_TIME_KEY, None)
         if start_time is None or self.connection_use_time is None:
             return

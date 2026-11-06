@@ -220,18 +220,23 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assertEqual(len(data_points), 1)
         self.assertEqual(data_points[0].count, 3)
 
-    def test_use_time_not_recorded_for_suppressed_checkout(self):
+    def test_use_time_recorded_for_suppressed_checkout(self):
+        pool_name = "pool_test_name"
         engine = sqlalchemy.create_engine(
             "sqlite:///:memory:",
             poolclass=QueuePool,
-            pool_logging_name="pool_test_name",
+            pool_logging_name=pool_name,
         )
 
         with suppress_instrumentation():
             conn = engine.connect()
         conn.close()
 
-        self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: pool_name})
 
     def test_use_time_recorded_for_suppressed_checkin(self):
         pool_name = "pool_test_name"
