@@ -71,6 +71,11 @@ from celery.worker.request import Request  # pylint: disable=no-name-in-module
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
@@ -139,11 +144,15 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         use_span_links = kwargs.get("use_span_links", False)
 
+        # Initialize the stability modes before resolving the schema URL so
+        # OTEL_SEMCONV_STABILITY_OPT_IN is honored.
+        _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))
+
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
         self._use_span_links = use_span_links
 
