@@ -42,7 +42,7 @@ from wrapt import wrap_function_wrapper as _wrap
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.jinja2.package import _instruments
 from opentelemetry.instrumentation.jinja2.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled, unwrap
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,8 @@ def _wrap_render(
     kwargs: dict[str, Any],
 ):
     """Wrap `Template.render()` or `Template.generate()`"""
+    if not is_instrumentation_enabled():
+        return wrapped(*args, **kwargs)
     with tracer.start_as_current_span(
         "jinja2.render",
         kind=SpanKind.INTERNAL,
@@ -102,6 +104,8 @@ def _wrap_compile(
     args: list[Any],
     kwargs: dict[str, Any],
 ) -> CodeType:
+    if not is_instrumentation_enabled():
+        return wrapped(*args, **kwargs)
     with tracer.start_as_current_span(
         "jinja2.compile",
         kind=SpanKind.INTERNAL,
@@ -120,6 +124,8 @@ def _wrap_load_template(
     args: list[Any],
     kwargs: dict[str, Any],
 ) -> Template:
+    if not is_instrumentation_enabled():
+        return wrapped(*args, **kwargs)
     with tracer.start_as_current_span(
         "jinja2.load",
         kind=SpanKind.INTERNAL,
