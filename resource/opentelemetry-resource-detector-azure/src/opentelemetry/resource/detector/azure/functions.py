@@ -46,7 +46,7 @@ class AzureFunctionsResourceDetector(ResourceDetector):
                 if value:
                     if key == ResourceAttributes.FAAS_MAX_MEMORY:
                         try:
-                            value = int(value)
+                            value = int(value) * 1024 * 1024
                         except ValueError:
                             continue
                     attributes[key] = value
