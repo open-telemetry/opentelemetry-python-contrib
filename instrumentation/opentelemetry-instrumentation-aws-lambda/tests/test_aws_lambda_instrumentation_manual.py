@@ -56,6 +56,7 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -179,6 +180,133 @@ class TestAwsLambdaInstrumentorBase(TestBase):
 
 
 class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
+    def _instrument_with_sampler(self, sampler: CapturingSampler) -> None:
+        instrumentor = AwsLambdaInstrumentor()
+        if instrumentor.is_instrumented_by_opentelemetry:
+            instrumentor.uninstrument()
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+        instrumentor.instrument(tracer_provider=self.tracer_provider, meter_provider=self.meter_provider)
+
+    def test_invocation_attributes_passed_to_sampler(self) -> None:
+        cases = (
+            ({}, {}),
+            (
+                MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
+                {
+                    FAAS_TRIGGER: FaasTriggerValues.HTTP.value,
+                    HTTP_METHOD: "POST",
+                    HTTP_ROUTE: "/{proxy+}",
+                    HTTP_TARGET: "/{proxy+}?foo=bar",
+                    NET_HOST_NAME: "0123456789.execute-api.us-east-1.amazonaws.com",
+                    HTTP_USER_AGENT: "Custom User Agent String",
+                    HTTP_SCHEME: "https",
+                },
+            ),
+            (
+                MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
+                {
+                    FAAS_TRIGGER: FaasTriggerValues.HTTP.value,
+                    HTTP_METHOD: "POST",
+                    HTTP_ROUTE: "/path/to/resource",
+                    HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
+                    NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
+                    HTTP_USER_AGENT: "agent",
+                },
+            ),
+            (
+                MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT,
+                {
+                    FAAS_TRIGGER: FaasTriggerValues.HTTP.value,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "https",
+                    HTTP_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)",
+                    NET_HOST_NAME: "lambda-846800462-us-east-2.elb.amazonaws.com",
+                },
+            ),
+        )
+        for event, event_attributes in cases:
+            with self.subTest(event_attributes=event_attributes):
+                sampler = CapturingSampler()
+                self._instrument_with_sampler(sampler)
+
+                mock_execute_lambda(event)
+
+                expected = {**MOCK_LAMBDA_CONTEXT_ATTRIBUTES, **event_attributes}
+                self.assertEqual(sampler.name, MOCK_LAMBDA_CONTEXT.function_name)
+                self.assertEqual(sampler.kind, SpanKind.SERVER)
+                self.assertEqual(sampler.attributes, expected)
+                for value in sampler.attributes.values():
+                    self.assertIs(type(value), str)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes, expected)
+
+    def test_response_status_not_passed_to_sampler(self) -> None:
+        sampler = CapturingSampler()
+        with mock.patch.dict("os.environ", {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"}):
+            self._instrument_with_sampler(sampler)
+            response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
+
+        self.assertEqual(response["statusCode"], 200)
+        self.assertNotIn(HTTP_STATUS_CODE, sampler.attributes)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes, {**sampler.attributes, HTTP_STATUS_CODE: 200})
+        self.assertIs(type(spans[0].attributes[HTTP_STATUS_CODE]), int)
+
+    def test_sqs_attributes_passed_to_sampler(self) -> None:
+        for event in (MOCK_LAMBDA_SQS_EVENT, MOCK_LAMBDA_SQS_BATCH_EVENT):
+            with self.subTest(record_count=len(event["Records"])):
+                sampler = CapturingSampler()
+                self._instrument_with_sampler(sampler)
+
+                with mock.patch.object(sampler, "should_sample", wraps=sampler.should_sample) as should_sample:
+                    mock_execute_lambda(event)
+
+                invocation_attributes = {**MOCK_LAMBDA_CONTEXT_ATTRIBUTES, FAAS_TRIGGER: FaasTriggerValues.PUBSUB.value}
+                process_attributes = {
+                    MESSAGING_SYSTEM: MessagingSystemValues.AWS_SQS.value,
+                    MESSAGING_DESTINATION_NAME: "my-queue",
+                    MESSAGING_OPERATION_TYPE: MessagingOperationTypeValues.PROCESS.value,
+                }
+                if len(event["Records"]) > 1:
+                    process_attributes[MESSAGING_BATCH_MESSAGE_COUNT] = 2
+                self.assertEqual(should_sample.call_count, 2)
+                invocation_call, process_call = should_sample.call_args_list
+                self.assertEqual(invocation_call.args[3], SpanKind.SERVER)
+                self.assertEqual(invocation_call.args[4], invocation_attributes)
+                self.assertEqual(process_call.args[3], SpanKind.CONSUMER)
+                self.assertEqual(process_call.args[4], process_attributes)
+                for key, value in process_attributes.items():
+                    self.assertIs(type(process_call.args[4][key]), type(value))
+                expected_link_count = 2 if len(event["Records"]) > 1 else 0
+                self.assertEqual(len(process_call.args[5]), expected_link_count)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 2)
+                self.assertEqual(spans[0].attributes, process_attributes)
+                self.assertEqual(spans[1].attributes, invocation_attributes)
+
+    def test_attributes_control_sampling(self) -> None:
+        for event, key, value in (
+            ({}, FAAS_INVOCATION_ID, MOCK_LAMBDA_CONTEXT.aws_request_id),
+            (MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT, HTTP_ROUTE, "/{proxy+}"),
+            (MOCK_LAMBDA_SQS_EVENT, MESSAGING_DESTINATION_NAME, "my-queue"),
+            (MOCK_LAMBDA_SQS_BATCH_EVENT, MESSAGING_BATCH_MESSAGE_COUNT, 2),
+        ):
+            for sampled in (True, False):
+                with self.subTest(key=key, sampled=sampled):
+                    sampler = CapturingSampler(required_attributes={key: value if sampled else "drop"})
+                    self._instrument_with_sampler(sampler)
+
+                    result = mock_execute_lambda(event)
+
+                    self.assertIsInstance(result, str)
+                    spans = self.memory_exporter.get_finished_spans()
+                    self.assertEqual(len(spans), 1 if sampled else 0)
+                    if sampled:
+                        self.assertEqual(spans[0].attributes[key], value)
+
     def test_default_event_context_extractor_does_not_log_for_missing_headers(
         self,
     ):

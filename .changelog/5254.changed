@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiokafka`: pass known attributes at span creation for sampler visibility
