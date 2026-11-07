@@ -1,1 +1,0 @@
-`opentelemetry-util-http`: ignore blank entries in header lists, so a trailing comma in `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS` no longer redacts every captured header
