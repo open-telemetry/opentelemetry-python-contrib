@@ -874,17 +874,17 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
         # Django's ASGI runner will call task.cancel() in practice if it detects a closed
         # connection
         with self.assertRaises(asyncio.CancelledError):
-            # simulate a cancellation during the response side
-            # of the middleware
+            # simulate a cancellation while the request is in flight,
+            # so get_response never returns and process_response never runs
             with patch(
-                "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_response",
+                "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_view",
                 side_effect=asyncio.CancelledError,
             ):
-                await self.async_client.get("/traced-custom-error/")
+                await self.async_client.get("/traced/")
 
         spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertEqual(span.name, "GET")
+        self.assertEqual(span.name, "GET ^traced/")
         self.memory_exporter.clear()
