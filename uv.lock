@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -11,6 +11,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "opentelemetry-agent",
     "opentelemetry-distro",
     "opentelemetry-exporter-credential-provider-gcp",
     "opentelemetry-exporter-prometheus-remote-write",
@@ -76,6 +77,7 @@ members = [
     "opentelemetry-python-contrib",
     "opentelemetry-util-genai",
     "opentelemetry-util-http",
+    "opentelemetry-vendor",
 ]
 
 [[package]]
@@ -2805,6 +2807,10 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-agent"
+source = { editable = "agent/opentelemetry-agent" }
+
+[[package]]
 name = "opentelemetry-api"
 version = "1.44.0.dev0"
 source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main#9ffd585e2f5eb296e2c9e834887b382af0c18727" }
@@ -4392,6 +4398,7 @@ dependencies = [
     { name = "opentelemetry-test-utils" },
     { name = "opentelemetry-util-genai" },
     { name = "opentelemetry-util-http" },
+    { name = "opentelemetry-vendor" },
 ]
 
 [package.dev-dependencies]
@@ -4485,6 +4492,7 @@ requires-dist = [
     { name = "opentelemetry-test-utils", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main" },
     { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
+    { name = "opentelemetry-vendor", editable = "agent/opentelemetry-vendor" },
 ]
 
 [package.metadata.requires-dev]
@@ -4570,6 +4578,11 @@ provides-extras = ["test", "upload"]
 [[package]]
 name = "opentelemetry-util-http"
 source = { editable = "util/opentelemetry-util-http" }
+
+[[package]]
+name = "opentelemetry-vendor"
+version = "0.0.0"
+source = { editable = "agent/opentelemetry-vendor" }
 
 [[package]]
 name = "packaging"
