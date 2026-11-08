@@ -356,13 +356,14 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     route: str | None = None
 
     for starlette_route in app.routes:
-        match, _ = starlette_route.matches(scope)
+        match, child_scope = starlette_route.matches(scope)
         if match == Match.FULL:
-            try:
-                route = starlette_route.path
-            except AttributeError:
-                # routes added via host routing won't have a path attribute
-                route = scope.get("path")
+            route = getattr(starlette_route, "path", None)
+            if route is None:
+                nested_app = getattr(starlette_route, "app", None)
+                if nested_app is not None and hasattr(nested_app, "routes"):
+                    nested_scope = {**scope, **child_scope, "app": nested_app}
+                    route = _get_route_details(nested_scope)
             break
         if match == Match.PARTIAL:
             route = starlette_route.path

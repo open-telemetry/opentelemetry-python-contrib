@@ -145,6 +145,10 @@ class TestStarletteManualInstrumentation(TestBase):
                 span.attributes[HTTP_URL],
             )
 
+        server_span = next(span for span in spans if HTTP_ROUTE in span.attributes)
+        self.assertEqual(server_span.name, "GET /home")
+        self.assertEqual(server_span.attributes[HTTP_ROUTE], "/home")
+
     def test_starlette_route_attribute_added(self):
         """Ensure that starlette routes are used as the span name."""
         self._client.get("/user/123")

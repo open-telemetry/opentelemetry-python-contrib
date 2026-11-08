@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-starlette`: resolve the inner route for Host-routed applications instead of recording the raw request path
