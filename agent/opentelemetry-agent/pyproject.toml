@@ -34,7 +34,26 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 destination = "src/opentelemetry/agent/_vendor/"
 requirements = "src/opentelemetry/agent/_vendor/requirements.txt"
 namespace = "opentelemetry.agent._vendor"
+python-version = "3.10"
 protected-files = ["__init__.py", "README.rst", "requirements.txt"]
+drop = [
+  # Typing markers, tests and CLI entry points aren't used by the agent.
+  "**/py.typed",
+  "**/__main__.py",
+  "certifi/tests",
+  "charset_normalizer/cli",
+  "idna/cli.py",
+  # Debug-report helper (`python -m requests.help`); imports pyOpenSSL/cryptography.
+  "requests/help.py",
+  # Optional urllib3 integrations that would import the user's packages. Their imports are
+  # guarded: SOCKS proxies raise InvalidSchema in requests (no PySocks), pyOpenSSL is only
+  # used without SNI, emscripten only on Pyodide, and HTTP/2 (h2) only after an explicit
+  # urllib3.http2.inject_into_urllib3().
+  "urllib3/contrib/socks.py",
+  "urllib3/contrib/pyopenssl.py",
+  "urllib3/contrib/emscripten",
+  "urllib3/http2/connection.py",
+]
 patches-dir = "patches"
 sbom-file = "src/opentelemetry/agent/_vendor/bom.cdx.json"
 
