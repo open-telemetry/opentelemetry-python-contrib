@@ -282,6 +282,7 @@ from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_response_body_size,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import SERVER_ADDRESS, SERVER_PORT
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -379,6 +380,19 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode=_StabilityMode.DEFAUL
         _set_http_host_server(result, server_host, sem_conv_opt_in_mode)
     if port:
         _set_http_net_host_port(result, port, sem_conv_opt_in_mode)
+    host_header = asgi_getter.get(scope, "host")
+    if host_header and _report_new(sem_conv_opt_in_mode):
+        host_value = host_header[0]
+        if isinstance(host_value, bytes):
+            host_value = _decode_header_item(host_value)
+        parsed_host = urllib.parse.urlsplit("//" + host_value)
+        if parsed_host.hostname:
+            result[SERVER_ADDRESS] = parsed_host.hostname
+        try:
+            if parsed_host.port:
+                result[SERVER_PORT] = parsed_host.port
+        except ValueError:
+            pass
     flavor = scope.get("http_version")
     if flavor:
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)

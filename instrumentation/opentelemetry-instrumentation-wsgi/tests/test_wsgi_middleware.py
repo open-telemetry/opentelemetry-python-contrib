@@ -637,6 +637,17 @@ class TestWsgiAttributes(unittest.TestCase):
             },
         )
 
+    def test_request_attributes_new_semconv_uses_host_header_hostname(self):
+        self.environ["HTTP_HOST"] = "api.example.com:8080"
+        self.environ["SERVER_PORT"] = "8080"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertEqual(attrs[SERVER_ADDRESS], "api.example.com")
+
     def validate_url(
         self,
         expected_url,

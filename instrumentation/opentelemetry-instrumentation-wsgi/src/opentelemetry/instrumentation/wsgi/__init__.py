@@ -222,6 +222,7 @@ API
 from __future__ import annotations
 
 import functools
+import urllib.parse
 import wsgiref.util as wsgiref_util
 from collections.abc import Callable, Iterable
 from timeit import default_timer
@@ -267,6 +268,7 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import SERVER_ADDRESS
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -364,6 +366,10 @@ def collect_request_attributes(
     host_port = environ.get("SERVER_PORT")
     if host:
         _set_http_net_host(result, host, sem_conv_opt_in_mode)
+        if _report_new(sem_conv_opt_in_mode):
+            parsed_host = urllib.parse.urlsplit("//" + host)
+            if parsed_host.hostname:
+                result[SERVER_ADDRESS] = parsed_host.hostname
         # old semconv v1.12.0
         if _report_old(sem_conv_opt_in_mode):
             result[HTTP_HOST] = host

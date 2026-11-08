@@ -1887,7 +1887,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
-                SERVER_ADDRESS: "127.0.0.1",
+                SERVER_ADDRESS: "test",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1895,6 +1895,17 @@ class TestAsgiAttributes(unittest.TestCase):
                 CLIENT_PORT: 32767,
             },
         )
+
+    def test_request_attributes_new_semconv_uses_host_header_port(self):
+        self.scope["headers"] = [(b"host", b"api.example.com:8080")]
+
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertEqual(attrs[SERVER_ADDRESS], "api.example.com")
+        self.assertEqual(attrs[SERVER_PORT], 8080)
 
     def test_request_attributes_both_semconv(self):
         self.scope["query_string"] = b"foo=bar"
@@ -1923,7 +1934,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
-                SERVER_ADDRESS: "127.0.0.1",
+                SERVER_ADDRESS: "test",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
