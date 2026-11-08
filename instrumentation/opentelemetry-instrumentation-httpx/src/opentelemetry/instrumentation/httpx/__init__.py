@@ -452,6 +452,14 @@ if typing.TYPE_CHECKING:
         import httpx
     except ImportError:
         import httpx2 as httpx
+    try:
+        import httpx2
+    except ImportError:
+        httpx2 = httpx
+
+    _HTTPXClient = httpx.Client | httpx.AsyncClient | httpx2.Client | httpx2.AsyncClient
+    _HTTPXSyncTransport = httpx.BaseTransport | httpx2.BaseTransport
+    _HTTPXAsyncTransport = httpx.AsyncBaseTransport | httpx2.AsyncBaseTransport
 
     class _HTTPXModule(typing.Protocol):
         Request: type[httpx.Request]
@@ -794,7 +802,7 @@ class _SyncOpenTelemetryTransportBase:
 
     def __init__(
         self,
-        transport: httpx.BaseTransport,
+        transport: _HTTPXSyncTransport,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | None = None,
@@ -990,7 +998,7 @@ class _AsyncOpenTelemetryTransportBase:
 
     def __init__(
         self,
-        transport: httpx.AsyncBaseTransport,
+        transport: _HTTPXAsyncTransport,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: AsyncRequestHook | None = None,
@@ -1554,7 +1562,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
     @classmethod
     def instrument_client(
         cls,
-        client: httpx.Client | httpx.AsyncClient,
+        client: _HTTPXClient,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | AsyncRequestHook | None = None,
@@ -1719,7 +1727,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             setattr(client, "_is_instrumented_by_opentelemetry", True)
 
     @staticmethod
-    def uninstrument_client(client: httpx.Client | httpx.AsyncClient) -> None:
+    def uninstrument_client(client: _HTTPXClient) -> None:
         """Disables instrumentation for the given client instance
 
         Args:

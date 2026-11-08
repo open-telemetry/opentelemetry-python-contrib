@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-httpx`: accept `httpx2` clients and transports in the public type annotations
