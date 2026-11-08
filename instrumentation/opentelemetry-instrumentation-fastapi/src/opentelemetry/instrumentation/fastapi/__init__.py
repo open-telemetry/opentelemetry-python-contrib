@@ -554,6 +554,7 @@ def _get_route_details(scope: Scope) -> str | None:
         A string containing the route or None
     """
     app: fastapi.FastAPI = scope["app"]
+    root_path: str = scope.get("root_path", "")
     route: str | None = None
 
     for starlette_route in _flatten_routes(app.routes):
@@ -564,14 +565,14 @@ def _get_route_details(scope: Scope) -> str | None:
         )
         if match == Match.FULL:
             try:
-                route = starlette_route.path  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+                route = f"{root_path}{starlette_route.path}"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
             except AttributeError:
                 # Routes added via host routing have no path attribute.
                 route = scope.get("path")
             break
         if match == Match.PARTIAL:
-            route = starlette_route.path  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-    return route  # pyright: ignore[reportUnknownVariableType]
+            route = f"{root_path}{starlette_route.path}"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+    return route
 
 
 def _get_default_span_details(scope: Scope) -> tuple[str, dict[str, str]]:

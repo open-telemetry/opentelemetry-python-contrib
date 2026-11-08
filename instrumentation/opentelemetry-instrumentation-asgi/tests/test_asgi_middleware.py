@@ -59,7 +59,6 @@ from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
-    HTTP_ROUTE,
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
@@ -2047,28 +2046,6 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertIsNone(
             otel_asgi._collect_target_attribute_from_scope(self.scope),
             "HTTP_TARGET values is not None",
-        )
-
-    def test_collect_target_attribute_from_span_missing_route(self):
-        self.assertIsNone(otel_asgi._collect_target_attribute_from_span({}, ""))
-
-    def test_collect_target_attribute_from_span(self):
-        self.assertEqual(
-            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/api/foo/bar/{id}"}, ""),
-            "/api/foo/bar/{id}",
-        )
-
-    def test_collect_target_attribute_from_span_with_root_path(self):
-        # An instrumented sub-app: http.route is relative to its root_path.
-        self.assertEqual(
-            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/home"}, "/sub"),
-            "/sub/home",
-        )
-
-    def test_collect_target_attribute_from_span_with_server_root_path(self):
-        self.assertEqual(
-            otel_asgi._collect_target_attribute_from_span({HTTP_ROUTE: "/foo"}, "/api"),
-            "/api/foo",
         )
 
 

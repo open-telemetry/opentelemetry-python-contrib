@@ -528,24 +528,6 @@ def get_default_span_details(scope: dict) -> tuple[str, dict]:
     return method, {}  # http with no path
 
 
-def _collect_target_attribute_from_span(
-    attributes: typing.Mapping[str, typing.Any],
-    root_path: str,
-) -> str | None:
-    """
-    Returns the target path from the http.route span attribute, or None.
-
-    http.route is relative to the root_path that was in the scope when it was
-    computed, so that is the root_path to pass. Mounts change
-    scope["root_path"] while the request is handled, so the value at the end
-    of the request must not be used here.
-    """
-    route = attributes.get(HTTP_ROUTE)
-    if not route:
-        return None
-    return f"{root_path}{route}"
-
-
 def _collect_target_attribute_from_scope(
     scope: dict[str, typing.Any],
 ) -> str | None:
@@ -749,7 +731,6 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
-        root_path = scope.get("root_path", "")
         span_name, additional_attributes = self.default_span_details(scope)
 
         attributes = collect_request_attributes(scope, self._sem_conv_opt_in_mode)
@@ -811,9 +792,7 @@ class OpenTelemetryMiddleware:
             raise
         finally:
             if scope["type"] == "http":
-                target = _collect_target_attribute_from_span(
-                    attributes, root_path
-                ) or _collect_target_attribute_from_scope(scope)
+                target = attributes.get(HTTP_ROUTE) or _collect_target_attribute_from_scope(scope)
                 if target:
                     path, query = _parse_url_query(target)
                     _set_http_target(
