@@ -482,7 +482,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         http.route and the span name must include the application root, as the
         semantic conventions require.
         """
-        app = fastapi.FastAPI()
+        app = fastapi.FastAPI(root_path="/api")
 
         @app.get("/items/{item_id}")
         async def _read_item(item_id: str):
@@ -490,8 +490,8 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
 
         self._instrumentor.instrument_app(app)
         try:
-            client = TestClient(app, root_path="/api")
-            resp = client.get("/api/items/123")
+            client = TestClient(app)
+            resp = client.get("/items/123")
             self.assertEqual(200, resp.status_code)
 
             spans = self.memory_exporter.get_finished_spans()
