@@ -467,6 +467,20 @@ def _set_http_network_protocol_version(
 # Server
 
 
+def _strip_port(host: str) -> str:
+    """Return the host of a ``host[:port]`` value such as a Host header.
+
+    ``server.address`` holds the host only, an IPv6 address without its
+    brackets; ``server.port`` carries the port.
+    """
+    name, sep, port = host.rpartition(":")
+    if not (sep and port.isdigit() and (":" not in name or name.endswith("]"))):
+        name = host
+    if name.startswith("[") and name.endswith("]"):
+        return name[1:-1]
+    return name
+
+
 def _set_http_net_host(
     result: MutableMapping[str, AttributeValue],
     host: str,
@@ -475,7 +489,7 @@ def _set_http_net_host(
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, NET_HOST_NAME, host)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SERVER_ADDRESS, host)
+        set_string_attribute(result, SERVER_ADDRESS, _strip_port(host))
 
 
 def _set_http_net_host_port(
@@ -514,7 +528,7 @@ def _set_http_host_server(
         set_string_attribute(result, HTTP_HOST, host)
     if _report_new(sem_conv_opt_in_mode):
         if not result.get(SERVER_ADDRESS):
-            set_string_attribute(result, SERVER_ADDRESS, host)
+            set_string_attribute(result, SERVER_ADDRESS, _strip_port(host))
 
 
 # net.peer.ip -> net.sock.peer.addr

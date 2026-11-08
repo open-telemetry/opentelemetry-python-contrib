@@ -799,6 +799,14 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["RAW_URI"] = "//127.0.0.1/?"
         self.validate_url("http://127.0.0.1//127.0.0.1/?", raw=True)
 
+    def test_request_attributes_server_address_excludes_port(self):
+        self.environ["HTTP_HOST"] = "api.example.com:8080"
+        self.environ["SERVER_PORT"] = "8080"
+        attrs = otel_wsgi.collect_request_attributes(self.environ, _StabilityMode.HTTP_DUP)
+        self.assertEqual(attrs[SERVER_ADDRESS], "api.example.com")
+        self.assertEqual(attrs[SERVER_PORT], 8080)
+        self.assertEqual(attrs[NET_HOST_NAME], "api.example.com:8080")
+
     def test_request_attributes_pathless(self):
         self.environ["RAW_URI"] = ""
         self.assertIsNone(otel_wsgi.collect_request_attributes(self.environ).get(HTTP_TARGET))

@@ -19,6 +19,8 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_http_host_server,
+    _set_http_net_host,
     _set_messaging_conversation_id,
     _set_messaging_destination,
     _set_messaging_operation,
@@ -566,6 +568,25 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         # Verify status code set for metrics independent of tracing decision
         self.assertIn("http.status_code", metrics_attributes)
         self.assertIn("http.response.status_code", metrics_attributes)
+
+    def test_server_address_excludes_port(self):
+        cases = [
+            ("api.example.com:8080", "api.example.com"),
+            ("api.example.com", "api.example.com"),
+            ("127.0.0.1:8000", "127.0.0.1"),
+            ("[::1]:8080", "::1"),
+            ("[::1]", "::1"),
+            ("::1", "::1"),
+            ("api.example.com:", "api.example.com:"),
+        ]
+        for setter in (_set_http_net_host, _set_http_host_server):
+            for host, expected in cases:
+                with self.subTest(setter=setter.__name__, host=host):
+                    result = {}
+                    setter(result, host, _StabilityMode.HTTP_DUP)
+                    self.assertEqual(result["server.address"], expected)
+                    old_key = "net.host.name" if setter is _set_http_net_host else "http.host"
+                    self.assertEqual(result[old_key], host)
 
 
 # pylint: disable=too-many-public-methods
