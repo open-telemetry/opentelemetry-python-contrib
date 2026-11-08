@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -53,10 +54,11 @@ def test_sync(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bom = json.loads((destination / "bom.cdx.json").read_text())
     assert [c["purl"] for c in bom["components"]] == ["pkg:pypi/six@1.0"]
     lines = result.output.splitlines()
-    assert lines[:5] == [
+    assert lines[:6] == [
         "✔ Cleaned src/pkg/_vendor (1 entry removed)",
         "✔ Downloaded 1 wheel",
         "✔ Unpacked 1 wheel",
+        "✔ Rewrote 0 imports in 0 files",
         "✔ Copied 1 license file",
         "✔ Wrote SBOM src/pkg/_vendor/bom.cdx.json",
     ]
@@ -169,3 +171,155 @@ def test_clean_invalid_config(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "error: " in result.output
     assert "no [tool.opentelemetry-vendor] table" in result.output
+
+
+def test_sync_patches(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (project_dir / "patches").mkdir()
+    (project_dir / "patches/six.patch").write_text(
+        "diff --git a/six/__init__.py b/six/__init__.py\n"
+        "--- a/six/__init__.py\n"
+        "+++ b/six/__init__.py\n"
+        "@@ -0,0 +1 @@\n"
+        "+patched = True\n"
+    )
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'patches = ["patches/six.patch"]\n')
+    _fake_download(monkeypatch, ["six/__init__.py"])
+
+    result = runner.invoke(app, ["sync", str(project_dir), "--verbose"])
+
+    assert result.exit_code == 0, result.output
+    destination = project_dir / "src/pkg/_vendor"
+    assert (destination / "six/__init__.py").read_text() == "patched = True\n"
+    assert "applied patches/six.patch" in result.output
+    assert "✔ Applied 1 patch" in result.output
+    bom = json.loads((destination / "bom.cdx.json").read_text())
+    assert bom["components"][0]["pedigree"]["patches"][0]["type"] == "unofficial"
+
+
+def test_sync_patch_does_not_apply(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (project_dir / "patches").mkdir()
+    (project_dir / "patches/six.patch").write_text(
+        "diff --git a/six.py b/six.py\n--- a/six.py\n+++ b/six.py\n@@ -1 +1 @@\n-old\n+new\n"
+    )
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'patches = ["patches/six.patch"]\n')
+    _fake_download(monkeypatch)
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "six.patch does not apply:" in result.output
+
+
+def test_sync_patch_adding_vendored_import(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (project_dir / "patches").mkdir()
+    (project_dir / "patches/six.patch").write_text(
+        "diff --git a/six/__init__.py b/six/__init__.py\n"
+        "--- a/six/__init__.py\n"
+        "+++ b/six/__init__.py\n"
+        "@@ -0,0 +1 @@\n"
+        "+import six.moves\n"
+    )
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'patches = ["patches/six.patch"]\n')
+    _fake_download(monkeypatch, ["six/__init__.py"])
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "imports of vendored packages must be rewritten" in result.output
+    assert "six/__init__.py:1: import six.moves" in result.output
+
+
+def test_sync_requirement_without_hash_keeps_tree(project_dir: Path) -> None:
+    destination = project_dir / "src/pkg/_vendor"
+    (destination / "requirements.txt").write_text("six==1.0\n")
+    (destination / "six.py").write_text("vendored = True\n")
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "requirement 'six'" in result.output
+    assert "has no --hash" in result.output
+    assert (destination / "six.py").read_text() == "vendored = True\n"
+
+
+def _fake_stable_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # Build the wheel once: like a real index, every download returns identical bytes.
+    cache = tmp_path / "wheel-cache"
+    cache.mkdir()
+    wheel = make_wheel(cache, "six", "1.0", ["six/__init__.py"], metadata="License-Expression: MIT\n")
+
+    def fake_download_wheels(requirements: Path, python_version: str, dest: Path) -> list[Path]:
+        return [Path(shutil.copy(wheel, dest))]
+
+    monkeypatch.setattr(sync_module, "download_wheels", fake_download_wheels)
+
+
+def test_sync_check_up_to_date(project_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_stable_download(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["sync", str(project_dir)]).exit_code == 0
+
+    result = runner.invoke(app, ["sync", "--check", str(project_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[-1] == "✔ Vendored files are up to date"
+
+
+def test_sync_check_out_of_date(project_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_stable_download(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["sync", str(project_dir)]).exit_code == 0
+    destination = project_dir / "src/pkg/_vendor"
+    (destination / "six/__init__.py").write_text("edited = True\n")
+    (destination / "six.LICENSE").unlink()
+    (destination / "extra.py").write_text("")
+    (destination / "six/__pycache__").mkdir()
+    (destination / "six/__pycache__/x.pyc").write_text("")
+
+    result = runner.invoke(app, ["sync", "--check", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert result.output.endswith(
+        "error: vendored files are out of date (run opentelemetry-vendor sync):\n"
+        "  - extra.py\n"
+        "  + six.LICENSE\n"
+        "  ~ six/__init__.py\n"
+    )
+    # --check never changes the project.
+    assert (destination / "six/__init__.py").read_text() == "edited = True\n"
+    assert (destination / "extra.py").exists()
+    assert not (destination / "six.LICENSE").exists()
+
+
+def test_sync_check_sbom_outside_destination(
+    project_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text().replace("src/pkg/_vendor/bom.cdx.json", "bom.cdx.json"))
+    _fake_stable_download(monkeypatch, tmp_path)
+    assert runner.invoke(app, ["sync", str(project_dir)]).exit_code == 0
+    assert runner.invoke(app, ["sync", "--check", str(project_dir)]).exit_code == 0
+    (project_dir / "bom.cdx.json").write_text("{}")
+
+    result = runner.invoke(app, ["sync", "--check", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "  ~ bom.cdx.json\n" in result.output
+
+
+def test_sync_failure_cleans_destination(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (project_dir / "patches").mkdir()
+    (project_dir / "patches/six.patch").write_text(
+        "diff --git a/six.py b/six.py\n--- a/six.py\n+++ b/six.py\n@@ -1 +1 @@\n-old\n+new\n"
+    )
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'patches = ["patches/six.patch"]\n')
+    _fake_download(monkeypatch)
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "does not apply" in result.output
+    # Neither the unpacked package nor its *.dist-info is left behind.
+    assert sorted(p.name for p in (project_dir / "src/pkg/_vendor").iterdir()) == ["requirements.txt"]

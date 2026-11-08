@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from opentelemetry.vendor.metadata import VendoredPackage
+from opentelemetry.vendor.patches import VendorPatch
 from opentelemetry.vendor.sbom import write_sbom
 
 
@@ -60,3 +61,21 @@ def test_write_sbom_is_deterministic(tmp_path: Path) -> None:
     write_sbom(list(reversed(PACKAGES)), second)
 
     assert first.read_bytes() == second.read_bytes()
+
+
+def test_write_sbom_records_patches(tmp_path: Path) -> None:
+    unpatched, patched = tmp_path / "unpatched.json", tmp_path / "patched.json"
+    text = "Disable aliases.\n\ndiff --git a/urllib3/a.py b/urllib3/a.py\n"
+    patch = VendorPatch(path=Path("urllib3.patch"), text=text, files=("urllib3/a.py",))
+
+    write_sbom(PACKAGES, unpatched)
+    write_sbom(PACKAGES, patched, {"urllib3": [patch]})
+
+    unpatched_bom, patched_bom = json.loads(unpatched.read_text()), json.loads(patched.read_text())
+    components = {c["name"]: c for c in patched_bom["components"]}
+    assert components["urllib3"]["pedigree"] == {
+        "patches": [{"type": "unofficial", "diff": {"text": {"content": text, "contentType": "text/plain"}}}]
+    }
+    assert "pedigree" not in components["idna"]
+    assert all("pedigree" not in c for c in unpatched_bom["components"])
+    assert patched_bom["serialNumber"] != unpatched_bom["serialNumber"]

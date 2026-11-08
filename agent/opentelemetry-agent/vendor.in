@@ -1,1 +1,3 @@
 requests
+typing-extensions>=4.6.0
+protobuf<8.0

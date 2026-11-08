@@ -44,6 +44,7 @@ def download_wheels(requirements: Path, python_version: str, dest: Path) -> list
             "--disable-pip-version-check",
             "--dest",
             str(dest),
+            # sync requires every requirement to carry --hash, which turns on pip's hash-checking mode.
             "-r",
             str(requirements),
         ],

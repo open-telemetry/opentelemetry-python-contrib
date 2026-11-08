@@ -24,6 +24,13 @@ ProjectDir = Annotated[
         help="Directory containing the pyproject.toml to vendor for.",
     ),
 ]
+Check = Annotated[
+    bool,
+    typer.Option(
+        "--check",
+        help="Only check that the vendored files match what sync would produce; change nothing.",
+    ),
+]
 Quiet = Annotated[bool, typer.Option("--quiet", "-q", help="Only print errors.")]
 Verbose = Annotated[
     bool,
@@ -37,11 +44,15 @@ def _callback() -> None:
 
 
 @app.command()
-def sync(project_dir: ProjectDir, quiet: Quiet = False, verbose: Verbose = False) -> None:
+def sync(project_dir: ProjectDir, check: Check = False, quiet: Quiet = False, verbose: Verbose = False) -> None:
     """Sync the vendored packages of PROJECT_DIR."""
     _configure_output(quiet, verbose)
     try:
-        _sync.sync(load_config(project_dir))
+        config = load_config(project_dir)
+        if check:
+            _sync.check(config)
+        else:
+            _sync.sync(config)
     except VendorError as exc:
         _fail(exc)
 

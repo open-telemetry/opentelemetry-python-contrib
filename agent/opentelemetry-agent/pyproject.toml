@@ -53,9 +53,38 @@ drop = [
   "urllib3/contrib/pyopenssl.py",
   "urllib3/contrib/emscripten",
   "urllib3/http2/connection.py",
+  # protobuf: benchmarks and test helpers (import google_benchmark/numpy/unittest_pb2), the protoc
+  # plugin API, and the cpp implementation shim (unused: the pure-Python implementation is forced
+  # by patches/protobuf-pure-python.patch).
+  "google/protobuf/internal/*_benchmark.py",
+  "google/protobuf/internal/testing_refleaks.py",
+  "google/protobuf/testdata",
+  "google/protobuf/compiler",
+  "google/protobuf/pyext",
 ]
-patches-dir = "patches"
+# Applied in order after imports are rewritten; paths inside the patches are relative to destination.
+patches = [
+  "patches/requests-packages.patch",
+  "patches/requests-chardet.patch",
+  "patches/certifi-resources.patch",
+  "patches/protobuf-pure-python.patch",
+]
 sbom-file = "src/opentelemetry/agent/_vendor/bom.cdx.json"
+
+# Files whose findings from the vendored-code checks have been reviewed, per check.
+[tool.opentelemetry-vendor.allow]
+dynamic-imports = [
+  # Only imports stdlib codec modules (encodings.*, _codecs_*).
+  "charset_normalizer/cd.py",
+  "charset_normalizer/utils.py",
+]
+side-effects = [
+  # Warning filters only target requests' and urllib3's own warning classes.
+  "requests/__init__.py",
+  "urllib3/__init__.py",
+  # set_environ() temporarily sets an environment variable and restores it.
+  "requests/utils.py",
+]
 
 [tool.hatch.version]
 path = "src/opentelemetry/agent/version.py"
