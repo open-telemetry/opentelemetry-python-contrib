@@ -3,6 +3,8 @@
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
+from typing import Any
+
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -28,6 +30,7 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanContext
 
 from .utils import MockConsumer, MockedMessage, MockedProducer
 
@@ -269,6 +272,94 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
 
+    def test_poll_propagates_context(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = [
+            MockedMessage(
+                "topic-10", 0, 0, {"traceparent": b"00-171c1ed1f9e7b862e5d03cd232a38041-35059e729d10733c-03"}
+            ),
+            MockedMessage("topic-20", 2, 4, []),
+            MockedMessage(
+                "topic-30", 1, 3, {"traceparent": b"00-76f625ee78f568d379abc5189793b1cf-e9137dc05b2c21d0-03"}
+            ),
+        ]
+        expected_spans = [
+            {
+                "name": "recv",
+                "context": {"trace_id": int("0x171c1ed1f9e7b862e5d03cd232a38041", 16)},
+                "parent": {
+                    "trace_id": int("0x171c1ed1f9e7b862e5d03cd232a38041", 16),
+                    "span_id": int("0x35059e729d10733c", 16),
+                },
+                "attributes": {},
+            },
+            {
+                "name": "topic-10 process",
+                "context": {"trace_id": int("0x171c1ed1f9e7b862e5d03cd232a38041", 16)},
+                "parent": {"trace_id": int("0x171c1ed1f9e7b862e5d03cd232a38041", 16)},
+                "attributes": {
+                    MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-10",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                },
+            },
+            {"name": "recv", "attributes": {}},
+            {
+                "name": "topic-20 process",
+                "attributes": {
+                    MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 2,
+                    MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-20",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                },
+            },
+            {
+                "name": "recv",
+                "context": {"trace_id": int("0x76f625ee78f568d379abc5189793b1cf", 16)},
+                "parent": {
+                    "trace_id": int("0x76f625ee78f568d379abc5189793b1cf", 16),
+                    "span_id": int("0xe9137dc05b2c21d0", 16),
+                },
+                "attributes": {},
+            },
+            {
+                "name": "topic-30 process",
+                "context": {"trace_id": int("0x76f625ee78f568d379abc5189793b1cf", 16)},
+                "parent": {"trace_id": int("0x76f625ee78f568d379abc5189793b1cf", 16)},
+                "attributes": {
+                    MESSAGING_OPERATION: "process",
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 1,
+                    MESSAGING_SYSTEM: "kafka",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-30",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                },
+            },
+        ]
+
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+        consumer.poll()
+        consumer.poll()  # empty poll — must not produce a span
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self._compare_spans(span_list, expected_spans)
+
     def test_poll_empty_does_not_create_span(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         consumer = MockConsumer(
@@ -383,8 +474,26 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):
             self.assertEqual(expected_span["name"], span.name)
+            if "context" in expected_span:
+                self._assert_span_context(expected_span["context"], span.context)
+            if "parent" in expected_span:
+                self._assert_span_context(expected_span["parent"], span.parent)
             for attribute_key, expected_attribute_value in expected_span["attributes"].items():
                 self.assertEqual(expected_attribute_value, span.attributes[attribute_key])
+
+    def _assert_span_context(self, expected_span_context: dict[str, Any], span_context: SpanContext) -> None:
+        actual = {}
+        if "trace_id" in expected_span_context:
+            actual["trace_id"] = span_context.trace_id
+        if "span_id" in expected_span_context:
+            actual["span_id"] = span_context.span_id
+        if "is_remote" in expected_span_context:
+            actual["is_remote"] = span_context.is_remote
+        if "trace_flags" in expected_span_context:
+            actual["trace_flags"] = span_context.trace_flags
+        if "trace_state" in expected_span_context:
+            actual["trace_state"] = span_context.trace_state
+        self.assertEqual(expected_span_context, actual)
 
     def _assert_topic(self, span, expected_topic: str) -> None:
         self.assertEqual(
