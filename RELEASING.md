@@ -152,6 +152,26 @@ The workflow can only be run against long-term release branch such as `package-r
 
 When a contribution introduces a new package, in order to mitigate name-squatting incidents, reserve the package name under the `opentelemetry` organization on PyPI to simply claim the namespace (rather than releasing a dev version). This should be done shortly after the PR that introduced this package has been merged into `main` by navigating to <https://pypi.org/manage/organization/opentelemetry/projects/>, scrolling to the bottom (**Add project to organization**), and using the form.
 
+## Verifying Release Provenance
+
+Every release publishes a **GitHub SLSA Build Provenance Attestation** and attaches the exact `.whl` and `.tar.gz` files to the GitHub Release tag (`v<version>` for general releases, or `<package>==<version>` for per-package releases).
+
+Users can cryptographically verify that a downloaded wheel or sdist was built by this repository's official workflow from the tagged commit SHA:
+
+```bash
+# For general releases (tagged v<version>):
+gh attestation verify <wheel-or-sdist-file> \
+  --repo open-telemetry/opentelemetry-python-contrib \
+  --signer-workflow open-telemetry/opentelemetry-python-contrib/.github/workflows/release.yml \
+  --source-digest "$(git rev-parse v<version>^{commit})"
+
+# For per-package releases (tagged <package>==<version>):
+gh attestation verify <wheel-or-sdist-file> \
+  --repo open-telemetry/opentelemetry-python-contrib \
+  --signer-workflow open-telemetry/opentelemetry-python-contrib/.github/workflows/package-release.yml \
+  --source-digest "$(git rev-parse '<package>==<version>^{commit}')"
+```
+
 ## Troubleshooting
 
 ### Publish failed
