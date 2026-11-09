@@ -1,0 +1,2 @@
+[opentelemetry_environment_variables]
+instrumentation = opentelemetry.agent._vendor.opentelemetry.instrumentation.environment_variables

@@ -8,6 +8,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from opentelemetry.vendor import native as _native
 from opentelemetry.vendor import output
 from opentelemetry.vendor import sync as _sync
 from opentelemetry.vendor.config import load_config
@@ -63,6 +64,27 @@ def clean(project_dir: ProjectDir, quiet: Quiet = False, verbose: Verbose = Fals
     _configure_output(quiet, verbose)
     try:
         _sync.clean(load_config(project_dir))
+    except VendorError as exc:
+        _fail(exc)
+
+
+@app.command("build-native")
+def build_native(
+    project_dir: ProjectDir,
+    clean: Annotated[
+        bool, typer.Option("--clean", help="Remove built extensions and restore the committed SBOM instead.")
+    ] = False,
+    quiet: Quiet = False,
+    verbose: Verbose = False,
+) -> None:
+    """Build PROJECT_DIR's native extensions from their sdists into the vendor tree (for platform wheels)."""
+    _configure_output(quiet, verbose)
+    try:
+        config = load_config(project_dir)
+        if clean:
+            _native.clean_native(config)
+        else:
+            _native.build_native(config)
     except VendorError as exc:
         _fail(exc)
 

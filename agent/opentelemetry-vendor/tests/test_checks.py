@@ -9,16 +9,20 @@ import pytest
 
 from opentelemetry.vendor.checks import (
     DYNAMIC_IMPORTS,
+    EXTERNAL_IMPORTS,
     IMPORTS,
     LOGGER_NAMES,
     MODULE_NAMES,
+    NATIVE_MODULE_NAMES,
     SIDE_EFFECTS,
     Finding,
     check_vendored_tree,
     find_issues,
+    find_native_issues,
 )
 from opentelemetry.vendor.errors import VendorError
 
+NAMESPACE = "opentelemetry.agent._vendor"
 NAMES = frozenset({"idna", "urllib3"})
 
 # Imports used by the test sources; names are resolved through them.
@@ -109,7 +113,7 @@ def test_find_issues_dynamic_imports(tmp_path: Path, source: str, code: str) -> 
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "mod.py").write_text(f"{HEADER}{source}\n")
 
-    [finding] = find_issues(tmp_path, NAMES)
+    [finding] = find_issues(tmp_path, NAMES, NAMESPACE)
 
     assert finding.kind == DYNAMIC_IMPORTS
     assert finding.path == "pkg/mod.py"
@@ -142,7 +146,9 @@ def test_find_issues_dynamic_imports(tmp_path: Path, source: str, code: str) -> 
         pytest.param("value = os.environ['x']", id="environ-read"),
         pytest.param("os.environ.get('x')", id="environ-get"),
         pytest.param("env = dict(os.environ)\nenv['x'] = '1'", id="environ-copy"),
-        pytest.param("import urllib3x\nfrom . import urllib3\nfrom .urllib3 import a", id="non-vendored-imports"),
+        pytest.param("from . import urllib3\nfrom .urllib3 import a", id="relative-imports"),
+        pytest.param("import os.path, json\nfrom __future__ import annotations", id="stdlib-imports"),
+        pytest.param("import annotationlib, tomllib, distutils", id="stdlib-imports-other-versions"),
         pytest.param("from opentelemetry.agent._vendor import urllib3", id="namespaced-import"),
         pytest.param("logging.getLogger(__name__)", id="logger-dunder-name"),
         pytest.param("logging.getLogger(name)", id="logger-variable"),
@@ -152,7 +158,7 @@ def test_find_issues_dynamic_imports(tmp_path: Path, source: str, code: str) -> 
 def test_find_issues_ignores(tmp_path: Path, source: str) -> None:
     (tmp_path / "mod.py").write_text(f"{HEADER}{source}\n")
 
-    assert find_issues(tmp_path, NAMES) == []
+    assert find_issues(tmp_path, NAMES, NAMESPACE) == []
 
 
 @pytest.mark.parametrize(
@@ -166,13 +172,21 @@ def test_find_issues_ignores(tmp_path: Path, source: str) -> None:
 def test_find_issues_ignores_unresolved_names(tmp_path: Path, source: str) -> None:
     (tmp_path / "mod.py").write_text(f"{source}\n")
 
-    assert find_issues(tmp_path, NAMES) == []
+    assert find_issues(tmp_path, NAMES, NAMESPACE) == []
 
 
 @pytest.mark.parametrize(
     ("source", "kind", "code"),
     [
         pytest.param("import urllib3", IMPORTS, "import urllib3", id="import"),
+        pytest.param("import urllib3x", EXTERNAL_IMPORTS, "import urllib3x", id="external-prefix-collision"),
+        pytest.param("import os, yaml.nodes", EXTERNAL_IMPORTS, "import os, yaml.nodes", id="external-import"),
+        pytest.param(
+            "from aiohttp.client import ClientSession",
+            EXTERNAL_IMPORTS,
+            "from aiohttp.client import ClientSession",
+            id="external-import-from",
+        ),
         pytest.param("import os, urllib3.util as u", IMPORTS, "import os, urllib3.util as u", id="import-multiple"),
         pytest.param("from idna import core", IMPORTS, "from idna import core", id="from-import"),
         pytest.param(
@@ -204,7 +218,7 @@ def test_find_issues_ignores_unresolved_names(tmp_path: Path, source: str) -> No
 def test_find_issues(tmp_path: Path, source: str, kind: str, code: str) -> None:
     (tmp_path / "mod.py").write_text(f"{HEADER}{source}\n")
 
-    assert find_issues(tmp_path, NAMES) == [Finding(kind=kind, path="mod.py", line=SOURCE_LINE, code=code)]
+    assert find_issues(tmp_path, NAMES, NAMESPACE) == [Finding(kind=kind, path="mod.py", line=SOURCE_LINE, code=code)]
 
 
 def test_check_vendored_tree_allowed(tmp_path: Path) -> None:
@@ -215,7 +229,7 @@ def test_check_vendored_tree_allowed(tmp_path: Path) -> None:
     (tmp_path / "clean.py").write_text("import os\n")
 
     allowed = check_vendored_tree(
-        tmp_path, NAMES, {DYNAMIC_IMPORTS: ["pkg/packages.py"], SIDE_EFFECTS: ["pkg/packages.py"]}
+        tmp_path, NAMES, NAMESPACE, {DYNAMIC_IMPORTS: ["pkg/packages.py"], SIDE_EFFECTS: ["pkg/packages.py"]}
     )
 
     assert [(finding.kind, str(finding)) for finding in allowed] == [
@@ -229,7 +243,7 @@ def test_check_vendored_tree_allow_is_per_kind(tmp_path: Path) -> None:
     (tmp_path / "a.py").write_text("import os, sys\nsys.modules['x'] = m\nos.environ['x'] = '1'\n")
 
     with pytest.raises(VendorError) as exc_info:
-        check_vendored_tree(tmp_path, NAMES, {DYNAMIC_IMPORTS: ["a.py"]})
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {DYNAMIC_IMPORTS: ["a.py"]})
 
     assert str(exc_info.value) == (
         "vendored code escapes the vendor namespace:\n"
@@ -243,7 +257,7 @@ def test_check_vendored_tree_unallowed(tmp_path: Path) -> None:
     (tmp_path / "b.py").write_text("import importlib\nimportlib.import_module(name)\n")
 
     with pytest.raises(VendorError) as exc_info:
-        check_vendored_tree(tmp_path, NAMES, {IMPORTS: ["a.py"]})
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {IMPORTS: ["a.py"]})
 
     assert str(exc_info.value) == (
         "vendored code escapes the vendor namespace:\n"
@@ -261,14 +275,28 @@ def test_check_vendored_tree_unused_entry(tmp_path: Path) -> None:
     with pytest.raises(
         VendorError, match=r"\[tool.opentelemetry-vendor.allow\] side-effects entry 'a.py' matched nothing"
     ):
-        check_vendored_tree(tmp_path, NAMES, {DYNAMIC_IMPORTS: ["a.py"], SIDE_EFFECTS: ["a.py"]})
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {DYNAMIC_IMPORTS: ["a.py"], SIDE_EFFECTS: ["a.py"]})
+
+
+def test_check_vendored_tree_allow_patterns(tmp_path: Path) -> None:
+    (tmp_path / "pkg/instrumentation/aiohttp").mkdir(parents=True)
+    (tmp_path / "pkg/instrumentation/aiohttp/__init__.py").write_text("import aiohttp\n")
+    (tmp_path / "pkg/instrumentation/utils.py").write_text("from gevent import monkey\n")
+    (tmp_path / "pkg/loader.py").write_text("import yaml\n")
+
+    with pytest.raises(VendorError) as exc_info:
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {EXTERNAL_IMPORTS: ["pkg/instrumentation/*"]})
+    assert str(exc_info.value).endswith("    pkg/loader.py:1: import yaml")
+
+    with pytest.raises(VendorError, match=r"external-imports entry 'other/\*' matched nothing"):
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {EXTERNAL_IMPORTS: ["pkg/*", "other/*"]})
 
 
 def test_check_vendored_tree_unparsable_file(tmp_path: Path) -> None:
     (tmp_path / "broken.py").write_text("__import__(\n")
 
     with pytest.raises(VendorError, match=r"cannot parse .*broken\.py"):
-        check_vendored_tree(tmp_path, NAMES, {})
+        check_vendored_tree(tmp_path, NAMES, NAMESPACE, {})
 
 
 @pytest.mark.parametrize(
@@ -295,6 +323,60 @@ def test_find_issues_protobuf_module_names(
     call = f"builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, {module_name!r}, _globals)"
     (tmp_path / "x_pb2.py").write_text(f"{builder_import}\n{call}\n")
 
-    findings = [finding for finding in find_issues(tmp_path, NAMES | {"google"}) if finding.kind != IMPORTS]
+    findings = [finding for finding in find_issues(tmp_path, NAMES | {"google"}, NAMESPACE) if finding.kind != IMPORTS]
 
     assert findings == ([Finding(kind=MODULE_NAMES, path="x_pb2.py", line=2, code=call)] if flagged else [])
+
+
+def test_find_native_issues(tmp_path: Path) -> None:
+    for file in ("google/protobuf/__init__.py", "google/protobuf/message.py", "google/protobuf/internal/wkt.py"):
+        (tmp_path / file).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / file).write_text("")
+    (tmp_path / "google/_upb").mkdir()
+    extension = tmp_path / "google/_upb/_message.abi3.so"
+    extension.write_bytes(
+        b"\x00google._upb._message\x00"  # the extension's own (leaf) module name
+        b"google._upb._message.Message\x00"  # a type name under it
+        b"google.protobuf.message\x00"  # a C-level import of a vendored module
+        b"\x0fgoogle.protobufB\x07"  # a protobuf package name in an embedded descriptor
+        b"google.protobuf.Any\x00"  # a protobuf type name
+        b"google.protobuf.internal\x00"  # a package path alone
+        b"opentelemetry.agent._vendor.google.protobuf.message\x00"  # namespaced
+        b"other.module\x00"
+    )
+
+    findings = find_native_issues(tmp_path, {"google"}, NAMESPACE, [extension])
+
+    assert [(finding.kind, finding.path, finding.code) for finding in findings] == [
+        (NATIVE_MODULE_NAMES, "google/_upb/_message.abi3.so", "google._upb._message"),
+        (NATIVE_MODULE_NAMES, "google/_upb/_message.abi3.so", "google._upb._message.Message"),
+        (NATIVE_MODULE_NAMES, "google/_upb/_message.abi3.so", "google.protobuf.message"),
+    ]
+    assert findings[0].line == 1  # byte offset
+
+
+def test_find_issues_namespace_shares_top_level_name(tmp_path: Path) -> None:
+    # Vendoring ``opentelemetry`` into ``opentelemetry.agent._vendor``: rewritten names aren't leftovers.
+    (tmp_path / "mod.py").write_text(
+        "import logging\n"
+        "import opentelemetry.agent._vendor.opentelemetry.trace\n"
+        "from opentelemetry.agent._vendor.opentelemetry import trace\n"
+        "logging.getLogger('opentelemetry.agent._vendor.opentelemetry.sdk')\n"
+        "import opentelemetry.trace\n"
+    )
+
+    findings = find_issues(tmp_path, NAMES | {"opentelemetry"}, NAMESPACE)
+
+    assert findings == [Finding(kind=IMPORTS, path="mod.py", line=5, code="import opentelemetry.trace")]
+
+
+def test_find_native_issues_namespace_shares_top_level_name(tmp_path: Path) -> None:
+    for file in ("opentelemetry/trace/__init__.py", "opentelemetry/trace/span.py"):
+        (tmp_path / file).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / file).write_text("")
+    extension = tmp_path / "opentelemetry/_ext.abi3.so"
+    extension.write_bytes(b"\x00opentelemetry.agent._vendor.opentelemetry.trace.span\x00opentelemetry.trace.span\x00")
+
+    findings = find_native_issues(tmp_path, {"opentelemetry"}, NAMESPACE, [extension])
+
+    assert [finding.code for finding in findings] == ["opentelemetry.trace.span"]

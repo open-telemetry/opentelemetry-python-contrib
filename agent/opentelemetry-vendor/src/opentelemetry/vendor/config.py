@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from opentelemetry.vendor.checks import ALLOW_TABLE, ALLOWABLE_KINDS, DYNAMIC_IMPORTS
 from opentelemetry.vendor.errors import VendorError
+from opentelemetry.vendor.metadata import canonicalize_name
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -25,6 +26,16 @@ _TOOL_NAME = "opentelemetry-vendor"
 
 class ConfigError(VendorError):
     """Raised when the vendoring configuration is missing or invalid."""
+
+
+@dataclass(frozen=True)
+class NativeConfig:
+    """How to build a vendored distribution's native extensions from its sdist."""
+
+    patches: Collection[Path]
+    """Patches applied, in order, to the extracted sdist (paths inside are relative to its root)."""
+    build_requirements: Path
+    """Hash-pinned requirements file of the build-time dependencies (e.g. setuptools)."""
 
 
 @dataclass(frozen=True)
@@ -41,6 +52,12 @@ class VendorConfig:
     patches: Collection[Path]
     """Patch files, applied in order after imports are rewritten."""
     sbom_file: Path | None
+    license_files: Mapping[str, Path] = field(default_factory=dict)
+    """Canonical distribution name -> license file for wheels that don't ship one."""
+    metadata_dir: Path | None = None
+    """Where ``sync`` keeps the vendored distributions' ``METADATA`` and namespaced entry points."""
+    native: Mapping[str, NativeConfig] = field(default_factory=dict)
+    """Canonical distribution name -> native build, from ``[tool.opentelemetry-vendor.native.<name>]``."""
 
 
 def load_config(project_dir: Path) -> VendorConfig:
@@ -64,6 +81,9 @@ def load_config(project_dir: Path) -> VendorConfig:
         raise ConfigError(f"'destination' must be a directory inside {project_dir}, got {destination}")
 
     sbom_file = _optional_str(table, "sbom-file")
+    metadata_dir = _optional_str(table, "metadata-dir")
+    if metadata_dir is not None:
+        _relative_paths({"metadata-dir": [metadata_dir]}, "metadata-dir")
     return VendorConfig(
         project_dir=project_dir,
         destination=destination,
@@ -75,7 +95,32 @@ def load_config(project_dir: Path) -> VendorConfig:
         allow=_allow(table),
         patches=tuple(project_dir / patch for patch in _str_list(table, "patches")),
         sbom_file=project_dir / sbom_file if sbom_file else None,
+        metadata_dir=destination / metadata_dir if metadata_dir else None,
+        license_files=_license_file_overrides(table, project_dir),
+        native=_native(table, project_dir),
     )
+
+
+def _native(table: Mapping[str, Any], project_dir: Path) -> dict[str, NativeConfig]:
+    native = table.get("native", {})
+    if not isinstance(native, dict):
+        raise ConfigError("'native' must be a table ([tool.opentelemetry-vendor.native.<distribution>])")
+    configs = {}
+    for name, entry in native.items():
+        if not isinstance(entry, dict):
+            raise ConfigError(f"'native.{name}' must be a table")
+        configs[canonicalize_name(name)] = NativeConfig(
+            patches=tuple(project_dir / patch for patch in _str_list(entry, "patches")),
+            build_requirements=project_dir / _require_str(entry, "build-requirements"),
+        )
+    return configs
+
+
+def _license_file_overrides(table: Mapping[str, Any], project_dir: Path) -> dict[str, Path]:
+    overrides = table.get("license-files", {})
+    if not isinstance(overrides, dict) or not all(isinstance(value, str) and value for value in overrides.values()):
+        raise ConfigError("'license-files' must be a table of distribution names to file paths")
+    return {canonicalize_name(name): project_dir / path for name, path in overrides.items()}
 
 
 def _allow(table: Mapping[str, Any]) -> dict[str, tuple[str, ...]]:

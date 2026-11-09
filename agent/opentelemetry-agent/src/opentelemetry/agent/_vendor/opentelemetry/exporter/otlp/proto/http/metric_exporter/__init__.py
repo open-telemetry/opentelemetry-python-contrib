@@ -1,0 +1,611 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
+import logging
+import os
+from collections.abc import Callable, Iterable, Mapping
+from typing import (  # noqa: F401
+    TYPE_CHECKING,
+    Any,
+    Optional,
+    overload,
+)
+
+from opentelemetry.agent._vendor.typing_extensions import deprecated
+
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.common import http as _http
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.common._aggregation import (
+    _get_aggregation,
+    _get_temporality,
+)
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.common._exporter_metrics import (
+    create_exporter_metrics,
+)
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.proto.common._internal import (
+    _get_resource_data,
+)
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
+    encode_metrics,
+)
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.proto.http import Compression
+from opentelemetry.agent._vendor.opentelemetry.exporter.otlp.proto.http._common import (
+    _DEFAULT_MAX_REQUEST_SIZE,
+    RequestPayloadTooLargeError,
+    _build_transport,
+    _is_request_too_large,
+    _load_session_from_envvar,
+    _normalize_compression,
+    _resolve_compression,
+    _resolve_endpoint,
+    _resolve_headers,
+    _resolve_timeout,
+)
+from opentelemetry.agent._vendor.opentelemetry.metrics import MeterProvider
+from opentelemetry.agent._vendor.opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
+    ExportMetricsServiceRequest,
+)
+from opentelemetry.agent._vendor.opentelemetry.proto.common.v1.common_pb2 import (  # noqa: F401
+    AnyValue,
+    ArrayValue,
+    InstrumentationScope,
+    KeyValue,
+    KeyValueList,
+)
+from opentelemetry.agent._vendor.opentelemetry.proto.metrics.v1 import metrics_pb2 as pb2
+from opentelemetry.agent._vendor.opentelemetry.proto.resource.v1.resource_pb2 import Resource  # noqa: F401
+from opentelemetry.agent._vendor.opentelemetry.proto.resource.v1.resource_pb2 import (
+    Resource as PB2Resource,
+)
+from opentelemetry.agent._vendor.opentelemetry.sdk.environment_variables import (
+    _OTEL_PYTHON_EXPORTER_OTLP_HTTP_METRICS_CREDENTIAL_PROVIDER,
+    OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE,
+    OTEL_EXPORTER_OTLP_METRICS_CLIENT_CERTIFICATE,
+    OTEL_EXPORTER_OTLP_METRICS_CLIENT_KEY,
+    OTEL_EXPORTER_OTLP_METRICS_COMPRESSION,
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
+    OTEL_EXPORTER_OTLP_METRICS_HEADERS,
+    OTEL_EXPORTER_OTLP_METRICS_TIMEOUT,
+    OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED,
+)
+from opentelemetry.agent._vendor.opentelemetry.sdk.metrics._internal.aggregation import Aggregation
+from opentelemetry.agent._vendor.opentelemetry.sdk.metrics.export import (  # noqa: F401
+    AggregationTemporality,
+    Gauge,
+    MetricExporter,
+    MetricExportResult,
+    MetricsData,
+    Sum,
+)
+from opentelemetry.agent._vendor.opentelemetry.sdk.metrics.export import (  # noqa: F401
+    Histogram as HistogramType,
+)
+from opentelemetry.agent._vendor.opentelemetry.sdk.resources import Resource as SDKResource
+from opentelemetry.agent._vendor.opentelemetry.semconv._incubating.attributes.otel_attributes import (
+    OtelComponentTypeValues,
+)
+from opentelemetry.agent._vendor.opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_RESPONSE_STATUS_CODE,
+)
+
+if TYPE_CHECKING:
+    from opentelemetry.agent._vendor import requests
+
+    from opentelemetry.agent._vendor.opentelemetry.exporter.http.transport._base import BaseHTTPTransport
+
+_logger = logging.getLogger(__name__)
+
+
+DEFAULT_COMPRESSION = Compression.NoCompression
+DEFAULT_ENDPOINT = "http://localhost:4318/"
+DEFAULT_METRICS_EXPORT_PATH = "v1/metrics"
+DEFAULT_TIMEOUT = 10  # in seconds
+
+
+class OTLPMetricExporter(MetricExporter):
+    @overload
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        certificate_file: str | None = None,
+        client_key_file: str | None = None,
+        client_certificate_file: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+        compression: Compression | _http.Compression | None = None,
+        session: requests.Session | None = None,
+        preferred_temporality: dict[type, AggregationTemporality] | None = None,
+        preferred_aggregation: dict[type, Aggregation] | None = None,
+        max_export_batch_size: int | None = None,
+        *,
+        max_request_size: int | None = None,
+        meter_provider: MeterProvider | None = None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        certificate_file: None = None,
+        client_key_file: None = None,
+        client_certificate_file: None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+        compression: Compression | _http.Compression | None = None,
+        session: requests.Session | None = None,
+        preferred_temporality: dict[type, AggregationTemporality] | None = None,
+        preferred_aggregation: dict[type, Aggregation] | None = None,
+        max_export_batch_size: int | None = None,
+        *,
+        max_request_size: int | None = None,
+        meter_provider: MeterProvider | None = None,
+        _transport: BaseHTTPTransport,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        certificate_file: str | None = None,
+        client_key_file: str | None = None,
+        client_certificate_file: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+        compression: Compression | _http.Compression | None = None,
+        session: requests.Session | None = None,
+        preferred_temporality: dict[type, AggregationTemporality] | None = None,
+        preferred_aggregation: dict[type, Aggregation] | None = None,
+        max_export_batch_size: int | None = None,
+        *,
+        max_request_size: int | None = None,
+        meter_provider: MeterProvider | None = None,
+        _transport: BaseHTTPTransport | None = None,
+    ) -> None:
+        """OTLP HTTP metrics exporter
+
+        Args:
+            endpoint: Full URL of the OTLP/HTTP signal endpoint, including the signal
+                path. Example: ``http://collector:4318/v1/metrics``. For a base URL without a
+                signal path, set the ``OTEL_EXPORTER_OTLP_ENDPOINT`` environment variable.
+            certificate_file: Path to the certificate file to use for any TLS
+            client_key_file: Path to the client key file to use for any TLS
+            client_certificate_file: Path to the client certificate file to use for any TLS
+            headers: Headers to be sent with HTTP requests at export
+            timeout: Timeout in seconds for export
+            compression: Compression to use; one of none, gzip, deflate
+            session: Requests session to use at export
+            preferred_temporality: Map of preferred temporality for each metric type.
+                See `opentelemetry.sdk.metrics.export.MetricReader` for more details on what
+                preferred temporality is.
+            preferred_aggregation: Map of preferred aggregation for each metric type.
+                See `opentelemetry.sdk.metrics.export.MetricReader` for more details on what
+                preferred aggregation is.
+            max_export_batch_size: Maximum number of data points to export in a single request.
+                If not set there is no limit to the number of data points in a request.
+                If it is set and the number of data points exceeds the max, the request will be split.
+            max_request_size: Maximum size in bytes of a serialized request, measured before
+                compression. A request exceeding this size is dropped before being sent. Defaults
+                to 64 MiB; a value of 0 (or any non-positive value) disables the limit. Requests
+                are sized after any ``max_export_batch_size`` splitting; a batch whose serialized
+                request still exceeds this limit is dropped as a whole and recorded as a failed
+                export. Reduce ``max_export_batch_size`` (or raise/disable this limit) if batches
+                may approach it.
+            meter_provider: MeterProvider used for the exporter's own metrics.
+        """
+        MetricExporter.__init__(
+            self,
+            preferred_temporality=_get_temporality(preferred_temporality),
+            preferred_aggregation=_get_aggregation(preferred_aggregation),
+        )
+        self._endpoint = endpoint or _resolve_endpoint(OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, DEFAULT_METRICS_EXPORT_PATH)
+        self._compression = _normalize_compression(compression) or _resolve_compression(
+            OTEL_EXPORTER_OTLP_METRICS_COMPRESSION
+        )
+        transport = _transport or _build_transport(
+            certificate_file,
+            client_key_file,
+            client_certificate_file,
+            OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE,
+            OTEL_EXPORTER_OTLP_METRICS_CLIENT_KEY,
+            OTEL_EXPORTER_OTLP_METRICS_CLIENT_CERTIFICATE,
+            session=session or _load_session_from_envvar(_OTEL_PYTHON_EXPORTER_OTLP_HTTP_METRICS_CREDENTIAL_PROVIDER),
+        )
+        self._client = _http._OTLPHTTPClient(
+            transport=transport,
+            endpoint=self._endpoint,
+            kind="metrics",
+            timeout=timeout if timeout is not None else _resolve_timeout(OTEL_EXPORTER_OTLP_METRICS_TIMEOUT),
+            compression=self._compression,
+            headers=_resolve_headers(headers, OTEL_EXPORTER_OTLP_METRICS_HEADERS),
+            logger=_logger,
+        )
+        self._max_export_batch_size: int | None = max_export_batch_size
+        self._max_request_size = _DEFAULT_MAX_REQUEST_SIZE if max_request_size is None else max_request_size
+        self._shutdown = False
+
+        self._metrics = create_exporter_metrics(
+            OtelComponentTypeValues.OTLP_HTTP_METRIC_EXPORTER,
+            "metrics",
+            self._endpoint,
+            meter_provider,
+            os.environ.get(OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED, "").strip().lower() == "true",
+        )
+
+    def _export_batch(
+        self,
+        export_request: ExportMetricsServiceRequest,
+    ) -> MetricExportResult:
+        with self._metrics.export_operation(_count_data_points(export_request)) as result:
+            serialized_data = export_request.SerializeToString()
+            if _is_request_too_large(serialized_data, self._max_request_size):
+                _logger.warning(
+                    "Dropping metrics batch: serialized size %d bytes exceeds max_request_size %d bytes.",
+                    len(serialized_data),
+                    self._max_request_size,
+                )
+                result.error = RequestPayloadTooLargeError(
+                    f"Serialized metrics request size {len(serialized_data)} "
+                    f"bytes exceeds max_request_size "
+                    f"{self._max_request_size} bytes."
+                )
+                return MetricExportResult.FAILURE
+            export_result = self._client.export(serialized_data)
+            if not export_result.success:
+                result.error = export_result.error
+                result.error_attrs = (
+                    {HTTP_RESPONSE_STATUS_CODE: export_result.status_code}
+                    if export_result.status_code is not None
+                    else None
+                )
+                return MetricExportResult.FAILURE
+        return MetricExportResult.SUCCESS
+
+    def export(
+        self,
+        metrics_data: MetricsData,
+        timeout_millis: float | None = 10000,
+        **kwargs,
+    ) -> MetricExportResult:
+        if self._shutdown:
+            _logger.warning("Exporter already shutdown, ignoring batch")
+            return MetricExportResult.FAILURE
+
+        try:
+            export_request = encode_metrics(metrics_data)
+        # pylint: disable-next=broad-exception-caught
+        except Exception as error:
+            _logger.error("Failed to encode metrics batch: %s", error)
+            return MetricExportResult.FAILURE
+
+        # If no batch size configured, export as single batch with retries as configured
+        if self._max_export_batch_size is None:
+            return self._export_batch(export_request)
+
+        for batch in _split_metrics_data(export_request, self._max_export_batch_size):
+            export_result = self._export_batch(batch)
+            if export_result != MetricExportResult.SUCCESS:
+                return MetricExportResult.FAILURE
+
+        # Only returns SUCCESS if all batches succeeded
+        return MetricExportResult.SUCCESS
+
+    def shutdown(self, timeout_millis: float = 30_000, **kwargs) -> None:
+        if self._shutdown:
+            _logger.warning("Exporter already shutdown, ignoring call")
+            return
+        self._shutdown = True
+        self._client.shutdown()
+
+    def force_flush(self, timeout_millis: float = 10_000) -> bool:
+        """Nothing is buffered in this exporter, so this method does nothing."""
+        return True
+
+    def set_meter_provider(self, meter_provider: MeterProvider) -> None:
+        self._metrics = create_exporter_metrics(
+            OtelComponentTypeValues.OTLP_HTTP_METRIC_EXPORTER,
+            "metrics",
+            self._endpoint,
+            meter_provider,
+            os.environ.get(OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED, "").strip().lower() == "true",
+        )
+
+
+def _count_data_points(export_request: ExportMetricsServiceRequest) -> int:
+    """Count the number of data points in an encoded metrics export request."""
+    count = 0
+    for resource_metrics in export_request.resource_metrics:
+        for scope_metrics in resource_metrics.scope_metrics:
+            for metric in scope_metrics.metrics:
+                field_name = metric.WhichOneof("data")
+                if field_name:
+                    count += len(getattr(metric, field_name).data_points)
+    return count
+
+
+def _split_metrics_data(
+    metrics_data: ExportMetricsServiceRequest,
+    max_export_batch_size: int | None = None,
+) -> Iterable[ExportMetricsServiceRequest]:
+    """Splits metrics data into several ExportMetricsServiceRequest (copies protobuf originals),
+    based on configured data point max export batch size.
+
+    Args:
+        metrics_data: metrics object based on HTTP protocol buffer definition
+
+    Returns:
+        Iterable[ExportMetricsServiceRequest]: An iterable of ExportMetricsServiceRequest objects containing
+            ExportMetricsServiceRequest.ResourceMetrics, ExportMetricsServiceRequest.ScopeMetrics, ExportMetricsServiceRequest.Metrics, and data points
+    """
+    if not max_export_batch_size:
+        return metrics_data
+
+    batch_size: int = 0
+    # Stores split metrics data as editable references
+    # used to write batched pb2 objects for export when finalized
+    split_resource_metrics = []
+
+    for resource_metrics in metrics_data.resource_metrics:
+        split_scope_metrics = []
+        split_resource_metrics.append(
+            {
+                "resource": resource_metrics.resource,
+                "schema_url": resource_metrics.schema_url,
+                "scope_metrics": split_scope_metrics,
+            }
+        )
+
+        for scope_metrics in resource_metrics.scope_metrics:
+            split_metrics = []
+            split_scope_metrics.append(
+                {
+                    "scope": scope_metrics.scope,
+                    "schema_url": scope_metrics.schema_url,
+                    "metrics": split_metrics,
+                }
+            )
+
+            for metric in scope_metrics.metrics:
+                split_data_points = []
+                field_name = metric.WhichOneof("data")
+                if not field_name:
+                    _logger.warning("Tried to split and export an unsupported metric type. Skipping.")
+                    continue
+
+                # Get data container using field name
+                # and build metric dictionary dynamically for conciseness
+                data_container = getattr(metric, field_name)
+                metric_dict = {
+                    "name": metric.name,
+                    "description": metric.description,
+                    "unit": metric.unit,
+                    field_name: {
+                        "data_points": split_data_points,
+                    },
+                }
+                if hasattr(data_container, "aggregation_temporality"):
+                    metric_dict[field_name]["aggregation_temporality"] = data_container.aggregation_temporality
+                if hasattr(data_container, "is_monotonic"):
+                    metric_dict[field_name]["is_monotonic"] = data_container.is_monotonic
+                split_metrics.append(metric_dict)
+
+                current_data_points = data_container.data_points
+                for data_point in current_data_points:
+                    split_data_points.append(data_point)
+                    batch_size += 1
+
+                    if batch_size >= max_export_batch_size:
+                        yield ExportMetricsServiceRequest(
+                            resource_metrics=_get_split_resource_metrics_pb2(split_resource_metrics)
+                        )
+
+                        # Reset all the reference variables with current metrics_data position
+                        # minus yielded data_points. Need to clear data_points and keep metric
+                        # to avoid duplicate data_point export
+                        batch_size = 0
+                        split_data_points = []
+
+                        # Rebuild metric dict generically using same approach as initial creation
+                        field_name = metric.WhichOneof("data")
+                        if field_name is None:
+                            _logger.warning("Tried to split and export an unsupported metric type. Skipping.")
+                            continue
+                        data_container = getattr(metric, field_name)
+                        metric_dict = {
+                            "name": metric.name,
+                            "description": metric.description,
+                            "unit": metric.unit,
+                            field_name: {
+                                "data_points": split_data_points,
+                            },
+                        }
+                        if hasattr(data_container, "aggregation_temporality"):
+                            metric_dict[field_name]["aggregation_temporality"] = data_container.aggregation_temporality
+                        if hasattr(data_container, "is_monotonic"):
+                            metric_dict[field_name]["is_monotonic"] = data_container.is_monotonic
+
+                        split_metrics = [metric_dict]
+                        split_scope_metrics = [
+                            {
+                                "scope": scope_metrics.scope,
+                                "schema_url": scope_metrics.schema_url,
+                                "metrics": split_metrics,
+                            }
+                        ]
+                        split_resource_metrics = [
+                            {
+                                "resource": resource_metrics.resource,
+                                "schema_url": resource_metrics.schema_url,
+                                "scope_metrics": split_scope_metrics,
+                            }
+                        ]
+
+                if not split_data_points:
+                    # If data_points is empty remove the whole metric
+                    split_metrics.pop()
+
+            if not split_metrics:
+                # If metrics is empty remove the whole scope_metrics
+                split_scope_metrics.pop()
+
+        if not split_scope_metrics:
+            # If scope_metrics is empty remove the whole resource_metrics
+            split_resource_metrics.pop()
+
+    if batch_size > 0:
+        yield ExportMetricsServiceRequest(resource_metrics=_get_split_resource_metrics_pb2(split_resource_metrics))
+
+
+def _get_split_resource_metrics_pb2(
+    split_resource_metrics: list[dict],
+) -> list[pb2.ResourceMetrics]:
+    """Helper that returns a list of pb2.ResourceMetrics objects based on split_resource_metrics.
+    Example input:
+
+    ```python
+    [
+        {
+            "resource": <opentelemetry.proto.resource.v1.resource_pb2.Resource>,
+            "schema_url": "http://foo-bar",
+            "scope_metrics": [
+                "scope": <opentelemetry.proto.common.v1.InstrumentationScope>,
+                "schema_url": "http://foo-baz",
+                "metrics": [
+                    {
+                        "name": "apples",
+                        "description": "number of apples purchased",
+                        "sum": {
+                            "aggregation_temporality": 1,
+                            "is_monotonic": "false",
+                            "data_points": [
+                                {
+                                    start_time_unix_nano: 1000
+                                    time_unix_nano: 1001
+                                    exemplars {
+                                        time_unix_nano: 1002
+                                        span_id: "foo-span"
+                                        trace_id: "foo-trace"
+                                        as_int: 5
+                                    }
+                                    as_int: 5
+                                }
+                            ]
+                        }
+                    },
+                ],
+            ],
+        },
+    ]
+    ```
+
+    Args:
+        split_resource_metrics: A list of dict representations of ResourceMetrics,
+            ScopeMetrics, Metrics, and data points.
+
+    Returns:
+        List[pb2.ResourceMetrics]: A list of pb2.ResourceMetrics objects containing
+            pb2.ScopeMetrics, pb2.Metrics, and data points
+    """
+    split_resource_metrics_pb = []
+    for resource_metrics in split_resource_metrics:
+        new_resource_metrics = pb2.ResourceMetrics(
+            resource=resource_metrics.get("resource"),
+            scope_metrics=[],
+            schema_url=resource_metrics.get("schema_url") or "",
+        )
+        for scope_metrics in resource_metrics.get("scope_metrics", []):
+            new_scope_metrics = pb2.ScopeMetrics(
+                scope=scope_metrics.get("scope"),
+                metrics=[],
+                schema_url=scope_metrics.get("schema_url") or "",
+            )
+
+            for metric in scope_metrics.get("metrics", []):
+                new_metric = None
+                data_points = []
+
+                if "sum" in metric:
+                    new_metric = pb2.Metric(
+                        name=metric.get("name"),
+                        description=metric.get("description"),
+                        unit=metric.get("unit"),
+                        sum=pb2.Sum(
+                            data_points=[],
+                            aggregation_temporality=metric.get("sum").get("aggregation_temporality"),
+                            is_monotonic=metric.get("sum").get("is_monotonic"),
+                        ),
+                    )
+                    data_points = metric.get("sum").get("data_points")
+                elif "histogram" in metric:
+                    new_metric = pb2.Metric(
+                        name=metric.get("name"),
+                        description=metric.get("description"),
+                        unit=metric.get("unit"),
+                        histogram=pb2.Histogram(
+                            data_points=[],
+                            aggregation_temporality=metric.get("histogram").get("aggregation_temporality"),
+                        ),
+                    )
+                    data_points = metric.get("histogram").get("data_points")
+                elif "exponential_histogram" in metric:
+                    new_metric = pb2.Metric(
+                        name=metric.get("name"),
+                        description=metric.get("description"),
+                        unit=metric.get("unit"),
+                        exponential_histogram=pb2.ExponentialHistogram(
+                            data_points=[],
+                            aggregation_temporality=metric.get("exponential_histogram").get("aggregation_temporality"),
+                        ),
+                    )
+                    data_points = metric.get("exponential_histogram").get("data_points")
+                elif "gauge" in metric:
+                    new_metric = pb2.Metric(
+                        name=metric.get("name"),
+                        description=metric.get("description"),
+                        unit=metric.get("unit"),
+                        gauge=pb2.Gauge(
+                            data_points=[],
+                        ),
+                    )
+                    data_points = metric.get("gauge").get("data_points")
+                elif "summary" in metric:
+                    new_metric = pb2.Metric(
+                        name=metric.get("name"),
+                        description=metric.get("description"),
+                        unit=metric.get("unit"),
+                        summary=pb2.Summary(
+                            data_points=[],
+                        ),
+                    )
+                    data_points = metric.get("summary").get("data_points")
+                else:
+                    _logger.warning("Tried to split and export an unsupported metric type. Skipping.")
+                    continue
+
+                # Append data points generically using the field name from the metric dict
+                for field_name in [
+                    "sum",
+                    "histogram",
+                    "exponential_histogram",
+                    "gauge",
+                    "summary",
+                ]:
+                    if field_name in metric:
+                        metric_data_container = getattr(new_metric, field_name)
+                        for data_point in data_points:
+                            metric_data_container.data_points.append(data_point)
+                        break
+
+                new_scope_metrics.metrics.append(new_metric)
+            new_resource_metrics.scope_metrics.append(new_scope_metrics)
+        split_resource_metrics_pb.append(new_resource_metrics)
+    return split_resource_metrics_pb
+
+
+@deprecated(
+    "Use one of the encoders from opentelemetry-exporter-otlp-proto-common instead. Deprecated since version 1.18.0.",
+)
+def get_resource_data(
+    sdk_resource_scope_data: dict[SDKResource, Any],  # ResourceDataT?
+    resource_class: Callable[..., PB2Resource],
+    name: str,
+) -> list[PB2Resource]:
+    return _get_resource_data(sdk_resource_scope_data, resource_class, name)

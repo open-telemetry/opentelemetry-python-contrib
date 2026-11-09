@@ -1,0 +1,3 @@
+[opentelemetry_http_transport]
+requests = opentelemetry.agent._vendor.opentelemetry.exporter.http.transport._requests:RequestsHTTPTransport
+urllib3 = opentelemetry.agent._vendor.opentelemetry.exporter.http.transport._urllib3:Urllib3HTTPTransport

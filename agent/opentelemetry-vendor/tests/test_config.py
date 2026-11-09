@@ -22,6 +22,45 @@ def test_load_config(project_dir: Path) -> None:
     assert config.python_version == "3.10"
     assert tuple(config.protected_files) == ("__init__.py", "requirements.txt")
     assert config.sbom_file == root / "src/pkg/_vendor/bom.cdx.json"
+    assert config.metadata_dir is None
+
+
+def test_load_config_license_files(project_dir: Path) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text() + '[tool.opentelemetry-vendor.license-files]\nOpenTelemetry_Distro = "../LICENSE"\n'
+    )
+
+    config = load_config(project_dir)
+
+    assert config.license_files == {"opentelemetry-distro": project_dir.resolve() / "../LICENSE"}
+
+
+@pytest.mark.parametrize("content", ['license-files = ["LICENSE"]\n', 'license-files = { pkg = "" }\n'])
+def test_load_config_invalid_license_files(project_dir: Path, content: str) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + content)
+
+    with pytest.raises(ConfigError, match="'license-files' must be a table"):
+        load_config(project_dir)
+
+
+def test_load_config_metadata_dir(project_dir: Path) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'metadata-dir = "_metadata"\n')
+
+    config = load_config(project_dir)
+
+    assert config.metadata_dir == project_dir.resolve() / "src/pkg/_vendor/_metadata"
+
+
+@pytest.mark.parametrize("entry", ["/abs", "../outside", ""])
+def test_load_config_invalid_metadata_dir(project_dir: Path, entry: str) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + f"metadata-dir = {entry!r}\n")
+
+    with pytest.raises(ConfigError, match="metadata-dir"):
+        load_config(project_dir)
 
 
 def test_load_config_optional_keys(tmp_path: Path) -> None:
@@ -156,4 +195,43 @@ def test_load_config_moved_allow_dynamic_imports(project_dir: Path) -> None:
     with pytest.raises(
         ConfigError, match=r"'allow-dynamic-imports' moved to \[tool.opentelemetry-vendor.allow\] dynamic-imports"
     ):
+        load_config(project_dir)
+
+
+def test_load_config_native(project_dir: Path) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text()
+        + '[tool.opentelemetry-vendor.native.Google_Protobuf]\npatches = ["patches/native/a.patch"]\n'
+        'build-requirements = "native-build-requirements.txt"\n'
+    )
+
+    config = load_config(project_dir)
+
+    root = project_dir.resolve()
+    assert list(config.native) == ["google-protobuf"]
+    assert tuple(config.native["google-protobuf"].patches) == (root / "patches/native/a.patch",)
+    assert config.native["google-protobuf"].build_requirements == root / "native-build-requirements.txt"
+    assert load_config(project_dir).allow == {}
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        pytest.param('native = ["protobuf"]\n', r"'native' must be a table", id="not-a-table"),
+        pytest.param(
+            "[tool.opentelemetry-vendor.native]\nprotobuf = 1\n", r"'native.protobuf' must be a table", id="entry"
+        ),
+        pytest.param(
+            "[tool.opentelemetry-vendor.native.protobuf]\npatches = []\n",
+            "missing required key 'build-requirements'",
+            id="missing-build-requirements",
+        ),
+    ],
+)
+def test_load_config_invalid_native(project_dir: Path, content: str, message: str) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + content)
+
+    with pytest.raises(ConfigError, match=message):
         load_config(project_dir)

@@ -1,0 +1,32 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+from opentelemetry.agent._vendor.opentelemetry.sdk._logs._internal import (
+    ConcurrentMultiLogRecordProcessor,
+    LogDroppedAttributesWarning,
+    Logger,
+    LoggerProvider,
+    LoggingHandler,
+    LogLimits,
+    LogRecordDroppedAttributesWarning,
+    LogRecordLimits,
+    LogRecordProcessor,
+    ReadableLogRecord,
+    ReadWriteLogRecord,
+    SynchronousMultiLogRecordProcessor,
+)
+
+__all__ = [
+    "ConcurrentMultiLogRecordProcessor",
+    "LogDroppedAttributesWarning",
+    "LogLimits",
+    "LogRecordDroppedAttributesWarning",
+    "LogRecordLimits",
+    "LogRecordProcessor",
+    "Logger",
+    "LoggerProvider",
+    "LoggingHandler",
+    "ReadWriteLogRecord",
+    "ReadableLogRecord",
+    "SynchronousMultiLogRecordProcessor",
+]

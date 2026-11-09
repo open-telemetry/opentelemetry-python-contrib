@@ -131,6 +131,35 @@ def test_read_package_without_license_file(tmp_path: Path) -> None:
         _read(tmp_path, wheel)
 
 
+def test_read_package_license_file_override(tmp_path: Path) -> None:
+    license_file = tmp_path / "LICENSE"
+    license_file.write_text("Apache License")
+    wheel = make_wheel(tmp_path, "pkg", "1.0", ["pkg.py"], licenses={})
+    ((wheel, dist_info),) = unpack_wheels([wheel], tmp_path / "_vendor").items()
+
+    package = read_package(wheel, dist_info, license_file)
+
+    assert package.license_files == {"pkg.LICENSE": license_file}
+
+
+def test_read_package_license_file_override_unneeded(tmp_path: Path) -> None:
+    license_file = tmp_path / "LICENSE"
+    license_file.write_text("Apache License")
+    wheel = make_wheel(tmp_path, "pkg", "1.0", ["pkg.py"])
+    ((wheel, dist_info),) = unpack_wheels([wheel], tmp_path / "_vendor").items()
+
+    with pytest.raises(VendorError, match="contains a license file; remove its license-files entry"):
+        read_package(wheel, dist_info, license_file)
+
+
+def test_read_package_license_file_override_missing(tmp_path: Path) -> None:
+    wheel = make_wheel(tmp_path, "pkg", "1.0", ["pkg.py"], licenses={})
+    ((wheel, dist_info),) = unpack_wheels([wheel], tmp_path / "_vendor").items()
+
+    with pytest.raises(VendorError, match="license file .*LICENSE for pkg does not exist"):
+        read_package(wheel, dist_info, tmp_path / "LICENSE")
+
+
 def test_copy_license_files_and_remove_dist_info(tmp_path: Path) -> None:
     destination = tmp_path / "_vendor"
     wheel = make_wheel(tmp_path, "pkg", "1.0", ["pkg.py"], licenses={"licenses/LICENSE": "text"})

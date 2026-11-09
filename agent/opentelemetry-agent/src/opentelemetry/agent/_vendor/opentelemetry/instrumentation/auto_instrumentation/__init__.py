@@ -1,0 +1,168 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+
+from argparse import REMAINDER, ArgumentParser
+from logging import getLogger
+from os import environ, execl, getcwd
+from os.path import abspath, dirname, pathsep
+from re import sub
+from shutil import which
+
+from opentelemetry.agent._vendor.opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_configurators,
+    _load_distro,
+    _load_instrumentors,
+)
+from opentelemetry.agent._vendor.opentelemetry.instrumentation.environment_variables import (
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
+)
+from opentelemetry.agent._vendor.opentelemetry.instrumentation.utils import _python_path_without_directory
+from opentelemetry.agent._vendor.opentelemetry.instrumentation.version import __version__
+from opentelemetry.agent._vendor.opentelemetry.util._importlib_metadata import entry_points
+
+_logger = getLogger(__name__)
+
+
+def run() -> None:
+    parser = ArgumentParser(
+        description="""
+        opentelemetry-instrument automatically instruments a Python
+        program and its dependencies and then runs the program.
+        """,
+        epilog="""
+        Optional arguments (except for --help and --version) for opentelemetry-instrument
+        directly correspond with OpenTelemetry environment variables. The
+        corresponding optional argument is formed by removing the OTEL_ or
+        OTEL_PYTHON_ prefix from the environment variable and lower casing the
+        rest. For example, the optional argument --attribute_value_length_limit
+        corresponds with the environment variable
+        OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT.
+
+        These optional arguments will override the current value of the
+        corresponding environment variable during the execution of the command.
+        """,
+    )
+
+    argument_otel_environment_variable = {}
+
+    for entry_point in entry_points(group="opentelemetry_environment_variables"):
+        environment_variable_module = entry_point.load()
+
+        for attribute in dir(environment_variable_module):
+            if attribute.startswith("OTEL_"):
+                argument = sub(r"OTEL_(PYTHON_)?", "", attribute).lower()
+
+                parser.add_argument(
+                    f"--{argument}",
+                    required=False,
+                )
+                argument_otel_environment_variable[argument] = attribute
+
+    parser.add_argument(
+        "--version",
+        help="print version information",
+        action="version",
+        version="%(prog)s " + __version__,
+    )
+    parser.add_argument("command", help="Your Python application.")
+    parser.add_argument(
+        "command_args",
+        help="Arguments for your application.",
+        nargs=REMAINDER,
+    )
+
+    args = parser.parse_args()
+
+    for argument, otel_environment_variable in (argument_otel_environment_variable).items():
+        value = getattr(args, argument)
+        if value is not None:
+            environ[otel_environment_variable] = value
+
+    python_path = environ.get("PYTHONPATH")
+
+    if not python_path:
+        python_path = []
+
+    else:
+        python_path = python_path.split(pathsep)
+
+    cwd_path = getcwd()
+
+    # This is being added to support applications that are being run from their
+    # own executable, like Django.
+    # FIXME investigate if there is another way to achieve this
+    if cwd_path not in python_path:
+        python_path.insert(0, cwd_path)
+
+    filedir_path = dirname(abspath(__file__))
+
+    python_path = [path for path in python_path if path != filedir_path]
+
+    python_path.insert(0, filedir_path)
+
+    environ["PYTHONPATH"] = pathsep.join(python_path)
+
+    executable = which(args.command)
+    execl(executable, executable, *args.command_args)
+
+
+def _initialize(*, swallow_exceptions: bool = True) -> None:
+    # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
+    # opentelemetry operator
+    gevent_patch: str | None = environ.get(OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH)
+    if gevent_patch is not None:
+        if gevent_patch != "patch_all":
+            _logger.error(
+                "%s value must be `patch_all`",
+                OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
+            )
+        else:
+            try:
+                # pylint: disable=import-outside-toplevel
+                from gevent import monkey  # noqa: PLC0415
+
+                getattr(monkey, gevent_patch)()
+            except ImportError:
+                _logger.exception("Failed to monkey patch with gevent because gevent is not available")
+                if not swallow_exceptions:
+                    raise
+
+    try:
+        distro = _load_distro()
+        distro.configure()
+        _load_configurators()
+        _load_instrumentors(distro)
+    except Exception as exc:  # pylint: disable=broad-except
+        _logger.exception("Failed to auto initialize OpenTelemetry")
+        if not swallow_exceptions:
+            raise exc
+
+
+def initialize(*, swallow_exceptions: bool = True) -> None:
+    """
+    Setup auto-instrumentation, called by the sitecustomize module
+
+    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
+    """
+    filedir = dirname(abspath(__file__))
+
+    python_path = environ.get("PYTHONPATH")
+    auto_instrumentation_path_was_present = python_path is not None and filedir in python_path.split(pathsep)
+
+    # Remove the auto-instrumentation path during initialization to prevent
+    # auto-instrumentation from executing in subprocesses spawned during this phase.
+    # This suppression is performed to avoid creating a recursive loop scenario
+    # where subprocesses spawned in the initialization phase execute the
+    # initialization phase again, spawning more subprocesses.
+    if python_path is not None:
+        environ["PYTHONPATH"] = _python_path_without_directory(python_path, filedir, pathsep)
+
+    try:
+        _initialize(swallow_exceptions=swallow_exceptions)
+    finally:
+        if auto_instrumentation_path_was_present:
+            current = environ.get("PYTHONPATH", "")
+            if filedir not in current.split(pathsep):
+                environ["PYTHONPATH"] = filedir + pathsep + current if current else filedir

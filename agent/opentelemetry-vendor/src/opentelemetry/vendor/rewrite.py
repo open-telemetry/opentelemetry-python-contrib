@@ -42,8 +42,8 @@ class _ImportTransformer(cst.CSTTransformer):
     ``from X import Y`` becomes ``from namespace.X import Y``. Plain imports keep
     binding the same local name: ``import X`` becomes ``from namespace import X``,
     ``import X.Y as Z`` becomes ``from namespace.X import Y as Z`` and ``import X.Y``
-    becomes ``from namespace import X`` plus ``import namespace.X.Y`` to load the
-    submodule. A line containing an expanded import is split into one statement per line.
+    becomes ``import namespace.X.Y`` (to load the submodule) plus ``from namespace import X``.
+    A line containing an expanded import is split into one statement per line.
 
     Logger names are namespaced too, so vendored code doesn't log to (or configure) the
     application's loggers: a vendored-name string literal passed to ``logging.getLogger``
@@ -91,7 +91,11 @@ class _ImportTransformer(cst.CSTTransformer):
 
     def _namespaced_module_name(self, node: cst.SimpleString) -> cst.SimpleString | None:
         value = node.evaluated_value
-        if not isinstance(value, str) or not _DOTTED_NAME.fullmatch(value) or not is_vendored(value, self.names):
+        if (
+            not isinstance(value, str)
+            or not _DOTTED_NAME.fullmatch(value)
+            or not is_vendored(value, self.names, self.namespace)
+        ):
             return None
         return node.with_changes(value=f"{node.prefix}{node.quote}{self.namespace}.{value}{node.quote}")
 
@@ -99,7 +103,7 @@ class _ImportTransformer(cst.CSTTransformer):
         if updated_node.relative or updated_node.module is None:
             return updated_node
         module = get_full_name_for_node(updated_node.module)
-        if module is None or not is_vendored(module, self.names):
+        if module is None or not is_vendored(module, self.names, self.namespace):
             return updated_node
         self.count += 1
         return updated_node.with_changes(module=_dotted_name(f"{self.namespace}.{module}"))
@@ -107,12 +111,12 @@ class _ImportTransformer(cst.CSTTransformer):
     def leave_Import(
         self, original_node: cst.Import, updated_node: cst.Import
     ) -> cst.BaseSmallStatement | cst.FlattenSentinel[cst.BaseSmallStatement]:
-        if not any(is_vendored(alias_name(alias), self.names) for alias in updated_node.names):
+        if not any(is_vendored(alias_name(alias), self.names, self.namespace) for alias in updated_node.names):
             return updated_node
         statements: list[cst.BaseSmallStatement] = []
         for alias in updated_node.names:
             name = alias_name(alias)
-            if is_vendored(name, self.names):
+            if is_vendored(name, self.names, self.namespace):
                 statements.extend(self._rewrite_alias(name, alias.asname))
                 self.count += 1
             else:
@@ -146,10 +150,18 @@ class _ImportTransformer(cst.CSTTransformer):
             module = f"{self.namespace}.{package}" if package else self.namespace
             return [_import_from(module, attribute, asname)]
         top_level = name.split(".", 1)[0]
-        statements: list[cst.BaseSmallStatement] = [_import_from(self.namespace, top_level, None)]
-        if package:
-            # Binding X alone does not load the X.Y submodule.
-            statements.append(cst.Import(names=[cst.ImportAlias(name=_dotted_name(f"{self.namespace}.{name}"))]))
+        if not package:
+            return [_import_from(self.namespace, top_level, None)]
+        # Binding X alone does not load the X.Y submodule, so import namespace.X.Y first. That statement
+        # also binds the namespace's top-level name (``opentelemetry`` for ``opentelemetry.agent._vendor``),
+        # so bind X afterwards, and re-bind the top-level name if it is itself vendored.
+        statements: list[cst.BaseSmallStatement] = [
+            cst.Import(names=[cst.ImportAlias(name=_dotted_name(f"{self.namespace}.{name}"))]),
+            _import_from(self.namespace, top_level, None),
+        ]
+        namespace_top_level = self.namespace.split(".", 1)[0]
+        if namespace_top_level in self.names and namespace_top_level != top_level:
+            statements.append(_import_from(self.namespace, namespace_top_level, None))
         return statements
 
 
@@ -187,8 +199,14 @@ def parse_file(path: Path) -> cst.Module:
         raise VendorError(f"cannot parse {path}: {exc}") from exc
 
 
-def is_vendored(name: str, names: Collection[str]) -> bool:
-    """Whether dotted module ``name`` belongs to one of the vendored top-level ``names``."""
+def is_vendored(name: str, names: Collection[str], namespace: str) -> bool:
+    """Whether dotted module ``name`` belongs to one of the vendored top-level ``names``.
+
+    Names already under ``namespace`` aren't: the namespace may start with a vendored
+    top-level name (``opentelemetry.agent._vendor`` vendoring ``opentelemetry``).
+    """
+    if name == namespace or name.startswith(f"{namespace}."):
+        return False
     return name.split(".", 1)[0] in names
 
 

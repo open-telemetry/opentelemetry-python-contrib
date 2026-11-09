@@ -34,11 +34,14 @@ class VendoredPackage:
     dist_info: Path
 
 
-def read_package(wheel: Path, dist_info: Path) -> VendoredPackage:
-    """Read the metadata needed for vendoring from an unpacked dist-info."""
+def read_package(wheel: Path, dist_info: Path, license_file: Path | None = None) -> VendoredPackage:
+    """Read the metadata needed for vendoring from an unpacked dist-info.
+
+    ``license_file`` stands in for a wheel that ships no license file of its own.
+    """
     distribution = PathDistribution(dist_info)
     metadata = distribution.metadata
-    name = _canonicalize_name(metadata["Name"])
+    name = canonicalize_name(metadata["Name"])
     return VendoredPackage(
         name=name,
         version=metadata["Version"],
@@ -49,7 +52,7 @@ def read_package(wheel: Path, dist_info: Path) -> VendoredPackage:
             metadata.get_all("Classifier") or [],
         ),
         top_level_names=_top_level_names(distribution, dist_info),
-        license_files=_license_files(name, dist_info, metadata.get_all("License-File") or []),
+        license_files=_license_files(name, dist_info, metadata.get_all("License-File") or [], license_file),
         dist_info=dist_info,
     )
 
@@ -69,7 +72,8 @@ def remove_dist_info(packages: Collection[VendoredPackage]) -> None:
         shutil.rmtree(package.dist_info)
 
 
-def _canonicalize_name(name: str) -> str:
+def canonicalize_name(name: str) -> str:
+    """Normalize a distribution name as specified by PEP 503."""
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
@@ -107,7 +111,7 @@ def _top_level_names(distribution: PathDistribution, dist_info: Path) -> tuple[s
     return tuple(sorted(names))
 
 
-def _license_files(name: str, dist_info: Path, declared: Collection[str]) -> dict[str, Path]:
+def _license_files(name: str, dist_info: Path, declared: Collection[str], license_file: Path | None) -> dict[str, Path]:
     sources: dict[str, Path] = {}
     if declared:
         # PEP 639 puts License-File paths under .dist-info/licenses/; older
@@ -126,6 +130,14 @@ def _license_files(name: str, dist_info: Path, declared: Collection[str]) -> dic
                 if not path.is_relative_to(base):
                     base = dist_info
                 sources[path.relative_to(base).as_posix()] = path
+    if sources and license_file is not None:
+        raise VendorError(f"{dist_info.name} contains a license file; remove its license-files entry")
+    if not sources and license_file is not None:
+        if not license_file.is_file():
+            raise VendorError(f"license file {license_file} for {name} does not exist")
+        sources[license_file.name] = license_file
     if not sources:
-        raise VendorError(f"{dist_info.name} does not contain a license file")
+        raise VendorError(
+            f"{dist_info.name} does not contain a license file; add one under [tool.opentelemetry-vendor.license-files]"
+        )
     return {f"{name}.{relative.replace('/', '.')}": path for relative, path in sources.items()}

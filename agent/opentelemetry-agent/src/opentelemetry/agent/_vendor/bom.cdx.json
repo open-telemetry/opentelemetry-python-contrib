@@ -1,0 +1,845 @@
+{
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/certifi@2026.10.23",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MPL-2.0"
+          }
+        }
+      ],
+      "name": "certifi",
+      "pedigree": {
+        "patches": [
+          {
+            "diff": {
+              "text": {
+                "content": "Look up the CA bundle in the vendored certifi package.\n\nUpstream passes the top-level name \"certifi\" to importlib.resources, which would import\nthe application's certifi (or fail if it isn't installed). __package__ resolves to the\nvendored package.\n\ndiff --git a/certifi/core.py b/certifi/core.py\n--- a/certifi/core.py\n+++ b/certifi/core.py\n@@ -37,14 +37,14 @@ if sys.version_info >= (3, 11):\n             # We also have to hold onto the actual context manager, because\n             # it will do the cleanup whenever it gets garbage collected, so\n             # we will also store that at the global level as well.\n-            _CACERT_CTX = as_file(files(\"certifi\").joinpath(\"cacert.pem\"))\n+            _CACERT_CTX = as_file(files(__package__).joinpath(\"cacert.pem\"))\n             _CACERT_PATH = str(_CACERT_CTX.__enter__())\n             atexit.register(exit_cacert_ctx)\n \n         return _CACERT_PATH\n \n     def contents() -> str:\n-        return files(\"certifi\").joinpath(\"cacert.pem\").read_text(encoding=\"ascii\")\n+        return files(__package__).joinpath(\"cacert.pem\").read_text(encoding=\"ascii\")\n \n else:\n \n@@ -73,11 +73,11 @@ else:\n             # We also have to hold onto the actual context manager, because\n             # it will do the cleanup whenever it gets garbage collected, so\n             # we will also store that at the global level as well.\n-            _CACERT_CTX = get_path(\"certifi\", \"cacert.pem\")\n+            _CACERT_CTX = get_path(__package__, \"cacert.pem\")\n             _CACERT_PATH = str(_CACERT_CTX.__enter__())\n             atexit.register(exit_cacert_ctx)\n \n         return _CACERT_PATH\n \n     def contents() -> str:\n-        return read_text(\"certifi\", \"cacert.pem\", encoding=\"ascii\")\n+        return read_text(__package__, \"cacert.pem\", encoding=\"ascii\")\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          }
+        ]
+      },
+      "purl": "pkg:pypi/certifi@2026.10.23",
+      "type": "library",
+      "version": "2026.10.23"
+    },
+    {
+      "bom-ref": "pkg:pypi/charset-normalizer@3.5.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "charset-normalizer",
+      "purl": "pkg:pypi/charset-normalizer@3.5.2",
+      "type": "library",
+      "version": "3.5.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/fastjsonschema@2.22.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f670b443830b75aca3f00b75949efa20f4b2a80302ec7a21505c28dd54cffd43"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "name": "fastjsonschema",
+      "purl": "pkg:pypi/fastjsonschema@2.22.3",
+      "type": "library",
+      "version": "2.22.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/googleapis-common-protos@1.76.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "59e13344a9f3651aa201a03e2bee815a3bf43a4baf1f9ff8a9b62a840ce25fac"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "googleapis-common-protos",
+      "purl": "pkg:pypi/googleapis-common-protos@1.76.0",
+      "type": "library",
+      "version": "1.76.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/idna@3.20",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "name": "idna",
+      "purl": "pkg:pypi/idna@3.20",
+      "type": "library",
+      "version": "3.20"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-api@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-api",
+      "purl": "pkg:pypi/opentelemetry-api@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-configuration@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "de7f1b5682cab12d35f22330f025ed5a54d2a8151515eede5b0a3ed9629dcc61"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-configuration",
+      "purl": "pkg:pypi/opentelemetry-configuration@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-distro@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a488231479bbc17f5c34d4ef740e9285fa8f8cd1114f73078cac9d8520eacfbd"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-distro",
+      "purl": "pkg:pypi/opentelemetry-distro@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-http-transport@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fd5f5b490c099acda1cd7b909d5e8981436bf18cc8c6098d302d114c271720e9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-http-transport",
+      "purl": "pkg:pypi/opentelemetry-exporter-http-transport@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-common@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ace86efb75489f925f1ef809856ae5f0c7db534e4afdc624530222228b1236a5"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-common",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-common@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-json-common@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6e83ba9312edb60fc1d4929b73457e8cca7579db4b4492b32cb71a1a8ddecdc7"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-json-common",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-json-common@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-json-file@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a500f13bcc7760a74b5db7ece7d72ec8a78e0b515539fec81705970cb2efd7ca"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-json-file",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-json-file@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-json-http@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "56a91c92e09c83c01d07380f48df6f649f3ce89fd47aa8c4862ef84de8e47ddb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-json-http",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-json-http@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "af483b24217028892f017096731b794b196b785025d2e6808874720fd0b05a80"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-proto-common",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6e4d025138829d0ee57946930c2ccad6491ad4d92a958e9c7eea69278fe60cfc"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-proto-http",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-exporter-prometheus@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b73998788aa30bec3bfe20fae312650878adb59f6563ed8bf37c188cb450a189"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-prometheus",
+      "purl": "pkg:pypi/opentelemetry-exporter-prometheus@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-instrumentation@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fa9ccfdab147a14af8107d19ef0a7b5015675273c5adced7a1fc38f28b42ec4c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-instrumentation",
+      "purl": "pkg:pypi/opentelemetry-instrumentation@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-instrumentation-aiohttp-client@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "33c51743ca225c2405b81b40ac744697804aef44b530f64d1f524c9a9cd3dca2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-instrumentation-aiohttp-client",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-aiohttp-client@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-propagator-b3@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "86c7f921a8390c0f7d88a27450765b6d075a3579f2592baa623723e9e527a1b8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-propagator-b3",
+      "purl": "pkg:pypi/opentelemetry-propagator-b3@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-proto@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "03a7ca1b43f89fd5b965d5975902bb2515c0c86e2428b456836e9a6149c6235a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-proto",
+      "purl": "pkg:pypi/opentelemetry-proto@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-proto-json@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4da45dc527e68bc00fd4d16773c58b6a9a229ebb7a8dce997403414eaa03b3bb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-proto-json",
+      "purl": "pkg:pypi/opentelemetry-proto-json@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-sdk@1.45.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ff974ea70ee4f1d51e2ec152db37c2b626c7bf82bb3f7d86114fd8704e7199c6"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-sdk",
+      "purl": "pkg:pypi/opentelemetry-sdk@1.45.2",
+      "type": "library",
+      "version": "1.45.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-semantic-conventions@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4cbe61e5f9275d57ab31708446e7938ef4291ebbe6a7fca6f7a629c5acae87d8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-semantic-conventions",
+      "purl": "pkg:pypi/opentelemetry-semantic-conventions@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/opentelemetry-util-http@0.66b2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c4bb5d6744e60353bcaa3e325bc529a1515346b51cb4d9c8e5b730579337e06d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-util-http",
+      "pedigree": {
+        "patches": [
+          {
+            "diff": {
+              "text": {
+                "content": "Default the distro's OTLP protocol to http/protobuf.\n\nThe distro defaults OTEL_EXPORTER_OTLP_PROTOCOL to grpc, but the gRPC exporters aren't vendored\n(grpcio has no pure-Python wheel). With http/protobuf the SDK resolves the \"otlp\" exporter to the\nvendored otlp_proto_http one. An explicitly set OTEL_EXPORTER_OTLP_PROTOCOL still wins.\n\ndiff --git a/opentelemetry/distro/__init__.py b/opentelemetry/distro/__init__.py\nindex 4d00198..6165e7a 100644\n--- a/opentelemetry/distro/__init__.py\n+++ b/opentelemetry/distro/__init__.py\n@@ -28,4 +28,5 @@ class OpenTelemetryDistro(BaseDistro):\n         os.environ.setdefault(OTEL_TRACES_EXPORTER, \"otlp\")\n         os.environ.setdefault(OTEL_METRICS_EXPORTER, \"otlp\")\n         os.environ.setdefault(OTEL_LOGS_EXPORTER, \"otlp\")\n-        os.environ.setdefault(OTEL_EXPORTER_OTLP_PROTOCOL, \"grpc\")\n+        # opentelemetry-agent: the gRPC exporters aren't vendored (grpcio has no pure-Python wheel).\n+        os.environ.setdefault(OTEL_EXPORTER_OTLP_PROTOCOL, \"http/protobuf\")\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          },
+          {
+            "diff": {
+              "text": {
+                "content": "Parse and validate configuration files with ruamel.yaml and fastjsonschema.\n\nopentelemetry-configuration uses pyyaml and jsonschema, which have no pure-Python wheels (jsonschema needs\nrpds-py), so they are excluded (vendor-excludes.txt) and the vendored, pure-Python ruamel.yaml and\nfastjsonschema stand in for them:\n\n* YAML: ruamel.yaml's PyYAML-style SafeLoader (with the same Node classes, resolve() and\n  construct_document()). It resolves scalars with the YAML 1.2 core schema, which the configuration\n  spec requires (PyYAML implements YAML 1.1, where e.g. \"on\" and \"no\" are booleans).\n* Schema: a fastjsonschema validator compiled once. Its draft 2019-09 generator, used for the 2020-12\n  $schema, covers every keyword the schema uses ($ref into $defs, oneOf, exclusiveMinimum, ...).\n  Errors map to the same ConfigurationError messages.\n\nThe schema is also read relative to this file rather than with importlib.resources.files(\n\"opentelemetry.configuration\"), which would resolve the application's package.\n\ndiff --git a/opentelemetry/configuration/file/_loader.py b/opentelemetry/configuration/file/_loader.py\nindex dfa0037..44029a9 100644\n--- a/opentelemetry/configuration/file/_loader.py\n+++ b/opentelemetry/configuration/file/_loader.py\n@@ -3,7 +3,6 @@\n \n \"\"\"Configuration file loading and parsing.\"\"\"\n \n-import importlib.resources\n import json\n import logging\n import os\n@@ -14,32 +13,23 @@ from typing import Any\n from opentelemetry.agent._vendor.opentelemetry.configuration._conversion import _dict_to_dataclass\n from opentelemetry.agent._vendor.opentelemetry.configuration._exceptions import (\n     ConfigurationError,\n-    MissingDependencyError,\n )\n from opentelemetry.agent._vendor.opentelemetry.configuration.file._env_substitution import (\n     substitute_env_vars,\n )\n from opentelemetry.agent._vendor.opentelemetry.configuration.models import OpenTelemetryConfiguration\n \n-try:\n-    import yaml\n-except ImportError as exc:\n-    raise MissingDependencyError(\n-        package=\"pyyaml\",\n-        feature=\"File configuration\",\n-        install_name=\"opentelemetry-sdk\",\n-        extras=\"file-configuration\",\n-    ) from exc\n-\n-try:\n-    import jsonschema\n-except ImportError as exc:\n-    raise MissingDependencyError(\n-        package=\"jsonschema\",\n-        feature=\"File configuration\",\n-        install_name=\"opentelemetry-sdk\",\n-        extras=\"file-configuration\",\n-    ) from exc\n+# opentelemetry-agent: pyyaml and jsonschema have no pure-Python wheels (jsonschema needs rpds-py),\n+# so the vendored ruamel.yaml (its pure-Python, PyYAML-style loader API) and fastjsonschema stand in.\n+from opentelemetry.agent._vendor import fastjsonschema\n+from opentelemetry.agent._vendor.ruamel.yaml import nodes as _yaml_nodes\n+from opentelemetry.agent._vendor.ruamel.yaml.error import YAMLError\n+from opentelemetry.agent._vendor.ruamel.yaml.loader import SafeLoader as _RuamelSafeLoader\n+\n+\n+class SafeLoader(_RuamelSafeLoader):\n+    # Only ruamel.yaml's YAML class sets the composer's nesting limit; 0 means none, like PyYAML.\n+    max_depth = 0\n \n # Schema version vendored in schema.json. ``file_format`` values are accepted\n # per the configuration spec's versioning rules: the major version must match,\n@@ -50,15 +40,24 @@ _SUPPORTED_SCHEMA_MAJOR = 1\n _SUPPORTED_SCHEMA_MINOR = 1\n \n _schema_cache: list[dict] = []\n+_validator_cache: list[Any] = []\n \n \n def _get_schema() -> dict:\n     if not _schema_cache:\n-        schema_path = importlib.resources.files(\"opentelemetry.configuration\") / \"schema.json\"\n+        # opentelemetry-agent: resolve the schema relative to this (vendored) package, not by name.\n+        schema_path = Path(__file__).resolve().parent.parent / \"schema.json\"\n         _schema_cache.append(json.loads(schema_path.read_text(encoding=\"utf-8\")))\n     return _schema_cache[0]\n \n \n+def _get_validator() -> Any:\n+    # Compiling the schema generates and executes Python code; do it once.\n+    if not _validator_cache:\n+        _validator_cache.append(fastjsonschema.compile(_get_schema()))\n+    return _validator_cache[0]\n+\n+\n _logger = logging.getLogger(__name__)\n \n _YAML_STR_TAG = \"tag:yaml.org,2002:str\"\n@@ -73,8 +72,8 @@ _STANDALONE_ENV_REF = re.compile(r\"\\A\\$\\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\\}\\Z\"\n \n \n def _substitute_env_in_yaml_node(\n-    node: yaml.Node,\n-    loader: yaml.SafeLoader,\n+    node: _yaml_nodes.Node,\n+    loader: SafeLoader,\n     visited: set[int] | None = None,\n ):\n     \"\"\"Apply env-var substitution to string configuration values in a node tree.\n@@ -120,7 +119,7 @@ def _substitute_env_in_yaml_node(\n     # The parser hands this function the value node of attribute_count_limit,\n     # which has value=\"${LIMIT}\", tag=str, style=None (plain/unquoted). Then:\n     #\n-    #   1. isinstance(node, yaml.ScalarNode) -> True: it is a leaf value.\n+    #   1. isinstance(node, ScalarNode) -> True: it is a leaf value.\n     #   2. node.tag == _YAML_STR_TAG -> True: \"${LIMIT}\" is not a number or\n     #      bool, so the parser tagged it str. We substitute in place, giving\n     #      node.value = \"100\".\n@@ -131,7 +130,7 @@ def _substitute_env_in_yaml_node(\n     #\n     # Counter-cases that reach check 3 but stop there: \"${LIMIT}\" quoted fails\n     # the style test; x${LIMIT} fails the regex. Both keep the str tag.\n-    if isinstance(node, yaml.ScalarNode):\n+    if isinstance(node, _yaml_nodes.ScalarNode):\n         # A ``ScalarNode`` is a leaf -- one configuration value. Only a\n         # ``str``-tagged one can hold a ``${VAR}`` reference (nodes the parser\n         # already typed as int, float, bool or null cannot), so those are the\n@@ -153,12 +152,12 @@ def _substitute_env_in_yaml_node(\n                 # str) YAML would assign to ``node.value``; the ``(True, False)``\n                 # implicit-flag pair marks it as a plain scalar so that\n                 # type-guessing applies, exactly as during normal parsing.\n-                node.tag = loader.resolve(yaml.ScalarNode, node.value, (True, False))\n-    elif isinstance(node, yaml.SequenceNode):\n+                node.tag = loader.resolve(_yaml_nodes.ScalarNode, node.value, (True, False))\n+    elif isinstance(node, _yaml_nodes.SequenceNode):\n         # A sequence (list): each item is itself a value node -- recurse.\n         for item in node.value:\n             _substitute_env_in_yaml_node(item, loader, visited)\n-    elif isinstance(node, yaml.MappingNode):\n+    elif isinstance(node, _yaml_nodes.MappingNode):\n         # A mapping (dict): recurse into values only; keys are not\n         # substitution candidates per the spec. A merge key (``<<: *base``)\n         # appears here as an ordinary pair whose value node is the anchored\n@@ -197,7 +196,8 @@ def _parse_config_content(content: str, suffix: str, file_path: str | os.PathLik\n     try:\n         if suffix == \".json\":\n             return _substitute_env_in_json_value(json.loads(content))\n-        yaml_loader = yaml.SafeLoader(content)\n+        # YAML 1.2 core schema, as the configuration spec requires (PyYAML implements YAML 1.1).\n+        yaml_loader = SafeLoader(content)\n         try:\n             root_node = yaml_loader.get_single_node()\n             if root_node is None:\n@@ -206,7 +206,7 @@ def _parse_config_content(content: str, suffix: str, file_path: str | os.PathLik\n             return yaml_loader.construct_document(root_node)\n         finally:\n             yaml_loader.dispose()\n-    except yaml.YAMLError as exc:\n+    except YAMLError as exc:\n         _logger.exception(\"Failed to parse YAML from %s\", file_path)\n         raise ConfigurationError(f\"Failed to parse YAML: {exc}\") from exc\n     except json.JSONDecodeError as exc:\n@@ -294,19 +294,17 @@ def _validate_schema(data: dict) -> None:\n         ConfigurationError: If the data does not conform to the schema.\n     \"\"\"\n     try:\n-        jsonschema.validate(\n-            instance=data,\n-            schema=_get_schema(),\n-            cls=jsonschema.Draft202012Validator,\n-        )\n-    except jsonschema.ValidationError as exc:\n+        _get_validator()(data)\n+    except fastjsonschema.JsonSchemaValueException as exc:\n+        # The path starts with the root's name (\"data\").\n+        path = exc.path[1:]\n         raise ConfigurationError(\n-            f\"Configuration does not match schema: {exc.message} (at {' -> '.join(str(p) for p in exc.absolute_path)})\"\n-            if exc.absolute_path\n+            f\"Configuration does not match schema: {exc.message} (at {' -> '.join(str(p) for p in path)})\"\n+            if path\n             else f\"Configuration does not match schema: {exc.message}\"\n         ) from exc\n-    except jsonschema.SchemaError as exc:\n-        raise ConfigurationError(f\"Invalid configuration schema: {exc.message}\") from exc\n+    except fastjsonschema.JsonSchemaDefinitionException as exc:\n+        raise ConfigurationError(f\"Invalid configuration schema: {exc}\") from exc\n \n \n def _validate_file_format(data: dict) -> None:\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          },
+          {
+            "diff": {
+              "text": {
+                "content": "Report upstream module names from the vendored SDK.\n\nInstrumentations name their tracers, meters and loggers after their module (get_tracer(__name__)),\nwhich is opentelemetry.agent._vendor.opentelemetry... once vendored. InstrumentationScope (and the\ndeprecated InstrumentationInfo) strip the vendor prefix, so telemetry reports the same scope names as\nthe upstream packages, e.g. opentelemetry.instrumentation.aiohttp_client.\n\nThe TracerProvider's warning filter for its own InstrumentationInfo deprecation names its module by\nstring; use __name__ so it matches the vendored module rather than the application's SDK.\n\ndiff --git a/opentelemetry/sdk/trace/__init__.py b/opentelemetry/sdk/trace/__init__.py\nindex 06fd2b3..1f7ab18 100644\n--- a/opentelemetry/sdk/trace/__init__.py\n+++ b/opentelemetry/sdk/trace/__init__.py\n@@ -1351,7 +1351,8 @@ class TracerProvider(trace_api.TracerProvider):\n             \"ignore\",\n             message=(r\"You should use InstrumentationScope. Deprecated since version 1.11.1.\"),\n             category=DeprecationWarning,\n-            module=\"opentelemetry.sdk.trace\",\n+            # opentelemetry-agent: match this (vendored) module, not the application's SDK.\n+            module=__name__,\n         )\n \n         instrumentation_info = InstrumentationInfo(\ndiff --git a/opentelemetry/sdk/util/instrumentation.py b/opentelemetry/sdk/util/instrumentation.py\nindex ac64c2d..9cf8491 100644\n--- a/opentelemetry/sdk/util/instrumentation.py\n+++ b/opentelemetry/sdk/util/instrumentation.py\n@@ -13,6 +13,18 @@ from opentelemetry.agent._vendor.opentelemetry.util.types import (  # TODO: see\n )\n \n \n+# opentelemetry-agent: instrumentations vendored under the agent's namespace name their scope after\n+# their module (get_tracer(__name__)); report the upstream module name instead, e.g.\n+# \"opentelemetry.instrumentation.aiohttp_client\" rather than \"opentelemetry.agent._vendor.opentelemetry...\".\n+_VENDOR_PREFIX = __name__.removesuffix(\"opentelemetry.sdk.util.instrumentation\")\n+\n+\n+def _unvendored_name(name: str) -> str:\n+    if isinstance(name, str) and name.startswith(_VENDOR_PREFIX):\n+        return name[len(_VENDOR_PREFIX) :]\n+    return name\n+\n+\n class InstrumentationInfo:\n     \"\"\"Immutable information about an instrumentation library module.\n \n@@ -29,7 +41,7 @@ class InstrumentationInfo:\n         version: str | None = None,\n         schema_url: str | None = None,\n     ):\n-        self._name = name\n+        self._name = _unvendored_name(name)\n         self._version = version\n         if schema_url is None:\n             schema_url = \"\"\n@@ -92,7 +104,7 @@ class InstrumentationScope:\n         schema_url: str | None = None,\n         attributes: Attributes = None,\n     ) -> None:\n-        self._name = name\n+        self._name = _unvendored_name(name)\n         self._version = version\n         if schema_url is None:\n             schema_url = \"\"\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          },
+          {
+            "diff": {
+              "text": {
+                "content": "Scope OpenTelemetry's entry point lookups to the vendored distributions.\n\nAll OpenTelemetry plugin discovery (distro, configurator, instrumentors, exporters, samplers,\npropagators, resource detectors, HTTP transports) goes through opentelemetry.util._importlib_metadata.\nUpstream it reads every installed distribution's entry points: the vendored copies have no\ndist-info on sys.path, and the application's OpenTelemetry plugins point at un-vendored modules.\nopentelemetry-vendor sync keeps the vendored distributions' METADATA and namespaced entry points in\n_vendor/_metadata (metadata-dir); entry_points() and distributions() only search there.\n\nversion() and requires() keep looking at the application's distributions: instrumentors check that the\ninstalled version of the library they patch matches their \"instruments\" requirements.\n\ndiff --git a/opentelemetry/util/_importlib_metadata.py b/opentelemetry/util/_importlib_metadata.py\nindex 656afbb..c7c5399 100644\n--- a/opentelemetry/util/_importlib_metadata.py\n+++ b/opentelemetry/util/_importlib_metadata.py\n@@ -11,38 +11,35 @@ It also normalizes minor differences across python versions 3.10+. References to\n - https://github.com/open-telemetry/opentelemetry-python/pull/5203\n \"\"\"\n \n-import itertools\n+import os\n from functools import cache\n from importlib.metadata import (\n     Distribution,\n     EntryPoint,\n     EntryPoints,\n     PackageNotFoundError,\n-    distributions,\n     requires,\n     version,\n )\n-from importlib.metadata import entry_points as original_entry_points\n-from typing import Any\n+from importlib.metadata import distributions as _all_distributions\n+from typing import Any, Iterable\n+\n+# opentelemetry-agent: entry points are only looked up in the vendored distributions' metadata\n+# (written to _vendor/_metadata by opentelemetry-vendor sync), never in the application's, whose\n+# OpenTelemetry plugins point at un-vendored modules. version() and requires() still see the\n+# application's distributions: instrumentors check the installed versions of the libraries they patch.\n+_VENDORED_METADATA_PATH = [\n+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), \"_metadata\")\n+]\n \n \n-def _as_entry_points(eps: Any) -> EntryPoints:\n-    # Python versions greater than 3.11 return EntryPoints.\n-    if isinstance(eps, EntryPoints):\n-        return eps\n-    # In Python 3.10 and 3.11 entry_points() returns\n-    # a dict-like SelectableGroups object.\n-    # Use dict.values() instead of eps.values() to avoid the DeprecationWarning\n-    # that SelectableGroups raises when calling .values().\n-    if isinstance(eps, dict):\n-        return EntryPoints(itertools.chain.from_iterable(dict.values(eps)))\n-    # This case should be unreachable, but is included as a fallback.\n-    return EntryPoints(ep for group in eps.groups for ep in eps.select(group=group))\n+def distributions(**kwargs: Any) -> Iterable[Distribution]:\n+    return _all_distributions(path=_VENDORED_METADATA_PATH, **kwargs)\n \n \n @cache\n def _original_entry_points_cached() -> EntryPoints:\n-    return _as_entry_points(original_entry_points())\n+    return EntryPoints(entry_point for dist in distributions() for entry_point in dist.entry_points)\n \n \n def entry_points(**params) -> EntryPoints:\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          }
+        ]
+      },
+      "purl": "pkg:pypi/opentelemetry-util-http@0.66b2",
+      "type": "library",
+      "version": "0.66b2"
+    },
+    {
+      "bom-ref": "pkg:pypi/packaging@26.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR BSD-2-Clause"
+        }
+      ],
+      "name": "packaging",
+      "purl": "pkg:pypi/packaging@26.3",
+      "type": "library",
+      "version": "26.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/prometheus-client@0.26.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0 AND BSD-2-Clause"
+        }
+      ],
+      "name": "prometheus-client",
+      "purl": "pkg:pypi/prometheus-client@0.26.0",
+      "type": "library",
+      "version": "0.26.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/protobuf@7.36.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "3-Clause BSD License"
+          }
+        }
+      ],
+      "name": "protobuf",
+      "pedigree": {
+        "patches": [
+          {
+            "diff": {
+              "text": {
+                "content": "Select the vendored protobuf implementation: upb when built, else pure Python.\n\nUpstream probes for the upb/cpp C extensions with importlib.import_module(\"google._upb._message\")\nand friends, which imports the application's protobuf by its top-level name, and honours\nPROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION, which is meant for the application's protobuf: \"cpp\" makes\ndescriptor.py import the missing vendored pyext and crash. Only the vendored upb extension (included in\nplatform builds of the agent, see patches/native/protobuf-upb.patch) is considered; otherwise the\npure-Python implementation is used.\n\ndiff --git a/google/protobuf/internal/api_implementation.py b/google/protobuf/internal/api_implementation.py\n--- a/google/protobuf/internal/api_implementation.py\n+++ b/google/protobuf/internal/api_implementation.py\n@@ -6,7 +6,6 @@\n # https://developers.google.com/open-source/licenses/bsd\n \"\"\"Determine which implementation of the protobuf API is used in this process.\"\"\"\n \n-import importlib\n import os\n import sys\n import warnings\n@@ -24,89 +23,19 @@ def _ApiVersionToImplementationType(api_version):\n   return None\n \n \n-_implementation_type = None\n+# Only the vendored upb extension is considered (platform builds of the agent include it;\n+# the pure-Python build doesn't). Never probe for the application's google._upb /\n+# google.protobuf.pyext by their top-level names, and don't follow\n+# PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION, which configures the application's protobuf\n+# (e.g. \"cpp\" would make descriptor.py import the missing vendored pyext._message).\n try:\n   # pylint: disable=g-import-not-at-top\n-  from opentelemetry.agent._vendor.google.protobuf.internal import _api_implementation\n-  # The compile-time constants in the _api_implementation module can be used to\n-  # switch to a certain implementation of the Python API at build time.\n-  _implementation_type = _ApiVersionToImplementationType(\n-      _api_implementation.api_version\n-  )\n-except ImportError:\n-  pass  # Unspecified by compiler flags.\n-\n-\n-def _CanImport(mod_name):\n-  try:\n-    mod = importlib.import_module(mod_name)\n-    # Work around a known issue in the classic bootstrap .par import hook.\n-    if not mod:\n-      raise ImportError(mod_name + ' import succeeded but was None')\n-    return True\n-  except ImportError:\n-    return False\n-\n-\n-if _implementation_type is None:\n-  if _CanImport('google._upb._message'):\n-    _implementation_type = 'upb'\n-  elif _CanImport('google.protobuf.pyext._message'):\n-    _implementation_type = 'cpp'\n-  else:\n-    _implementation_type = 'python'\n-\n-# This environment variable can be used to switch to a certain implementation\n-# of the Python API, overriding the compile-time constants in the\n-# _api_implementation module. Right now only 'python', 'cpp' and 'upb' are\n-# valid values. Any other value will raise error.\n-_implementation_type = os.getenv(\n-    'PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', _implementation_type\n-)\n-\n-if _implementation_type not in ('python', 'cpp', 'upb'):\n-  raise ValueError(\n-      'PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION {0} is not '\n-      \"supported. Please set to 'python', 'cpp' or \"\n-      \"'upb'.\".format(_implementation_type)\n-  )\n+  from opentelemetry.agent._vendor.google._upb import _message as _c_module\n \n-if 'PyPy' in sys.version and _implementation_type == 'cpp':\n-  warnings.warn(\n-      'PyPy does not work yet with cpp protocol buffers. '\n-      'Falling back to the python implementation.'\n-  )\n+  _implementation_type = 'upb'\n+except ImportError:\n   _implementation_type = 'python'\n-\n-_c_module = None\n-\n-if _implementation_type == 'cpp':\n-  try:\n-    # pylint: disable=g-import-not-at-top\n-    from opentelemetry.agent._vendor.google.protobuf.pyext import _message\n-\n-    sys.modules['google3.net.proto2.python.internal.cpp._message'] = _message\n-    _c_module = _message\n-    del _message\n-  except ImportError:\n-    # TODO: fail back to python\n-    warnings.warn('Selected implementation cpp is not available.')\n-    pass\n-\n-if _implementation_type == 'upb':\n-  try:\n-    # pylint: disable=g-import-not-at-top\n-    from opentelemetry.agent._vendor.google._upb import _message\n-\n-    _c_module = _message\n-    del _message\n-  except ImportError:\n-    warnings.warn(\n-        'Selected implementation upb is not available. '\n-        'Falling back to the python implementation.'\n-    )\n-    _implementation_type = 'python'\n-    pass\n+  _c_module = None\n \n # Detect if serialization should be deterministic by default\n try:\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          }
+        ]
+      },
+      "purl": "pkg:pypi/protobuf@7.36.2",
+      "type": "library",
+      "version": "7.36.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/requests@2.34.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "requests",
+      "pedigree": {
+        "patches": [
+          {
+            "diff": {
+              "text": {
+                "content": "Disable the requests.packages compatibility aliases.\n\nUpstream imports urllib3/idna/chardet by their top-level names and registers them as\n`requests.packages.*` in the global sys.modules, which would load and alias the\napplication's own packages.\n\ndiff --git a/requests/packages.py b/requests/packages.py\n--- a/requests/packages.py\n+++ b/requests/packages.py\n@@ -1,23 +1,4 @@\n-import sys\n-\n-from .compat import chardet\n-\n-# This code exists for backwards compatibility reasons.\n-# I don't like it either. Just look the other way. :)\n-\n-for package in (\"urllib3\", \"idna\"):\n-    locals()[package] = __import__(package)\n-    # This traversal is apparently necessary such that the identities are\n-    # preserved (requests.packages.urllib3.* is urllib3.*)\n-    for mod in list(sys.modules):\n-        if mod == package or mod.startswith(f\"{package}.\"):\n-            sys.modules[f\"requests.packages.{mod}\"] = sys.modules[mod]\n-\n-if chardet is not None:\n-    target = chardet.__name__\n-    for mod in list(sys.modules):\n-        if mod == target or mod.startswith(f\"{target}.\"):\n-            imported_mod = sys.modules[mod]\n-            sys.modules[f\"requests.packages.{mod}\"] = imported_mod\n-            mod = mod.replace(target, \"chardet\")\n-            sys.modules[f\"requests.packages.{mod}\"] = imported_mod\n+# The upstream module imports urllib3, idna and chardet by their top-level names and\n+# registers them as `requests.packages.*` in the global sys.modules. In the vendored copy\n+# that would load (and alias) the application's own packages, so the backwards\n+# compatibility aliases are disabled.\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          },
+          {
+            "diff": {
+              "text": {
+                "content": "Use the vendored charset_normalizer instead of looking up chardet.\n\nUpstream prefers an installed chardet (via importlib.import_module and a version\nimport), which would load the application's package.\n\ndiff --git a/requests/__init__.py b/requests/__init__.py\n--- a/requests/__init__.py\n+++ b/requests/__init__.py\n@@ -51,10 +51,8 @@ try:\n except ImportError:\n     charset_normalizer_version = None\n \n-try:\n-    from chardet import __version__ as chardet_version  # type: ignore[import-not-found]\n-except ImportError:\n-    chardet_version = None\n+# Only the vendored charset_normalizer is used, never the application's chardet.\n+chardet_version = None\n \n \n def check_compatibility(\ndiff --git a/requests/compat.py b/requests/compat.py\n--- a/requests/compat.py\n+++ b/requests/compat.py\n@@ -34,19 +34,8 @@ except (TypeError, AttributeError):\n # -------------------\n \n \n-def _resolve_char_detection() -> ModuleType | None:\n-    \"\"\"Find supported character detection libraries.\"\"\"\n-    chardet = None\n-    for lib in (\"chardet\", \"charset_normalizer\"):\n-        if chardet is None:\n-            try:\n-                chardet = importlib.import_module(lib)\n-            except ImportError:\n-                pass\n-    return chardet\n-\n-\n-chardet = _resolve_char_detection()\n+# Always use the vendored charset_normalizer, never the application's chardet.\n+from opentelemetry.agent._vendor import charset_normalizer as chardet\n \n # -------\n # Pythons\n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          }
+        ]
+      },
+      "purl": "pkg:pypi/requests@2.34.2",
+      "type": "library",
+      "version": "2.34.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/ruamel-yaml@0.19.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "ruamel-yaml",
+      "pedigree": {
+        "patches": [
+          {
+            "diff": {
+              "text": {
+                "content": "Never load the libyaml binding in the vendored ruamel.yaml.\n\nruamel.yaml imports the optional C parser and emitter from the _ruamel_yaml extension module\n(ruamel.yaml.clib), which would be the application's, not vendored. ruamel/yaml/cyaml.py is dropped; this\npatch makes main.py fall back to the pure-Python implementation unconditionally.\n\ndiff --git a/ruamel/yaml/main.py b/ruamel/yaml/main.py\nindex fdf7c72..5e23910 100644\n--- a/ruamel/yaml/main.py\n+++ b/ruamel/yaml/main.py\n@@ -42,10 +42,9 @@ if False:  # MYPY\n     from types import TracebackType\n     from pathlib import Path\n \n-try:\n-    from _ruamel_yaml import CParser, CEmitter  # type: ignore\n-except:  # NOQA\n-    CParser = CEmitter = None\n+# opentelemetry-agent: always use the pure-Python parser and emitter; the libyaml binding\n+# (_ruamel_yaml) would be the application's, not vendored.\n+CParser = CEmitter = None\n \n # import io\n \n",
+                "contentType": "text/plain"
+              }
+            },
+            "type": "unofficial"
+          }
+        ]
+      },
+      "purl": "pkg:pypi/ruamel-yaml@0.19.1",
+      "type": "library",
+      "version": "0.19.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/typing-extensions@4.16.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF-2.0"
+          }
+        }
+      ],
+      "name": "typing-extensions",
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "type": "library",
+      "version": "4.16.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/urllib3@2.8.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "urllib3",
+      "purl": "pkg:pypi/urllib3@2.8.0",
+      "type": "library",
+      "version": "2.8.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/wrapt@2.5.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "61eb54e9540ea522c2c4752a57549a83d3c67e6704ed708403d28e067aaf90f0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "name": "wrapt",
+      "purl": "pkg:pypi/wrapt@2.5.2",
+      "type": "library",
+      "version": "2.5.2"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/certifi@2026.10.23"
+    },
+    {
+      "ref": "pkg:pypi/charset-normalizer@3.5.2"
+    },
+    {
+      "ref": "pkg:pypi/fastjsonschema@2.22.3"
+    },
+    {
+      "ref": "pkg:pypi/googleapis-common-protos@1.76.0"
+    },
+    {
+      "ref": "pkg:pypi/idna@3.20"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-api@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-configuration@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-distro@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-http-transport@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-common@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-json-common@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-json-file@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-json-http@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-exporter-prometheus@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-instrumentation-aiohttp-client@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-instrumentation@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-propagator-b3@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-proto-json@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-proto@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-sdk@1.45.2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-semantic-conventions@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/opentelemetry-util-http@0.66b2"
+    },
+    {
+      "ref": "pkg:pypi/packaging@26.3"
+    },
+    {
+      "ref": "pkg:pypi/prometheus-client@0.26.0"
+    },
+    {
+      "ref": "pkg:pypi/protobuf@7.36.2"
+    },
+    {
+      "ref": "pkg:pypi/requests@2.34.2"
+    },
+    {
+      "ref": "pkg:pypi/ruamel-yaml@0.19.1"
+    },
+    {
+      "ref": "pkg:pypi/typing-extensions@4.16.0"
+    },
+    {
+      "ref": "pkg:pypi/urllib3@2.8.0"
+    },
+    {
+      "ref": "pkg:pypi/wrapt@2.5.2"
+    }
+  ],
+  "metadata": {},
+  "serialNumber": "urn:uuid:68c0eaa7-7e90-530a-b51b-92b28a55e1b4",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6"
+}

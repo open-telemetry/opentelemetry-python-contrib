@@ -1,0 +1,73 @@
+Metadata-Version: 2.5
+Name: opentelemetry-configuration
+Version: 0.66b2
+Summary: OpenTelemetry Python Declarative Configuration (experimental)
+Project-URL: Homepage, https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-configuration
+Project-URL: Repository, https://github.com/open-telemetry/opentelemetry-python
+Author-email: OpenTelemetry Authors <cncf-opentelemetry-contributors@lists.cncf.io>
+License-Expression: Apache-2.0
+Classifier: Development Status :: 3 - Alpha
+Classifier: Framework :: OpenTelemetry
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: jsonschema>=4.0
+Requires-Dist: opentelemetry-api==1.45.2
+Requires-Dist: opentelemetry-sdk==1.45.2
+Requires-Dist: pyyaml>=5.4
+Description-Content-Type: text/x-rst
+
+OpenTelemetry Python SDK Declarative Configuration
+===================================================
+
+|pypi|
+
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-configuration.svg
+    :target: https://pypi.org/project/opentelemetry-configuration/
+
+.. warning::
+
+   This package is **experimental**. The API surface, type names, and behaviour
+   may change between minor versions. Pin a specific version in production.
+
+This package implements the `OpenTelemetry declarative configuration
+specification <https://opentelemetry.io/docs/specs/otel/configuration/>`_ for
+the Python SDK. It parses a YAML or JSON configuration file (or
+programmatically-constructed configuration model) into typed dataclasses and
+applies the result to the global SDK providers.
+
+The standard activation path is the ``OTEL_CONFIG_FILE`` environment variable,
+which the SDK's configurator picks up automatically. Set the variable and run
+your app under ``opentelemetry-instrument``; no code change is required.
+
+For programmatic use:
+
+.. code-block:: python
+
+    from opentelemetry.configuration import configure_sdk, load_config_file
+
+    config = load_config_file("otel-config.yaml")
+    configure_sdk(config)
+
+Installation
+------------
+
+::
+
+    pip install opentelemetry-configuration
+
+References
+----------
+
+* `OpenTelemetry declarative configuration specification
+  <https://opentelemetry.io/docs/specs/otel/configuration/>`_
+* `Language support status matrix
+  <https://github.com/open-telemetry/opentelemetry-configuration/blob/main/language-support-status.md#python>`_
+* `OpenTelemetry Project <https://opentelemetry.io/>`_

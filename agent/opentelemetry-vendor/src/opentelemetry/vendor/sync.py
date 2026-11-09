@@ -16,9 +16,11 @@ from opentelemetry.vendor import output
 from opentelemetry.vendor.checks import check_vendored_tree
 from opentelemetry.vendor.config import VendorConfig
 from opentelemetry.vendor.download import download_wheels, unpack_wheels
+from opentelemetry.vendor.entry_points import write_metadata
 from opentelemetry.vendor.errors import VendorError
 from opentelemetry.vendor.metadata import (
     VendoredPackage,
+    canonicalize_name,
     copy_license_files,
     read_package,
     remove_dist_info,
@@ -99,7 +101,13 @@ def _populate(config: VendorConfig, requirements: Collection[str]) -> list[Vendo
         output.step(f"Downloaded {output.plural(len(wheels), 'wheel')}")
 
         dist_infos = unpack_wheels(wheels, destination)
-        packages = [read_package(wheel, dist_info) for wheel, dist_info in dist_infos.items()]
+        packages = [
+            read_package(wheel, dist_info, config.license_files.get(_wheel_name(wheel)))
+            for wheel, dist_info in dist_infos.items()
+        ]
+        unused = sorted(set(config.license_files) - {package.name for package in packages})
+        if unused:
+            raise VendorError(f"license-files entries {unused} match no vendored distribution")
         output.step(f"Unpacked {output.plural(len(packages), 'wheel')}")
 
     if config.drop:
@@ -116,8 +124,14 @@ def _populate(config: VendorConfig, requirements: Collection[str]) -> list[Vendo
             output.detail(f"applied {_display(patch.path, config)}")
         output.step(f"Applied {output.plural(len(patches), 'patch', 'patches')}")
 
-    for finding in check_vendored_tree(destination, names, config.allow):
+    for finding in check_vendored_tree(destination, names, config.namespace, config.allow):
         output.detail(f"allowed {finding.kind} {finding}")
+
+    if config.metadata_dir is not None:
+        entry_points = write_metadata(packages, destination, config.metadata_dir, config.namespace, names)
+        output.step(
+            f"Wrote metadata to {_display(config.metadata_dir, config)} ({output.plural(entry_points, 'entry point')})"
+        )
 
     copy_license_files(packages, destination)
     license_count = sum(len(package.license_files) for package in packages)
@@ -130,6 +144,11 @@ def _populate(config: VendorConfig, requirements: Collection[str]) -> list[Vendo
     remove_dist_info(packages)
     output.package_table(packages)
     return packages
+
+
+def _wheel_name(wheel: Path) -> str:
+    """Canonical distribution name from a wheel file name (``{name}-{version}-...whl``)."""
+    return canonicalize_name(wheel.name.split("-", 1)[0])
 
 
 _REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -168,7 +187,10 @@ def check(config: VendorConfig) -> None:
                 if sbom_outside
                 else expected / config.sbom_file.relative_to(config.destination)
             )
-        sync(dataclasses.replace(config, destination=expected, sbom_file=sbom_file))
+        metadata_dir = (
+            expected / config.metadata_dir.relative_to(config.destination) if config.metadata_dir is not None else None
+        )
+        sync(dataclasses.replace(config, destination=expected, sbom_file=sbom_file, metadata_dir=metadata_dir))
 
         differences = _diff_trees(config.destination, expected, config.protected_files)
         if sbom_outside and config.sbom_file is not None and sbom_file is not None:

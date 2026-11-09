@@ -10,6 +10,7 @@ import json
 import uuid
 from collections.abc import Collection, Mapping
 from pathlib import Path
+from typing import Any
 
 from cyclonedx.contrib.license.factories import LicenseFactory
 from cyclonedx.model import AttachedText, HashAlgorithm, HashType
@@ -57,13 +58,7 @@ def write_sbom(
     document = json.loads(JsonV1Dot6(bom).output_as_string())
     # The timestamp is optional; dropping it keeps re-syncs diff-free.
     document["metadata"].pop("timestamp", None)
-    output = json.dumps(document, indent=2) + "\n"
-
-    error = JsonStrictValidator(SchemaVersion.V1_6).validate_str(output)
-    if error is not None:
-        raise VendorError(f"generated SBOM is invalid: {error}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(output)
+    _write(document, path)
 
 
 def _component(
@@ -87,3 +82,56 @@ def _component(
         if patches
         else None,
     )
+
+
+NATIVE_SDIST_PROPERTY = "opentelemetry-vendor:native-sdist-sha256"
+NATIVE_EXTENSION_PROPERTY = "opentelemetry-vendor:native-extension"
+
+
+def add_native_build(
+    path: Path,
+    package: str,
+    sdist_sha256: str,
+    extensions: Collection[str],
+    patches: Collection[VendorPatch],
+) -> None:
+    """Record in the SBOM at ``path`` that ``package``'s native ``extensions`` were built from its sdist.
+
+    The native ``patches`` are added to the component's pedigree, and the sdist hash and
+    extension paths (relative to the vendor destination) as properties. The serial number
+    changes accordingly.
+    """
+    document = json.loads(path.read_text())
+    components = [component for component in document.get("components", []) if component.get("name") == package]
+    if len(components) != 1:
+        raise VendorError(f"SBOM {path} has no component {package!r}")
+    component = components[0]
+    pedigree = component.setdefault("pedigree", {})
+    pedigree.setdefault("patches", []).extend(
+        {"type": "unofficial", "diff": {"text": {"content": patch.text, "contentType": "text/plain"}}}
+        for patch in patches
+    )
+    component.setdefault("properties", []).extend(
+        [
+            {"name": NATIVE_SDIST_PROPERTY, "value": sdist_sha256},
+            *({"name": NATIVE_EXTENSION_PROPERTY, "value": extension} for extension in sorted(extensions)),
+        ]
+    )
+    identity = "\n".join(
+        [
+            document["serialNumber"],
+            sdist_sha256,
+            *(hashlib.sha256(patch.text.encode()).hexdigest() for patch in patches),
+        ]
+    )
+    document["serialNumber"] = uuid.uuid5(uuid.NAMESPACE_URL, identity).urn
+    _write(document, path)
+
+
+def _write(document: dict[str, Any], path: Path) -> None:
+    output = json.dumps(document, indent=2) + "\n"
+    error = JsonStrictValidator(SchemaVersion.V1_6).validate_str(output)
+    if error is not None:
+        raise VendorError(f"generated SBOM is invalid: {error}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(output)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -74,7 +75,7 @@ NAMES = frozenset({"idna", "requests", "urllib3"})
         ),
         pytest.param(
             "import urllib3.contrib.socks\n",
-            "from opentelemetry.agent._vendor import urllib3\nimport opentelemetry.agent._vendor.urllib3.contrib.socks\n",
+            "import opentelemetry.agent._vendor.urllib3.contrib.socks\nfrom opentelemetry.agent._vendor import urllib3\n",
             id="import-submodule",
         ),
         pytest.param(
@@ -89,10 +90,10 @@ NAMES = frozenset({"idna", "requests", "urllib3"})
         ),
         pytest.param(
             "import urllib3.util\nimport urllib3.exceptions\n",
-            "from opentelemetry.agent._vendor import urllib3\n"
             "import opentelemetry.agent._vendor.urllib3.util\n"
             "from opentelemetry.agent._vendor import urllib3\n"
-            "import opentelemetry.agent._vendor.urllib3.exceptions\n",
+            "import opentelemetry.agent._vendor.urllib3.exceptions\n"
+            "from opentelemetry.agent._vendor import urllib3\n",
             id="import-submodules-repeat-binding",
         ),
         pytest.param(
@@ -107,13 +108,13 @@ NAMES = frozenset({"idna", "requests", "urllib3"})
         ),
         pytest.param(
             "try: import idna, urllib3.util\nexcept ImportError: pass\n",
-            "try: from opentelemetry.agent._vendor import idna; from opentelemetry.agent._vendor import urllib3; "
-            "import opentelemetry.agent._vendor.urllib3.util\nexcept ImportError: pass\n",
+            "try: from opentelemetry.agent._vendor import idna; import opentelemetry.agent._vendor.urllib3.util; "
+            "from opentelemetry.agent._vendor import urllib3\nexcept ImportError: pass\n",
             id="import-one-line-suite",
         ),
         pytest.param(
             "import urllib3.util; x = 1\n",
-            "from opentelemetry.agent._vendor import urllib3\nimport opentelemetry.agent._vendor.urllib3.util\nx = 1\n",
+            "import opentelemetry.agent._vendor.urllib3.util\nfrom opentelemetry.agent._vendor import urllib3\nx = 1\n",
             id="import-semicolon-line-split",
         ),
         pytest.param(
@@ -123,8 +124,8 @@ NAMES = frozenset({"idna", "requests", "urllib3"})
         ),
         pytest.param(
             "if True:\n    import urllib3.util  # trailing\n    y = 2\n",
-            "if True:\n    from opentelemetry.agent._vendor import urllib3\n"
-            "    import opentelemetry.agent._vendor.urllib3.util  # trailing\n    y = 2\n",
+            "if True:\n    import opentelemetry.agent._vendor.urllib3.util\n"
+            "    from opentelemetry.agent._vendor import urllib3  # trailing\n    y = 2\n",
             id="import-indented-split",
         ),
     ],
@@ -151,6 +152,67 @@ def test_rewrite_source(source: str, expected: str) -> None:
 )
 def test_rewrite_source_unchanged(source: str) -> None:
     assert rewrite_source(source, NAMESPACE, NAMES) == source
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param(
+            "from opentelemetry import trace\n",
+            "from opentelemetry.agent._vendor.opentelemetry import trace\n",
+            id="from-import",
+        ),
+        pytest.param(
+            "import opentelemetry.trace\n",
+            "import opentelemetry.agent._vendor.opentelemetry.trace\n"
+            "from opentelemetry.agent._vendor import opentelemetry\n",
+            id="import-submodule",
+        ),
+        pytest.param(
+            # ``import opentelemetry.agent._vendor.urllib3.util`` re-binds ``opentelemetry`` to the real package.
+            "import urllib3.util\n",
+            "import opentelemetry.agent._vendor.urllib3.util\n"
+            "from opentelemetry.agent._vendor import urllib3\n"
+            "from opentelemetry.agent._vendor import opentelemetry\n",
+            id="import-other-submodule-rebinds-top-level",
+        ),
+        pytest.param(
+            "from opentelemetry.agent._vendor.opentelemetry import trace\n",
+            "from opentelemetry.agent._vendor.opentelemetry import trace\n",
+            id="already-vendored",
+        ),
+        pytest.param(
+            "import logging\nlogging.getLogger('opentelemetry.agent._vendor.opentelemetry.sdk')\n",
+            "import logging\nlogging.getLogger('opentelemetry.agent._vendor.opentelemetry.sdk')\n",
+            id="logger-already-vendored",
+        ),
+    ],
+)
+def test_rewrite_source_namespace_shares_top_level_name(source: str, expected: str) -> None:
+    # The namespace starts with the vendored top-level name ``opentelemetry``.
+    assert rewrite_source(source, NAMESPACE, NAMES | {"opentelemetry"}) == expected
+
+
+def test_rewritten_submodule_import_binds_vendored_package(tmp_path: Path) -> None:
+    # A vendored tree whose namespace starts with the vendored top-level name, as for the agent.
+    for file in ("ns/__init__.py", "ns/_vendor/__init__.py", "ns/_vendor/ns/__init__.py", "ns/_vendor/ns/sub.py"):
+        (tmp_path / file).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / file).write_text("")
+    (tmp_path / "ns/_vendor/ns/sub.py").write_text("VALUE = 1\n")
+    source = rewrite_source("import ns.sub\nresult = ns.sub.VALUE\n", "ns._vendor", {"ns"})
+    (tmp_path / "mod.py").write_text(source)
+
+    namespace: dict[str, object] = {}
+    sys.path.insert(0, str(tmp_path))
+    try:
+        exec(compile(source, str(tmp_path / "mod.py"), "exec"), namespace)
+    finally:
+        sys.path.remove(str(tmp_path))
+        for module in [name for name in sys.modules if name == "ns" or name.startswith("ns.")]:
+            del sys.modules[module]
+
+    assert namespace["result"] == 1
+    assert getattr(namespace["ns"], "__name__", None) == "ns._vendor.ns"
 
 
 def test_rewrite_imports(tmp_path: Path) -> None:

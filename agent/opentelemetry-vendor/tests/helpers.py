@@ -27,15 +27,19 @@ def make_wheel(
     metadata: str = "",
     licenses: Mapping[str, str] = DEFAULT_LICENSES,
     tag: str = "py3-none-any",
+    entry_points: str | None = None,
 ) -> Path:
     """Create a minimal but valid wheel with METADATA, RECORD and licenses.
 
     ``metadata`` is appended to the METADATA headers; ``licenses`` maps paths
-    relative to the dist-info directory to their contents.
+    relative to the dist-info directory to their contents; ``entry_points`` is the content of
+    ``entry_points.txt``.
     """
     dist_info = f"{name.replace('-', '_')}-{version}.dist-info"
     files = {member: "" for member in members}
     files[f"{dist_info}/METADATA"] = f"Metadata-Version: 2.4\nName: {name}\nVersion: {version}\n{metadata}"
+    if entry_points is not None:
+        files[f"{dist_info}/entry_points.txt"] = entry_points
     for relative, content in licenses.items():
         files[f"{dist_info}/{relative}"] = content
     record = f"{dist_info}/RECORD"

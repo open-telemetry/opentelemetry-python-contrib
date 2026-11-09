@@ -26,6 +26,10 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+# The vendored opentelemetry-instrument: its sitecustomize hook imports the vendored auto-instrumentation.
+opentelemetry-instrument = "opentelemetry.agent._vendor.opentelemetry.instrumentation.auto_instrumentation:run"
+
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/agent/opentelemetry-agent"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
@@ -53,23 +57,46 @@ drop = [
   "urllib3/contrib/pyopenssl.py",
   "urllib3/contrib/emscripten",
   "urllib3/http2/connection.py",
-  # protobuf: benchmarks and test helpers (import google_benchmark/numpy/unittest_pb2), the protoc
-  # plugin API, and the cpp implementation shim (unused: the pure-Python implementation is forced
-  # by patches/protobuf-pure-python.patch).
+  # protobuf: benchmarks and test helpers (import google_benchmark/numpy/unittest_pb2) and the protoc
+  # plugin API. google/protobuf/pyext is kept: its cpp_message.py wraps the vendored upb extension.
   "google/protobuf/internal/*_benchmark.py",
   "google/protobuf/internal/testing_refleaks.py",
   "google/protobuf/testdata",
   "google/protobuf/compiler",
-  "google/protobuf/pyext",
+  # gRPC service stubs (import grpcio, which isn't vendored: no pure-Python wheel).
+  "google/longrunning/operations_pb2_grpc.py",
+  "opentelemetry/proto/collector/**/*_pb2_grpc.py",
+  # prometheus_client integrations with web frameworks the agent doesn't use (import the application's
+  # aiohttp, Django and Twisted).
+  "prometheus_client/aiohttp",
+  "prometheus_client/django",
+  "prometheus_client/twisted",
+  # ruamel.yaml's libyaml binding wrappers and the build script of its optional C extension.
+  "ruamel/yaml/cyaml.py",
+  "ruamel/yaml/clibz",
 ]
 # Applied in order after imports are rewritten; paths inside the patches are relative to destination.
 patches = [
   "patches/requests-packages.patch",
   "patches/requests-chardet.patch",
   "patches/certifi-resources.patch",
-  "patches/protobuf-pure-python.patch",
+  "patches/protobuf-implementation.patch",
+  "patches/otel-importlib-metadata.patch",
+  "patches/otel-sdk-vendored-names.patch",
+  "patches/otel-distro-http-protocol.patch",
+  "patches/otel-configuration-loader.patch",
+  "patches/ruamel-yaml-pure.patch",
 ]
 sbom-file = "src/opentelemetry/agent/_vendor/bom.cdx.json"
+# Scoped METADATA and namespaced entry points for the vendored importlib.metadata lookups; see
+# patches/otel-importlib-metadata.patch.
+metadata-dir = "_metadata"
+
+# These wheels declare Apache-2.0 but ship no license file; use the repository's (identical) Apache-2.0 text.
+[tool.opentelemetry-vendor.license-files]
+opentelemetry-configuration = "../../LICENSE"
+opentelemetry-distro = "../../LICENSE"
+opentelemetry-util-http = "../../LICENSE"
 
 # Files whose findings from the vendored-code checks have been reviewed, per check.
 [tool.opentelemetry-vendor.allow]
@@ -77,14 +104,65 @@ dynamic-imports = [
   # Only imports stdlib codec modules (encodings.*, _codecs_*).
   "charset_normalizer/cd.py",
   "charset_normalizer/utils.py",
+  # Instrumentation imports (and wrapt patches) the application's libraries by module name: intended.
+  "opentelemetry/instrumentation/utils.py",
+  "wrapt/importer.py",
+  "wrapt/patches.py",
+  "wrapt/proxies.py",
+  # Python-object tags of ruamel.yaml's unsafe constructors; the configuration loader uses SafeLoader.
+  "ruamel/yaml/constructor.py",
+  # YAML(plug_ins=...): the vendored tree has no plug-ins and the agent doesn't pass any.
+  "ruamel/yaml/main.py",
 ]
 side-effects = [
-  # Warning filters only target requests' and urllib3's own warning classes.
+  # Warning filters only target the vendored packages' own warning classes (or, for the SDK's
+  # TracerProvider, its own vendored module; see patches/otel-sdk-vendored-names.patch).
+  "opentelemetry/sdk/_logs/_internal/__init__.py",
+  "opentelemetry/sdk/trace/__init__.py",
   "requests/__init__.py",
+  "ruamel/yaml/error.py",
   "urllib3/__init__.py",
   # set_environ() temporarily sets an environment variable and restores it.
   "requests/utils.py",
+  # Configuring the process through OTEL_* environment variables (and PYTHONPATH for the
+  # sitecustomize hook) is what the distro and opentelemetry-instrument are for.
+  "opentelemetry/distro/__init__.py",
+  "opentelemetry/instrumentation/auto_instrumentation/__init__.py",
+  # Copies the deprecated prometheus_multiproc_dir variable to PROMETHEUS_MULTIPROC_DIR when set.
+  "prometheus_client/multiprocess.py",
+  "prometheus_client/values.py",
 ]
+external-imports = [
+  # Instrumentations import and patch the application's libraries: that's what they are for.
+  "opentelemetry/instrumentation/*",
+  # Optional, guarded imports of the application's packages:
+  # - gRPC exporters from file configuration fail with a ConfigurationError (they aren't vendored);
+  "opentelemetry/configuration/_logger_provider.py",
+  "opentelemetry/configuration/_meter_provider.py",
+  "opentelemetry/configuration/_tracer_provider.py",
+  # - psutil for the process resource detector's process.* attributes;
+  "opentelemetry/sdk/resources/__init__.py",
+  # - numpy, only when the application converts a repeated field with numpy.asarray();
+  "google/protobuf/internal/containers.py",
+  # - snappy for Prometheus remote-write compression;
+  "prometheus_client/exposition.py",
+  # - cryptography (version warning), simplejson and _typeshed (type checking only);
+  "requests/__init__.py",
+  "requests/compat.py",
+  "requests/cookies.py",
+  # - ordereddict (Python 2 fallback) and configobj (configobj_walker(), unused);
+  "ruamel/yaml/compat.py",
+  "ruamel/yaml/util.py",
+  # - brotli and zstandard content decoding.
+  "urllib3/response.py",
+  "urllib3/util/request.py",
+]
+
+# Native extensions, built from the sdist by `opentelemetry-vendor build-native` for platform wheels.
+[tool.opentelemetry-vendor.native.protobuf]
+# Builds google._upb._message as opentelemetry.agent._vendor.google._upb._message (abi3).
+patches = ["patches/native/protobuf-upb.patch"]
+build-requirements = "native-build-requirements.txt"
 
 [tool.hatch.version]
 path = "src/opentelemetry/agent/version.py"
@@ -97,3 +175,8 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+# Tags the wheel cp310-abi3-<platform> when `opentelemetry-vendor build-native` built extensions
+# into the vendor tree; otherwise it stays py3-none-any.
+[tool.hatch.build.targets.wheel.hooks.custom]
+abi3-tag = "cp310"

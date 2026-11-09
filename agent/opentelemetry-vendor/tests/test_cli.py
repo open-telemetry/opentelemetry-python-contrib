@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from opentelemetry.vendor import native as native_module
 from opentelemetry.vendor import sync as sync_module
 from opentelemetry.vendor.cli import app
 from opentelemetry.vendor.download import DownloadError
@@ -292,6 +293,51 @@ def test_sync_check_out_of_date(project_dir: Path, monkeypatch: pytest.MonkeyPat
     assert not (destination / "six.LICENSE").exists()
 
 
+def test_sync_unused_license_files_entry(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + '[tool.opentelemetry-vendor.license-files]\nother = "LICENSE"\n')
+    _fake_download(monkeypatch)
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert "license-files entries ['other'] match no vendored distribution" in result.output
+
+
+def test_sync_metadata_dir(project_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    pyproject = project_dir / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text() + 'metadata-dir = "_metadata"\n')
+    cache = tmp_path / "wheel-cache"
+    cache.mkdir()
+    wheel = make_wheel(
+        cache,
+        "six",
+        "1.0",
+        ["six/__init__.py", "six/plugin.py"],
+        metadata="License-Expression: MIT\n",
+        entry_points="[console_scripts]\nsix = six:main\n\n[six_plugins]\nplugin = six.plugin:Plugin\n",
+    )
+
+    def fake_download_wheels(requirements: Path, python_version: str, dest: Path) -> list[Path]:
+        return [Path(shutil.copy(wheel, dest))]
+
+    monkeypatch.setattr(sync_module, "download_wheels", fake_download_wheels)
+
+    result = runner.invoke(app, ["sync", str(project_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert "✔ Wrote metadata to src/pkg/_vendor/_metadata (1 entry point)" in result.output.splitlines()
+    dist_info = project_dir / "src/pkg/_vendor/_metadata/six-1.0.dist-info"
+    assert (dist_info / "entry_points.txt").read_text() == "[six_plugins]\nplugin = pkg._vendor.six.plugin:Plugin\n"
+    assert not (project_dir / "src/pkg/_vendor/six-1.0.dist-info").exists()
+
+    assert runner.invoke(app, ["sync", "--check", str(project_dir)]).exit_code == 0
+    (dist_info / "entry_points.txt").write_text("")
+    result = runner.invoke(app, ["sync", "--check", str(project_dir)])
+    assert result.exit_code == 1
+    assert result.output.endswith("  ~ _metadata/six-1.0.dist-info/entry_points.txt\n")
+
+
 def test_sync_check_sbom_outside_destination(
     project_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -323,3 +369,21 @@ def test_sync_failure_cleans_destination(project_dir: Path, monkeypatch: pytest.
     assert "does not apply" in result.output
     # Neither the unpacked package nor its *.dist-info is left behind.
     assert sorted(p.name for p in (project_dir / "src/pkg/_vendor").iterdir()) == ["requirements.txt"]
+
+
+def test_build_native_cli(project_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+    monkeypatch.setattr(native_module, "build_native", lambda config: calls.append(("build", config.project_dir)))
+    monkeypatch.setattr(native_module, "clean_native", lambda config: calls.append(("clean", config.project_dir)))
+
+    assert runner.invoke(app, ["build-native", str(project_dir)]).exit_code == 0
+    assert runner.invoke(app, ["build-native", "--clean", str(project_dir)]).exit_code == 0
+
+    assert calls == [("build", project_dir.resolve()), ("clean", project_dir.resolve())]
+
+
+def test_build_native_cli_error(project_dir: Path) -> None:
+    result = runner.invoke(app, ["build-native", str(project_dir)])
+
+    assert result.exit_code == 1
+    assert result.output.startswith("error: ")

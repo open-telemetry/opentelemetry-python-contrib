@@ -65,6 +65,42 @@ def download_wheels(requirements: Path, python_version: str, dest: Path) -> list
     return wheels
 
 
+def download_sdist(requirement: str, dest: Path) -> Path:
+    """Download the source distribution of a single hash-pinned ``requirement`` line."""
+    dest.mkdir(parents=True, exist_ok=True)
+    requirements = dest / "requirement.txt"
+    requirements.write_text(requirement + "\n")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "download",
+            "--no-deps",
+            "--no-binary=:all:",
+            "--disable-pip-version-check",
+            "--dest",
+            str(dest),
+            "-r",
+            str(requirements),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise DownloadError(
+            f"pip download of the sdist failed (exit code {result.returncode}).\n{result.stderr.strip()}"
+        )
+    output.detail(result.stdout.strip())
+    sdists = [path for path in dest.iterdir() if path.name.endswith((".tar.gz", ".zip"))]
+    if len(sdists) != 1:
+        raise DownloadError(
+            f"expected one sdist for {requirement.split(maxsplit=1)[0]!r}, got {sorted(p.name for p in sdists)}"
+        )
+    return sdists[0]
+
+
 def _check_pure_python(wheel: Path) -> None:
     # Wheel filenames end in {python tag}-{abi tag}-{platform tag}.whl
     _, abi_tag, platform_tag = wheel.stem.rsplit("-", 3)[-3:]

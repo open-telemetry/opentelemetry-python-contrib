@@ -1,0 +1,24 @@
+Never load the libyaml binding in the vendored ruamel.yaml.
+
+ruamel.yaml imports the optional C parser and emitter from the _ruamel_yaml extension module
+(ruamel.yaml.clib), which would be the application's, not vendored. ruamel/yaml/cyaml.py is dropped; this
+patch makes main.py fall back to the pure-Python implementation unconditionally.
+
+diff --git a/ruamel/yaml/main.py b/ruamel/yaml/main.py
+index fdf7c72..5e23910 100644
+--- a/ruamel/yaml/main.py
++++ b/ruamel/yaml/main.py
+@@ -42,10 +42,9 @@ if False:  # MYPY
+     from types import TracebackType
+     from pathlib import Path
+ 
+-try:
+-    from _ruamel_yaml import CParser, CEmitter  # type: ignore
+-except:  # NOQA
+-    CParser = CEmitter = None
++# opentelemetry-agent: always use the pure-Python parser and emitter; the libyaml binding
++# (_ruamel_yaml) would be the application's, not vendored.
++CParser = CEmitter = None
+ 
+ # import io
+ 
