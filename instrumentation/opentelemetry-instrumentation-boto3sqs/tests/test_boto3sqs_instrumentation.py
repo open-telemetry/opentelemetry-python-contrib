@@ -242,41 +242,51 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.addCleanup(self.tracer_provider.shutdown)
         Boto3SQSInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
-    def test_attributes_control_sampling(self) -> None:
-        for method, span_count in (("send_message", 1), ("send_message_batch", 2), ("receive_message", 2)):
-            for queue_name, sampled in (("sample", True), ("drop", False)):
-                with self.subTest(method=method, queue_name=queue_name):
-                    sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
-                    self._instrument_with_sampler(sampler)
-                    queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
-                    if method == "send_message":
-                        with self._mocked_endpoint({"MessageId": "message-1"}):
-                            response = self._client.send_message(QueueUrl=queue_url, MessageBody="hello")
-                        self.assertEqual(response["MessageId"], "message-1")
-                    elif method == "send_message_batch":
-                        with self._mocked_endpoint(
-                            {
-                                "Successful": [
-                                    {"Id": "1", "MessageId": "message-1"},
-                                    {"Id": "2", "MessageId": "message-2"},
-                                ]
-                            }
-                        ):
-                            response = self._client.send_message_batch(
-                                QueueUrl=queue_url,
-                                Entries=[{"Id": "1", "MessageBody": "hello"}, {"Id": "2", "MessageBody": "hello"}],
-                            )
-                        self.assertEqual(len(response["Successful"]), 2)
-                    else:
-                        with self._mocked_endpoint(
-                            {"Messages": [self._make_message("message-1", "hello", "receipt-1")]}
-                        ):
-                            response = self._client.receive_message(QueueUrl=queue_url)
-                        self.assertEqual(response["Messages"][0]["MessageId"], "message-1")
-                        with self._mocked_endpoint({}):
-                            self._client.delete_message(QueueUrl=queue_url, ReceiptHandle="receipt-1")
-                        self.assertEqual(Boto3SQSInstrumentor.received_messages_spans, {})
-                    self.assertEqual(len(self.memory_exporter.get_finished_spans()), span_count if sampled else 0)
+    def test_attributes_control_sampling_send_message(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint({"MessageId": "message-1"}):
+                    response = self._client.send_message(QueueUrl=queue_url, MessageBody="hello")
+                self.assertEqual(response["MessageId"], "message-1")
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1 if sampled else 0)
+
+    def test_attributes_control_sampling_send_message_batch(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint(
+                    {
+                        "Successful": [
+                            {"Id": "1", "MessageId": "message-1"},
+                            {"Id": "2", "MessageId": "message-2"},
+                        ]
+                    }
+                ):
+                    response = self._client.send_message_batch(
+                        QueueUrl=queue_url,
+                        Entries=[{"Id": "1", "MessageBody": "hello"}, {"Id": "2", "MessageBody": "hello"}],
+                    )
+                self.assertEqual(len(response["Successful"]), 2)
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2 if sampled else 0)
+
+    def test_attributes_control_sampling_receive_message(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint({"Messages": [self._make_message("message-1", "hello", "receipt-1")]}):
+                    response = self._client.receive_message(QueueUrl=queue_url)
+                self.assertEqual(response["Messages"][0]["MessageId"], "message-1")
+                with self._mocked_endpoint({}):
+                    self._client.delete_message(QueueUrl=queue_url, ReceiptHandle="receipt-1")
+                self.assertEqual(Boto3SQSInstrumentor.received_messages_spans, {})
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2 if sampled else 0)
 
     def test_batch_entry_id_controls_sampling(self) -> None:
         sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_CONVERSATION_ID: "1"})
