@@ -118,8 +118,7 @@ def _build_metadata_request() -> Any | None:
         return None
     if isinstance(request_api, list):
         # Highest available version, so the response includes a cluster id.
-        versioned: list[Any] = request_api
-        for request_class in reversed(versioned):
+        for request_class in reversed(cast("list[Any]", request_api)):
             if getattr(request_class, "API_VERSION", -1) >= _MIN_CLUSTER_ID_METADATA_VERSION:
                 return request_class(topics=[])
         return None
