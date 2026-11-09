@@ -2,7 +2,7 @@
 #    uv pip compile --python 3.10 --universal -c dev-requirements.txt opamp/opentelemetry-opamp-client/test-requirements.in -o opamp/opentelemetry-opamp-client/test-requirements.latest.txt --no-emit-package opentelemetry-api
 -e opamp/opentelemetry-opamp-client
     # via -r opamp/opentelemetry-opamp-client/test-requirements.in
-certifi==2026.7.22
+certifi==2026.10.19
     # via requests
 charset-normalizer==3.5.2
     # via requests
@@ -65,10 +65,6 @@ urllib3==2.8.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   requests
-uuid-utils==0.17.1
-    # via
-    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
-    #   opentelemetry-opamp-client
 vcrpy==8.3.0 ; platform_python_implementation != 'PyPy'
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in

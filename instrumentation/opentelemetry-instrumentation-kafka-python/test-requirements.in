@@ -1,4 +1,6 @@
-kafka-python>=2.0.3,<4.0.0  # 2.0.3 is the earliest version to support python > 3.11
+# 2.0.3 is the earliest version to support python > 3.11
+# 2.3.2 is the earliest version without GHSA-2jcm-hq8r-84wx and GHSA-m3px-q5gj-j9x7
+kafka-python>=2.3.2,<4.0.0
 pytest~=7.4
 wrapt~=2.2.2
 -e opentelemetry-instrumentation
