@@ -8,6 +8,7 @@ import contextlib
 import json
 import time
 from collections.abc import Awaitable, Callable, MutableSequence, Sequence
+from importlib import import_module
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
@@ -94,14 +95,16 @@ _CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
 # request.prepare(self._versions) to pick the wire version, and only the
 # builder has prepare(). aiokafka vendored this module in 0.9; 0.8.x still
 # takes it from kafka-python.
-_MetadataRequest: Any = None
 try:
     from aiokafka.protocol.metadata import MetadataRequest as _MetadataRequest
 except ImportError:
+    # aiokafka 0.8.x has no vendored protocol module and depends on
+    # kafka-python for it. Imported dynamically because that package is not a
+    # declared dependency of the versions this is typechecked against.
     try:
-        from kafka.protocol.metadata import MetadataRequest as _MetadataRequest
+        _MetadataRequest = import_module("kafka.protocol.metadata").MetadataRequest
     except ImportError:
-        pass
+        _MetadataRequest = None
 
 
 async def _fetch_and_cache_cluster_id(
