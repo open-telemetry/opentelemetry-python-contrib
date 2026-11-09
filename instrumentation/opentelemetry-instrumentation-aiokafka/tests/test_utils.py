@@ -7,7 +7,13 @@ import time
 from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
+from aiokafka.protocol.metadata import (
+    MetadataRequest_v1,
+    MetadataRequest_v2,
+    MetadataRequest_v5,
+)
 
+import opentelemetry.instrumentation.aiokafka.utils as utils_mod
 from opentelemetry.instrumentation.aiokafka.utils import (
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
@@ -357,6 +363,9 @@ class TestUtils(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-met
         request struct has no ``prepare``, so mocking ``client.send`` -- as the
         tests above do -- hides a lookup that always fails at runtime.
         """
+        if isinstance(utils_mod._MetadataRequest, list):
+            self.skipTest("prepare() only exists on the 0.13+ builder")
+
         sent: list[object] = []
 
         async def fake_send(node_id, request, **kwargs):
@@ -376,6 +385,34 @@ class TestUtils(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-met
         self.assertEqual(client._otel_cluster_id, "prepared-cluster-id")
         self.assertEqual(len(sent), 1)
         self.assertEqual(getattr(sent[0], "API_KEY", None), 3)
+
+    async def test_fetch_and_cache_cluster_id_on_legacy_list_api(self) -> None:
+        """Before 0.13 ``MetadataRequest`` is a list of versioned classes.
+
+        aiokafka only exposes the callable builder from 0.13 on; 0.9 through
+        0.12 export a list, which is not callable, so building the request has
+        to work for both shapes.
+        """
+        legacy = [MetadataRequest_v1, MetadataRequest_v2, MetadataRequest_v5]
+        sent: list[object] = []
+
+        async def fake_send(node_id, request, **kwargs):
+            sent.append(request)
+            return mock.MagicMock(cluster_id="legacy-cluster-id")
+
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = fake_send
+
+        with mock.patch.object(utils_mod, "_MetadataRequest", legacy):
+            await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "legacy-cluster-id")
+        self.assertEqual(len(sent), 1)
+        # Only v2+ responses carry a cluster id, so an older version is useless.
+        self.assertGreaterEqual(sent[0].API_VERSION, 2)
 
     async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
         self,
@@ -414,6 +451,9 @@ class TestUtils(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-met
 
         self.assertEqual(client.force_metadata_update.await_count, 1)
         self.assertEqual(client.send.await_count, 0)
+        # No node means no id, so the backoff must still be stamped or every
+        # later record would force another metadata update.
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
 
     async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
         self,

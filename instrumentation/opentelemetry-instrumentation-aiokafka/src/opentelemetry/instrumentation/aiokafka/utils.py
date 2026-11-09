@@ -87,10 +87,13 @@ def _extract_cluster_id_from_client(
 
 _CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
 
-# The builder, not a versioned struct: aiokafka 0.13 sends through
-# request.prepare(self._versions) to pick the wire version, and only the
-# builder has prepare(). aiokafka vendored this module in 0.9; 0.8.x still
-# takes it from kafka-python.
+# Only a v2+ MetadataResponse carries a cluster id.
+_MIN_CLUSTER_ID_METADATA_VERSION = 2
+
+# ``MetadataRequest`` has two shapes across the versions we support: 0.13 made it
+# a callable builder with ``prepare()``, which AIOKafkaConnection.send needs, while
+# 0.9 through 0.12 export a plain list of versioned request classes. aiokafka
+# vendored this module in 0.9; 0.8.x still takes it from kafka-python.
 try:
     from aiokafka.protocol.metadata import MetadataRequest as _MetadataRequest
 except ImportError:
@@ -103,6 +106,26 @@ except ImportError:
         _MetadataRequest = None
 
 
+def _build_metadata_request() -> Any | None:
+    """Build a metadata request that can carry a cluster id back.
+
+    Returns ``None`` when no supported request version is available, so the
+    caller can skip the lookup instead of sending something the broker or the
+    connection will reject.
+    """
+    request_api: Any = _MetadataRequest
+    if request_api is None:
+        return None
+    if isinstance(request_api, list):
+        # Highest available version, so the response includes a cluster id.
+        versioned: list[Any] = request_api
+        for request_class in reversed(versioned):
+            if getattr(request_class, "API_VERSION", -1) >= _MIN_CLUSTER_ID_METADATA_VERSION:
+                return request_class(topics=[])
+        return None
+    return request_api(topics=[], allow_auto_topic_creation=False)
+
+
 async def _fetch_and_cache_cluster_id(
     client: aiokafka.AIOKafkaClient,
 ) -> None:
@@ -113,8 +136,13 @@ async def _fetch_and_cache_cluster_id(
     if failure_time is not None and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS:
         return
 
-    if _MetadataRequest is None:
+    request = _build_metadata_request()
+    if request is None:
         return
+
+    # Stamped before the first await so every exit honours the backoff, including
+    # the no-node path below. Cleared again only once an id actually arrives.
+    client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
 
     try:
         node_id: int | None = cast(int | None, client.get_random_node())
@@ -123,17 +151,13 @@ async def _fetch_and_cache_cluster_id(
             node_id = cast(int | None, client.get_random_node())
         if node_id is None:
             return
-        response: object = await cast(Any, client).send(
-            node_id,
-            _MetadataRequest(topics=[], allow_auto_topic_creation=False),
-        )
+        response: object = await cast(Any, client).send(node_id, request)
         cluster_id: str = getattr(response, "cluster_id", "") or ""
         if cluster_id:
             client._otel_cluster_id = cluster_id  # type: ignore[attr-defined]
-        else:
-            client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+            client._otel_cluster_id_failure_time = None  # type: ignore[attr-defined]
     except Exception:  # pylint: disable=broad-except
-        client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+        pass
 
 
 async def _resolve_cluster_id(client: aiokafka.AIOKafkaClient) -> str | None:
@@ -539,7 +563,10 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
-            cluster_id = await _resolve_cluster_id(instance._client)
+            # Cached read only: the record is already dequeued and the position
+            # advanced, so awaiting a metadata lookup here risks losing it to an
+            # application timeout. start() resolves the id up front.
+            cluster_id = _extract_cluster_id_from_client(instance._client)
 
             extracted_context = propagate.extract(record.headers, getter=_aiokafka_getter)
             await _create_consumer_span(
@@ -582,7 +609,10 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
-            cluster_id = await _resolve_cluster_id(instance._client)
+            # Cached read only: the record is already dequeued and the position
+            # advanced, so awaiting a metadata lookup here risks losing it to an
+            # application timeout. start() resolves the id up front.
+            cluster_id = _extract_cluster_id_from_client(instance._client)
 
             span_name = _get_span_name(
                 "receive",
