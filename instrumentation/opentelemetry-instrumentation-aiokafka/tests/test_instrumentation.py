@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.aiokafka import AIOKafkaInstrumentor
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.attributes import server_attributes
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_trace_id, set_span_in_context
 
@@ -31,15 +32,11 @@ class TestAIOKafkaInstrumentor(TestCase):
         instrumentation = AIOKafkaInstrumentor()
 
         instrumentation.instrument()
-        self.assertTrue(isinstance(AIOKafkaProducer.start, BoundFunctionWrapper))
-        self.assertTrue(isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
         self.assertTrue(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
 
         instrumentation.uninstrument()
-        self.assertFalse(isinstance(AIOKafkaProducer.start, BoundFunctionWrapper))
-        self.assertFalse(isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaProducer.send, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaConsumer.getone, BoundFunctionWrapper))
         self.assertFalse(isinstance(AIOKafkaConsumer.getmany, BoundFunctionWrapper))
@@ -92,8 +89,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         consumer._client.bootstrap = mock.AsyncMock()
         consumer._client._wait_on_metadata = mock.AsyncMock()
-        # _start_consumer_wrapper calls _fetch_and_cache_cluster_id after start();
-        # mock the two client methods it uses so the call completes without I/O.
+        # The cluster-id lookup picks a node and sends a metadata request;
+        # without both mocks the start wrapper waits on a broker that is not
+        # there and the suite hangs.
         consumer._client.get_random_node = mock.Mock(return_value=0)
         consumer._client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
@@ -113,8 +111,6 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         producer._message_accumulator.add_message = mock.AsyncMock()
         producer._sender.start = mock.AsyncMock()
         producer._partition = mock.Mock(return_value=1)
-        # _start_producer_wrapper calls _fetch_and_cache_cluster_id after start();
-        # mock the two client methods it uses so the call completes without I/O.
         producer.client.get_random_node = mock.Mock(return_value=0)
         producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
@@ -130,7 +126,89 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         super().tearDown()
         AIOKafkaInstrumentor().uninstrument()
 
+    def _instrument_with_sampler(self, sampler: CapturingSampler) -> None:
+        AIOKafkaInstrumentor().uninstrument()
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+        AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    async def test_send_attributes_passed_to_sampler(self) -> None:
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
+        producer = await self.producer_factory()
+        self.addAsyncCleanup(producer.stop)
+
+        await producer.send("topic_1", b"value_1", key=b"key_1")
+
+        expected = {
+            messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+            server_attributes.SERVER_ADDRESS: '"localhost"',
+            messaging_attributes.MESSAGING_CLIENT_ID: producer.client._client_id,
+            messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
+            messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "1",
+            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY: "key_1",
+            messaging_attributes.MESSAGING_OPERATION_NAME: "send",
+            messaging_attributes.MESSAGING_OPERATION_TYPE: messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+        }
+        self.assertEqual(sampler.kind, SpanKind.PRODUCER)
+        self.assertEqual(sampler.attributes, expected)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes, expected)
+
+    async def test_attributes_control_sampling(self) -> None:
+        for method, expected_span_count in (("send", 1), ("getone", 1), ("getmany", 3)):
+            for client_id, sampled in (("sample", True), ("drop", False)):
+                with self.subTest(method=method, client_id=client_id):
+                    sampler = CapturingSampler(required_attributes={messaging_attributes.MESSAGING_CLIENT_ID: "sample"})
+                    self._instrument_with_sampler(sampler)
+                    if method == "send":
+                        producer = await self.producer_factory()
+                        self.addAsyncCleanup(producer.stop)
+                        producer.client._client_id = client_id
+                        await producer.send("topic_1", b"value_1")
+                    else:
+                        consumer = await self.consumer_factory(client_id=client_id)
+                        self.addAsyncCleanup(consumer.stop)
+                        record = self.consumer_record_factory(1, headers=())
+                        if method == "getone":
+                            consumer._fetcher.next_record.return_value = record
+                            self.assertEqual(await consumer.getone(), record)
+                        else:
+                            records = {TopicPartition("topic_1", 1): [record]}
+                            consumer._fetcher.fetched_records.return_value = records
+                            self.assertEqual(await consumer.getmany(), records)
+                    self.assertEqual(
+                        len(self.memory_exporter.get_finished_spans()), expected_span_count if sampled else 0
+                    )
+
+    async def test_library_errors_propagate(self) -> None:
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
+        producer = await self.producer_factory()
+        self.addAsyncCleanup(producer.stop)
+        consumer = await self.consumer_factory()
+        self.addAsyncCleanup(consumer.stop)
+
+        for method in ("send", "getone", "getmany"):
+            with self.subTest(method=method):
+                error = aiokafka.errors.KafkaError("test error")
+                if method == "send":
+                    producer._message_accumulator.add_message.side_effect = error
+                    operation = producer.send("topic_1", b"value_1")
+                elif method == "getone":
+                    consumer._fetcher.next_record.side_effect = error
+                    operation = consumer.getone()
+                else:
+                    consumer._fetcher.fetched_records.side_effect = error
+                    operation = consumer.getmany()
+                with self.assertRaises(aiokafka.errors.KafkaError) as raised:
+                    await operation
+                self.assertIs(raised.exception, error)
+
     async def test_getone(self) -> None:
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
         consumer = await self.consumer_factory(client_id=client_id, group_id=group_id)
@@ -142,7 +220,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -159,7 +237,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -190,6 +268,8 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         await consumer.getone()
         next_record_mock.assert_awaited_with(())
+        self.assertEqual(sampler.kind, SpanKind.CONSUMER)
+        self.assertEqual(sampler.attributes, expected_spans[0]["attributes"])
 
         first_span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(
@@ -199,6 +279,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         await consumer.getone()
         next_record_mock.assert_awaited_with(())
+        self.assertEqual(sampler.attributes, expected_spans[1]["attributes"])
+        self.assertIs(type(sampler.attributes[messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET]), int)
+        self.assertIs(type(sampler.attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID]), str)
 
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
@@ -261,6 +344,8 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         async_consume_hook_mock.assert_awaited_once()
 
     async def test_getmany(self) -> None:
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
         consumer = await self.consumer_factory(client_id=client_id, group_id=group_id)
@@ -272,7 +357,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -289,7 +374,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
@@ -304,7 +389,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -321,7 +406,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
@@ -336,7 +421,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "name": "topic_1, topic_2 receive",
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
-                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    messaging_attributes.MESSAGING_SYSTEM: "kafka",
                     server_attributes.SERVER_ADDRESS: '"localhost"',
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME: group_id,
@@ -360,11 +445,20 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             ),
         ]
 
-        await consumer.getmany()
+        with mock.patch.object(sampler, "should_sample", wraps=sampler.should_sample) as should_sample:
+            await consumer.getmany()
         fetched_records_mock.assert_awaited_with((), 0.0, max_records=None)
 
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
+        # Spans start in poll/topic/record order and finish in record/topic/poll order.
+        self.assertEqual(should_sample.call_count, 5)
+        for call, index in zip(should_sample.call_args_list, (4, 1, 0, 3, 2)):
+            self.assertEqual(call.args[3], SpanKind.CONSUMER)
+            self.assertEqual(call.args[4], expected_spans[index]["attributes"])
+            attributes = call.args[4]
+            if messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT in attributes:
+                self.assertIs(type(attributes[messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT]), int)
 
     async def test_send(self) -> None:
         producer = await self.producer_factory()
@@ -486,32 +580,3 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             )
         finally:
             await producer.stop()
-
-    async def test_start_producer_wrapper_fetches_cluster_id(self) -> None:
-        """_start_producer_wrapper calls _fetch_and_cache_cluster_id after start."""
-        producer = AIOKafkaProducer()
-        producer.client._wait_on_metadata = mock.AsyncMock()
-        producer.client.bootstrap = mock.AsyncMock()
-        producer._message_accumulator.add_message = mock.AsyncMock()
-        producer._sender.start = mock.AsyncMock()
-        producer._partition = mock.Mock(return_value=1)
-        producer.client.get_random_node = mock.Mock(return_value=0)
-        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="test-cluster-start"))
-
-        await producer.start()
-        await producer.stop()
-
-        self.assertEqual(producer.client._otel_cluster_id, "test-cluster-start")  # pylint: disable=no-member
-
-    async def test_start_consumer_wrapper_fetches_cluster_id(self) -> None:
-        """_start_consumer_wrapper calls _fetch_and_cache_cluster_id after start."""
-        consumer = AIOKafkaConsumer(group_id="g")
-        consumer._client.bootstrap = mock.AsyncMock()
-        consumer._client._wait_on_metadata = mock.AsyncMock()
-        consumer._client.get_random_node = mock.Mock(return_value=0)
-        consumer._client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="test-cluster-start"))
-
-        await consumer.start()
-        await consumer.stop()
-
-        self.assertEqual(consumer._client._otel_cluster_id, "test-cluster-start")  # pylint: disable=no-member

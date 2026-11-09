@@ -1,6 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# pylint: disable=unnecessary-dunder-call,too-many-public-methods
+# pylint: disable=unnecessary-dunder-call
 from __future__ import annotations
 
 import time
@@ -8,28 +8,24 @@ from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
 
-from opentelemetry.instrumentation.aiokafka import _fetch_and_cache_cluster_id
 from opentelemetry.instrumentation.aiokafka.utils import (
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
     _aiokafka_getter,
     _aiokafka_setter,
     _create_consumer_span,
-    _enrich_getmany_poll_span,
     _extract_cluster_id_from_client,
     _extract_send_partition,
+    _fetch_and_cache_cluster_id,
     _get_span_name,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
 )
-from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_KAFKA_CLUSTER_ID,
-)
 from opentelemetry.trace import SpanKind
 
 
-class TestUtils(IsolatedAsyncioTestCase):
+class TestUtils(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         super().setUp()
         self.topic_name = "test_topic"
@@ -55,35 +51,35 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_send_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_arg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_send_attributes: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
         await self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_send_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
 
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_send_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_send_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     async def test_wrap_send_with_topic_as_kwarg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_send_attributes: mock.MagicMock,
         extract_send_partition: mock.AsyncMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -92,7 +88,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         await self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_send_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
@@ -101,7 +97,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         extract_send_partition: mock.AsyncMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -109,8 +105,6 @@ class TestUtils(IsolatedAsyncioTestCase):
         produce_hook = mock.AsyncMock()
         original_send_callback = mock.AsyncMock()
         kafka_producer = mock.MagicMock()
-        kafka_producer.client._otel_cluster_id = None
-        kafka_producer.client._otel_cluster_id_failure_time = None
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
@@ -118,17 +112,18 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer.client)
         extract_send_partition.assert_awaited_once_with(kafka_producer, self.args, self.kwargs)
-        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
+        tracer.start_as_current_span.assert_called_once_with(
+            expected_span_name, kind=SpanKind.PRODUCER, attributes=get_attributes.return_value
+        )
 
         span = tracer.start_as_current_span().__enter__.return_value
-        enrich_span.assert_called_once_with(
-            span,
+        get_attributes.assert_called_once_with(
             bootstrap_servers=extract_bootstrap_servers.return_value,
             client_id=kafka_producer.client._client_id,
             topic=self.topic_name,
             partition=extract_send_partition.return_value,
             key=None,
-            cluster_id=None,
+            cluster_id=kafka_producer.client._otel_cluster_id,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -157,8 +152,6 @@ class TestUtils(IsolatedAsyncioTestCase):
         consume_hook = mock.AsyncMock()
         original_getone_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
-        kafka_consumer._client._otel_cluster_id = None
-        kafka_consumer._client._otel_cluster_id_failure_time = None
 
         wrapped_getone = _wrap_getone(tracer, consume_hook)
         record = await wrapped_getone(original_getone_callback, kafka_consumer, self.args, self.kwargs)
@@ -186,15 +179,15 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
-            None,
             self.args,
             self.kwargs,
+            kafka_consumer._client._otel_cluster_id,
         )
 
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._create_consumer_span")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_topic_attributes")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_poll_attributes")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_client_id")
     @mock.patch("opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group")
@@ -204,8 +197,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_consumer_group: mock.MagicMock,
         extract_client_id: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
-        _enrich_getmany_poll_span: mock.MagicMock,
-        _enrich_getmany_topic_span: mock.MagicMock,
+        _get_poll_attributes: mock.MagicMock,
+        _get_topic_attributes: mock.MagicMock,
         _create_consumer_span: mock.AsyncMock,
         extract: mock.MagicMock,
     ) -> None:
@@ -216,8 +209,6 @@ class TestUtils(IsolatedAsyncioTestCase):
             return_value={aiokafka.TopicPartition(topic="topic_1", partition=0): [record_mock]}
         )
         kafka_consumer = mock.MagicMock()
-        kafka_consumer._client._otel_cluster_id = None
-        kafka_consumer._client._otel_cluster_id_failure_time = None
         _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
@@ -246,19 +237,19 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
-            None,
             self.args,
             self.kwargs,
+            kafka_consumer._client._otel_cluster_id,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span")
+    @mock.patch("opentelemetry.instrumentation.aiokafka.utils._get_receive_attributes")
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
         self,
         detach: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_receive_attributes: mock.MagicMock,
         attach: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
     ) -> None:
@@ -278,7 +269,6 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
-            None,
             self.args,
             self.kwargs,
         )
@@ -289,13 +279,13 @@ class TestUtils(IsolatedAsyncioTestCase):
             expected_span_name,
             context=extracted_context,
             kind=SpanKind.CONSUMER,
+            attributes=get_receive_attributes.return_value,
         )
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(
-            span,
+        get_receive_attributes.assert_called_once_with(
             bootstrap_servers=bootstrap_servers,
             client_id=client_id,
             consumer_group=consumer_group,
@@ -308,124 +298,15 @@ class TestUtils(IsolatedAsyncioTestCase):
         consume_hook.assert_awaited_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
-    def test_cluster_id_attribute_set_on_consumer_poll_span(self) -> None:
-        """Cluster ID is added to the consumer poll span when it is known."""
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
-
-        _enrich_getmany_poll_span(
-            span,
-            bootstrap_servers="broker1:9092",
-            client_id="c1",
-            consumer_group="g1",
-            message_count=3,
-            cluster_id="consumer-cluster-uuid",
-        )
-
-        calls = {c.args[0]: c.args[1] for c in span.set_attribute.call_args_list}
-        self.assertEqual(calls.get(MESSAGING_KAFKA_CLUSTER_ID), "consumer-cluster-uuid")
-
-    def test_cluster_id_attribute_absent_on_consumer_poll_span(self) -> None:
-        """Unresolved or empty cluster id is omitted, never set as an empty string."""
-        for unresolved in (None, ""):
-            with self.subTest(cluster_id=unresolved):
-                span = mock.MagicMock()
-                span.is_recording.return_value = True
-
-                _enrich_getmany_poll_span(
-                    span,
-                    bootstrap_servers="broker1:9092",
-                    client_id="c1",
-                    consumer_group="g1",
-                    message_count=3,
-                    cluster_id=unresolved,
-                )
-
-                keys = [c.args[0] for c in span.set_attribute.call_args_list]
-                self.assertNotIn(MESSAGING_KAFKA_CLUSTER_ID, keys)
-
-    async def test_cluster_id_attribute_set_on_send_span(self) -> None:
-        """Cluster ID is added to producer span when client metadata is available."""
-        tracer = mock.MagicMock()
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
-        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
-        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
-
-        producer = mock.MagicMock()
-        producer.client._bootstrap_servers = "broker1:9092,broker2:9092"
-        producer.client._client_id = "test-client"
-        producer.client._wait_on_metadata = mock.AsyncMock()
-        producer.client._otel_cluster_id = "test-cluster-uuid"
-        producer._key_serializer = None
-        producer._value_serializer = None
-        producer._partition.return_value = 0
-
-        wrapped_send = _wrap_send(tracer, None)
-        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
-
-        set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
-        self.assertEqual(
-            set_attribute_calls.get(MESSAGING_KAFKA_CLUSTER_ID),
-            "test-cluster-uuid",
-        )
-
-    async def test_cluster_id_resolved_on_send_after_a_failed_start(self) -> None:
-        """A client that could not resolve at start() must still resolve later.
-
-        Resolution normally happens once in the start() wrapper. If the broker
-        was not reachable then, the id has to be recoverable from the send path,
-        or it stays missing for the whole life of the client.
-        """
-        tracer = mock.MagicMock()
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
-        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
-        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
-
-        producer = mock.MagicMock()
-        producer.client._bootstrap_servers = "broker1:9092"
-        producer.client._client_id = "test-client"
-        producer.client._wait_on_metadata = mock.AsyncMock()
-        # start() resolved nothing and left no failure stamp
-        producer.client._otel_cluster_id = None
-        producer.client._otel_cluster_id_failure_time = None
-        producer.client.get_random_node.return_value = 0
-        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id="recovered-cluster"))
-        producer._key_serializer = None
-        producer._value_serializer = None
-        producer._partition.return_value = 0
-
-        wrapped_send = _wrap_send(tracer, None)
-        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
-
-        set_attribute_calls = {call.args[0]: call.args[1] for call in span.set_attribute.call_args_list}
-        self.assertEqual(set_attribute_calls.get(MESSAGING_KAFKA_CLUSTER_ID), "recovered-cluster")
-        self.assertEqual(producer.client._otel_cluster_id, "recovered-cluster")
-
-    async def test_cluster_id_attribute_absent_when_not_resolved(self) -> None:
-        """No cluster ID attribute is set when client metadata is not yet available."""
-        tracer = mock.MagicMock()
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
-        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=span)
-        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
-
-        producer = mock.MagicMock()
-        producer.client._bootstrap_servers = "unknown-broker:9092"
-        producer.client._client_id = "test-client"
-        producer.client._wait_on_metadata = mock.AsyncMock()
-        producer.client._otel_cluster_id = None
-        producer.client._otel_cluster_id_failure_time = None
-        producer._key_serializer = None
-        producer._value_serializer = None
-        producer._partition.return_value = 0
-
-        wrapped_send = _wrap_send(tracer, None)
-        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
-
-        attribute_keys = [call.args[0] for call in span.set_attribute.call_args_list]
-        self.assertNotIn(MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
+    async def test_kafka_properties_extractor(self):
+        aiokafka_instance_mock = mock.Mock()
+        aiokafka_instance_mock._key_serializer = None
+        aiokafka_instance_mock._value_serializer = None
+        aiokafka_instance_mock._partition.return_value = "partition"
+        aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
+        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
+        aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
+        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None
 
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
         client = mock.MagicMock()
@@ -562,13 +443,3 @@ class TestUtils(IsolatedAsyncioTestCase):
         await _fetch_and_cache_cluster_id(client)
 
         self.assertIsNotNone(client._otel_cluster_id_failure_time)
-
-    async def test_kafka_properties_extractor(self):
-        aiokafka_instance_mock = mock.Mock()
-        aiokafka_instance_mock._key_serializer = None
-        aiokafka_instance_mock._value_serializer = None
-        aiokafka_instance_mock._partition.return_value = "partition"
-        aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
-        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
-        aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
-        assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None

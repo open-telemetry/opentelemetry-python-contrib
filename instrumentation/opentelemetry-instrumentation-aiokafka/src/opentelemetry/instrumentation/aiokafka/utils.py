@@ -78,10 +78,6 @@ def _extract_bootstrap_servers(
     return client._bootstrap_servers
 
 
-def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
-    return client._client_id
-
-
 def _extract_cluster_id_from_client(
     client: aiokafka.AIOKafkaClient,
 ) -> str | None:
@@ -154,6 +150,10 @@ async def _resolve_cluster_id(client: aiokafka.AIOKafkaClient) -> str | None:
         return cluster_id
     await _fetch_and_cache_cluster_id(client)
     return _extract_cluster_id_from_client(client)
+
+
+def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
+    return client._client_id
 
 
 def _extract_consumer_group(
@@ -280,8 +280,7 @@ _aiokafka_getter = AIOKafkaContextGetter()
 _aiokafka_setter = AIOKafkaContextSetter()
 
 
-def _enrich_base_span(
-    span: Span,
+def _get_base_attributes(
     *,
     bootstrap_servers: str | list[str],
     client_id: str,
@@ -289,30 +288,27 @@ def _enrich_base_span(
     partition: int | None,
     key: str | None,
     cluster_id: str | None = None,
-) -> None:
-    span.set_attribute(
-        messaging_attributes.MESSAGING_SYSTEM,
-        messaging_attributes.MessagingSystemValues.KAFKA.value,
-    )
-    span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
-    span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
-    span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
-
-    if partition is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID,
-            str(partition),
-        )
-
-    if key is not None:
-        span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key)
+) -> dict[str, Any]:
+    attributes: dict[str, Any] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,  # pyright: ignore[reportDeprecated]
+        server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
+        messaging_attributes.MESSAGING_CLIENT_ID: client_id,
+        messaging_attributes.MESSAGING_DESTINATION_NAME: topic,
+    }
 
     if cluster_id:
-        span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+        attributes[messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID] = cluster_id
+
+    if partition is not None:
+        attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID] = str(partition)
+
+    if key is not None:
+        attributes[messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY] = key
+
+    return attributes
 
 
-def _enrich_send_span(
-    span: Span,
+def _get_send_attributes(
     *,
     bootstrap_servers: str | list[str],
     client_id: str,
@@ -320,12 +316,8 @@ def _enrich_send_span(
     partition: int | None,
     key: str | None,
     cluster_id: str | None = None,
-) -> None:
-    if not span.is_recording():
-        return
-
-    _enrich_base_span(
-        span,
+) -> dict[str, Any]:
+    attributes = _get_base_attributes(
         bootstrap_servers=bootstrap_servers,
         client_id=client_id,
         topic=topic,
@@ -334,15 +326,15 @@ def _enrich_send_span(
         cluster_id=cluster_id,
     )
 
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = "send"
+    attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = (
+        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value
     )
 
+    return attributes
 
-def _enrich_getone_span(
-    span: Span,
+
+def _get_receive_attributes(
     *,
     bootstrap_servers: str | list[str],
     client_id: str,
@@ -352,12 +344,8 @@ def _enrich_getone_span(
     key: str | None,
     offset: int,
     cluster_id: str | None = None,
-) -> None:
-    if not span.is_recording():
-        return
-
-    _enrich_base_span(
-        span,
+) -> dict[str, Any]:
+    attributes = _get_base_attributes(
         bootstrap_servers=bootstrap_servers,
         client_id=client_id,
         topic=topic,
@@ -367,61 +355,52 @@ def _enrich_getone_span(
     )
 
     if consumer_group is not None:
-        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
+        attributes[messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
 
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = "receive"
+    attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = (
+        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
     )
 
-    span.set_attribute(messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset)
+    attributes[messaging_attributes.MESSAGING_KAFKA_MESSAGE_OFFSET] = offset
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
     if partition is not None:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_MESSAGE_ID,
-            f"{topic}.{partition}.{offset}",
-        )
+        attributes[messaging_attributes.MESSAGING_MESSAGE_ID] = f"{topic}.{partition}.{offset}"
+
+    return attributes
 
 
-def _enrich_getmany_poll_span(
-    span: Span,
+def _get_poll_attributes(
     *,
     bootstrap_servers: str | list[str],
     client_id: str,
     consumer_group: str | None,
     message_count: int,
     cluster_id: str | None = None,
-) -> None:
-    if not span.is_recording():
-        return
-
-    span.set_attribute(
-        messaging_attributes.MESSAGING_SYSTEM,
-        messaging_attributes.MessagingSystemValues.KAFKA.value,
-    )
-    span.set_attribute(server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers))
-    span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
+) -> dict[str, Any]:
+    attributes: dict[str, Any] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,  # pyright: ignore[reportDeprecated]
+        server_attributes.SERVER_ADDRESS: json.dumps(bootstrap_servers),
+        messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT: message_count,
+        messaging_attributes.MESSAGING_OPERATION_NAME: "receive",
+        messaging_attributes.MESSAGING_OPERATION_TYPE: (
+            messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
+        ),
+        messaging_attributes.MESSAGING_CLIENT_ID: client_id,
+    }
 
     if cluster_id:
-        span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+        attributes[messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID] = cluster_id
 
     if consumer_group is not None:
-        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
+        attributes[messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
 
-    span.set_attribute(messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count)
-
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
-    )
+    return attributes
 
 
-def _enrich_getmany_topic_span(
-    span: Span,
+def _get_topic_attributes(
     *,
     bootstrap_servers: str | list[str],
     client_id: str,
@@ -430,12 +409,8 @@ def _enrich_getmany_topic_span(
     partition: int,
     message_count: int,
     cluster_id: str | None = None,
-) -> None:
-    if not span.is_recording():
-        return
-
-    _enrich_base_span(
-        span,
+) -> dict[str, Any]:
+    attributes = _get_base_attributes(
         bootstrap_servers=bootstrap_servers,
         client_id=client_id,
         topic=topic,
@@ -445,15 +420,16 @@ def _enrich_getmany_topic_span(
     )
 
     if consumer_group is not None:
-        span.set_attribute(messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME, consumer_group)
+        attributes[messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME] = consumer_group
 
-    span.set_attribute(messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count)
+    attributes[messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT] = message_count
 
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "receive")
-    span.set_attribute(
-        messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
+    attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = "receive"
+    attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = (
+        messaging_attributes.MessagingOperationTypeValues.RECEIVE.value
     )
+
+    return attributes
 
 
 def _get_span_name(operation: str, topic: str):
@@ -461,8 +437,7 @@ def _get_span_name(operation: str, topic: str):
 
 
 def _wrap_send(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer,
-    async_produce_hook: ProduceHookT | None,
+    tracer: Tracer, async_produce_hook: ProduceHookT | None
 ) -> Callable[..., Awaitable[asyncio.Future[RecordMetadata]]]:
     async def _traced_send(
         func: AIOKafkaSendProto,
@@ -481,18 +456,16 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
         client_id = _extract_client_id(instance.client)
         key = _deserialize_key(_extract_send_key(args, kwargs))
         partition = await _extract_send_partition(instance, args, kwargs)
-        cluster_id = await _resolve_cluster_id(instance.client)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
-            _enrich_send_span(
-                span,
-                bootstrap_servers=bootstrap_servers,
-                client_id=client_id,
-                topic=topic,
-                partition=partition,
-                key=key,
-                cluster_id=cluster_id,
-            )
+        attributes = _get_send_attributes(
+            bootstrap_servers=bootstrap_servers,
+            client_id=client_id,
+            topic=topic,
+            partition=partition,
+            key=key,
+            cluster_id=await _resolve_cluster_id(instance.client),
+        )
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes) as span:
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -503,13 +476,8 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
                     await async_produce_hook(span, args, kwargs)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
-            result = await func(*args, **kwargs)
-            # After send(), broker has responded — refresh cluster ID in case
-            # metadata was not yet populated before the send started.
-            cluster_id = _extract_cluster_id_from_client(instance.client)
-            if cluster_id and span.is_recording():
-                span.set_attribute(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
-            return result
+
+        return await func(*args, **kwargs)
 
     return _traced_send
 
@@ -522,29 +490,29 @@ async def _create_consumer_span(
     bootstrap_servers: str | list[str],
     client_id: str,
     consumer_group: str | None,
-    cluster_id: str | None,
     args: tuple[aiokafka.TopicPartition, ...],
     kwargs: dict[str, Any],
+    cluster_id: str | None = None,
 ) -> trace.Span:
     span_name = _get_span_name("receive", record.topic)
+    attributes = _get_receive_attributes(
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        consumer_group=consumer_group,
+        topic=record.topic,
+        partition=record.partition,
+        key=_deserialize_key(record.key),
+        offset=record.offset,
+        cluster_id=cluster_id,
+    )
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
         kind=trace.SpanKind.CONSUMER,
+        attributes=attributes,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_getone_span(
-            span,
-            bootstrap_servers=bootstrap_servers,
-            client_id=client_id,
-            consumer_group=consumer_group,
-            topic=record.topic,
-            partition=record.partition,
-            key=_deserialize_key(record.key),
-            offset=record.offset,
-            cluster_id=cluster_id,
-        )
         try:
             if async_consume_hook is not None:
                 await async_consume_hook(span, record, args, kwargs)
@@ -557,8 +525,7 @@ async def _create_consumer_span(
 
 
 def _wrap_getone(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer,
-    async_consume_hook: ConsumeHookT | None,
+    tracer: Tracer, async_consume_hook: ConsumeHookT | None
 ) -> Callable[..., Awaitable[aiokafka.ConsumerRecord[object, object]]]:
     async def _traced_getone(
         func: AIOKafkaGetOneProto,
@@ -583,9 +550,9 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
                 bootstrap_servers,
                 client_id,
                 consumer_group,
-                cluster_id,
                 args,
                 kwargs,
+                cluster_id,
             )
         return record
 
@@ -593,8 +560,7 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
 
 
 def _wrap_getmany(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer,
-    async_consume_hook: ConsumeHookT | None,
+    tracer: Tracer, async_consume_hook: ConsumeHookT | None
 ) -> Callable[
     ...,
     Awaitable[
@@ -622,30 +588,28 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                 "receive",
                 ", ".join(sorted({topic.topic for topic in records.keys()})),
             )
-            with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CONSUMER) as poll_span:
-                _enrich_getmany_poll_span(
-                    poll_span,
-                    bootstrap_servers=bootstrap_servers,
-                    client_id=client_id,
-                    consumer_group=consumer_group,
-                    message_count=sum(len(r) for r in records.values()),
-                    cluster_id=cluster_id,
-                )
-
+            attributes = _get_poll_attributes(
+                bootstrap_servers=bootstrap_servers,
+                client_id=client_id,
+                consumer_group=consumer_group,
+                message_count=sum(len(r) for r in records.values()),
+                cluster_id=cluster_id,
+            )
+            with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CONSUMER, attributes=attributes):
                 for topic, topic_records in records.items():
                     span_name = _get_span_name("receive", topic.topic)
-                    with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CONSUMER) as topic_span:
-                        _enrich_getmany_topic_span(
-                            topic_span,
-                            bootstrap_servers=bootstrap_servers,
-                            client_id=client_id,
-                            consumer_group=consumer_group,
-                            topic=topic.topic,
-                            partition=topic.partition,
-                            message_count=len(topic_records),
-                            cluster_id=cluster_id,
-                        )
-
+                    attributes = _get_topic_attributes(
+                        bootstrap_servers=bootstrap_servers,
+                        client_id=client_id,
+                        consumer_group=consumer_group,
+                        topic=topic.topic,
+                        partition=topic.partition,
+                        message_count=len(topic_records),
+                        cluster_id=cluster_id,
+                    )
+                    with tracer.start_as_current_span(
+                        span_name, kind=trace.SpanKind.CONSUMER, attributes=attributes
+                    ) as topic_span:
                         for record in topic_records:
                             extracted_context = propagate.extract(record.headers, getter=_aiokafka_getter)
                             record_span = await _create_consumer_span(
@@ -656,9 +620,9 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                                 bootstrap_servers,
                                 client_id,
                                 consumer_group,
-                                cluster_id,
                                 args,
                                 kwargs,
+                                cluster_id,
                             )
                             topic_span.add_link(record_span.get_span_context())
         return records
