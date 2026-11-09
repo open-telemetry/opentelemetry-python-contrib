@@ -26,8 +26,8 @@ from opentelemetry.util.types import AttributeValue
 _RESPONSE_METADATA = {"RequestId": "request-1", "HTTPStatusCode": 200, "RetryAttempts": 0}
 
 
-@pytest.fixture(params=[False, True], ids=["botocore", "aiobotocore"])
-def call_aws(
+@pytest.fixture(name="call_aws", params=[False, True], ids=["botocore", "aiobotocore"])
+def _call_aws(
     request: pytest.FixtureRequest, span_exporter: InMemorySpanExporter, logger_provider: Any, meter_provider: Any
 ) -> Callable:
     is_async = request.param
