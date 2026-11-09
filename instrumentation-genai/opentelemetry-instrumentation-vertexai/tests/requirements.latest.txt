@@ -39,7 +39,7 @@
 annotated-types==0.7.0
 asgiref==3.8.1
 cachetools==5.5.0
-certifi==2024.8.30
+certifi==2026.10.19
 charset-normalizer==3.4.0
 Deprecated==1.3.1
 docstring_parser==0.16
