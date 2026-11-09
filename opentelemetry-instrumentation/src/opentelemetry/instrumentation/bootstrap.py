@@ -167,10 +167,10 @@ def run(
         default_instrumentations = gen_default_instrumentations
 
     def _is_excluded(name: str, excluded_packages: set[str]) -> bool:
-        instrumentor_name = Requirement(name).name.lower().removeprefix("opentelemetry-instrumentation-")
+        instrumentor_name = Requirement(name).name.lower()
         return instrumentor_name in excluded_packages
 
-    _normalized_packages_to_exclude = set(args.exclude)
+    _normalized_packages_to_exclude = set(args.exclude or [])
 
     filtered_libraries = [
         library
