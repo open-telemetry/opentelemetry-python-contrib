@@ -95,6 +95,26 @@ For example:
     p.produce('my-topic',b'raw_bytes')
     msg = c.poll()
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the messaging semantic convention
+migration plan. You can control which conventions are emitted by setting
+the ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of
+these values:
+
+- ``messaging`` - emit the new messaging conventions and stop emitting
+  the old experimental conventions.
+- ``messaging/dup`` - emit both the old experimental and new messaging
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in
+values, and ``messaging/dup`` takes precedence over ``messaging`` if
+both are present.
+
+By default, when the environment variable is not set, the old
+experimental messaging conventions are emitted.
+
 """
 
 from collections.abc import Collection
@@ -104,6 +124,11 @@ import wrapt
 from confluent_kafka import Consumer, Producer
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
@@ -247,11 +272,12 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_producer(producer: Producer, tracer_provider=None) -> ProxiedProducer:
+        _OpenTelemetrySemanticConventionStability._initialize()
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
 
         manual_producer = ProxiedProducer(producer, tracer)
@@ -260,11 +286,12 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_consumer(consumer: Consumer, tracer_provider=None) -> ProxiedConsumer:
+        _OpenTelemetrySemanticConventionStability._initialize()
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
 
         manual_consumer = ProxiedConsumer(consumer, tracer)
@@ -296,12 +323,13 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         confluent_kafka.Producer = AutoInstrumentedProducer
         confluent_kafka.Consumer = AutoInstrumentedConsumer
 
+        _OpenTelemetrySemanticConventionStability._initialize()
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
 
         self._tracer = tracer
@@ -393,6 +421,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
+                    consumer_group=KafkaPropertiesExtractor.extract_consumer_group(instance),
                 )
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
@@ -413,6 +442,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
                     bootstrap_servers=bootstrap_servers,
+                    consumer_group=KafkaPropertiesExtractor.extract_consumer_group(instance),
+                    message_count=len(records),
                 )
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
