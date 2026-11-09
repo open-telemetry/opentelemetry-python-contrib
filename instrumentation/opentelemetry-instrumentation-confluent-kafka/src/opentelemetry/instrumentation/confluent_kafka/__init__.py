@@ -149,7 +149,7 @@ from .utils import (
     KafkaPropertiesExtractor,
     _create_new_consume_span,
     _end_current_consume_span,
-    _enrich_span,
+    _get_attributes,
     _get_span_name,
     _kafka_setter,
 )
@@ -426,18 +426,14 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         partition = KafkaPropertiesExtractor.extract_produce_partition(args, kwargs)
 
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            name=span_name,
-            kind=trace.SpanKind.PRODUCER,
-        ) as span:
-            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _enrich_span(
-                span,
-                topic,
-                partition=partition,
-                operation=MessagingOperationTypeValues.SEND,
-                bootstrap_servers=bootstrap_servers,
-            )
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+        attributes = _get_attributes(
+            topic,
+            partition=partition,
+            operation=MessagingOperationTypeValues.SEND,
+            bootstrap_servers=bootstrap_servers,
+        )
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes):
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
@@ -465,16 +461,14 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         # create a new span for the message
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _create_new_consume_span(instance, tracer, [record], use_message_context_as_parent)
-            _enrich_span(
-                instance._current_consume_span,
+            attributes = _get_attributes(
                 record.topic(),
                 partition=record.partition(),
                 offset=record.offset(),
                 operation=MessagingOperationTypeValues.PROCESS,
                 bootstrap_servers=bootstrap_servers,
             )
-
+            _create_new_consume_span(instance, tracer, [record], attributes, use_message_context_as_parent)
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return record
@@ -499,20 +493,18 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _create_new_consume_span(instance, tracer, records, use_message_context_as_parent)
             # partition, offset and message id identify one record, so they are
             # only set when consume returned exactly one record
             partition = records[0].partition() if len(records) == 1 else None
             offset = records[0].offset() if len(records) == 1 else None
-            _enrich_span(
-                instance._current_consume_span,
+            attributes = _get_attributes(
                 records[0].topic(),
                 partition=partition,
                 offset=offset,
                 operation=MessagingOperationTypeValues.PROCESS,
                 bootstrap_servers=bootstrap_servers,
             )
-
+            _create_new_consume_span(instance, tracer, records, attributes, use_message_context_as_parent)
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return records
