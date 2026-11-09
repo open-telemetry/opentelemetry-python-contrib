@@ -439,6 +439,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self._assert_injected_span(entries[0]["MessageAttributes"], span)
 
     def test_receive_message(self):
+        # pylint: disable=too-many-locals
         sampler = CapturingSampler()
         self._instrument_with_sampler(sampler)
         msg_def = {
