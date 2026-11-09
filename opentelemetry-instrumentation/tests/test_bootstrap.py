@@ -103,88 +103,100 @@ class TestBootstrap(TestCase):
         )
         self.mock_pip_check.assert_called_once()
 
-    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "aiohttp-client"])
-    def test_can_exclude_instrumentation_suffix(self):
-        fake_libraries = [
-            {"library": "aiohttp", "instrumentation": "opentelemetry-instrumentation-aiohttp-client"},
-            {"library": "aiohttp", "instrumentation": "opentelemetry-instrumentation-aiohttp-server"},
+    @patch(
+        "sys.argv",
+        ["bootstrap", "-a", "requirements", "-e", "opentelemetry-instrumentation-aiohttp-client"],
+    )
+    def test_can_exclude_instrumentation_package(self):
+        aiohttp_instrumentations = [
+            library["instrumentation"] for library in libraries if library["library"].startswith("aiohttp ")
         ]
-
-        fake_default_instrumentations = [
-            "opentelemetry-instrumentation-aiohttp-client",
-            "opentelemetry-instrumentation-logging",
-        ]
-
-        def fake_is_installed(lib):
-            return lib == "aiohttp"
-
-        with (
-            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", fake_libraries),
-            patch(
-                "opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", fake_default_instrumentations
-            ),
-            patch(
-                "opentelemetry.instrumentation.bootstrap._is_installed",
-                side_effect=fake_is_installed,
-            ),
-            patch("sys.stdout", new=StringIO()) as fake_out,
-        ):
-            bootstrap.run()
-
-        self.assertEqual(
-            fake_out.getvalue().strip(),
-            "opentelemetry-instrumentation-logging\nopentelemetry-instrumentation-aiohttp-server",
+        aiohttp_client = next(
+            instrumentation
+            for instrumentation in aiohttp_instrumentations
+            if instrumentation.startswith("opentelemetry-instrumentation-aiohttp-client")
+        )
+        aiohttp_server = next(
+            instrumentation
+            for instrumentation in aiohttp_instrumentations
+            if instrumentation.startswith("opentelemetry-instrumentation-aiohttp-server")
         )
 
-    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "aiohttp"])
-    def test_exclude_does_not_match_dependency_name(self):
-        fake_libraries = [
-            {"library": "aiohttp", "instrumentation": "opentelemetry-instrumentation-aiohttp-client"},
-            {"library": "aiohttp", "instrumentation": "opentelemetry-instrumentation-aiohttp-server"},
-        ]
-
         with (
-            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", fake_libraries),
-            patch("opentelemetry.instrumentation.bootstrap.gen_default_instrumentations", []),
-            patch("opentelemetry.instrumentation.bootstrap._is_installed", return_value=True),
+            patch(
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=lambda requirement: requirement.startswith("aiohttp "),
+            ),
             patch("sys.stdout", new=StringIO()) as fake_out,
         ):
             bootstrap.run()
 
         self.assertEqual(
             fake_out.getvalue().strip(),
-            "opentelemetry-instrumentation-aiohttp-client\nopentelemetry-instrumentation-aiohttp-server",
+            "\n".join([*default_instrumentations, aiohttp_server]),
+        )
+        self.assertNotIn(aiohttp_client, fake_out.getvalue())
+
+    @patch(
+        "sys.argv",
+        ["bootstrap", "-a", "requirements", "-e", "aiohttp"],
+    )
+    def test_exclude_does_not_match_dependency_name(self):
+        aiohttp_instrumentations = [
+            library["instrumentation"] for library in libraries if library["library"].startswith("aiohttp ")
+        ]
+
+        with (
+            patch(
+                "opentelemetry.instrumentation.bootstrap._is_installed",
+                side_effect=lambda requirement: requirement.startswith("aiohttp "),
+            ),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(
+            fake_out.getvalue().strip(),
+            "\n".join([*default_instrumentations, *aiohttp_instrumentations]),
+        )
+
+    @patch(
+        "sys.argv",
+        ["bootstrap", "-a", "requirements", "-e", "opentelemetry-instrumentation-logging"],
+    )
+    def test_can_exclude_default_instrumentation_package(self):
+        logging_instrumentation = next(
+            instrumentation
+            for instrumentation in default_instrumentations
+            if instrumentation.startswith("opentelemetry-instrumentation-logging")
+        )
+
+        with (
+            patch("opentelemetry.instrumentation.bootstrap._is_installed", return_value=False),
+            patch("sys.stdout", new=StringIO()) as fake_out,
+        ):
+            bootstrap.run()
+
+        self.assertEqual(
+            fake_out.getvalue().strip(),
+            "\n".join(
+                instrumentation
+                for instrumentation in default_instrumentations
+                if instrumentation != logging_instrumentation
+            ),
         )
 
     @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "does-not-exist"])
     def test_run_with_unmatched_exclude_is_noop(self):
-        fake_libraries = [
-            {"library": "flask", "instrumentation": "opentelemetry-instrumentation-flask"},
-        ]
-        fake_default_instrumentations = ["opentelemetry-instrumentation-fastapi"]
-
-        def fake_is_installed(lib):
-            return lib in {"flask", "fastapi"}
-
         with (
-            patch("opentelemetry.instrumentation.bootstrap.gen_libraries", fake_libraries),
-            patch(
-                "opentelemetry.instrumentation.bootstrap.gen_default_instrumentations",
-                fake_default_instrumentations,
-            ),
-            patch(
-                "opentelemetry.instrumentation.bootstrap._is_installed",
-                side_effect=fake_is_installed,
-            ),
+            patch("opentelemetry.instrumentation.bootstrap._is_installed", return_value=False),
             patch("sys.stdout", new=StringIO()) as fake_out,
         ):
             bootstrap.run()
 
-        self.assertEqual(
-            fake_out.getvalue().strip(), "opentelemetry-instrumentation-fastapi\nopentelemetry-instrumentation-flask"
-        )
+        self.assertEqual(fake_out.getvalue().strip(), "\n".join(default_instrumentations))
 
-    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "urllib"])
+    @patch("sys.argv", ["bootstrap", "-a", "requirements", "-e", "opentelemetry-instrumentation-urllib"])
     def test_exclude_does_not_match_similar_instrumentation_suffixes(self):
         fake_libraries = [
             {"library": "first-library", "instrumentation": "opentelemetry-instrumentation-urllib"},
