@@ -361,6 +361,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
@@ -746,8 +748,7 @@ def _apply_response_client_attributes_to_span(
             semconv,
         )
 
-    for key, val in span_attributes.items():
-        span.set_attribute(key, val)
+    span.set_attributes(span_attributes)
 
 
 def _apply_response_client_attributes_to_metrics(
