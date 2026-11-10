@@ -75,6 +75,8 @@ class OpAMPClient:
 
         self._endpoint = endpoint
         headers = headers or {}
+        # OpAMP-Instance-UID header will be added at send time
+        headers = {key: value for key, value in headers.items() if key.lower() != "opamp-instance-uid"}
         self._headers = {**_OPAMP_HTTP_HEADERS, **headers}
         self._tls_certificate = tls_certificate
         self._tls_client_certificate = tls_client_certificate
@@ -204,8 +206,10 @@ class OpAMPClient:
         header is derived from the prepared body, including when retrying an older message.
         """
         message = opamp_pb2.AgentToServer.FromString(data)
-        headers = {key: value for key, value in self._headers.items() if key.lower() != "opamp-instance-uid"}
-        headers["OpAMP-Instance-UID"] = str(UUID(bytes=message.instance_uid))
+        headers = {
+            **self._headers,
+            "OpAMP-Instance-UID": str(UUID(bytes=message.instance_uid)),
+        }
         token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         try:
             response = self._transport.send(

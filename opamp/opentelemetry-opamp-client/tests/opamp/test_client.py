@@ -597,7 +597,6 @@ def test_send_instance_uid_header_matches_body(header_name: str) -> None:
     assert sent["data"] == data
     assert client._sequence_num == 0
     assert headers == {header_name: "stale", "Authorization": "Bearer token"}
-    assert client._headers[header_name] == "stale"
 
 
 def test_retry_instance_uid_header_matches_prepared_body(client: OpAMPClient) -> None:
