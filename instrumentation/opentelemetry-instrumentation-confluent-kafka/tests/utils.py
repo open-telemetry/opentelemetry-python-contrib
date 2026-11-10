@@ -115,6 +115,7 @@ class MockedAIOConsumer:
 
     def __init__(self, queue, config=None):
         self._consumer = MockConsumer(queue, config or {})
+        self._consumer._is_aio = True
         self.config = config or {}
         self._aio_context_token = None
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -122,6 +123,10 @@ class MockedAIOConsumer:
     async def poll(self, timeout=None):
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self._executor, self._consumer.poll, timeout)
+
+    async def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, self._consumer.consume, num_messages, *args, **kwargs)
 
     async def close(self):
         self._executor.shutdown(wait=False)

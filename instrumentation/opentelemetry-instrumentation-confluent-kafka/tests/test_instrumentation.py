@@ -686,6 +686,11 @@ class TestConfluentKafka(TestBase):
             self.assertTrue(active_span.is_recording())
             self.assertEqual(active_span.name, "test-topic process")
 
+            # Verify worker thread context is not leaked to executor workers.
+            loop = asyncio.get_running_loop()
+            worker_span = await loop.run_in_executor(consumer._executor, trace.get_current_span)
+            self.assertFalse(worker_span.is_recording())
+
             # Second (empty) poll detaches the previous context and ends the span.
             await instrumentation.wrap_aio_poll(
                 consumer.poll,
@@ -700,7 +705,98 @@ class TestConfluentKafka(TestBase):
             # Exactly one process span — no duplicates from the AIO wrapper layer.
             self.assertEqual(len(process_spans), 1)
 
+            # Context detached in async task:
+            self.assertFalse(trace.get_current_span().is_recording())
+
             await consumer.close()
+
+        asyncio.run(_run())
+
+    def test_aio_consume(self) -> None:
+        from .utils import MockedAIOConsumer  # noqa: PLC0415
+
+        async def _run():
+            instrumentation = ConfluentKafkaInstrumentor()
+            tracer = self.tracer_provider.get_tracer(__name__)
+
+            queue = [
+                MockedMessage("test-topic", 0, 0, []),
+                MockedMessage("test-topic", 0, 1, []),
+            ]
+            consumer = MockedAIOConsumer(
+                queue,
+                {"bootstrap.servers": "localhost:9092", "group.id": "g", "auto.offset.reset": "earliest"},
+            )
+
+            inner = consumer._consumer
+            raw_consume = inner.consume
+
+            def instrumented_inner_consume(*args, **kwargs):
+                return ConfluentKafkaInstrumentor.wrap_consume(raw_consume, inner, tracer, args, kwargs)
+
+            inner.consume = instrumented_inner_consume
+
+            # First batch consume
+            msgs = await instrumentation.wrap_aio_consume(
+                consumer.consume,
+                consumer,
+                tracer,
+                args=(2,),
+                kwargs={},
+            )
+            self.assertEqual(len(msgs), 2)
+
+            # The span must now be current in the caller's async task.
+            active_span = trace.get_current_span()
+            self.assertTrue(active_span.is_recording())
+            self.assertEqual(active_span.name, "test-topic process")
+
+            # Subsequent empty consume ends the previous span and detaches context.
+            await instrumentation.wrap_aio_consume(
+                consumer.consume,
+                consumer,
+                tracer,
+                args=(1,),
+                kwargs={},
+            )
+
+            spans = self.memory_exporter.get_finished_spans()
+            process_spans = [s for s in spans if s.name == "test-topic process"]
+            self.assertEqual(len(process_spans), 1)
+
+            # Context detached in async task:
+            self.assertFalse(trace.get_current_span().is_recording())
+
+            await consumer.close()
+
+        asyncio.run(_run())
+
+    def test_aio_config_kwargs(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka import (  # noqa: PLC0415
+            AutoInstrumentedAIOConsumer,
+            AutoInstrumentedAIOProducer,
+        )
+
+        async def _run():
+            instrumentor = ConfluentKafkaInstrumentor()
+            instrumentor.instrument()
+            try:
+                if AutoInstrumentedAIOProducer is not None:
+                    prod = AutoInstrumentedAIOProducer(producer_conf={"bootstrap.servers": "broker-p:9092"})
+                    self.assertEqual(prod.config.get("bootstrap.servers"), "broker-p:9092")
+                    await prod.close()
+
+                if AutoInstrumentedAIOConsumer is not None:
+                    cons = AutoInstrumentedAIOConsumer(
+                        consumer_conf={"bootstrap.servers": "broker-c:9092", "group.id": "g"}
+                    )
+                    self.assertEqual(cons.config.get("bootstrap.servers"), "broker-c:9092")
+                    inner = getattr(cons, "_consumer", None)
+                    if inner is not None:
+                        self.assertTrue(getattr(inner, "_is_aio", False))
+                    await cons.close()
+            finally:
+                instrumentor.uninstrument()
 
         asyncio.run(_run())
 
