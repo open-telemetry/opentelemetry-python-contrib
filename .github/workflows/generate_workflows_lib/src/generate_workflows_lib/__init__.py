@@ -79,6 +79,7 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
         "py312": "3.12",
         "py313": "3.13",
         "py314": "3.14",
+        "py315": "3.15",
     }
 
     pr_tox_envs = _get_pr_tox_envs(tox_envs)
