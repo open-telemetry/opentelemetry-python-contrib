@@ -140,6 +140,93 @@ def test_agent_can_call_agent_stop_multiple_times():
     agent.stop()
 
 
+@pytest.mark.parametrize(
+    "outcome", ["interrupted_after_limit", "interrupted", "success", "recovered", "success_during_stop"]
+)
+def test_startup_enables_heartbeats_only_after_response(outcome: str) -> None:
+    client = mock.create_autospec(OpAMPClient, instance=True)
+    client.build_full_state_message.return_value = opamp_pb2.AgentToServer()
+    callbacks = mock.create_autospec(OpAMPCallbacks, instance=True)
+    agent = OpAMPAgent(client=client, callbacks=callbacks, max_retries=1, initial_backoff=0)
+    attempts = 0
+
+    def send(data: bytes) -> opamp_pb2.ServerToAgent:
+        nonlocal attempts
+        attempts += 1
+        assert agent._schedule is False
+        if outcome in ("interrupted_after_limit", "interrupted") or (outcome == "recovered" and attempts <= 3):
+            raise ConnectionError("request failed")
+        if outcome == "success_during_stop":
+            agent._stop.set()
+        return opamp_pb2.ServerToAgent()
+
+    def wait_for_backoff(delay: float) -> bool:
+        if outcome == "interrupted" or (outcome == "interrupted_after_limit" and attempts == 3):
+            agent._stop.set()
+            return True
+        return False
+
+    client.send.side_effect = send
+    task_done = agent._queue.task_done
+
+    def finish_job() -> None:
+        task_done()
+        agent._stop.set()
+
+    with (
+        mock.patch.object(agent._worker, "start"),
+        mock.patch.object(agent._scheduler, "start"),
+        mock.patch.object(atexit, "register"),
+        mock.patch.object(agent._stop, "wait", side_effect=wait_for_backoff),
+        mock.patch.object(agent._queue, "task_done", side_effect=finish_job),
+    ):
+        agent.start()
+        agent._run_worker()
+
+    succeeded = outcome in ("success", "recovered", "success_during_stop")
+    assert agent._schedule is succeeded
+    assert agent._queue.unfinished_tasks == 0
+    expected_attempts = {"interrupted_after_limit": 3, "recovered": 4}.get(outcome, 1)
+    assert client.send.call_count == expected_attempts
+    assert callbacks.on_connect_failed.call_count == expected_attempts - int(succeeded)
+    assert all(call == client.send.call_args_list[0] for call in client.send.call_args_list)
+    assert callbacks.on_connect.call_count == int(succeeded)
+    assert callbacks.on_message.call_count == int(succeeded)
+
+
+@pytest.mark.parametrize("initial_backoff", [0.0, 1.0, 120.0])
+def test_initial_job_backoff_is_bounded(initial_backoff: float) -> None:
+    job = Job(opamp_pb2.AgentToServer(), initial_backoff=initial_backoff, is_initial=True)
+    with mock.patch("opentelemetry._opamp.agent.random.uniform", return_value=1.0):
+        for attempt in range(1, 1100):
+            job.attempt = attempt
+            delay = job.delay()
+            assert 0 <= delay <= 60
+            if attempt == 1:
+                assert delay == min(initial_backoff, 60)
+        assert delay == (60 if initial_backoff else 0)
+
+
+@pytest.mark.parametrize("succeeds", [False, True])
+def test_send_completion_callback_runs_after_success_or_exhaustion(succeeds: bool) -> None:
+    client = mock.create_autospec(OpAMPClient, instance=True)
+    agent = OpAMPAgent(client=client, callbacks=_NoOpCallbacks(), max_retries=0)
+    callback = mock.Mock()
+
+    def send(data: bytes) -> opamp_pb2.ServerToAgent:
+        agent._stop.set()
+        if not succeeds:
+            raise ConnectionError("request failed")
+        return opamp_pb2.ServerToAgent()
+
+    client.send.side_effect = send
+    agent.send(opamp_pb2.AgentToServer(), callback=callback)
+    agent._run_worker()
+
+    callback.assert_called_once_with()
+    assert agent._queue.unfinished_tasks == 0
+
+
 def test_agent_can_call_agent_stop_before_start():
     agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks())
     agent.stop()
