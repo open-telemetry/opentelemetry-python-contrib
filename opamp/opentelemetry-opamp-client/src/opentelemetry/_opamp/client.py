@@ -7,6 +7,7 @@ import threading
 from collections.abc import Generator, Mapping
 from logging import getLogger
 from typing import Any, Final
+from uuid import UUID
 
 from opentelemetry._opamp import messages
 from opentelemetry._opamp._uuid import uuid7
@@ -74,6 +75,8 @@ class OpAMPClient:
 
         self._endpoint = endpoint
         headers = headers or {}
+        # OpAMP-Instance-UID header will be added at send time
+        headers = {key: value for key, value in headers.items() if key.lower() != "opamp-instance-uid"}
         self._headers = {**_OPAMP_HTTP_HEADERS, **headers}
         self._tls_certificate = tls_certificate
         self._tls_client_certificate = tls_client_certificate
@@ -199,13 +202,19 @@ class OpAMPClient:
         Sends a message to the server and returns its response.
 
         Call prepare_message() before the first send. Prepared bytes are sent unchanged,
-        so retries keep the same instance UID and sequence number.
+        so retries keep the same instance UID and sequence number. The HTTP instance UID
+        header is derived from the prepared body, including when retrying an older message.
         """
+        message = opamp_pb2.AgentToServer.FromString(data)
+        headers = {
+            **self._headers,
+            "OpAMP-Instance-UID": str(UUID(bytes=message.instance_uid)),
+        }
         token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         try:
             response = self._transport.send(
                 url=self._endpoint,
-                headers=self._headers,
+                headers=headers,
                 data=data,
                 timeout_millis=self._timeout_millis,
                 tls_certificate=self._tls_certificate,
