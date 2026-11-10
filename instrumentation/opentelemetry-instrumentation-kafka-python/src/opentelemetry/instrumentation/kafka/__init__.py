@@ -78,6 +78,48 @@ For example:
         # process message
         process_msg(message)
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the messaging semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``messaging`` - emit the stable messaging conventions and stop emitting the
+  old experimental conventions.
+- ``messaging/dup`` - emit both the old experimental and stable messaging
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``messaging,http/dup`` enables stable messaging conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+messaging conventions are emitted.
+
+The old and stable attributes correspond as follows:
+
+============================= ======================================
+old                           stable
+============================= ======================================
+``messaging.destination``     ``messaging.destination.name``
+``messaging.kafka.partition`` ``messaging.destination.partition.id``
+``messaging.url``             ``server.address`` and ``server.port``
+============================= ======================================
+
+``messaging.destination.partition.id`` is a string, while
+``messaging.kafka.partition`` was an integer.
+
+``messaging.url`` carries the whole ``bootstrap_servers`` value JSON-encoded.
+``server.address`` and ``server.port`` carry the host and the port of its
+first entry instead, parsed out of it, because the stable conventions define
+them as one host and one port rather than as a connection string.
+``server.port`` is omitted when that entry names no port.
+
+The stable conventions also add ``messaging.operation.name`` and
+``messaging.operation.type``, which the old conventions did not have.
+``messaging.system`` is emitted in every mode.
+
 API
 ---
 """
