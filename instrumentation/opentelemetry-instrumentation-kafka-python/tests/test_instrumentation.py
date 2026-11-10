@@ -10,6 +10,7 @@ from opentelemetry.instrumentation.kafka import KafkaInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.trace import NoOpTracerProvider
 
+
 class TestKafka(TestCase):
     def test_instrument_api(self) -> None:
         instrumentation = KafkaInstrumentor()
