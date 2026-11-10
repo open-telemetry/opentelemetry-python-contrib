@@ -1,5 +1,0 @@
-[opentelemetry_configurator]
-configurator = opentelemetry.agent._vendor.opentelemetry.distro:OpenTelemetryConfigurator
-
-[opentelemetry_distro]
-distro = opentelemetry.agent._vendor.opentelemetry.distro:OpenTelemetryDistro

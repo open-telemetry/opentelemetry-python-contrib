@@ -23,7 +23,12 @@ Isolation
 
 * Only the vendored plugins (exporters, propagators, samplers, resource detectors) and instrumentations are
   discovered; OpenTelemetry packages installed in the application's environment aren't used.
-* The application's own ``opentelemetry-api`` (if any) is a separate copy: spans and metrics it records
-  don't reach the agent's providers.
+* The application's own ``opentelemetry-api`` (if any) is a separate copy, bridged to the agent: spans it
+  records are exported by the agent's SDK, and they parent (and are parented by) the agent's
+  instrumentation spans. ``opentelemetry-instrument`` selects the bridge by setting ``OTEL_PYTHON_CONTEXT``
+  and ``OTEL_PYTHON_TRACER_PROVIDER`` to ``opentelemetry_agent``, unless they're already set; a tracer
+  provider set by the application before its first ``get_tracer_provider()`` call is kept. Metrics and
+  logs recorded with the application's API don't reach the agent's providers yet. Tested with
+  ``opentelemetry-api`` 1.16 and later.
 * ``opentelemetry-instrumentation`` installs an ``opentelemetry-instrument`` script as well; when both are
   installed, the package installed last owns it.

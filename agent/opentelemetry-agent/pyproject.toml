@@ -30,6 +30,14 @@ dependencies = []
 # The vendored opentelemetry-instrument: its sitecustomize hook imports the vendored auto-instrumentation.
 opentelemetry-instrument = "opentelemetry.agent._vendor.opentelemetry.instrumentation.auto_instrumentation:run"
 
+# The bridge for the application's opentelemetry-api, selected by the vendored sitecustomize (see
+# patches/otel-api-bridge.patch). The names must match _AGENT_BRIDGE.
+[project.entry-points.opentelemetry_context]
+opentelemetry_agent = "opentelemetry.agent._bridge.context:BridgeRuntimeContext"
+
+[project.entry-points.opentelemetry_tracer_provider]
+opentelemetry_agent = "opentelemetry.agent._bridge.trace:BridgeTracerProvider"
+
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/agent/opentelemetry-agent"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
@@ -86,6 +94,7 @@ patches = [
   "patches/otel-distro-http-protocol.patch",
   "patches/otel-configuration-loader.patch",
   "patches/ruamel-yaml-pure.patch",
+  "patches/otel-api-bridge.patch",
 ]
 sbom-file = "src/opentelemetry/agent/_vendor/bom.cdx.json"
 # Scoped METADATA and namespaced entry points for the vendored importlib.metadata lookups; see
@@ -128,6 +137,9 @@ side-effects = [
   # sitecustomize hook) is what the distro and opentelemetry-instrument are for.
   "opentelemetry/distro/__init__.py",
   "opentelemetry/instrumentation/auto_instrumentation/__init__.py",
+  # Selects the agent's bridge for the application's opentelemetry-api (OTEL_PYTHON_CONTEXT and
+  # OTEL_PYTHON_TRACER_PROVIDER); see patches/otel-api-bridge.patch.
+  "opentelemetry/instrumentation/auto_instrumentation/sitecustomize.py",
   # Copies the deprecated prometheus_multiproc_dir variable to PROMETHEUS_MULTIPROC_DIR when set.
   "prometheus_client/multiprocess.py",
   "prometheus_client/values.py",

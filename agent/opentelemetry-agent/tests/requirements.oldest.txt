@@ -1,0 +1,7 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# The oldest opentelemetry-api the bridge is tested with, as the application's API: older versions
+# load entry points with pkg_resources, which recent setuptools versions don't include.
+opentelemetry-api==1.16.0
+pytest==7.4.4

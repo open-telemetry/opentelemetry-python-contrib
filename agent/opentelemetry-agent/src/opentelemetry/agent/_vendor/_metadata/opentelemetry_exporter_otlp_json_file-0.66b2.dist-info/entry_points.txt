@@ -1,8 +1,0 @@
-[opentelemetry_logs_exporter]
-otlp_json_file = opentelemetry.agent._vendor.opentelemetry.exporter.otlp.json.file._log_exporter:FileLogExporter
-
-[opentelemetry_metrics_exporter]
-otlp_json_file = opentelemetry.agent._vendor.opentelemetry.exporter.otlp.json.file.metric_exporter:FileMetricExporter
-
-[opentelemetry_traces_exporter]
-otlp_json_file = opentelemetry.agent._vendor.opentelemetry.exporter.otlp.json.file.trace_exporter:FileSpanExporter
