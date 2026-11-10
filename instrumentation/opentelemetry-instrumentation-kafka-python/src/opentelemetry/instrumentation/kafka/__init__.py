@@ -88,6 +88,11 @@ import kafka
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
@@ -116,18 +121,26 @@ class KafkaInstrumentor(BaseInstrumentor):
         produce_hook = kwargs.get("produce_hook")
         consume_hook = kwargs.get("consume_hook")
 
+        sem_conv_opt_in_mode = _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
+            _OpenTelemetryStabilitySignalType.MESSAGING
+        ]
+
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
 
-        wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
+        wrap_function_wrapper(
+            kafka.KafkaProducer,
+            "send",
+            _wrap_send(tracer, produce_hook, sem_conv_opt_in_mode),
+        )
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",
-            _wrap_next(tracer, consume_hook),
+            _wrap_next(tracer, consume_hook, sem_conv_opt_in_mode),
         )
 
     def _uninstrument(self, **kwargs):

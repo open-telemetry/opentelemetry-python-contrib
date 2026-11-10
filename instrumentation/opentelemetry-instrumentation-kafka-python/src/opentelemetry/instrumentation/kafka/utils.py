@@ -4,18 +4,28 @@
 import json
 from collections.abc import Callable
 from logging import getLogger
+from re import compile as re_compile
+from socket import AF_INET6, inet_pton
 
 from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import (
+    _report_new,
+    _report_old,
+    _StabilityMode,
+)
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
 
 _LOG = getLogger(__name__)
+
+_SECURITY_PROTOCOL_PREFIX = re_compile("^.*://")
 
 
 class KafkaPropertiesExtractor:
@@ -89,18 +99,93 @@ _kafka_getter = KafkaContextGetter()
 _kafka_setter = KafkaContextSetter()
 
 
+def _bootstrap_servers_attributes(bootstrap_servers: str | list[str] | None) -> dict[str, AttributeValue]:
+    """Derive ``server.address`` and ``server.port`` from kafka-python's
+    ``bootstrap_servers``.
+
+    The value is one ``host:port`` entry, a comma-separated string of them, or
+    a list of them, and each entry may carry a leading security protocol as in
+    ``SASL_SSL://broker:9093``. Only the first entry is reported, the way
+    ``opentelemetry-instrumentation-confluent-kafka`` reports it. An entry
+    carrying no port leaves ``server.port`` out rather than assuming 9092, so
+    the span reports what was configured.
+    """
+    if not bootstrap_servers:
+        return {}
+
+    entries = bootstrap_servers.split(",") if isinstance(bootstrap_servers, str) else bootstrap_servers
+
+    entry = ""
+    for candidate in entries:
+        entry = _SECURITY_PROTOCOL_PREFIX.sub("", str(candidate).strip())
+        if entry:
+            break
+
+    if not entry:
+        return {}
+
+    if entry.startswith("["):
+        host, _, rest = entry[1:].partition("]")
+        port = rest[1:] if rest.startswith(":") else ""
+    elif ":" not in entry:
+        host, port = entry, ""
+    else:
+        try:
+            inet_pton(AF_INET6, entry)
+        except (OSError, ValueError):
+            host, _, port = entry.rpartition(":")
+        else:
+            host, port = entry, ""
+
+    if not host:
+        return {}
+
+    attributes: dict[str, AttributeValue] = {server_attributes.SERVER_ADDRESS: host}
+    if port.isdecimal():
+        attributes[server_attributes.SERVER_PORT] = int(port)
+    elif port:
+        _LOG.debug("non-numeric port in bootstrap_servers: %r", port)
+    return attributes
+
+
+def _partition_attributes(partition: int, sem_conv_opt_in_mode: _StabilityMode) -> dict[str, AttributeValue]:
+    """Return the partition attributes of each generation the mode asks for.
+
+    The producer only learns the partition after ``send`` returns, so this is
+    applied both when the span is created and afterwards.
+    """
+    attributes: dict[str, AttributeValue] = {}
+    if _report_old(sem_conv_opt_in_mode):
+        attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+    if _report_new(sem_conv_opt_in_mode):
+        attributes[messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID] = str(partition)
+    return attributes
+
+
 def _get_attributes(
-    bootstrap_servers: list[str],
+    bootstrap_servers: str | list[str] | None,
     topic: str,
+    operation: messaging_attributes.MessagingOperationTypeValues,
+    sem_conv_opt_in_mode: _StabilityMode,
     partition: int | None = None,
 ) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {
         messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-        SpanAttributes.MESSAGING_DESTINATION: topic,
-        SpanAttributes.MESSAGING_URL: json.dumps(bootstrap_servers),
     }
+
+    if _report_old(sem_conv_opt_in_mode):
+        attributes[SpanAttributes.MESSAGING_DESTINATION] = topic
+        attributes[SpanAttributes.MESSAGING_URL] = json.dumps(bootstrap_servers)
+
+    if _report_new(sem_conv_opt_in_mode):
+        attributes[messaging_attributes.MESSAGING_DESTINATION_NAME] = topic
+        attributes[messaging_attributes.MESSAGING_OPERATION_NAME] = operation.value
+        attributes[messaging_attributes.MESSAGING_OPERATION_TYPE] = operation.value
+        attributes.update(_bootstrap_servers_attributes(bootstrap_servers))
+
     if partition is not None:
-        attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+        attributes.update(_partition_attributes(partition, sem_conv_opt_in_mode))
+
     return attributes
 
 
@@ -108,7 +193,13 @@ def _get_span_name(operation: str, topic: str):
     return f"{topic} {operation}"
 
 
-def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
+def _wrap_send(
+    tracer: Tracer,
+    produce_hook: ProduceHookT,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> Callable:
+    operation = messaging_attributes.MessagingOperationTypeValues.SEND
+
     def _traced_send(func, instance, args, kwargs):
         headers = KafkaPropertiesExtractor.extract_send_headers(args, kwargs)
         if headers is None:
@@ -117,8 +208,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-        span_name = _get_span_name("send", topic)
-        attributes = _get_attributes(bootstrap_servers, topic)
+        span_name = _get_span_name(operation.value, topic)
+        attributes = _get_attributes(bootstrap_servers, topic, operation, sem_conv_opt_in_mode)
         with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes) as span:
             propagate.inject(
                 headers,
@@ -134,7 +225,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             future = func(*args, **kwargs)
             partition = KafkaPropertiesExtractor.extract_send_partition(future)
             if partition is not None:
-                span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+                for key, value in _partition_attributes(partition, sem_conv_opt_in_mode).items():
+                    span.set_attribute(key, value)
             return future
 
     return _traced_send
@@ -148,9 +240,17 @@ def _create_consumer_span(
     bootstrap_servers,
     args,
     kwargs,
+    sem_conv_opt_in_mode: _StabilityMode,
 ):
-    span_name = _get_span_name("receive", record.topic)
-    attributes = _get_attributes(bootstrap_servers, record.topic, record.partition)
+    operation = messaging_attributes.MessagingOperationTypeValues.RECEIVE
+    span_name = _get_span_name(operation.value, record.topic)
+    attributes = _get_attributes(
+        bootstrap_servers,
+        record.topic,
+        operation,
+        sem_conv_opt_in_mode,
+        record.partition,
+    )
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
@@ -171,6 +271,7 @@ def _create_consumer_span(
 def _wrap_next(
     tracer: Tracer,
     consume_hook: ConsumeHookT,
+    sem_conv_opt_in_mode: _StabilityMode,
 ) -> Callable:
     def _traced_next(func, instance, args, kwargs):
         record = func(*args, **kwargs)
@@ -187,6 +288,7 @@ def _wrap_next(
                 bootstrap_servers,
                 args,
                 kwargs,
+                sem_conv_opt_in_mode,
             )
         return record
 
