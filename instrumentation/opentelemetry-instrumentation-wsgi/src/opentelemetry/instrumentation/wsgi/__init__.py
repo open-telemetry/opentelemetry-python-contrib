@@ -448,6 +448,11 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment) -> dict[
         for key, val in environ.items()
         if key.startswith(_CARRIER_KEY_PREFIX)
     }
+    # PEP 3333: these two have no HTTP_ prefix and may be empty or absent
+    for key in ("CONTENT_TYPE", "CONTENT_LENGTH"):
+        val = environ.get(key)
+        if val:
+            headers[key.replace("_", "-")] = val
 
     return sanitize.sanitize_header_values(
         headers,
