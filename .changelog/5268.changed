@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiokafka`, `opentelemetry-instrumentation-boto3sqs`, `opentelemetry-instrumentation-remoulade`: a failed send or message now ends its span with an error status, and the aiokafka producer span now covers the send itself

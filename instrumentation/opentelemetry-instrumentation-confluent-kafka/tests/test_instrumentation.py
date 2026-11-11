@@ -5,6 +5,8 @@
 
 from unittest import mock
 
+from confluent_kafka import KafkaException
+
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -23,6 +25,7 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MessagingOperationTypeValues,
     MessagingSystemValues,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -606,3 +609,33 @@ class TestConfluentKafka(TestBase):
         process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+
+class TestConfluentKafkaErrorType(TestBase):
+    def test_error_type_recorded_on_a_failed_produce(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        error = KafkaException("queue full")
+        producer.produce = mock.MagicMock(side_effect=error)
+
+        producer = instrumentation.instrument_producer(producer)
+        with self.assertRaises(KafkaException) as raised:
+            producer.produce(topic="topic-1", key="key-1", value="value-1")
+        self.assertIs(raised.exception, error)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        error_type = span_list[0].attributes[ERROR_TYPE]
+        self.assertEqual(error_type, "KafkaException")
+        self.assertIs(type(error_type), str)
+
+    def test_no_error_type_on_a_successful_produce(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="key-1", value="value-1")
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertNotIn(ERROR_TYPE, span_list[0].attributes)

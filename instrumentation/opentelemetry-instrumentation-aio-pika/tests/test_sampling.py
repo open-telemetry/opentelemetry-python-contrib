@@ -12,6 +12,7 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_SYSTEM,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import NET_PEER_NAME, NET_PEER_PORT
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
@@ -140,5 +141,5 @@ class TestAioPikaSampling(TestBase, IsolatedAsyncioTestCase):
                 spans = self.memory_exporter.get_finished_spans()
                 self.assertEqual(len(spans), 1)
                 self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
-                self.assertEqual(spans[0].attributes, sampler.attributes)
+                self.assertEqual(spans[0].attributes, {**sampler.attributes, ERROR_TYPE: "RuntimeError"})
                 self.assertIs(get_current_span(), previous_span)

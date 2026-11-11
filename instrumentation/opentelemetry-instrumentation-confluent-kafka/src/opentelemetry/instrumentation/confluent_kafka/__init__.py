@@ -104,6 +104,7 @@ import wrapt
 from confluent_kafka import Consumer, Producer
 
 from opentelemetry import context, propagate, trace
+from opentelemetry.instrumentation._semconv import _record_error_type
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
@@ -364,7 +365,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             operation=MessagingOperationTypeValues.PUBLISH,
             bootstrap_servers=bootstrap_servers,
         )
-        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes):
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes) as span:
             headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
             if headers is None:
                 headers = []
@@ -374,7 +375,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 headers,
                 setter=_kafka_setter,
             )
-            return func(*args, **kwargs)
+            with _record_error_type(span):
+                return func(*args, **kwargs)
 
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
