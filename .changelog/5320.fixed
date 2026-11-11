@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-urllib3`: keep the pool default headers when `urlopen` is called without headers
