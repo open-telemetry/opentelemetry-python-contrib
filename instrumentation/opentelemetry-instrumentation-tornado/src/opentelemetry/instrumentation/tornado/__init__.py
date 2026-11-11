@@ -185,6 +185,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     Environment variable names to capture http headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """

@@ -76,13 +76,13 @@ class UserResource:
             resp.text = f"Hello user {user_id}"
 
 
-def make_app():
+def make_app(middleware=None):
     if _parsed_falcon_version < package_version.parse("3.0.0"):
         # Falcon 1 and Falcon 2
-        app = falcon.API()
+        app = falcon.API(middleware=middleware)
     else:
         # Falcon 3
-        app = falcon.App()
+        app = falcon.App(middleware=middleware)
 
     app.add_route("/hello", HelloWorldResource())
     app.add_route("/ping", HelloWorldResource())
