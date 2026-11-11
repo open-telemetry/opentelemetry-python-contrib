@@ -18,6 +18,12 @@ from pika.channel import Channel
 from pika.connection import Connection
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pika import utils
 from opentelemetry.instrumentation.pika.package import _instruments
@@ -44,6 +50,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         channel: BlockingChannel | Channel,
         tracer: Tracer,
         consume_hook: utils.HookT = utils.dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ) -> Any:
         consumer_infos = None
         if isinstance(channel, BlockingChannel):
@@ -62,6 +69,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
                 tracer,
                 consumer_tag,
                 consume_hook,
+                sem_conv_opt_in_mode,
             )
 
             decorated_callback._original_callback = consumer_callback
@@ -72,9 +80,12 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         channel: BlockingChannel | Channel,
         tracer: Tracer,
         publish_hook: utils.HookT = utils.dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ) -> None:
         original_function = channel.basic_publish
-        decorated_function = utils._decorate_basic_publish(original_function, channel, tracer, publish_hook)
+        decorated_function = utils._decorate_basic_publish(
+            original_function, channel, tracer, publish_hook, sem_conv_opt_in_mode
+        )
         decorated_function._original_function = original_function
         channel.__setattr__("basic_publish", decorated_function)
         channel.basic_publish = decorated_function
@@ -84,9 +95,10 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         channel: BlockingChannel | Channel,
         tracer: Tracer,
         publish_hook: utils.HookT = utils.dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ) -> None:
         if hasattr(channel, "basic_publish"):
-            PikaInstrumentor._instrument_basic_publish(channel, tracer, publish_hook)
+            PikaInstrumentor._instrument_basic_publish(channel, tracer, publish_hook, sem_conv_opt_in_mode)
 
     @staticmethod
     def _uninstrument_channel_functions(
@@ -113,15 +125,17 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         if channel._is_instrumented_by_opentelemetry:
             _LOG.warning("Attempting to instrument Pika channel while already instrumented!")
             return
+        signal = _OpenTelemetryStabilitySignalType.MESSAGING
+        sem_conv_opt_in_mode = _get_semconv_opt_in_modes((signal,))[signal]
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([signal]),
         )
-        PikaInstrumentor._instrument_channel_consumers(channel, tracer, consume_hook)
-        PikaInstrumentor._decorate_basic_consume(channel, tracer, consume_hook)
-        PikaInstrumentor._instrument_channel_functions(channel, tracer, publish_hook)
+        PikaInstrumentor._instrument_channel_consumers(channel, tracer, consume_hook, sem_conv_opt_in_mode)
+        PikaInstrumentor._decorate_basic_consume(channel, tracer, consume_hook, sem_conv_opt_in_mode)
+        PikaInstrumentor._instrument_channel_functions(channel, tracer, publish_hook, sem_conv_opt_in_mode)
 
     @staticmethod
     def uninstrument_channel(channel: BlockingChannel) -> None:
@@ -160,10 +174,11 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         channel: BlockingChannel | Channel,
         tracer: Tracer | None,
         consume_hook: utils.HookT = utils.dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ) -> None:
         def wrapper(wrapped, instance, args, kwargs):
             return_value = wrapped(*args, **kwargs)
-            PikaInstrumentor._instrument_channel_consumers(channel, tracer, consume_hook)
+            PikaInstrumentor._instrument_channel_consumers(channel, tracer, consume_hook, sem_conv_opt_in_mode)
             return return_value
 
         wrapt.wrap_function_wrapper(channel, "basic_consume", wrapper)
@@ -172,19 +187,27 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     def _decorate_queue_consumer_generator(
         tracer_provider: TracerProvider | None,
         consume_hook: utils.HookT = utils.dummy_callback,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ) -> None:
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
+        )
 
         def wrapper(wrapped, instance, args, kwargs):
             res = wrapped(*args, **kwargs)
             instance.pending_events = utils.ReadyMessagesDequeProxy(
-                instance.pending_events, instance, tracer, consume_hook
+                instance.pending_events, instance, tracer, consume_hook, sem_conv_opt_in_mode
             )
             return res
 
         wrapt.wrap_function_wrapper(_QueueConsumerGeneratorInfo, "__init__", wrapper)
 
     def _instrument(self, **kwargs: dict[str, Any]) -> None:
+        signal = _OpenTelemetryStabilitySignalType.MESSAGING
+        sem_conv_opt_in_mode = _get_semconv_opt_in_modes((signal,))[signal]
         tracer_provider: TracerProvider = kwargs.get("tracer_provider", None)
         publish_hook: utils.HookT = kwargs.get("publish_hook", utils.dummy_callback)
         consume_hook: utils.HookT = kwargs.get("consume_hook", utils.dummy_callback)
@@ -196,7 +219,9 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             consume_hook=consume_hook,
         )
 
-        self._decorate_queue_consumer_generator(tracer_provider, consume_hook=consume_hook)
+        self._decorate_queue_consumer_generator(
+            tracer_provider, consume_hook=consume_hook, sem_conv_opt_in_mode=sem_conv_opt_in_mode
+        )
 
     def _uninstrument(self, **kwargs: dict[str, Any]) -> None:
         if hasattr(self, "__opentelemetry_tracer_provider"):
