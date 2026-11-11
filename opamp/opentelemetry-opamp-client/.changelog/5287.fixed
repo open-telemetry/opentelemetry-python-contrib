@@ -1,1 +1,0 @@
-Retry the initial state report until a response is received or shutdown interrupts it, enabling heartbeats only after a response and preserving completion callbacks for failed sends.
