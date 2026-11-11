@@ -891,11 +891,9 @@ def _record_on_finish_metrics(server_histograms, handler, error, sem_conv_opt_in
     response_size = int(handler._headers.get("Content-Length", 0))
     status_code = handler.get_status()
 
-    if isinstance(error, tornado.web.HTTPError):
-        status_code = error.status_code
-    elif error is not None and not handler._headers_written:
-        # send_error(500) runs after log_exception returns
-        status_code = 500
+    if error is not None and not handler._headers_written:
+        # send_error runs after log_exception returns
+        status_code = error.status_code if isinstance(error, tornado.web.HTTPError) else 500
 
     # Record old semconv metrics
     if _report_old(sem_conv_opt_in_mode):

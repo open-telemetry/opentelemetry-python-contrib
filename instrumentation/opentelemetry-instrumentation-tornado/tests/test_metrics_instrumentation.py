@@ -48,7 +48,7 @@ from opentelemetry.trace import SpanKind
 from .test_instrumentation import (  # pylint: disable=no-name-in-module,import-error
     TornadoTest,
 )
-from .tornado_test_app import make_app
+from .tornado_test_app import RaiseAfterPartialFlushHandler, make_app
 
 NEW_SERVER_METRICS = (
     "http.server.request.duration",
@@ -329,6 +329,21 @@ class TornadoSemconvTestBase(AsyncHTTPTestCase, TestBase):
         self.assertEqual(response.code, expected_status)
         self._assert_server_metric_samples(expected_status, histogram_names, status_attribute, len(response.body))
 
+    def _assert_metrics_when_finish_fails(self, histogram_names: tuple[str, str], status_attribute: str) -> None:
+        RaiseAfterPartialFlushHandler.on_finish_called = False
+        with self.assertRaises(HTTPClientError):
+            self.fetch("/raise_after_partial_flush")
+        self.assertFalse(RaiseAfterPartialFlushHandler.on_finish_called)
+        self._assert_server_metric_samples(200, histogram_names, status_attribute, 8)
+
+    def _assert_metrics_on_http_error_after_flush(
+        self, histogram_names: tuple[str, str], status_attribute: str
+    ) -> None:
+        response = self.fetch("/raise_403_after_flush")
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.body, b"done")
+        self._assert_server_metric_samples(200, histogram_names, status_attribute, len(response.body))
+
     async def _assert_websocket_rejection_metrics(
         self,
         histogram_names: tuple[str, str],
@@ -357,6 +372,12 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
 
     def test_server_metrics_recorded_once_on_exception_after_finish(self):
         self._assert_server_metrics_recorded_once("/raise_after_finish", 200, self.HISTOGRAMS, HTTP_STATUS_CODE)
+
+    def test_server_metrics_when_finish_fails_after_partial_flush(self) -> None:
+        self._assert_metrics_when_finish_fails(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
+
+    def test_server_metrics_on_http_error_after_flush(self) -> None:
+        self._assert_metrics_on_http_error_after_flush(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     @tornado.testing.gen_test()
     async def test_server_metrics_on_websocket_rejection(self) -> None:
@@ -456,6 +477,12 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self._assert_server_metrics_recorded_once(
             "/raise_after_finish", 200, self.HISTOGRAMS, HTTP_RESPONSE_STATUS_CODE
         )
+
+    def test_server_metrics_when_finish_fails_after_partial_flush(self) -> None:
+        self._assert_metrics_when_finish_fails(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
+
+    def test_server_metrics_on_http_error_after_flush(self) -> None:
+        self._assert_metrics_on_http_error_after_flush(self.HISTOGRAMS, self.STATUS_ATTRIBUTE)
 
     @tornado.testing.gen_test()
     async def test_server_metrics_on_websocket_rejection(self) -> None:
