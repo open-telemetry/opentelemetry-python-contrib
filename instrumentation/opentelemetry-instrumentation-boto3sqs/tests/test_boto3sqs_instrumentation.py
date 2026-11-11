@@ -23,8 +23,9 @@ from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind, TraceFlags
+from opentelemetry.trace import SpanKind, StatusCode, TraceFlags
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
 
 
@@ -235,7 +236,98 @@ class TestBoto3SQSInstrumentation(TestBase):
             "DataType": "String",
         }
 
+    def _instrument_with_sampler(self, sampler: CapturingSampler) -> None:
+        Boto3SQSInstrumentor().uninstrument()
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+        Boto3SQSInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    def test_attributes_control_sampling_send_message(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint({"MessageId": "message-1"}):
+                    response = self._client.send_message(QueueUrl=queue_url, MessageBody="hello")
+                self.assertEqual(response["MessageId"], "message-1")
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1 if sampled else 0)
+
+    def test_attributes_control_sampling_send_message_batch(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint(
+                    {
+                        "Successful": [
+                            {"Id": "1", "MessageId": "message-1"},
+                            {"Id": "2", "MessageId": "message-2"},
+                        ]
+                    }
+                ):
+                    response = self._client.send_message_batch(
+                        QueueUrl=queue_url,
+                        Entries=[{"Id": "1", "MessageBody": "hello"}, {"Id": "2", "MessageBody": "hello"}],
+                    )
+                self.assertEqual(len(response["Successful"]), 2)
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2 if sampled else 0)
+
+    def test_attributes_control_sampling_receive_message(self) -> None:
+        for queue_name, sampled in (("sample", True), ("drop", False)):
+            with self.subTest(queue_name=queue_name):
+                sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                self._instrument_with_sampler(sampler)
+                queue_url = self._queue_url.rsplit("/", 1)[0] + "/" + queue_name
+                with self._mocked_endpoint({"Messages": [self._make_message("message-1", "hello", "receipt-1")]}):
+                    response = self._client.receive_message(QueueUrl=queue_url)
+                self.assertEqual(response["Messages"][0]["MessageId"], "message-1")
+                with self._mocked_endpoint({}):
+                    self._client.delete_message(QueueUrl=queue_url, ReceiptHandle="receipt-1")
+                self.assertEqual(Boto3SQSInstrumentor.received_messages_spans, {})
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2 if sampled else 0)
+
+    def test_batch_entry_id_controls_sampling(self) -> None:
+        sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_CONVERSATION_ID: "1"})
+        self._instrument_with_sampler(sampler)
+        with self._mocked_endpoint(
+            {"Successful": [{"Id": "1", "MessageId": "message-1"}, {"Id": "2", "MessageId": "message-2"}]}
+        ):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url,
+                Entries=[{"Id": "1", "MessageBody": "hello"}, {"Id": "2", "MessageBody": "hello"}],
+            )
+
+        span = self._get_only_span()
+        self.assertEqual(span.attributes[SpanAttributes.MESSAGING_CONVERSATION_ID], "1")
+        self.assertEqual(span.attributes[messaging_attributes.MESSAGING_MESSAGE_ID], "message-1")
+
+    def test_errors_propagate_with_initial_attributes(self) -> None:
+        for method in ("send_message", "receive_message"):
+            with self.subTest(method=method):
+                sampler = CapturingSampler()
+                self._instrument_with_sampler(sampler)
+                error = ConnectionError("endpoint unavailable")
+                kwargs = {"QueueUrl": self._queue_url}
+                if method == "send_message":
+                    kwargs["MessageBody"] = "hello"
+                with mock.patch("botocore.endpoint.Endpoint.make_request", side_effect=error):
+                    with self.assertRaises(ConnectionError) as raised:
+                        getattr(self._client, method)(**kwargs)
+
+                self.assertIs(raised.exception, error)
+                expected = self._default_span_attrs()
+                if method == "receive_message":
+                    expected[SpanAttributes.MESSAGING_OPERATION] = MessagingOperationValues.RECEIVE.value
+                self.assertEqual(sampler.attributes, expected)
+                span = self._get_only_span()
+                self.assertEqual(span.attributes, expected)
+                self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
     def test_send_message(self):
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
         message_id = "123456789"
         mock_response = {
             "MD5OfMessageBody": "1234",
@@ -254,6 +346,10 @@ class TestBoto3SQSInstrumentation(TestBase):
                 MessageAttributes=message_attrs,
             )
 
+        self.assertEqual(sampler.kind, SpanKind.PRODUCER)
+        self.assertEqual(sampler.attributes, self._default_span_attrs())
+        for value in sampler.attributes.values():
+            self.assertIs(type(value), str)
         span = self._get_only_span()
         self.assertEqual(f"{self._queue_name} send", span.name)
         self.assertEqual(SpanKind.PRODUCER, span.kind)
@@ -267,6 +363,8 @@ class TestBoto3SQSInstrumentation(TestBase):
         self._assert_injected_span(message_attrs, span)
 
     def test_send_message_batch(self):
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
         expected_message_ids = {"1": "msg-1", "2": "msg-2"}
         mock_response = {
             "Successful": [
@@ -280,8 +378,18 @@ class TestBoto3SQSInstrumentation(TestBase):
             {"Id": "2", "MessageBody": "hello 2"},
         ]
 
-        with self._mocked_endpoint(mock_response):
-            self._client.send_message_batch(QueueUrl=self._queue_url, Entries=entries)
+        with mock.patch.object(sampler, "should_sample", wraps=sampler.should_sample) as should_sample:
+            with self._mocked_endpoint(mock_response):
+                self._client.send_message_batch(QueueUrl=self._queue_url, Entries=entries)
+
+        self.assertEqual(should_sample.call_count, 2)
+        for call, entry in zip(should_sample.call_args_list, entries):
+            self.assertEqual(call.args[3], SpanKind.PRODUCER)
+            self.assertEqual(
+                call.args[4], {**self._default_span_attrs(), SpanAttributes.MESSAGING_CONVERSATION_ID: entry["Id"]}
+            )
+            for value in call.args[4].values():
+                self.assertIs(type(value), str)
 
         spans = self.get_finished_spans()
         self.assertEqual(2, len(spans))
@@ -331,6 +439,9 @@ class TestBoto3SQSInstrumentation(TestBase):
         self._assert_injected_span(entries[0]["MessageAttributes"], span)
 
     def test_receive_message(self):
+        # pylint: disable=too-many-locals
+        sampler = CapturingSampler()
+        self._instrument_with_sampler(sampler)
         msg_def = {
             "1": {"receipt": "01", "trace_id": 10, "span_id": 1},
             "2": {"receipt": "02", "trace_id": 20, "span_id": 2},
@@ -344,11 +455,32 @@ class TestBoto3SQSInstrumentation(TestBase):
 
         message_attr_names = []
 
-        with self._mocked_endpoint(mock_response):
-            response = self._client.receive_message(
-                QueueUrl=self._queue_url,
-                MessageAttributeNames=message_attr_names,
+        with mock.patch.object(sampler, "should_sample", wraps=sampler.should_sample) as should_sample:
+            with self._mocked_endpoint(mock_response):
+                response = self._client.receive_message(
+                    QueueUrl=self._queue_url,
+                    MessageAttributeNames=message_attr_names,
+                )
+
+        self.assertEqual(should_sample.call_count, 3)
+        expected_receive = {
+            **self._default_span_attrs(),
+            SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.RECEIVE.value,
+        }
+        self.assertEqual(should_sample.call_args_list[0].args[4], expected_receive)
+        for call, message_id in zip(should_sample.call_args_list[1:], msg_def):
+            self.assertEqual(call.args[3], SpanKind.CONSUMER)
+            self.assertEqual(
+                call.args[4],
+                {
+                    **self._default_span_attrs(),
+                    SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.PROCESS.value,
+                    messaging_attributes.MESSAGING_MESSAGE_ID: message_id,
+                },
             )
+        for call in should_sample.call_args_list:
+            for value in call.args[4].values():
+                self.assertIs(type(value), str)
 
         self.assertIn("traceparent", message_attr_names)
 
