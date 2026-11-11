@@ -104,10 +104,10 @@ Regular expressions may also be used to match multiple headers that correspond t
 
 Would match all request headers that start with ``Accept`` and ``X-``.
 
-Additionally, the special keyword ``all`` can be used to capture all request headers.
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="all"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
@@ -138,10 +138,10 @@ Regular expressions may also be used to match multiple headers that correspond t
 
 Would match all response headers that start with ``Content`` and ``X-``.
 
-Additionally, the special keyword ``all`` can be used to capture all response headers.
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
 ::
 
-    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="all"
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
