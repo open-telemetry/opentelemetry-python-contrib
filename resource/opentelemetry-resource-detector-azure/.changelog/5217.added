@@ -1,0 +1,1 @@
+`opentelemetry-resource-detector-azure`: detect AKS pod identity via the Downward API
