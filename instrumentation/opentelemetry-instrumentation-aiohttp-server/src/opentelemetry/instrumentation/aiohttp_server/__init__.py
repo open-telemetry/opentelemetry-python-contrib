@@ -150,7 +150,7 @@ from __future__ import annotations
 from timeit import default_timer
 
 from aiohttp import web
-from multidict import CIMultiDictProxy
+from multidict import CIMultiDictProxy, MultiMapping
 
 from opentelemetry import metrics, trace
 from opentelemetry.instrumentation._semconv import (
@@ -334,6 +334,13 @@ def collect_request_attributes(
     return result
 
 
+def _get_header_values(headers: MultiMapping[str]) -> dict[str, list[str]]:
+    values: dict[str, list[str]] = {}
+    for key, value in headers.items():
+        values.setdefault(key.lower(), []).append(value)
+    return values
+
+
 def collect_request_headers_attributes(
     request: web.Request,
 ) -> dict[str, list[str]]:
@@ -344,7 +351,7 @@ def collect_request_headers_attributes(
     sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
 
     return sanitize.sanitize_header_values(
-        request.headers,
+        _get_header_values(request.headers),
         captured_headers,
         normalise_request_header_name,
     )
@@ -353,11 +360,15 @@ def collect_request_headers_attributes(
 def collect_response_headers_attributes(
     response: web.Response,
 ) -> dict[str, list[str]]:
+    captured_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
+    if not captured_headers:
+        return {}
+
     sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
 
     return sanitize.sanitize_header_values(
-        response.headers,
-        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE),
+        _get_header_values(response.headers),
+        captured_headers,
         normalise_response_header_name,
     )
 
