@@ -59,9 +59,16 @@ from opentelemetry.semconv._incubating.attributes.url_attributes import (
     URL_PATH,
     URL_SCHEME,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_HEADER_TEMPLATE,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -721,6 +728,12 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
+    def _assert_server_attributes(self, attrs, address, port):
+        self.assertEqual(attrs[SERVER_ADDRESS], address)
+        self.assertIsInstance(attrs[SERVER_ADDRESS], str)
+        self.assertEqual(attrs[SERVER_PORT], port)
+        self.assertIs(type(attrs[SERVER_PORT]), int)
+
     def _get_metrics_attributes(self, **instrument_kwargs):
         if instrument_kwargs:
             FlaskInstrumentor().uninstrument_app(self.app)
@@ -735,7 +748,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         metrics_attrs = self._get_metrics_attributes()
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.request.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
         )
         for attrs in metrics_attrs.values():
             self.assertNotIn(SERVER_ADDRESS, attrs)
@@ -745,25 +758,23 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.request.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
         )
         for attrs in metrics_attrs.values():
-            self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
-            self.assertEqual(attrs[SERVER_PORT], 80)
+            self._assert_server_attributes(attrs, "localhost", 80)
 
     def test_flask_metrics_server_attributes_enabled_both_semconv(self):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
-        for name in ("http.server.active_requests", "http.server.request.duration"):
-            self.assertEqual(metrics_attrs[name][SERVER_ADDRESS], "localhost")
-            self.assertEqual(metrics_attrs[name][SERVER_PORT], 80)
-        self.assertNotIn(SERVER_ADDRESS, metrics_attrs["http.server.duration"])
-        self.assertNotIn(SERVER_PORT, metrics_attrs["http.server.duration"])
+        for name in (HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION):
+            self._assert_server_attributes(metrics_attrs[name], "localhost", 80)
+        self.assertNotIn(SERVER_ADDRESS, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
+        self.assertNotIn(SERVER_PORT, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
 
     def test_flask_metrics_server_attributes_enabled_old_semconv(self):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, MetricInstruments.HTTP_SERVER_DURATION},
         )
         for attrs in metrics_attrs.values():
             self.assertNotIn(SERVER_ADDRESS, attrs)
@@ -779,8 +790,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             FlaskInstrumentor().uninstrument()
         for metric in self.get_sorted_metrics(SCOPE):
             attrs = dict(next(iter(metric.data.data_points)).attributes)
-            self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
-            self.assertEqual(attrs[SERVER_PORT], 80)
+            self._assert_server_attributes(attrs, "localhost", 80)
 
     def test_metric_uninstrument(self):
         self.client.delete("/hello/756")
