@@ -130,7 +130,7 @@ class _DjangoMiddleware:
     _duration_histogram_new = None
     _active_request_counter = None
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
-    _server_attributes_in_metrics = False
+    _server_attributes_in_metrics: bool = False
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = None
@@ -406,7 +406,7 @@ class _DjangoMiddleware:
         return response
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
@@ -415,7 +415,9 @@ def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
     )
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
