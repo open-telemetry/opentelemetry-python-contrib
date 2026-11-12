@@ -1,10 +1,16 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from collections.abc import Sequence
+from __future__ import annotations
+
+from collections.abc import Collection, Sequence
+from typing import overload
 
 from opentelemetry.baggage import get_all as get_all_baggage
-from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
+from opentelemetry.processor.baggage.processor import (
+    BaggageKeyPredicateT,
+    _baggage_key_predicates,
+)
 from opentelemetry.sdk._logs import LogRecordProcessor, ReadWriteLogRecord
 
 BaggageKeyPredicate = BaggageKeyPredicateT | Sequence[BaggageKeyPredicateT]
@@ -18,6 +24,13 @@ class BaggageLogProcessor(LogRecordProcessor):
 
     Add this log processor to a logger provider.
 
+    Baggage keys are selected either with ``baggage_key_predicate`` or with
+    ``included`` / ``excluded`` wildcard patterns, which cannot be combined.
+    Patterns support ``*`` and ``?`` and are matched case-sensitively against
+    the whole key. When ``included`` is empty or not set, all keys are
+    included; ``excluded`` is applied after ``included``. When nothing is
+    configured, all baggage entries are copied.
+
     ⚠ Warning ⚠️
 
     Do not put sensitive information in Baggage.
@@ -26,15 +39,31 @@ class BaggageLogProcessor(LogRecordProcessor):
     values will appear in all outgoing HTTP headers from the application.
     """
 
+    @overload
     def __init__(
         self,
         baggage_key_predicate: BaggageKeyPredicate,
         max_baggage_attributes: int = 128,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        max_baggage_attributes: int = 128,
+        included: Collection[str] | None = None,
+        excluded: Collection[str] | None = None,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        baggage_key_predicate: BaggageKeyPredicate | None = None,
+        max_baggage_attributes: int = 128,
+        *,
+        included: Collection[str] | None = None,
+        excluded: Collection[str] | None = None,
     ) -> None:
-        if callable(baggage_key_predicate):
-            self._predicates = [baggage_key_predicate]
-        else:
-            self._predicates = list(baggage_key_predicate)
+        self._predicates = _baggage_key_predicates(baggage_key_predicate, included, excluded)
         self._max_baggage_attributes = max_baggage_attributes
 
     def _matches(self, key: str) -> bool:

@@ -30,6 +30,12 @@ dependencies = [
   "wrapt >= 1.0.0, < 3.0.0",
 ]
 
+[project.entry-points.opentelemetry_span_processor]
+baggage = "opentelemetry.processor.baggage:BaggageSpanProcessor"
+
+[project.entry-points.opentelemetry_log_record_processor]
+baggage = "opentelemetry.processor.baggage:BaggageLogProcessor"
+
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/processor/opentelemetry-processor-baggage"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"

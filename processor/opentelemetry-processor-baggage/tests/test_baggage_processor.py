@@ -3,6 +3,7 @@
 
 import re
 import unittest
+from importlib.metadata import entry_points
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.baggage import set_baggage
@@ -14,6 +15,26 @@ from opentelemetry.processor.baggage import (
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.trace import Span, Tracer
+
+# (included, excluded, baggage keys, expected copied keys)
+_INCLUDE_EXCLUDE_CASES = (
+    (None, None, ["a", "b"], ["a", "b"]),
+    ([], [], ["a", "b"], ["a", "b"]),
+    (["a*"], None, ["a", "ab", "b"], ["a", "ab"]),
+    (None, ["a*"], ["a", "ab", "b"], ["b"]),
+    (["a*", "b*"], ["ab*"], ["a", "ab", "abc", "b", "c"], ["a", "b"]),
+    (["a", "b"], ["a"], ["a", "b", "c"], ["b"]),
+    (["a?c"], None, ["abc", "ac", "abbc"], ["abc"]),
+    (["foo"], None, ["foo", "foobar", "xfoo", "FOO"], ["foo"]),
+    (["a.b", "[c]", "d+"], None, ["a.b", "axb", "[c]", "c", "d+", "dd"], ["a.b", "[c]", "d+"]),
+)
+
+
+def _baggage_context(keys):
+    ctx = None
+    for key in keys:
+        ctx = set_baggage(key, "value", context=ctx)
+    return ctx
 
 
 class BaggageSpanProcessorTest(unittest.TestCase):
@@ -128,3 +149,42 @@ class BaggageSpanProcessorTest(unittest.TestCase):
     @staticmethod
     def matches_regex(baggage_key: str) -> bool:
         return re.match(r"que.*", baggage_key) is not None
+
+
+class BaggageSpanProcessorIncludeExcludeTest(unittest.TestCase):
+    @staticmethod
+    def _span_attributes(processor, baggage_keys):
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(processor)
+        tracer = tracer_provider.get_tracer("my-tracer")
+        with tracer.start_as_current_span("span", context=_baggage_context(baggage_keys)) as span:
+            return dict(span.attributes)
+
+    def test_include_exclude(self):
+        for included, excluded, baggage_keys, expected in _INCLUDE_EXCLUDE_CASES:
+            with self.subTest(included=included, excluded=excluded):
+                attributes = self._span_attributes(
+                    BaggageSpanProcessor(included=included, excluded=excluded),
+                    baggage_keys,
+                )
+                self.assertEqual(attributes, dict.fromkeys(expected, "value"))
+
+    def test_no_arguments_copies_all_baggage(self):
+        attributes = self._span_attributes(BaggageSpanProcessor(), ["a", "b"])
+        self.assertEqual(attributes, {"a": "value", "b": "value"})
+
+    def test_predicate_with_include_exclude_raises(self):
+        for kwargs in ({"included": ["a"]}, {"excluded": ["a"]}, {"included": []}):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS, **kwargs)
+
+    def test_entry_point(self):
+        (entry_point,) = entry_points(group="opentelemetry_span_processor", name="baggage")
+        processor_class = entry_point.load()
+        self.assertIs(processor_class, BaggageSpanProcessor)
+        attributes = self._span_attributes(
+            processor_class(included=["a*"], excluded=["ab"]),
+            ["a", "ab", "b"],
+        )
+        self.assertEqual(attributes, {"a": "value"})
