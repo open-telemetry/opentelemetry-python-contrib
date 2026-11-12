@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest import mock
+
 from flask import Flask
 
 from opentelemetry import metrics as metrics_api
@@ -13,6 +15,9 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
     INVALID_SPAN_ID,
     INVALID_TRACE_ID,
+)
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
 )
 
 
@@ -33,7 +38,7 @@ class TestFunctionalFlask(TestBase):
 
         self._app = Flask(__name__)
 
-        @self._app.route("/test/")
+        @self._app.route("/test/", methods=["GET", "POST"])
         def test_route():
             return "Test response"
 
@@ -101,3 +106,20 @@ class TestFunctionalFlask(TestBase):
 
         # At least one exemplar was generated
         self.assertGreater(exemplar_count, 0)
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "content-type,content-length,custom-test-header"},
+    )
+    def test_custom_request_headers_content_type_and_length(self):
+        self._client.post(
+            "/test/",
+            data='{"a": 1}',
+            content_type="application/json",
+            headers={"Custom-Test-Header": "test-value"},
+        )
+
+        span = self.memory_exporter.get_finished_spans()[-1]
+        self.assertEqual(span.attributes["http.request.header.content_type"], ("application/json",))
+        self.assertEqual(span.attributes["http.request.header.content_length"], ("8",))
+        self.assertEqual(span.attributes["http.request.header.custom_test_header"], ("test-value",))

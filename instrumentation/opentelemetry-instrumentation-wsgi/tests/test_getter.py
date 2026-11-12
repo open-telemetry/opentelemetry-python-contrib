@@ -38,3 +38,31 @@ class TestGetter(TestCase):
         keys = getter.keys({})
 
         self.assertEqual(keys, [])
+
+    def test_get_content_type_and_length(self):
+        getter = WSGIGetter()
+        carrier = {
+            "CONTENT_TYPE": "application/json",
+            "CONTENT_LENGTH": "7",
+            "HTTP_CONTENT_TYPE": "text/html",
+        }
+
+        self.assertEqual(getter.get(carrier, "Content-Type"), ["application/json"])
+        self.assertEqual(getter.get(carrier, "content-length"), ["7"])
+
+    def test_get_empty_content_length(self):
+        getter = WSGIGetter()
+
+        self.assertIsNone(getter.get({"CONTENT_LENGTH": ""}, "content-length"))
+
+    def test_keys_content_type_and_length(self):
+        getter = WSGIGetter()
+        keys = getter.keys(
+            {
+                "HTTP_TEST_KEY": "val",
+                "CONTENT_TYPE": "application/json",
+                "CONTENT_LENGTH": "",
+            }
+        )
+
+        self.assertEqual(keys, ["test-key", "content-type"])
