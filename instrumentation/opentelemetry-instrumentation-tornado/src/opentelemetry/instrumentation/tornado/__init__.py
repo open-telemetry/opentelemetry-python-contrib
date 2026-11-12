@@ -185,6 +185,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     Environment variable names to capture http headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
@@ -567,7 +569,11 @@ def patch_handler_class(
 
 
 def unpatch_handler_class(cls):
-    if not getattr(cls, _OTEL_PATCHED_KEY, False):
+    # Look at the class' own __dict__ instead of using getattr, which would
+    # also find the marker on a base class. A subclass of a patched class
+    # inherits the marker but owns neither it nor the wrapped methods, so
+    # there is nothing to undo on it.
+    if _OTEL_PATCHED_KEY not in cls.__dict__:
         return
 
     unwrap(cls, "prepare")

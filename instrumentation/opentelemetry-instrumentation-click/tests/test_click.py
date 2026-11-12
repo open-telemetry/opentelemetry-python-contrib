@@ -156,6 +156,66 @@ class ClickTestCase(TestBase):
                 "error.type": "ValueError",
             },
         )
+        self.assertEqual([event.name for event in span.events], ["exception"])
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_cli_command_ctx_exit_zero_is_not_an_error(self):
+        @click.command()
+        @click.pass_context
+        def command(ctx):
+            ctx.exit(0)
+
+        result = CliRunner().invoke(command)
+        self.assertEqual(result.exit_code, 0)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["process.exit.code"], 0)
+        self.assertNotIn("error.type", span.attributes)
+        self.assertEqual(span.events, ())
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_cli_command_ctx_exit_nonzero_is_an_error(self):
+        @click.command()
+        @click.pass_context
+        def command(ctx):
+            ctx.exit(2)
+
+        result = CliRunner().invoke(command)
+        self.assertEqual(result.exit_code, 2)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["process.exit.code"], 2)
+        self.assertEqual(span.attributes["error.type"], "Exit")
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_cli_command_sys_exit_records_exit_code(self):
+        @click.command()
+        def command():
+            raise SystemExit(3)
+
+        result = CliRunner().invoke(command)
+        self.assertEqual(result.exit_code, 3)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["process.exit.code"], 3)
+        self.assertEqual(span.attributes["error.type"], "SystemExit")
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_cli_command_sys_exit_none_is_not_an_error(self):
+        @click.command()
+        def command():
+            raise SystemExit()
+
+        result = CliRunner().invoke(command)
+        self.assertEqual(result.exit_code, 0)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["process.exit.code"], 0)
+        self.assertNotIn("error.type", span.attributes)
 
     def test_uvicorn_cli_command_ignored(self):
         @click.command("uvicorn")

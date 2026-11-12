@@ -146,6 +146,7 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
                 "error.type": "ValueError",
             },
         )
+        self.assertEqual([event.name for event in span.events], ["exception"])
 
     def test_uninstrument(self):
         AsyncClickInstrumentor().uninstrument()
@@ -284,6 +285,35 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes["process.exit.code"], 42)
         self.assertEqual(span.attributes["error.type"], "Exit")
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_exit_zero_is_not_an_error(self) -> None:
+        @asyncclick.command()
+        async def command() -> None:
+            raise asyncclick.exceptions.Exit(code=0)
+
+        result = run_asyncclick_command_test(command)
+        self.assertEqual(result.exit_code, 0)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["process.exit.code"], 0)
+        self.assertNotIn("error.type", span.attributes)
+        self.assertEqual(span.events, ())
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_sys_exit_records_exit_code(self) -> None:
+        @asyncclick.command()
+        async def command() -> None:
+            raise SystemExit(3)
+
+        result = run_asyncclick_command_test(command)
+        self.assertEqual(result.exit_code, 3)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["process.exit.code"], 3)
+        self.assertEqual(span.attributes["error.type"], "SystemExit")
 
     @mock.patch("sys.argv", ["command.py"])
     def test_context_object_passing(self):
