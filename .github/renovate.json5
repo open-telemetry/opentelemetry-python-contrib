@@ -100,6 +100,12 @@
         allowedVersions: "<5.0.0",
       },
       {
+        description: "Django test matrix slot 3 covers the 5.2 series, which tox.ini documents as django>=5.2<6.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-django/test-requirements-3.txt"],
+        matchPackageNames: ["django", "Django"],
+        allowedVersions: "<6.0.0",
+      },
+      {
         description: "falcon test matrix slot 0 covers the 1.x series.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-falcon/test-requirements-0.txt"],
         matchPackageNames: ["falcon"],
