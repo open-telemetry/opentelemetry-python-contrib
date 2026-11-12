@@ -3,14 +3,17 @@
 
 import threading
 import time
+from unittest import mock
 
+from celery import signals as celery_signals
 from celery.signals import after_task_publish, before_task_publish
 from kombu import Exchange
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import baggage, context
+from opentelemetry import baggage, context, trace
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter_provider
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_STACKTRACE,
@@ -27,6 +30,26 @@ from .celery_test_tasks import (
     task_raises,
     task_returns_baggage,
 )
+
+
+class FakeTracerProvider:
+    def __init__(self):
+        self.force_flush = mock.Mock()
+
+    def get_tracer(  # pylint: disable=no-self-use
+        self, *args, **kwargs
+    ):
+        return trace.get_tracer_provider().get_tracer(*args, **kwargs)
+
+
+class FakeMeterProvider:
+    def __init__(self):
+        self.force_flush = mock.Mock()
+
+    def get_meter(  # pylint: disable=no-self-use
+        self, *args, **kwargs
+    ):
+        return get_meter_provider().get_meter(*args, **kwargs)
 
 
 class TestCeleryPublishSignal(TestBase):
@@ -358,3 +381,99 @@ class TestCelerySignatureTask(TestBase):
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
         self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
+
+
+class TestCeleryInstrumentationFlush(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        CeleryInstrumentor().uninstrument()
+
+    def test_flush_on_worker_process_shutdown(self):  # pylint: disable=no-self-use
+        tracer_provider = FakeTracerProvider()
+        meter_provider = FakeMeterProvider()
+        CeleryInstrumentor().instrument(tracer_provider=tracer_provider, meter_provider=meter_provider)
+
+        celery_signals.worker_process_shutdown.send(sender=None)
+
+        tracer_provider.force_flush.assert_called_once_with()
+        meter_provider.force_flush.assert_called_once_with()
+
+    # pylint: disable-next=no-self-use
+    def test_flush_uses_global_providers_resolved_at_shutdown(self):
+        tracer_provider = FakeTracerProvider()
+        meter_provider = FakeMeterProvider()
+        CeleryInstrumentor().instrument()
+
+        with (
+            mock.patch.object(
+                trace,
+                "get_tracer_provider",
+                return_value=tracer_provider,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.celery.get_meter_provider",
+                return_value=meter_provider,
+            ),
+        ):
+            celery_signals.worker_process_shutdown.send(sender=None)
+
+        tracer_provider.force_flush.assert_called_once_with()
+        meter_provider.force_flush.assert_called_once_with()
+
+    def test_meter_flush_attempted_when_tracer_flush_raises(self):
+        tracer_provider = FakeTracerProvider()
+        tracer_provider.force_flush.side_effect = RuntimeError("flush failed")
+        meter_provider = FakeMeterProvider()
+        CeleryInstrumentor().instrument(tracer_provider=tracer_provider, meter_provider=meter_provider)
+
+        with self.assertLogs("opentelemetry.instrumentation.celery", level="ERROR"):
+            celery_signals.worker_process_shutdown.send(sender=None)
+
+        tracer_provider.force_flush.assert_called_once_with()
+        meter_provider.force_flush.assert_called_once_with()
+
+    def test_slow_provider_does_not_block_worker_shutdown(self):
+        flush_started = threading.Event()
+        release_flush = threading.Event()
+        meter_flush_started = threading.Event()
+        tracer_provider = FakeTracerProvider()
+
+        def block_flush():
+            flush_started.set()
+            release_flush.wait(timeout=1)
+
+        tracer_provider.force_flush.side_effect = block_flush
+        meter_provider = FakeMeterProvider()
+        meter_provider.force_flush.side_effect = meter_flush_started.set
+        CeleryInstrumentor().instrument(tracer_provider=tracer_provider, meter_provider=meter_provider)
+
+        start = time.monotonic()
+        try:
+            with (
+                mock.patch(
+                    "opentelemetry.instrumentation.celery._PROVIDER_FLUSH_TIMEOUT_SECONDS",
+                    0.1,
+                ),
+                self.assertLogs("opentelemetry.instrumentation.celery", level="WARNING"),
+            ):
+                celery_signals.worker_process_shutdown.send(sender=None)
+            elapsed = time.monotonic() - start
+        finally:
+            release_flush.set()
+
+        self.assertTrue(flush_started.wait(timeout=1))
+        self.assertTrue(meter_flush_started.wait(timeout=1))
+        self.assertLess(elapsed, 0.5)
+        meter_provider.force_flush.assert_called_once_with()
+
+    def test_no_flush_after_uninstrument(self):  # pylint: disable=no-self-use
+        tracer_provider = FakeTracerProvider()
+        meter_provider = FakeMeterProvider()
+        instrumentor = CeleryInstrumentor()
+        instrumentor.instrument(tracer_provider=tracer_provider, meter_provider=meter_provider)
+        instrumentor.uninstrument()
+
+        celery_signals.worker_process_shutdown.send(sender=None)
+
+        tracer_provider.force_flush.assert_not_called()
+        meter_provider.force_flush.assert_not_called()
