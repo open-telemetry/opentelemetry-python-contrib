@@ -794,7 +794,7 @@ class TestConsumerParentContext(TestBase):
         self.assertEqual(process_span.name, "topic-1 process")
         self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
         self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
-        self.assertEqual(len(process_span.links), 0)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
         self._assert_child(handle_span, process_span)
 
     def test_opt_in_consume_single_record_uses_message_context_as_parent(self) -> None:
@@ -807,7 +807,7 @@ class TestConsumerParentContext(TestBase):
         handle_span, process_span = self.memory_exporter.get_finished_spans()
         self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
         self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
-        self.assertEqual(len(process_span.links), 0)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
         self.assertEqual(process_span.attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION], 2)
         self.assertEqual(process_span.attributes[SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET], 9)
         self.assertEqual(process_span.attributes[MESSAGING_MESSAGE_ID], "topic-1.2.9")
@@ -847,7 +847,10 @@ class TestConsumerParentContext(TestBase):
         self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
         self.assertEqual(
             self._link_ids(process_span),
-            [(loop_span.context.trace_id, loop_span.context.span_id)],
+            [
+                (_TRACE_ID_A, _SPAN_ID_A),
+                (loop_span.context.trace_id, loop_span.context.span_id),
+            ],
         )
         self._assert_child(handle_span, process_span)
 
@@ -894,3 +897,26 @@ class TestConsumerParentContext(TestBase):
         (process_span,) = self.memory_exporter.get_finished_spans()
         self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
         self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
+
+    def test_uninstrument_removes_every_wrapper(self) -> None:
+        wrapped = (
+            (AutoInstrumentedProducer, "produce"),
+            (AutoInstrumentedConsumer, "poll"),
+            (AutoInstrumentedConsumer, "consume"),
+            (AutoInstrumentedConsumer, "close"),
+        )
+        instrumentor = ConfluentKafkaInstrumentor()
+        instrumentor.instrument(tracer_provider=self.tracer_provider)
+        instrumentor.uninstrument()
+        for cls, name in wrapped:
+            self.assertFalse(hasattr(getattr(cls, name), "__wrapped__"), f"{cls.__name__}.{name} is still wrapped")
+
+        # instrument() after uninstrument() installs exactly one wrapper layer
+        instrumentor.instrument(tracer_provider=self.tracer_provider, use_message_context_as_parent=True)
+        try:
+            for cls, name in wrapped:
+                method = getattr(cls, name)
+                self.assertTrue(hasattr(method, "__wrapped__"), f"{cls.__name__}.{name} is not wrapped")
+                self.assertFalse(hasattr(method.__wrapped__, "__wrapped__"), f"{cls.__name__}.{name} is wrapped twice")
+        finally:
+            instrumentor.uninstrument()
