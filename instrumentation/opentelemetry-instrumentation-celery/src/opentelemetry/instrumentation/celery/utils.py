@@ -35,13 +35,12 @@ logger = logging.getLogger(__name__)
 # Celery Context key
 CTX_KEY = "__otel_task_span"
 
-# Celery Context attributes
-CELERY_CONTEXT_ATTRIBUTES = (
+# Metadata available on task.request
+CELERY_REQUEST_ATTRIBUTES: tuple[str, ...] = (
     "compression",
     "correlation_id",
     "countdown",
     "delivery_info",
-    "declare",
     "eta",
     "exchange",
     "expires",
@@ -55,17 +54,39 @@ CELERY_CONTEXT_ATTRIBUTES = (
     "serializer",
     "timelimit",
     "origin",
-    "state",
 )
 
 
-# pylint:disable=too-many-branches
-def get_attributes_from_context(
-    context: ContextCarrier,
-) -> dict[str, AttributeValue]:
-    """Helper to extract meta values from a Celery Context"""
+def get_publish_attributes(context: Mapping[str, Any]) -> dict[str, AttributeValue]:
+    """Extract routing metadata from before_task_publish signal arguments."""
     attributes: dict[str, AttributeValue] = {}
-    for key in CELERY_CONTEXT_ATTRIBUTES:
+    exchange = context.get("exchange")
+    if isinstance(exchange, Exchange):
+        exchange = exchange.name
+    if exchange is not None and exchange != "":
+        attributes["celery.exchange"] = exchange
+
+    routing_key = context.get("routing_key")
+    if routing_key is not None and routing_key != "":
+        attributes[SpanAttributes.MESSAGING_DESTINATION] = routing_key
+
+    # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
+    for declare in context.get("declare") or ():
+        if declare.exchange.type == "direct":
+            attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.QUEUE.value
+            break
+        if declare.exchange.type == "topic":
+            attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.TOPIC.value
+            break
+
+    return attributes
+
+
+# pylint:disable=too-many-branches
+def get_request_attributes(context: ContextCarrier) -> dict[str, AttributeValue]:
+    """Extract execution metadata from task.request."""
+    attributes: dict[str, AttributeValue] = {}
+    for key in CELERY_REQUEST_ATTRIBUTES:
         value = context.get(key)
 
         # Skip this key if it is not set
@@ -85,35 +106,18 @@ def get_attributes_from_context(
             continue
 
         attribute_name = None
-
         if key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
-
             if routing_key is not None:
                 attributes[SpanAttributes.MESSAGING_DESTINATION] = routing_key
-
             value = str(value)
-
         elif key == "id":
             attribute_name = MESSAGING_MESSAGE_ID
-
         elif key == "correlation_id":
             attribute_name = SpanAttributes.MESSAGING_CONVERSATION_ID
-
         elif key == "routing_key":
             attribute_name = SpanAttributes.MESSAGING_DESTINATION
-
-        # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
-        elif key == "declare":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
-            for declare in value:
-                if declare.exchange.type == "direct":
-                    value = MessagingDestinationKindValues.QUEUE.value
-                    break
-                if declare.exchange.type == "topic":
-                    value = MessagingDestinationKindValues.TOPIC.value
-                    break
 
         # set attribute name if not set specially for a key
         if attribute_name is None:

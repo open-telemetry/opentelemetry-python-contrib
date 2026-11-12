@@ -190,8 +190,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         operation_name = f"{_TASK_RUN}/{task.name}"
         attributes = {
             _TASK_TAG_KEY: _TASK_RUN,
-            **utils.get_attributes_from_context(kwargs),
-            **utils.get_attributes_from_context(request),
+            **utils.get_request_attributes(request),
             _TASK_NAME_KEY: task.name,
         }
 
@@ -231,9 +230,9 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         span, activation, token = ctx
 
-        # The postrun signal supplies attributes only known after execution, such as state.
-        if span.is_recording():
-            span.set_attributes(utils.get_attributes_from_context(kwargs))
+        state = kwargs.get("state")
+        if span.is_recording() and state is not None and state != "":
+            span.set_attribute("celery.state", state)
 
         activation.__exit__(None, None, None)
         utils.detach_context(task, task_id)
@@ -265,7 +264,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             _TASK_TAG_KEY: _TASK_APPLY_ASYNC,
             MESSAGING_MESSAGE_ID: task_id,
             _TASK_NAME_KEY: task_name,
-            **utils.get_attributes_from_context(kwargs),
+            **utils.get_publish_attributes(kwargs),
         }
         span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER, attributes=attributes)
 

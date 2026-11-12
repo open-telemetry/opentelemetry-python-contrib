@@ -79,7 +79,7 @@ class TestCelerySampling(TestBase):
             "exchange": Exchange("celery", type="direct"),
             "routing_key": "celery",
             "declare": [Queue("celery", exchange=Exchange("celery", type="direct"))],
-            "priority": 4,
+            "properties": {"priority": 4},
         }
 
         before_task_publish.send(**signal_kwargs)
@@ -92,7 +92,6 @@ class TestCelerySampling(TestBase):
             "celery.exchange": "celery",
             SpanAttributes.MESSAGING_DESTINATION: "celery",
             SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
-            "celery.priority": 4,
         }
         self.assertEqual(sampler.kind, SpanKind.PRODUCER)
         self.assertEqual(sampler.attributes, expected)
@@ -149,6 +148,26 @@ class TestCelerySampling(TestBase):
                     self.assertEqual(len(spans[0].links), 1)
                 else:
                     self.assertEqual(spans[0].parent.span_id, 0x405FF022E8247C46)
+
+    def test_postrun_state(self) -> None:
+        self._instrument_with_sampler(CapturingSampler())
+        for state_kwargs in ({}, {"state": None}, {"state": ""}, {"state": "SUCCESS"}, {"state": "FAILURE"}):
+            with self.subTest(state_kwargs=state_kwargs):
+                task_add.push_request(id="task-id", hostname="worker")
+                try:
+                    signal_kwargs = {"sender": task_add, "task": task_add, "task_id": "task-id"}
+                    task_prerun.send(**signal_kwargs)
+                    task_postrun.send(**signal_kwargs, **state_kwargs)
+                finally:
+                    task_add.pop_request()
+
+                span = self.memory_exporter.get_finished_spans()[-1]
+                state = state_kwargs.get("state")
+                if state:
+                    self.assertEqual(span.attributes["celery.state"], state)
+                    self.assertIs(type(span.attributes["celery.state"]), str)
+                else:
+                    self.assertNotIn("celery.state", span.attributes)
 
     def test_attributes_control_sampling_apply_async(self) -> None:
         for routing_key, expected_count in (("sample", 1), ("drop", 0)):
