@@ -246,6 +246,9 @@ class BaseTestCases:
                     HTTP_STATUS_CODE: 200,
                     HTTP_METHOD: "GET",
                     HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
                 },
             )
             self.assertEqual(duration_data_point.count, 1)
@@ -287,6 +290,9 @@ class BaseTestCases:
                     HTTP_STATUS_CODE: 405,
                     HTTP_METHOD: "_OTHER",
                     HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
                 },
             )
 
@@ -802,6 +808,10 @@ class BaseTestCases:
                     HTTP_STATUS_CODE: 200,
                     HTTP_METHOD: "GET",
                     HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
                 },
                 expected_number_of_metrics=1,
             )
