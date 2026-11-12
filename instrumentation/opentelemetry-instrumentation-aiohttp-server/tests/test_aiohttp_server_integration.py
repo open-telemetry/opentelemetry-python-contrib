@@ -751,6 +751,82 @@ async def test_semantic_conventions_metrics_new(test_base: TestBase, meter, aioh
         AioHttpServerInstrumentor().uninstrument()
 
 
+async def _get_metrics_attributes(test_base: TestBase, aiohttp_server, **instrument_kwargs):
+    AioHttpServerInstrumentor().instrument(**instrument_kwargs)
+    app = aiohttp.web.Application()
+    app.router.add_get("/test-path", default_handler)
+    server = await aiohttp_server(app)
+    client_session = aiohttp.ClientSession()
+    try:
+        async with client_session.get(  # pylint: disable=not-async-context-manager
+            f"http://{server.host}:{server.port}/test-path"
+        ) as response:
+            assert response.status == 200
+    finally:
+        await client_session.close()
+        AioHttpServerInstrumentor().uninstrument()
+    metrics_attrs = {
+        metric.name: dict(next(iter(metric.data.data_points)).attributes)
+        for metric in test_base.get_sorted_metrics(SCOPE)
+    }
+    return server, metrics_attrs
+
+
+@pytest.mark.asyncio
+async def test_metrics_server_attributes_default_new(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
+
+    _, metrics_attrs = await _get_metrics_attributes(test_base, aiohttp_server)
+
+    assert set(metrics_attrs) == {"http.server.active_requests", "http.server.request.duration"}
+    for attrs in metrics_attrs.values():
+        assert SERVER_ADDRESS not in attrs
+        assert SERVER_PORT not in attrs
+
+
+@pytest.mark.asyncio
+async def test_metrics_server_attributes_enabled_new(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value)
+
+    server, metrics_attrs = await _get_metrics_attributes(
+        test_base, aiohttp_server, enable_server_attributes_in_metrics=True
+    )
+
+    assert set(metrics_attrs) == {"http.server.active_requests", "http.server.request.duration"}
+    for attrs in metrics_attrs.values():
+        assert attrs[SERVER_ADDRESS] == server.host
+        assert attrs[SERVER_PORT] == server.port
+
+
+@pytest.mark.asyncio
+async def test_metrics_server_attributes_enabled_both(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value)
+
+    server, metrics_attrs = await _get_metrics_attributes(
+        test_base, aiohttp_server, enable_server_attributes_in_metrics=True
+    )
+
+    for name in ("http.server.active_requests", "http.server.request.duration"):
+        assert metrics_attrs[name][SERVER_ADDRESS] == server.host
+        assert metrics_attrs[name][SERVER_PORT] == server.port
+    assert SERVER_ADDRESS not in metrics_attrs["http.server.duration"]
+    assert SERVER_PORT not in metrics_attrs["http.server.duration"]
+
+
+@pytest.mark.asyncio
+async def test_metrics_server_attributes_enabled_old_default(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value)
+
+    _, metrics_attrs = await _get_metrics_attributes(
+        test_base, aiohttp_server, enable_server_attributes_in_metrics=True
+    )
+
+    assert "http.server.duration" in metrics_attrs
+    for attrs in metrics_attrs.values():
+        assert SERVER_ADDRESS not in attrs
+        assert SERVER_PORT not in attrs
+
+
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 @pytest.mark.asyncio
