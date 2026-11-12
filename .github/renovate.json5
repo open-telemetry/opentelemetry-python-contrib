@@ -55,6 +55,7 @@
           "**/*-requirements.lowest.txt",
           "**/*-requirements-oldest.txt",
           "**/*-requirements-latest.txt",
+          "**/*-requirements-lowest.txt",
         ],
         enabled: false,
       },
@@ -100,6 +101,12 @@
         allowedVersions: "<5.0.0",
       },
       {
+        description: "Django test matrix slot 3 covers the 5.2 series, which tox.ini documents as django>=5.2<6.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-django/test-requirements-3.txt"],
+        matchPackageNames: ["django", "Django"],
+        allowedVersions: "<6.0.0",
+      },
+      {
         description: "falcon test matrix slot 0 covers the 1.x series.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-falcon/test-requirements-0.txt"],
         matchPackageNames: ["falcon"],
@@ -122,6 +129,12 @@
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-falcon/test-requirements-3.txt"],
         matchPackageNames: ["falcon"],
         allowedVersions: "<4.0.0",
+      },
+      {
+        description: "falcon test matrix slot 4 covers the 4.x series, which tox.ini documents as falcon >=4.0.0,<5.0.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-falcon/test-requirements-4.txt"],
+        matchPackageNames: ["falcon"],
+        allowedVersions: "<5.0.0",
       },
       {
         description: "Flask test matrix slot 0 covers the 2.1 series.",
@@ -157,6 +170,12 @@
         allowedVersions: "<2.0.0",
       },
       {
+        description: "urllib3 test matrix slot 1 covers the 2.x series, which tox.ini documents as urllib3 >=2.0.0,<3.0.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-urllib3/test-requirements-1.txt"],
+        matchPackageNames: ["urllib3"],
+        allowedVersions: "<3.0.0",
+      },
+      {
         description: "mysql test matrix slot 0 covers the 8.x series of the connector.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-mysql/test-requirements-0.txt"],
         matchPackageNames: ["mysql-connector-python"],
@@ -187,15 +206,15 @@
         allowedVersions: "<3.4.2",
       },
       {
-        description: "pymemcache test matrix slot 3 covers the 3.x series, leaving 4.0 to slot 4.",
+        description: "pymemcache test matrix slot 3 pins the single release 3.4.2, which tox.ini documents as pymemcache ==3.4.2 and which slot 2 stops just below.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-pymemcache/test-requirements-3.txt"],
         matchPackageNames: ["pymemcache"],
-        allowedVersions: "<4.0.0",
+        allowedVersions: "<3.4.3",
       },
       {
         description: "grpc test matrix slot 0 covers grpcio 1.62, the oldest release the instrumentation is tested against.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-grpc/test-requirements-0.txt"],
-        matchPackageNames: ["grpcio", "grpcio-tools"],
+        matchPackageNames: ["grpcio"],
         allowedVersions: "<1.63.0",
       },
       {
