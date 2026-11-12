@@ -130,6 +130,12 @@
         allowedVersions: "<4.0.0",
       },
       {
+        description: "falcon test matrix slot 4 covers the 4.x series, which tox.ini documents as falcon >=4.0.0,<5.0.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-falcon/test-requirements-4.txt"],
+        matchPackageNames: ["falcon"],
+        allowedVersions: "<5.0.0",
+      },
+      {
         description: "Flask test matrix slot 0 covers the 2.1 series.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-flask/test-requirements-0.txt"],
         matchPackageNames: ["flask", "Flask"],
