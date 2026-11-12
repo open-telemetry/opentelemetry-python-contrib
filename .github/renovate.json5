@@ -55,6 +55,7 @@
           "**/*-requirements.lowest.txt",
           "**/*-requirements-oldest.txt",
           "**/*-requirements-latest.txt",
+          "**/*-requirements-lowest.txt",
         ],
         enabled: false,
       },
