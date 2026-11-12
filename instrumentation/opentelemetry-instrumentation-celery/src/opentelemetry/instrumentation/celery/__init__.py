@@ -200,16 +200,25 @@ class CeleryInstrumentor(BaseInstrumentor):
         logger.debug("prerun signal start task_id=%s", task_id)
 
         operation_name = f"{_TASK_RUN}/{task.name}"
+        attributes = {
+            _TASK_TAG_KEY: _TASK_RUN,
+            **utils.get_request_attributes(request),
+            _TASK_NAME_KEY: task.name,
+        }
 
         if self._use_span_links and tracectx is not None:
             parent_span_context = trace.get_current_span(tracectx).get_span_context()
             links = [trace.Link(parent_span_context)] if parent_span_context.is_valid else None
-            span = self._tracer.start_span(operation_name, links=links, kind=trace.SpanKind.CONSUMER)
+            span = self._tracer.start_span(
+                operation_name, links=links, kind=trace.SpanKind.CONSUMER, attributes=attributes
+            )
             # Don't attach the context when using links to avoid parent-child relationship
             token = None
         else:
             token = context_api.attach(tracectx) if tracectx is not None else None
-            span = self._tracer.start_span(operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER)
+            span = self._tracer.start_span(
+                operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER, attributes=attributes
+            )
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
@@ -233,12 +242,9 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         span, activation, token = ctx
 
-        # request context tags
-        if span.is_recording():
-            span.set_attribute(_TASK_TAG_KEY, _TASK_RUN)
-            utils.set_attributes_from_context(span, kwargs)
-            utils.set_attributes_from_context(span, task.request)
-            span.set_attribute(_TASK_NAME_KEY, task.name)
+        state = kwargs.get("state")
+        if span.is_recording() and state is not None and state != "":
+            span.set_attribute("celery.state", state)
 
         activation.__exit__(None, None, None)
         utils.detach_context(task, task_id)
@@ -266,14 +272,13 @@ class CeleryInstrumentor(BaseInstrumentor):
         else:
             task_name = task.name
         operation_name = f"{_TASK_APPLY_ASYNC}/{task_name}"
-        span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER)
-
-        # apply some attributes here because most of the data is not available
-        if span.is_recording():
-            span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
-            span.set_attribute(MESSAGING_MESSAGE_ID, task_id)
-            span.set_attribute(_TASK_NAME_KEY, task_name)
-            utils.set_attributes_from_context(span, kwargs)
+        attributes = {
+            _TASK_TAG_KEY: _TASK_APPLY_ASYNC,
+            MESSAGING_MESSAGE_ID: task_id,
+            _TASK_NAME_KEY: task_name,
+            **utils.get_publish_attributes(kwargs),
+        }
+        span = self._tracer.start_span(operation_name, kind=trace.SpanKind.PRODUCER, attributes=attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
