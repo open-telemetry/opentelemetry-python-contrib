@@ -26,7 +26,7 @@ Bedrock Runtime (botocore only) [Deprecated]
 .. note::
     The Bedrock extension in ``opentelemetry-instrumentation-botocore`` is deprecated
     and will be removed in a future release. Please use `opentelemetry-instrumentation-genai-bedrock <https://pypi.org/project/opentelemetry-instrumentation-genai-bedrock/>`_.
-    When ``opentelemetry-instrumentation-genai-bedrock`` is active, this extension
+    When ``opentelemetry-instrumentation-genai-bedrock`` is installed, this extension
     is automatically suppressed to avoid duplicate telemetry.
 
 This extension implements the GenAI semantic conventions for the following API calls:
