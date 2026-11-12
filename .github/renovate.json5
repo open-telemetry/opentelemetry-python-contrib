@@ -213,7 +213,7 @@
       {
         description: "grpc test matrix slot 0 covers grpcio 1.62, the oldest release the instrumentation is tested against.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-grpc/test-requirements-0.txt"],
-        matchPackageNames: ["grpcio", "grpcio-tools"],
+        matchPackageNames: ["grpcio"],
         allowedVersions: "<1.63.0",
       },
       {
