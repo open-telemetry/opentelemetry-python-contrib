@@ -43,6 +43,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_HEADER_TEMPLATE,
@@ -63,6 +66,10 @@ from opentelemetry.semconv.attributes.url_attributes import (
 )
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
@@ -751,6 +758,13 @@ async def test_semantic_conventions_metrics_new(test_base: TestBase, meter, aioh
         AioHttpServerInstrumentor().uninstrument()
 
 
+def _assert_server_attributes(attrs, address, port):
+    assert attrs[SERVER_ADDRESS] == address
+    assert isinstance(attrs[SERVER_ADDRESS], str)
+    assert attrs[SERVER_PORT] == port
+    assert type(attrs[SERVER_PORT]) is int  # pylint: disable=unidiomatic-typecheck
+
+
 async def _get_metrics_attributes(test_base: TestBase, aiohttp_server, **instrument_kwargs):
     AioHttpServerInstrumentor().instrument(**instrument_kwargs)
     app = aiohttp.web.Application()
@@ -778,7 +792,7 @@ async def test_metrics_server_attributes_default_new(test_base: TestBase, aiohtt
 
     _, metrics_attrs = await _get_metrics_attributes(test_base, aiohttp_server)
 
-    assert set(metrics_attrs) == {"http.server.active_requests", "http.server.request.duration"}
+    assert set(metrics_attrs) == {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION}
     for attrs in metrics_attrs.values():
         assert SERVER_ADDRESS not in attrs
         assert SERVER_PORT not in attrs
@@ -792,10 +806,9 @@ async def test_metrics_server_attributes_enabled_new(test_base: TestBase, aiohtt
         test_base, aiohttp_server, enable_server_attributes_in_metrics=True
     )
 
-    assert set(metrics_attrs) == {"http.server.active_requests", "http.server.request.duration"}
+    assert set(metrics_attrs) == {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION}
     for attrs in metrics_attrs.values():
-        assert attrs[SERVER_ADDRESS] == server.host
-        assert attrs[SERVER_PORT] == server.port
+        _assert_server_attributes(attrs, server.host, server.port)
 
 
 @pytest.mark.asyncio
@@ -806,11 +819,10 @@ async def test_metrics_server_attributes_enabled_both(test_base: TestBase, aioht
         test_base, aiohttp_server, enable_server_attributes_in_metrics=True
     )
 
-    for name in ("http.server.active_requests", "http.server.request.duration"):
-        assert metrics_attrs[name][SERVER_ADDRESS] == server.host
-        assert metrics_attrs[name][SERVER_PORT] == server.port
-    assert SERVER_ADDRESS not in metrics_attrs["http.server.duration"]
-    assert SERVER_PORT not in metrics_attrs["http.server.duration"]
+    for name in (HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION):
+        _assert_server_attributes(metrics_attrs[name], server.host, server.port)
+    assert SERVER_ADDRESS not in metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION]
+    assert SERVER_PORT not in metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION]
 
 
 @pytest.mark.asyncio
@@ -821,7 +833,7 @@ async def test_metrics_server_attributes_enabled_old_default(test_base: TestBase
         test_base, aiohttp_server, enable_server_attributes_in_metrics=True
     )
 
-    assert "http.server.duration" in metrics_attrs
+    assert MetricInstruments.HTTP_SERVER_DURATION in metrics_attrs
     for attrs in metrics_attrs.values():
         assert SERVER_ADDRESS not in attrs
         assert SERVER_PORT not in attrs
