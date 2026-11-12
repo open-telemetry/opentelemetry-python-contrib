@@ -205,10 +205,10 @@
         allowedVersions: "<3.4.2",
       },
       {
-        description: "pymemcache test matrix slot 3 covers the 3.x series, leaving 4.0 to slot 4.",
+        description: "pymemcache test matrix slot 3 pins the single release 3.4.2, which tox.ini documents as pymemcache ==3.4.2 and which slot 2 stops just below.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-pymemcache/test-requirements-3.txt"],
         matchPackageNames: ["pymemcache"],
-        allowedVersions: "<4.0.0",
+        allowedVersions: "<3.4.3",
       },
       {
         description: "grpc test matrix slot 0 covers grpcio 1.62, the oldest release the instrumentation is tested against.",
