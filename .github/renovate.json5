@@ -169,6 +169,12 @@
         allowedVersions: "<2.0.0",
       },
       {
+        description: "urllib3 test matrix slot 1 covers the 2.x series, which tox.ini documents as urllib3 >=2.0.0,<3.0.0.",
+        matchFileNames: ["instrumentation/opentelemetry-instrumentation-urllib3/test-requirements-1.txt"],
+        matchPackageNames: ["urllib3"],
+        allowedVersions: "<3.0.0",
+      },
+      {
         description: "mysql test matrix slot 0 covers the 8.x series of the connector.",
         matchFileNames: ["instrumentation/opentelemetry-instrumentation-mysql/test-requirements-0.txt"],
         matchPackageNames: ["mysql-connector-python"],
