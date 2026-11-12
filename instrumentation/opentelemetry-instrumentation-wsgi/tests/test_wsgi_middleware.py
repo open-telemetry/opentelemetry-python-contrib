@@ -564,6 +564,54 @@ class TestWsgiApplication(WsgiTestBase):
                     )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def _get_metrics_attributes(self, **middleware_kwargs):
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi, **middleware_kwargs)
+        for _ in app(self.environ, self.start_response):
+            pass
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    def test_wsgi_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes()
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.request.duration"},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    def test_wsgi_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.request.duration"},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+            self.assertEqual(attrs[SERVER_PORT], 80)
+
+    def test_wsgi_metrics_server_attributes_enabled_both_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        for name in ("http.server.active_requests", "http.server.request.duration"):
+            self.assertEqual(metrics_attrs[name][SERVER_ADDRESS], "127.0.0.1")
+            self.assertEqual(metrics_attrs[name][SERVER_PORT], 80)
+        self.assertNotIn(SERVER_ADDRESS, metrics_attrs["http.server.duration"])
+        self.assertNotIn(SERVER_PORT, metrics_attrs["http.server.duration"])
+
+    def test_wsgi_metrics_server_attributes_enabled_old_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.duration"},
+        )
+        for name, attrs in metrics_attrs.items():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+            self.assertLessEqual(set(attrs), set(_recommended_metrics_attrs_old[name]))
+
     def test_nonstandard_http_method(self):
         self.environ["REQUEST_METHOD"] = "NONSTANDARD"
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
