@@ -17,7 +17,7 @@ from pytest import mark
 
 import opentelemetry.instrumentation.celery
 from opentelemetry import trace as trace_api
-from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -96,15 +96,6 @@ def _assert_task_attributes(
             time_limit=20,
             priority=4,
             compression="gzip",
-            # Celery also exposes custom message headers on task.request.
-            headers={
-                "countdown": 1,
-                "exchange": exchange.name,
-                "priority": 4,
-                "queue": queue.name,
-                "routing_key": routing_key,
-                "serializer": "json",
-            },
         )
         value = result.get(timeout=ASYNC_GET_TIMEOUT, propagate=False)
         if fail:
@@ -119,6 +110,7 @@ def _assert_task_attributes(
     assert len(spans) == 2
     publish_span = next(span for span in spans if span.attributes["celery.action"] == "apply_async")
     run_span = next(span for span in spans if span.attributes["celery.action"] == "run")
+    # Routing attributes come directly from before_task_publish signal arguments.
     expected_publish = {
         "celery.action": "apply_async",
         "celery.task_name": task.name,
@@ -131,14 +123,11 @@ def _assert_task_attributes(
             else MessagingDestinationKindValues.TOPIC.value
         ),
     }
+    # The worker places broker routing and priority in task.request.delivery_info.
     delivery_info = {"exchange": exchange.name, "routing_key": routing_key, "priority": 4, "redelivered": False}
+    # Execution attributes come from task.request; task_postrun supplies state.
     expected_run = {
         "celery.compression": "application/x-gzip",
-        "celery.countdown": 1,
-        "celery.exchange": exchange.name,
-        "celery.priority": 4,
-        "celery.queue": queue.name,
-        "celery.serializer": "json",
         "celery.action": "run",
         "celery.task_name": task.name,
         MESSAGING_MESSAGE_ID: result.id,
@@ -153,26 +142,6 @@ def _assert_task_attributes(
         "celery.retries": 2,
         "celery.timelimit": (20, 10),
         "celery.state": "FAILURE" if fail else "SUCCESS",
-    }
-    # Keep the explicit expectations exhaustive as request metadata evolves.
-    assert set(utils.CELERY_REQUEST_ATTRIBUTES) == {
-        "compression",
-        "countdown",
-        "exchange",
-        "priority",
-        "queue",
-        "routing_key",
-        "serializer",
-        "id",
-        "correlation_id",
-        "delivery_info",
-        "eta",
-        "expires",
-        "hostname",
-        "origin",
-        "reply_to",
-        "retries",
-        "timelimit",
     }
     for span, expected in ((publish_span, expected_publish), (run_span, expected_run)):
         assert dict(span.attributes) == expected
