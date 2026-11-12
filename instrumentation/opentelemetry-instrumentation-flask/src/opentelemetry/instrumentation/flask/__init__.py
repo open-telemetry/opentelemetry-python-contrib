@@ -358,7 +358,7 @@ def _rewrapped_app(
     excluded_urls=None,
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
-    server_attributes_in_metrics=False,
+    server_attributes_in_metrics: bool = False,
 ):
     # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -634,7 +634,7 @@ class _InstrumentedFlask(flask.Flask):
     _commenter_options = None
     _meter_provider = None
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
-    _server_attributes_in_metrics = False
+    _server_attributes_in_metrics: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -763,7 +763,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         enable_commenter=True,
         commenter_options=None,
         meter_provider=None,
-        enable_server_attributes_in_metrics=False,
+        enable_server_attributes_in_metrics: bool = False,
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
