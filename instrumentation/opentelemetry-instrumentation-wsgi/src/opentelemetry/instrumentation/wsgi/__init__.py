@@ -213,6 +213,23 @@ In order to prevent unbound cardinality for HTTP methods by default nonstandard 
 To record all of the names set the environment variable  ``OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS``
 to a value that evaluates to true, e.g. ``1``.
 
+Server address and port in metrics
+**********************************
+``server.address`` and ``server.port`` are opt-in attributes of the HTTP server metrics and are not recorded by
+default. Set ``enable_server_attributes_in_metrics`` to ``True`` to add them to
+``http.server.request.duration`` and ``http.server.active_requests``:
+
+.. code-block:: python
+
+    OpenTelemetryMiddleware(app, enable_server_attributes_in_metrics=True)
+
+This only affects metrics that follow the new HTTP semantic conventions, that is when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http`` or ``http/dup``.
+
+Note:
+    ``server.address`` can come from the ``Host`` request header, so enabling these attributes can increase
+    the cardinality of the metrics.
+
 .. include:: /_includes/http-semconv.rst
 
 API
@@ -238,8 +255,10 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_new_with_server_attrs,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
+    _server_duration_attrs_new_with_server_attrs,
     _server_duration_attrs_old,
     _set_http_flavor_version,
     _set_http_method,
@@ -490,11 +509,17 @@ def _parse_status_code(resp_status: str) -> int | None:
         return None
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(
+    req_attrs,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    server_attributes: bool = False,
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
+        _server_active_requests_count_attrs_new_with_server_attrs
+        if server_attributes
+        else _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )
 
@@ -502,11 +527,12 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _Stabilit
 def _parse_duration_attrs(
     req_attrs: dict[str, str | None],
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    server_attributes: bool = False,
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new,
+        _server_duration_attrs_new_with_server_attrs if server_attributes else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
@@ -575,6 +601,9 @@ class OpenTelemetryMiddleware:
                          globally configured one is used.
         meter_provider: Optional meter provider to use. If omitted the current
                          globally configured one is used.
+        enable_server_attributes_in_metrics: Optional flag to add ``server.address``
+                         and ``server.port`` to the metrics following the new HTTP
+                         semantic conventions. Defaults to False.
     """
 
     def __init__(
@@ -584,6 +613,7 @@ class OpenTelemetryMiddleware:
         response_hook: ResponseHook | None = None,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
+        enable_server_attributes_in_metrics: bool = False,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -628,6 +658,7 @@ class OpenTelemetryMiddleware:
         self.request_hook = request_hook
         self.response_hook = response_hook
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self._server_attributes_in_metrics = enable_server_attributes_in_metrics
 
     @staticmethod
     def _create_start_response(
@@ -680,6 +711,7 @@ class OpenTelemetryMiddleware:
         active_requests_count_attrs = _parse_active_request_count_attrs(
             req_attrs,
             self._sem_conv_opt_in_mode,
+            self._server_attributes_in_metrics,
         )
 
         span, token = _start_internal_or_server_span(
@@ -732,7 +764,11 @@ class OpenTelemetryMiddleware:
                     context=active_metric_ctx,
                 )
             if self.duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(req_attrs, _StabilityMode.HTTP)
+                duration_attrs_new = _parse_duration_attrs(
+                    req_attrs,
+                    _StabilityMode.HTTP,
+                    self._server_attributes_in_metrics,
+                )
                 self.duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
