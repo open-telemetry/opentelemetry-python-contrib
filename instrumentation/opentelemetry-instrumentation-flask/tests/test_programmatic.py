@@ -5,7 +5,10 @@
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
+import flask
 from flask import Flask, request
+from werkzeug.test import Client
+from werkzeug.wrappers import Response
 
 from opentelemetry import baggage, trace
 from opentelemetry.instrumentation._semconv import (
@@ -717,6 +720,67 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             expected_requests_count_attributes,
             expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
+
+    def _get_metrics_attributes(self, **instrument_kwargs):
+        if instrument_kwargs:
+            FlaskInstrumentor().uninstrument_app(self.app)
+            FlaskInstrumentor().instrument_app(self.app, **instrument_kwargs)
+        self.client.get("/hello/123")
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    def test_flask_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes()
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.request.duration"},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    def test_flask_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.request.duration"},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
+            self.assertEqual(attrs[SERVER_PORT], 80)
+
+    def test_flask_metrics_server_attributes_enabled_both_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        for name in ("http.server.active_requests", "http.server.request.duration"):
+            self.assertEqual(metrics_attrs[name][SERVER_ADDRESS], "localhost")
+            self.assertEqual(metrics_attrs[name][SERVER_PORT], 80)
+        self.assertNotIn(SERVER_ADDRESS, metrics_attrs["http.server.duration"])
+        self.assertNotIn(SERVER_PORT, metrics_attrs["http.server.duration"])
+
+    def test_flask_metrics_server_attributes_enabled_old_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {"http.server.active_requests", "http.server.duration"},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    def test_flask_metrics_server_attributes_instrument_new_semconv(self):
+        FlaskInstrumentor().instrument(enable_server_attributes_in_metrics=True)
+        try:
+            app = flask.Flask(__name__)
+            app.route("/hello/<int:helloid>")(self._hello_endpoint)
+            Client(app, Response).get("/hello/123")
+        finally:
+            FlaskInstrumentor().uninstrument()
+        for metric in self.get_sorted_metrics(SCOPE):
+            attrs = dict(next(iter(metric.data.data_points)).attributes)
+            self.assertEqual(attrs[SERVER_ADDRESS], "localhost")
+            self.assertEqual(attrs[SERVER_PORT], 80)
 
     def test_metric_uninstrument(self):
         self.client.delete("/hello/756")
