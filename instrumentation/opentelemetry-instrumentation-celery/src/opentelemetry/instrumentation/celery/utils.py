@@ -35,23 +35,25 @@ logger = logging.getLogger(__name__)
 # Celery Context key
 CTX_KEY = "__otel_task_span"
 
-# Metadata available on task.request
+# Metadata read from top-level task.request fields. Entries marked "optional"
+# are retained for compatibility with explicitly supplied request metadata
+# (e.g. custom message headers); normal publishing does not populate them here.
 CELERY_REQUEST_ATTRIBUTES: tuple[str, ...] = (
     "compression",
     "correlation_id",
-    "countdown",
+    "countdown",  # Optional: Celery converts the publishing countdown to eta.
     "delivery_info",
     "eta",
-    "exchange",
+    "exchange",  # Optional: normally nested in delivery_info.
     "expires",
     "hostname",
     "id",
-    "priority",
-    "queue",
+    "priority",  # Optional: normally nested in delivery_info.
+    "queue",  # Optional: the publishing queue is not copied to task.request.
     "reply_to",
     "retries",
-    "routing_key",
-    "serializer",
+    "routing_key",  # Optional: normally nested in delivery_info.
+    "serializer",  # Optional: serialization is represented by the message content_type.
     "timelimit",
     "origin",
 )
