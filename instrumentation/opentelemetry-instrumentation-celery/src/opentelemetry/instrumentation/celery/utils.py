@@ -74,10 +74,17 @@ def get_publish_attributes(context: Mapping[str, Any]) -> dict[str, AttributeVal
 
     # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
     for declare in context.get("declare") or ():
-        if declare.exchange.type == "direct":
+        if isinstance(declare, Exchange):
+            declaration_exchange = declare
+        elif isinstance(declare, Queue):
+            declaration_exchange = declare.exchange
+        else:
+            continue
+
+        if declaration_exchange.type == "direct":
             attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.QUEUE.value
             break
-        if declare.exchange.type == "topic":
+        if declaration_exchange.type == "topic":
             attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.TOPIC.value
             break
 

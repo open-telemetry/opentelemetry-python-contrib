@@ -136,6 +136,7 @@ def _assert_task_attributes(
         "celery.delivery_info": str(delivery_info),
         "celery.eta": eta.isoformat(),
         "celery.expires": expires.isoformat(),
+        # Celery's trace_task_ret overwrites the worker node name with gethostname().
         "celery.hostname": gethostname(),
         "celery.origin": "otel-publisher",
         "celery.reply_to": "otel-reply",

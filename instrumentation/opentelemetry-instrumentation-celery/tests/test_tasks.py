@@ -19,6 +19,8 @@ from opentelemetry import baggage, context, trace
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter_provider
+from opentelemetry.propagate import extract
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import MESSAGING_MESSAGE_ID
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
@@ -82,6 +84,39 @@ class TestCeleryPublishSignal(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].attributes["celery.exchange"], "celery_delayed_27")
+
+    def test_publish_exchange_declaration_preserves_trace_context(self) -> None:
+        off_provider, off_exporter = self.create_tracer_provider(sampler=ALWAYS_OFF)
+        self.addCleanup(off_provider.shutdown)
+        parent_context = trace.SpanContext(trace_id=1, span_id=2, is_remote=False, trace_flags=trace.TraceFlags(1))
+        parent = trace.NonRecordingSpan(parent_context)
+
+        for provider in (self.tracer_provider, off_provider, trace.NoOpTracerProvider()):
+            with self.subTest(provider=provider):
+                CeleryInstrumentor().instrument(tracer_provider=provider)
+                headers = {"id": "task-id"}
+                signal_kwargs = {
+                    "sender": task_add.name,
+                    "headers": headers,
+                    "body": None,
+                    "declare": [object(), Exchange("tasks", type="direct")],
+                }
+
+                try:
+                    with trace.use_span(parent):
+                        before_task_publish.send(**signal_kwargs)
+                        after_task_publish.send(**signal_kwargs)
+
+                        propagated = trace.get_current_span(extract(headers)).get_span_context()
+                        self.assertTrue(propagated.is_valid)
+                        self.assertEqual(propagated.trace_id, parent_context.trace_id)
+                        self.assertEqual(trace.get_current_span().get_span_context(), parent_context)
+                    self.assertIsNone(utils.retrieve_context(task_add, "task-id", is_publish=True))
+                finally:
+                    CeleryInstrumentor().uninstrument()
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+        self.assertEqual(off_exporter.get_finished_spans(), ())
 
 
 class TestCelerySampling(TestBase):

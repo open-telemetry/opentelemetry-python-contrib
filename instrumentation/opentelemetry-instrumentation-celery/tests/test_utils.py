@@ -134,6 +134,31 @@ class TestUtils(unittest.TestCase):
     def test_get_publish_attributes_string_exchange(self) -> None:
         self.assertEqual(utils.get_publish_attributes({"exchange": "celery"}), {"celery.exchange": "celery"})
 
+    def test_get_publish_attributes_declaration_types(self) -> None:
+        for exchange_type, kind in (
+            ("direct", MessagingDestinationKindValues.QUEUE.value),
+            ("topic", MessagingDestinationKindValues.TOPIC.value),
+        ):
+            exchange = Exchange("tasks", type=exchange_type)
+            for declaration in (exchange, Queue("tasks", exchange=exchange)):
+                with self.subTest(exchange_type=exchange_type, declaration=declaration):
+                    attributes = utils.get_publish_attributes({"declare": [declaration]})
+
+                    self.assertEqual(attributes, {SpanAttributes.MESSAGING_DESTINATION_KIND: kind})
+                    self.assertIs(type(attributes[SpanAttributes.MESSAGING_DESTINATION_KIND]), str)
+
+    def test_get_publish_attributes_skips_unsupported_declarations(self) -> None:
+        declarations = [object(), Exchange("broadcast", type="fanout")]
+        self.assertEqual(utils.get_publish_attributes({"declare": declarations}), {})
+
+        declarations.append(Exchange("tasks", type="topic"))
+        attributes = utils.get_publish_attributes({"declare": declarations})
+
+        self.assertEqual(
+            attributes, {SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.TOPIC.value}
+        )
+        self.assertIs(type(attributes[SpanAttributes.MESSAGING_DESTINATION_KIND]), str)
+
     def test_get_publish_attributes_empty_values(self) -> None:
         for signal_kwargs in ({}, {"exchange": "", "routing_key": "", "declare": None}, {"exchange": Exchange("")}):
             with self.subTest(signal_kwargs=signal_kwargs):
