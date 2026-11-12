@@ -236,7 +236,7 @@ duration_histogram_new = None
 active_requests_counter = None
 _excluded_urls = None
 _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
-_server_attributes_in_metrics = False
+_server_attributes_in_metrics: bool = False
 
 
 def _parse_active_request_count_attrs(
