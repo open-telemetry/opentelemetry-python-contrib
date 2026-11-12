@@ -141,7 +141,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
     Small helper to put an arbitrary url list inside an ExcludeList
     """
     if excluded_urls:
-        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",")]
+        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",") if excluded_url.strip()]
     else:
         excluded_url_list = []
 
