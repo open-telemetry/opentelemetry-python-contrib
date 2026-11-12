@@ -28,7 +28,7 @@
     // pip_requirements is disabled for those files to avoid double-processing.
     "pip-compile": {
       managerFilePatterns: [
-        "/(^|/).*-requirements\.(oldest|latest)\.txt$/",
+        "/(^|/).*-requirements[.-](oldest|latest|lowest)\.txt$/",
       ],
     },
     // Also scan GitHub Actions workflow templates written as Jinja files.
@@ -49,7 +49,14 @@
       },
       {
         matchManagers: ["pip_requirements"],
-        matchFileNames: ["**/*-requirements.oldest.txt", "**/*-requirements.latest.txt"],
+        matchFileNames: [
+          "**/*-requirements.oldest.txt",
+          "**/*-requirements.latest.txt",
+          "**/*-requirements.lowest.txt",
+          "**/*-requirements-oldest.txt",
+          "**/*-requirements-latest.txt",
+          "**/*-requirements-lowest.txt",
+        ],
         enabled: false,
       },
       {
