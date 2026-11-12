@@ -34,6 +34,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
     HTTP_URL,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
@@ -49,8 +52,14 @@ from opentelemetry.semconv.attributes.http_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
-from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
@@ -634,6 +643,39 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             f"00-{trace_id}-{span_id}-{trace_flags:02x}",
         )
         self.memory_exporter.clear()
+
+    async def _get_metrics_attributes(self, **instrument_kwargs):
+        if instrument_kwargs:
+            _django_instrumentor.uninstrument()
+            _django_instrumentor.instrument(**instrument_kwargs)
+        response = await self.async_client.get("/traced/")
+        self.assertEqual(response.status_code, 200)
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    async def test_asgi_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes()
+        self.assertEqual(
+            set(metrics_attrs),
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    async def test_asgi_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+            self.assertIsInstance(attrs[SERVER_ADDRESS], str)
+            self.assertEqual(attrs[SERVER_PORT], 80)
+            self.assertIs(type(attrs[SERVER_PORT]), int)
 
 
 class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
