@@ -35,12 +35,19 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_HEADER_TEMPLATE,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -882,6 +889,12 @@ class TestMiddleware(WsgiTestBase):
                     )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
+    def _assert_server_attributes(self, attrs, address, port):
+        self.assertEqual(attrs[SERVER_ADDRESS], address)
+        self.assertIsInstance(attrs[SERVER_ADDRESS], str)
+        self.assertEqual(attrs[SERVER_PORT], port)
+        self.assertIs(type(attrs[SERVER_PORT]), int)
+
     def _get_metrics_attributes(self, **instrument_kwargs):
         if instrument_kwargs:
             _django_instrumentor.uninstrument()
@@ -897,7 +910,7 @@ class TestMiddleware(WsgiTestBase):
         metrics_attrs = self._get_metrics_attributes()
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.request.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
         )
         for attrs in metrics_attrs.values():
             self.assertNotIn(SERVER_ADDRESS, attrs)
@@ -907,25 +920,23 @@ class TestMiddleware(WsgiTestBase):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.request.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
         )
         for attrs in metrics_attrs.values():
-            self.assertEqual(attrs[SERVER_ADDRESS], "testserver")
-            self.assertEqual(attrs[SERVER_PORT], 80)
+            self._assert_server_attributes(attrs, "testserver", 80)
 
     def test_wsgi_metrics_server_attributes_enabled_both_semconv(self):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
-        for name in ("http.server.active_requests", "http.server.request.duration"):
-            self.assertEqual(metrics_attrs[name][SERVER_ADDRESS], "testserver")
-            self.assertEqual(metrics_attrs[name][SERVER_PORT], 80)
-        self.assertNotIn(SERVER_ADDRESS, metrics_attrs["http.server.duration"])
-        self.assertNotIn(SERVER_PORT, metrics_attrs["http.server.duration"])
+        for name in (HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION):
+            self._assert_server_attributes(metrics_attrs[name], "testserver", 80)
+        self.assertNotIn(SERVER_ADDRESS, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
+        self.assertNotIn(SERVER_PORT, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
 
     def test_wsgi_metrics_server_attributes_enabled_old_semconv(self):
         metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
         self.assertEqual(
             set(metrics_attrs),
-            {"http.server.active_requests", "http.server.duration"},
+            {HTTP_SERVER_ACTIVE_REQUESTS, MetricInstruments.HTTP_SERVER_DURATION},
         )
         for attrs in metrics_attrs.values():
             self.assertNotIn(SERVER_ADDRESS, attrs)
