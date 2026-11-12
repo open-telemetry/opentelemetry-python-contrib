@@ -279,6 +279,7 @@ from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_HOST,
+    HTTP_REQUEST_BODY_CONTENT,
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
@@ -306,7 +307,6 @@ from opentelemetry.util.http import (
     sanitize_method,
 )
 from opentelemetry.util.http.body_capture import (
-    HTTP_REQUEST_BODY_CONTENT,
     BodyBuffer,
     CapturingStream,
     create_body_buffer,

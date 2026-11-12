@@ -3,6 +3,7 @@
 
 import io
 import unittest
+import zlib
 
 from opentelemetry.util.http.body_capture import (
     BodyBuffer,
@@ -91,6 +92,27 @@ class TestBodyBuffer(unittest.TestCase):
         buffer.write(0, b"hello")
         self.assertEqual(buffer.to_attribute_value(), b"hello")
 
+    def test_failing_codec_falls_back_to_bytes(self):
+        # These codecs raise errors other than UnicodeDecodeError.
+        for charset in ("rot_13", "base64_codec"):
+            with self.subTest(charset=charset):
+                buffer = BodyBuffer(100, f"text/plain; charset={charset}")
+                buffer.write(0, b"hello")
+                self.assertEqual(buffer.to_attribute_value(), b"hello")
+
+    def test_non_text_codec_is_not_applied(self):
+        # These codecs would succeed, returning transformed or expanded bytes
+        # instead of the body.
+        for charset, body in (
+            ("base64_codec", b"aGVsbG8="),
+            ("hex", b"68656c6c6f"),
+            ("zlib_codec", zlib.compress(b"\0" * 100_000)),
+        ):
+            with self.subTest(charset=charset):
+                buffer = BodyBuffer(1024, f"text/plain; charset={charset}")
+                buffer.write(0, body)
+                self.assertEqual(buffer.to_attribute_value(), body)
+
     def test_invalid_text_falls_back_to_bytes(self):
         buffer = BodyBuffer(100, "application/json")
         buffer.write(0, b'{"a": "\xff"}')
@@ -157,6 +179,19 @@ class TestCapturingStream(unittest.TestCase):
         self.assertEqual(self.stream.readinto(target), 8)
         self.assertEqual(target, b"line one")
         self.assertEqual(self.buffer.to_attribute_value(), "line one")
+
+    def test_readinto_typed_memoryview(self):
+        # Each item of an "I" view is 4 bytes, but readinto counts bytes.
+        target = memoryview(bytearray(8)).cast("I")
+        self.assertEqual(self.stream.readinto(target), 8)
+        self.assertEqual(self.stream.read(), b"\nline two\nline three\n")
+        self.assertEqual(self.buffer.to_attribute_value(), "line one\nline two\nline three\n")
+
+    def test_readinto_typed_memoryview_respects_limit(self):
+        buffer = BodyBuffer(2, "text/plain")
+        stream = CapturingStream(io.BytesIO(b"abcdefgh"), buffer)
+        self.assertEqual(stream.readinto(memoryview(bytearray(8)).cast("I")), 8)
+        self.assertEqual(buffer.to_attribute_value(), "ab")
 
     def test_seek_and_reread_is_not_duplicated(self):
         self.stream.read(8)

@@ -14,13 +14,17 @@ from __future__ import annotations
 import codecs
 import functools
 from collections.abc import Callable, Iterator
-from typing import Any, BinaryIO, Final
+from typing import TYPE_CHECKING, Any, BinaryIO
 
 import wrapt
 
-# TODO: use the semconv constant once the semconv package is generated from a
-# semantic conventions release that includes this attribute (> 1.44.0).
-HTTP_REQUEST_BODY_CONTENT: Final = "http.request.body.content"
+if TYPE_CHECKING:
+    # Typed as Any since input streams commonly implement methods beyond the
+    # WSGI ones, which are handled dynamically.
+    _StreamProxy = wrapt.ObjectProxy[Any]
+else:
+    # ObjectProxy is only subscriptable at runtime from wrapt 2.5.
+    _StreamProxy = wrapt.ObjectProxy
 
 _TEXTUAL_SUBTYPE_SUFFIXES = ("/json", "+json", "/xml", "+xml", "/yaml", "+yaml")
 
@@ -80,12 +84,16 @@ class BodyBuffer:
                 return data
             charset = "utf-8"
         try:
+            if not getattr(codecs.lookup(charset), "_is_text_encoding", True):
+                return data
             decoder = codecs.getincrementaldecoder(charset)(errors="strict")
             # The captured bytes may end in the middle of a character, because
             # of the size limit or because the application stopped reading.
             # final=False drops that partial character so the value is valid.
             return decoder.decode(data, final=False)
-        except (LookupError, UnicodeDecodeError):
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Codecs can fail with errors other than UnicodeDecodeError, which
+            # must not escape into span finalization.
             return data
 
 
@@ -96,7 +104,7 @@ def create_body_buffer(
 ) -> BodyBuffer | None:
     """Returns a buffer for a body, or ``None`` if it should not be captured.
 
-    Bodies with a content coding are not captured.
+    Bodies with a content encoding are not captured.
     """
     if max_size <= 0:
         return None
@@ -111,7 +119,8 @@ _NON_CONSUMING_METHODS = frozenset(
 )
 
 
-class CapturingStream(wrapt.ObjectProxy):
+# pylint: disable=abstract-method
+class CapturingStream(_StreamProxy):
     """Proxies a binary input stream, copying what the application reads.
 
     Reads through the PEP-defined WSGI input stream methods, iteration, ``readinto`` and ``seek``
@@ -159,7 +168,9 @@ class CapturingStream(wrapt.ObjectProxy):
     def _self_readinto(self, target: bytearray | memoryview) -> int | None:
         count = self.__wrapped__.readinto(target)
         if count:
-            self._self_capture(memoryview(target)[:count])
+            # count is in bytes, so view the target as bytes even when it is a
+            # memoryview with a wider item format.
+            self._self_capture(memoryview(target).cast("B")[:count])
         return count
 
     def _self_seek(self, *args: Any) -> int:

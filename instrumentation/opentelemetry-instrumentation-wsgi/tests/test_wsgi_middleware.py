@@ -34,6 +34,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
+    HTTP_REQUEST_BODY_CONTENT,
     HTTP_SCHEME,
     HTTP_SERVER_NAME,
     HTTP_STATUS_CODE,
@@ -79,7 +80,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
 )
-from opentelemetry.util.http.body_capture import HTTP_REQUEST_BODY_CONTENT
 
 
 class Response:
