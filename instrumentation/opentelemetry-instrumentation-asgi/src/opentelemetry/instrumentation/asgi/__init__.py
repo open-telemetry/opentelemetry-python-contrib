@@ -1036,7 +1036,7 @@ class OpenTelemetryMiddleware:
         return otel_send
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
@@ -1045,7 +1045,9 @@ def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
     )
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
