@@ -915,8 +915,8 @@ class TestConsumerParentContext(TestBase):
         instrumentor.instrument(tracer_provider=self.tracer_provider, use_message_context_as_parent=True)
         try:
             for cls, name in wrapped:
-                method = getattr(cls, name)
-                self.assertTrue(hasattr(method, "__wrapped__"), f"{cls.__name__}.{name} is not wrapped")
-                self.assertFalse(hasattr(method.__wrapped__, "__wrapped__"), f"{cls.__name__}.{name} is wrapped twice")
+                inner = getattr(getattr(cls, name), "__wrapped__", None)
+                self.assertIsNotNone(inner, f"{cls.__name__}.{name} is not wrapped")
+                self.assertFalse(hasattr(inner, "__wrapped__"), f"{cls.__name__}.{name} is wrapped twice")
         finally:
             instrumentor.uninstrument()

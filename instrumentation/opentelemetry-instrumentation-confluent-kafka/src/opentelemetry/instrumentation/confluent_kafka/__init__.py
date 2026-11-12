@@ -111,11 +111,11 @@ each message. The trace shape is the same for one message and for a batch.
 
 With ``use_message_context_as_parent=True``, a ``process`` span for one message
 uses the trace context from the message headers as its parent, so the producer
-span is its direct parent. If a span is current when the application calls the
-consumer, the ``process`` span links to it. A ``process`` span for more than one
-message keeps the default behavior, because the messages can belong to
-different traces. A message with no valid trace context also keeps the default
-behavior.
+span is its direct parent. The span also links to that message context. If a
+span is current when the application calls the consumer, the ``process`` span
+links to it as well. A ``process`` span for more than one message keeps the
+default behavior, because the messages can belong to different traces. A
+message with no valid trace context also keeps the default behavior.
 
 .. code:: python
 
@@ -413,6 +413,8 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         unwrap(AutoInstrumentedProducer, "produce")
         unwrap(AutoInstrumentedConsumer, "poll")
+        unwrap(AutoInstrumentedConsumer, "consume")
+        unwrap(AutoInstrumentedConsumer, "close")
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
