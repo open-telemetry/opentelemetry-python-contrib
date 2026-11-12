@@ -1511,6 +1511,58 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    async def _get_metrics_attributes(self, **middleware_kwargs):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, **middleware_kwargs)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    async def test_asgi_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes()
+        self.assertIn("http.server.request.duration", metrics_attrs)
+        self.assertIn("http.server.active_requests", metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    async def test_asgi_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertIn("http.server.request.duration", metrics_attrs)
+        self.assertIn("http.server.active_requests", metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+            self.assertEqual(attrs[SERVER_PORT], 80)
+
+    async def test_asgi_metrics_server_attributes_enabled_both_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        old_metric_names = {
+            "http.server.duration",
+            "http.server.request.size",
+            "http.server.response.size",
+        }
+        self.assertIn("http.server.request.duration", metrics_attrs)
+        self.assertIn("http.server.active_requests", metrics_attrs)
+        self.assertIn("http.server.duration", metrics_attrs)
+        for name, attrs in metrics_attrs.items():
+            if name in old_metric_names:
+                self.assertNotIn(SERVER_ADDRESS, attrs)
+                self.assertNotIn(SERVER_PORT, attrs)
+            else:
+                self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+                self.assertEqual(attrs[SERVER_PORT], 80)
+
+    async def test_asgi_metrics_server_attributes_enabled_old_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertIn("http.server.duration", metrics_attrs)
+        self.assertIn("http.server.active_requests", metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
         """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
