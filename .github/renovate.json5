@@ -60,6 +60,14 @@
         enabled: false,
       },
       {
+        description: "These requirements files are named oldest but carry no uv pip compile header, so they are maintained by hand and the pip-compile manager does not claim them. Renovate must not raise their pins to the newest release.",
+        matchFileNames: [
+          "instrumentation-genai/**/tests/requirements.oldest.txt",
+          "resource/opentelemetry-resourcedetector-gcp/requirements.oldest.txt",
+        ],
+        enabled: false,
+      },
+      {
         groupName: "ci",
         matchManagers: [
           "github-actions",
