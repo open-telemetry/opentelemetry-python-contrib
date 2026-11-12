@@ -247,10 +247,9 @@ class EngineTracer:
     def _add_used_to_connection_usage(self, value):
         self._add_connection_count(DbClientConnectionStateValues.USED.value, value)
 
+    # Pool usage is not suppressed: connect/close and checkout/checkin must be
+    # recorded in pairs, and suppress_instrumentation() can start or end between them.
     def _add_connection_count(self, state, value):
-        if not is_instrumentation_enabled():
-            return
-
         self.connection_count.add(
             value,
             attributes={
@@ -357,8 +356,7 @@ class EngineTracer:
         _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode_db)
         # Unlike the span name, db.operation.name must not include the database name.
         _set_db_operation(span_attrs, self._operation(statement), self._sem_conv_opt_in_mode_db)
-        for key, value in span_attrs.items():
-            span.set_attribute(key, value)
+        span.set_attributes(span_attrs)
 
     def _before_cur_exec(self, conn, cursor, statement, params, context, _executemany):
         if not is_instrumentation_enabled():

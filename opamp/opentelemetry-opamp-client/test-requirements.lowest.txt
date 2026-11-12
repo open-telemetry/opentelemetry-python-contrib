@@ -38,7 +38,11 @@ protobuf==5.29.5
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   opentelemetry-opamp-client
-pytest==7.4.4
+pygments==2.13.0
+    # via
+    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
@@ -65,10 +69,6 @@ urllib3==2.7.0
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   requests
     #   vcrpy
-uuid-utils==0.11.0
-    # via
-    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
-    #   opentelemetry-opamp-client
 vcrpy==7.0.0 ; platform_python_implementation != 'PyPy'
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in

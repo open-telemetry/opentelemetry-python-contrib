@@ -75,3 +75,40 @@ class TestRedactSensitiveInfo(unittest.TestCase):
             redact_query_parameters(url),
             "https://service.com?Signature=REDACTED",
         )
+
+    def test_redact_amz_signature(self):
+        url = "https://bucket.s3.amazonaws.com/obj?X-Amz-Signature=abc123"
+        self.assertEqual(
+            redact_query_parameters(url),
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Signature=REDACTED",
+        )
+
+    def test_redact_amz_credential(self):
+        url = (
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Credential="
+            "AKIAEXAMPLE%2F20261101%2Fus-east-1%2Fs3%2Faws4_request"
+        )
+        self.assertEqual(
+            redact_query_parameters(url),
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Credential=REDACTED",
+        )
+
+    def test_redact_amz_security_token(self):
+        url = "https://bucket.s3.amazonaws.com/obj?X-Amz-Security-Token=FwoGZXIvYXdzEXAMPLETOKEN"
+        self.assertEqual(
+            redact_query_parameters(url),
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Security-Token=REDACTED",
+        )
+
+    def test_redact_sigv4_presigned_url(self):
+        url = (
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+            "&X-Amz-Credential=AKIAEXAMPLE%2F20261101%2Fus-east-1%2Fs3%2Faws4_request"
+            "&X-Amz-Security-Token=FwoGZXIvYXdzEXAMPLETOKEN&X-Amz-Signature=abc123"
+        )
+        self.assertEqual(
+            redact_query_parameters(url),
+            "https://bucket.s3.amazonaws.com/obj?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+            "&X-Amz-Credential=REDACTED"
+            "&X-Amz-Security-Token=REDACTED&X-Amz-Signature=REDACTED",
+        )
