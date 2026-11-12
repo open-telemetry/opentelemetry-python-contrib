@@ -209,6 +209,24 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Server address and port in metrics
+**********************************
+``server.address`` and ``server.port`` are opt-in attributes of the HTTP server metrics and are not recorded by
+default. Set ``enable_server_attributes_in_metrics`` to ``True`` to add them to
+``http.server.request.duration``, ``http.server.active_requests``,
+``http.server.request.body.size`` and ``http.server.response.body.size``:
+
+.. code-block:: python
+
+    OpenTelemetryMiddleware(application, enable_server_attributes_in_metrics=True)
+
+This only affects metrics that follow the new HTTP semantic conventions, that is when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http`` or ``http/dup``.
+
+Note:
+    ``server.address`` can come from the ``Host`` request header, so enabling these attributes can increase
+    the cardinality of the metrics.
+
 .. include:: /_includes/http-semconv.rst
 
 API
@@ -238,8 +256,10 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_new_with_server_attrs,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
+    _server_duration_attrs_new_with_server_attrs,
     _server_duration_attrs_old,
     _set_http_flavor_version,
     _set_http_host_server,
@@ -577,6 +597,8 @@ class OpenTelemetryMiddleware:
         meter_provider: The optional meter provider to use. If omitted
             the current globally configured one is used.
         exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
+        enable_server_attributes_in_metrics: Optional flag to add ``server.address`` and ``server.port``
+            to the metrics following the new HTTP semantic conventions. Defaults to False.
     """
 
     # pylint: disable=too-many-branches,too-many-positional-arguments
@@ -596,6 +618,7 @@ class OpenTelemetryMiddleware:
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[typing.Literal["receive", "send"]] | None = None,
+        enable_server_attributes_in_metrics: bool = False,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -682,6 +705,7 @@ class OpenTelemetryMiddleware:
         self.client_response_hook = failsafe(client_response_hook)
         self.content_length_header = None
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self._server_attributes_in_metrics = enable_server_attributes_in_metrics
 
         # Environment variables as constructor parameters
         self.http_capture_headers_server_request = (
@@ -756,6 +780,7 @@ class OpenTelemetryMiddleware:
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes,
             self._sem_conv_opt_in_mode,
+            self._server_attributes_in_metrics,
         )
 
         if scope["type"] == "http":
@@ -812,7 +837,11 @@ class OpenTelemetryMiddleware:
                 duration_attrs_old = _parse_duration_attrs(attributes, _StabilityMode.DEFAULT)
                 if target:
                     duration_attrs_old[HTTP_TARGET] = target
-                duration_attrs_new = _parse_duration_attrs(attributes, _StabilityMode.HTTP)
+                duration_attrs_new = _parse_duration_attrs(
+                    attributes,
+                    _StabilityMode.HTTP,
+                    self._server_attributes_in_metrics,
+                )
                 span_ctx = set_span_in_context(span)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
@@ -1007,20 +1036,22 @@ class OpenTelemetryMiddleware:
         return otel_send
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT):
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new,
+        _server_duration_attrs_new_with_server_attrs if server_attributes else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes=False):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
+        _server_active_requests_count_attrs_new_with_server_attrs
+        if server_attributes
+        else _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )
 
