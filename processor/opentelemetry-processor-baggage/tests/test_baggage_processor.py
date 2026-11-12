@@ -180,7 +180,7 @@ class BaggageSpanProcessorIncludeExcludeTest(unittest.TestCase):
                     BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS, **kwargs)
 
     def test_entry_point(self):
-        (entry_point,) = entry_points(group="opentelemetry_span_processor", name="baggage")
+        (entry_point,) = entry_points(group="opentelemetry_traces_processor", name="baggage")
         processor_class = entry_point.load()
         self.assertIs(processor_class, BaggageSpanProcessor)
         attributes = self._span_attributes(

@@ -137,8 +137,8 @@ Declarative configuration
 -------------------------
 
 Both processors are registered as the ``baggage`` processor for declarative
-configuration, in the ``opentelemetry_span_processor`` and
-``opentelemetry_log_record_processor`` entry point groups:
+configuration, in the ``opentelemetry_traces_processor`` and
+``opentelemetry_logs_processor`` entry point groups:
 
 .. code-block:: yaml
 

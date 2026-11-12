@@ -30,10 +30,10 @@ dependencies = [
   "wrapt >= 1.0.0, < 3.0.0",
 ]
 
-[project.entry-points.opentelemetry_span_processor]
+[project.entry-points.opentelemetry_traces_processor]
 baggage = "opentelemetry.processor.baggage:BaggageSpanProcessor"
 
-[project.entry-points.opentelemetry_log_record_processor]
+[project.entry-points.opentelemetry_logs_processor]
 baggage = "opentelemetry.processor.baggage:BaggageLogProcessor"
 
 [project.urls]

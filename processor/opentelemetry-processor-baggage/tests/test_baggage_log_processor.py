@@ -191,7 +191,7 @@ class BaggageLogProcessorIncludeExcludeTest(unittest.TestCase):
                     BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS, **kwargs)
 
     def test_entry_point(self):
-        (entry_point,) = entry_points(group="opentelemetry_log_record_processor", name="baggage")
+        (entry_point,) = entry_points(group="opentelemetry_logs_processor", name="baggage")
         processor_class = entry_point.load()
         self.assertIs(processor_class, BaggageLogProcessor)
         attributes = self._log_attributes(
