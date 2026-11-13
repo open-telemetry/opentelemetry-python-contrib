@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: add `rpc.server.call.duration` and `rpc.client.call.duration` metrics for sync and aio clients and servers
