@@ -207,6 +207,7 @@ known-third-party = [
   "pytest",
   "redis",
   "redis_opentracing",
+  "valkey",
   "opencensus",
 ]
 
@@ -229,6 +230,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
+  "instrumentation/opentelemetry-instrumentation-valkey-py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
@@ -248,6 +250,7 @@ exclude = [
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-valkey-py/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
