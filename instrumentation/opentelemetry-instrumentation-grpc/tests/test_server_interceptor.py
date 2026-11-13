@@ -665,6 +665,66 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             },
         )
 
+    def test_abort_with_status(self) -> None:
+        """Record abort statuses for every RPC shape and preserve trailers."""
+
+        for rpc_type in ("unary_unary", "unary_stream", "stream_unary", "stream_stream"):
+            for code, expected_status in (
+                (grpc.StatusCode.INTERNAL, StatusCode.ERROR),
+                (grpc.StatusCode.FAILED_PRECONDITION, StatusCode.UNSET),
+            ):
+                with self.subTest(rpc_type=rpc_type, code=code):
+                    self.memory_exporter.clear()
+                    status = grpc.Status()
+                    status.code = code
+                    status.details = "This is a test failure"
+                    status.trailing_metadata = (("error-details-bin", b"failure details"), ("custom-trailer", "value"))
+
+                    def handler(request: object, context: grpc.ServicerContext, status: grpc.Status = status) -> None:
+                        context.abort_with_status(status)
+
+                    rpc_handler = grpc.method_handlers_generic_handler(
+                        "TestServicer", {"abort_with_status": getattr(grpc, f"{rpc_type}_rpc_method_handler")(handler)}
+                    )
+                    with self.server(interceptors=[server_interceptor()]) as (server, channel):
+                        server.add_generic_rpc_handlers((rpc_handler,))
+                        server.start()
+                        try:
+                            request = iter((b"",)) if rpc_type.startswith("stream") else b""
+                            with self.assertRaises(grpc.RpcError) as cm:
+                                response = getattr(channel, rpc_type)("/TestServicer/abort_with_status")(
+                                    request, timeout=5
+                                )
+                                if rpc_type.endswith("stream"):
+                                    list(response)
+                        finally:
+                            channel.close()
+                            server.stop(None).wait()
+
+                    self.assertEqual(cm.exception.code(), code)
+                    self.assertEqual(cm.exception.details(), status.details)
+                    self.assertEqual(tuple(cm.exception.trailing_metadata()), status.trailing_metadata)
+                    spans = self.memory_exporter.get_finished_spans()
+                    self.assertEqual(len(spans), 1)
+                    span = spans[0]
+                    self.assertIs(span.kind, trace.SpanKind.SERVER)
+                    self.assertEqual(span.status.status_code, expected_status)
+                    self.assertEqual(
+                        span.status.description,
+                        f"{code}:{status.details}" if expected_status == StatusCode.ERROR else None,
+                    )
+                    self.assertSpanHasAttributes(
+                        span,
+                        {
+                            **self.net_peer_span_attributes,
+                            RPC_METHOD: "abort_with_status",
+                            RPC_SERVICE: "TestServicer",
+                            RPC_SYSTEM: "grpc",
+                            RPC_GRPC_STATUS_CODE: code.value[0],
+                        },
+                    )
+                    self.assertIs(type(span.attributes[RPC_GRPC_STATUS_CODE]), int)
+
     def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
         grpc_server_instrumentor = GrpcInstrumentorServer()

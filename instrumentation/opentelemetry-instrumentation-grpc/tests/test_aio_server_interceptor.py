@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
+from collections.abc import AsyncIterator
 from unittest import IsolatedAsyncioTestCase
 
 import grpc
@@ -629,6 +630,83 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[0],
             },
         )
+
+    async def test_abort_with_status(self) -> None:
+        """Record abort statuses for every RPC shape and preserve trailers."""
+
+        for rpc_type in ("unary_unary", "unary_stream", "stream_unary", "stream_stream"):
+            for code, expected_status in (
+                (grpc.StatusCode.INTERNAL, StatusCode.ERROR),
+                (grpc.StatusCode.FAILED_PRECONDITION, StatusCode.UNSET),
+            ):
+                with self.subTest(rpc_type=rpc_type, code=code):
+                    self.memory_exporter.clear()
+                    status = grpc.Status()
+                    status.code = code
+                    status.details = "This is a test failure"
+                    status.trailing_metadata = (("error-details-bin", b"failure details"), ("custom-trailer", "value"))
+
+                    async def handler(
+                        request: object, context: grpc.aio.ServicerContext, status: grpc.Status = status
+                    ) -> None:
+                        await context.abort_with_status(status)
+
+                    async def streaming_handler(
+                        request: object, context: grpc.aio.ServicerContext, status: grpc.Status = status
+                    ) -> AsyncIterator[bytes]:
+                        await context.abort_with_status(status)
+                        yield b""
+
+                    rpc_handler = grpc.method_handlers_generic_handler(
+                        "TestServicer",
+                        {
+                            "abort_with_status": getattr(grpc, f"{rpc_type}_rpc_method_handler")(
+                                streaming_handler if rpc_type.endswith("stream") else handler
+                            )
+                        },
+                    )
+                    server = grpc.aio.server(interceptors=[aio_server_interceptor()])
+                    server.add_generic_rpc_handlers((rpc_handler,))
+                    port = server.add_insecure_port("[::]:0")
+                    await server.start()
+                    try:
+                        async with grpc.aio.insecure_channel(f"localhost:{port}") as channel:
+                            request = iter((b"",)) if rpc_type.startswith("stream") else b""
+                            with self.assertRaises(grpc.aio.AioRpcError) as cm:
+                                response = getattr(channel, rpc_type)("/TestServicer/abort_with_status")(
+                                    request, timeout=5
+                                )
+                                if rpc_type.endswith("stream"):
+                                    async for _ in response:
+                                        pass
+                                else:
+                                    await response
+                    finally:
+                        await server.stop(None)
+
+                    self.assertEqual(cm.exception.code(), code)
+                    self.assertEqual(cm.exception.details(), status.details)
+                    self.assertEqual(tuple(cm.exception.trailing_metadata()), status.trailing_metadata)
+                    self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+                    span = self.memory_exporter.get_finished_spans()[0]
+                    self.assertIs(span.kind, trace.SpanKind.SERVER)
+                    self.assertEqual(span.status.status_code, expected_status)
+                    self.assertEqual(
+                        span.status.description,
+                        f"{code}:{status.details}" if expected_status == StatusCode.ERROR else None,
+                    )
+                    self.assertSpanHasAttributes(
+                        span,
+                        {
+                            NET_PEER_IP: "[::1]",
+                            NET_PEER_NAME: "localhost",
+                            RPC_METHOD: "abort_with_status",
+                            RPC_SERVICE: "TestServicer",
+                            RPC_SYSTEM: "grpc",
+                            RPC_GRPC_STATUS_CODE: code.value[0],
+                        },
+                    )
+                    self.assertIs(type(span.attributes[RPC_GRPC_STATUS_CODE]), int)
 
     async def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
