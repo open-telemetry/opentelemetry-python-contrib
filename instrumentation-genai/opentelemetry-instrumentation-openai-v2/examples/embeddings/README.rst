@@ -1,6 +1,11 @@
 OpenTelemetry OpenAI Embeddings API Instrumentation Example
 ===========================================================
 
+.. note::
+
+   ``opentelemetry-instrumentation-openai-v2`` is deprecated. This example uses its replacement,
+   `opentelemetry-instrumentation-genai-openai <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_.
+
 This is an example of how to instrument OpenAI Embeddings API calls with zero code changes,
 using ``opentelemetry-instrument``.
 
@@ -11,7 +16,7 @@ Metrics capture token usage and performance data.
 
 Note: ``.env`` file configures additional environment variables:
 
-- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures OpenAI instrumentation to capture content on events.
+- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=span_only`` configures OpenAI instrumentation to capture content on *span* attributes.
 - ``OTEL_LOGS_EXPORTER=otlp`` to specify exporter type.
 
 Setup

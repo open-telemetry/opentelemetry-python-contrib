@@ -1,0 +1,1 @@
+Deprecate `opentelemetry-instrumentation-openai-v2` in favor of [`opentelemetry-instrumentation-genai-openai`](https://pypi.org/project/opentelemetry-instrumentation-genai-openai/). It won't receive new features for GenAI semantic conventions v1.30.0.

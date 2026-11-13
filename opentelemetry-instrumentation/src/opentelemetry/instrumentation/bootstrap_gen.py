@@ -5,7 +5,7 @@
 # RUN `python scripts/generate_instrumentation_bootstrap.py` TO REGENERATE.
 
 libraries = [
-    {"library": "openai >= 1.26.0", "instrumentation": "opentelemetry-instrumentation-openai-v2"},
+    {"library": "openai >= 1.26.0, < 3", "instrumentation": "opentelemetry-instrumentation-openai-v2"},
     {"library": "google-cloud-aiplatform >= 1.64", "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0"},
     {"library": "aio_pika >= 7.2.0, < 11.0.0", "instrumentation": "opentelemetry-instrumentation-aio-pika==0.67b0.dev"},
     {"library": "aiohttp ~= 3.0", "instrumentation": "opentelemetry-instrumentation-aiohttp-client==0.67b0.dev"},
