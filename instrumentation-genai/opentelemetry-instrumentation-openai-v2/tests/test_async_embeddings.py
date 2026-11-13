@@ -6,9 +6,6 @@
 import pytest
 from openai import AsyncOpenAI, NotFoundError
 
-from opentelemetry.instrumentation.openai_v2 import (
-    _is_latest_experimental_enabled as is_experimental_mode,
-)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -34,7 +31,6 @@ async def test_async_embeddings_no_content(
 ):
     """Test creating embeddings asynchronously with content capture disabled"""
 
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for async embeddings"
 
     with vcr.use_cassette("test_async_embeddings_no_content.yaml"):
@@ -49,7 +45,6 @@ async def test_async_embeddings_no_content(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -68,7 +63,6 @@ async def test_async_embeddings_with_dimensions(
 ):
     """Test creating embeddings asynchronously with custom dimensions"""
 
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for async embeddings with dimensions"
     dimensions = 512  # Using a smaller dimension than default
 
@@ -85,7 +79,6 @@ async def test_async_embeddings_with_dimensions(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -106,8 +99,6 @@ async def test_async_embeddings_with_batch_input(
 ):
     """Test creating embeddings asynchronously with batch input"""
 
-    latest_experimental_enabled = is_experimental_mode()
-
     input_texts = [
         "This is the first test string for async embeddings",
         "This is the second test string for async embeddings",
@@ -126,7 +117,6 @@ async def test_async_embeddings_with_batch_input(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -137,7 +127,6 @@ async def test_async_embeddings_with_batch_input(
 @pytest.mark.asyncio
 async def test_async_embeddings_error_handling(span_exporter, metric_reader, instrument_no_content, vcr):
     """Test async embeddings error handling"""
-    latest_experimental_enabled = is_experimental_mode()
     model_name = "non-existent-embedding-model"
     input_text = "This is a test for async embeddings with error"
 
@@ -155,7 +144,6 @@ async def test_async_embeddings_error_handling(span_exporter, metric_reader, ins
     assert_all_attributes(
         spans[0],
         model_name,
-        latest_experimental_enabled,
         operation_name="embeddings",
     )
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
@@ -171,7 +159,6 @@ async def test_async_embeddings_token_metrics(
     vcr,
 ):
     """Test that token usage metrics are correctly recorded for async embeddings"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for async embeddings token metrics"
 
     with vcr.use_cassette("test_async_embeddings_token_metrics.yaml"):
@@ -186,7 +173,6 @@ async def test_async_embeddings_token_metrics(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -225,7 +211,6 @@ async def test_async_embeddings_with_encoding_format(
     vcr,
 ):
     """Test creating embeddings with different encoding format"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with encoding format"
     encoding_format = "base64"
 
@@ -242,7 +227,6 @@ async def test_async_embeddings_with_encoding_format(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 

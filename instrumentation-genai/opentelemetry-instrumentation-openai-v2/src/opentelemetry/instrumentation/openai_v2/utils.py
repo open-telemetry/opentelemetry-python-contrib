@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from os import environ
-from typing import Any
 from urllib.parse import urlparse
 
 import openai
@@ -15,9 +14,6 @@ from openai import NotGiven
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
@@ -177,16 +173,9 @@ def value_is_set(value):
     return value is not None and not isinstance(value, NotGiven)
 
 
-def _openai_response_format_to_output_type(response_format_type: str) -> str:
-    if response_format_type in ("json_object", "json_schema"):
-        return GenAIAttributes.GenAiOutputTypeValues.JSON.value
-    return response_format_type
-
-
 def get_llm_request_attributes(
     kwargs,
     client_instance,
-    latest_experimental_enabled,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
     # pylint: disable=too-many-branches,too-many-locals
@@ -199,18 +188,7 @@ def get_llm_request_attributes(
     if model:
         attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = model
 
-    if latest_experimental_enabled:
-        attributes.update(
-            {
-                GenAIAttributes.GEN_AI_PROVIDER_NAME: (GenAIAttributes.GenAiProviderNameValues.OPENAI.value),
-            }
-        )
-    else:
-        attributes.update(
-            {
-                GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
-            }
-        )
+    attributes[GenAIAttributes.GEN_AI_SYSTEM] = GenAIAttributes.GenAiSystemValues.OPENAI.value
 
     # Add chat-specific attributes only for chat operations
     if operation_name == GenAIAttributes.GenAiOperationNameValues.CHAT.value:
@@ -235,11 +213,7 @@ def get_llm_request_attributes(
                 stop_sequences = [stop_sequences]
             attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = stop_sequences
 
-        request_response_format_attr_key = (
-            GenAIAttributes.GEN_AI_OUTPUT_TYPE
-            if latest_experimental_enabled
-            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-        )
+        request_response_format_attr_key = GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
         if (response_format := kwargs.get("response_format")) is not None:
             # response_format may be string or object with a string in the `type` key
             if isinstance(response_format, Mapping):
@@ -255,12 +229,9 @@ def get_llm_request_attributes(
             if isinstance(extra_body, Mapping):
                 service_tier = extra_body.get("service_tier")
 
-        request_service_tier_attr_key = (
-            OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
-            if latest_experimental_enabled
-            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+        attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER] = (
+            service_tier if service_tier != "auto" else None
         )
-        attributes[request_service_tier_attr_key] = service_tier if service_tier != "auto" else None
 
     # Add embeddings-specific attributes
     elif operation_name == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value:
@@ -281,12 +252,6 @@ def get_llm_request_attributes(
 
     # filter out values not set
     return {k: v for k, v in attributes.items() if value_is_set(v)}
-
-
-def get_value(v: Any):
-    if value_is_set(v):
-        return v
-    return None
 
 
 def handle_span_exception(span, error: BaseException):

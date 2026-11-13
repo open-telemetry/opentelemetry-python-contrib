@@ -16,9 +16,6 @@ try:
 except ImportError:
     not_given = NOT_GIVEN
 
-from opentelemetry.instrumentation.openai_v2 import (
-    _is_latest_experimental_enabled as is_experimental_mode,
-)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -39,7 +36,6 @@ from .test_utils import (
 
 def test_embeddings_no_content(span_exporter, log_exporter, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with content capture disabled"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings"
 
     with vcr.use_cassette("test_embeddings_no_content.yaml"):
@@ -54,7 +50,6 @@ def test_embeddings_no_content(span_exporter, log_exporter, openai_client, instr
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -65,7 +60,6 @@ def test_embeddings_no_content(span_exporter, log_exporter, openai_client, instr
 
 def test_embeddings_with_dimensions(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with custom dimensions parameter"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with dimensions"
     dimensions = 512  # Using a smaller dimension than default
 
@@ -82,7 +76,6 @@ def test_embeddings_with_dimensions(span_exporter, metric_reader, openai_client,
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -114,7 +107,6 @@ def test_embeddings_with_dimensions(span_exporter, metric_reader, openai_client,
 
 def test_embeddings_with_batch_input(span_exporter, metric_reader, openai_client, instrument_with_content, vcr):
     """Test creating embeddings with batch input (list of strings)"""
-    latest_experimental_enabled = is_experimental_mode()
 
     input_texts = [
         "This is the first test string for embeddings",
@@ -134,7 +126,6 @@ def test_embeddings_with_batch_input(span_exporter, metric_reader, openai_client
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -144,7 +135,6 @@ def test_embeddings_with_batch_input(span_exporter, metric_reader, openai_client
 
 def test_embeddings_with_encoding_format(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with different encoding format"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with encoding format"
     encoding_format = "base64"
 
@@ -161,7 +151,6 @@ def test_embeddings_with_encoding_format(span_exporter, metric_reader, openai_cl
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -179,7 +168,6 @@ def test_embeddings_with_not_given_values(
     vcr,
 ):
     """Test creating embeddings with NOT_GIVEN and not_given values"""
-    latest_experimental_enabled = is_experimental_mode()
 
     input_text = "This is a test for embeddings with encoding format"
 
@@ -196,7 +184,6 @@ def test_embeddings_with_not_given_values(
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 
@@ -205,7 +192,6 @@ def test_embeddings_with_not_given_values(
 
 def test_embeddings_bad_endpoint(span_exporter, metric_reader, instrument_no_content, vcr):
     """Test error handling for bad endpoint"""
-    latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with bad endpoint"
 
     client = OpenAI(base_url="http://localhost:4242")
@@ -224,7 +210,6 @@ def test_embeddings_bad_endpoint(span_exporter, metric_reader, instrument_no_con
     assert_all_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         operation_name="embeddings",
         server_address="localhost",
     )
@@ -247,7 +232,6 @@ def test_embeddings_bad_endpoint(span_exporter, metric_reader, instrument_no_con
 
 def test_embeddings_model_not_found(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test error handling for non-existent model"""
-    latest_experimental_enabled = is_experimental_mode()
     model_name = "non-existent-embedding-model"
     input_text = "This is a test for embeddings with bad model"
 
@@ -264,7 +248,6 @@ def test_embeddings_model_not_found(span_exporter, metric_reader, openai_client,
     assert_all_attributes(
         spans[0],
         model_name,
-        latest_experimental_enabled,
         operation_name="embeddings",
     )
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
@@ -286,8 +269,6 @@ def test_embeddings_model_not_found(span_exporter, metric_reader, openai_client,
 def test_embeddings_token_metrics(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test that token usage metrics are correctly recorded"""
 
-    latest_experimental_enabled = is_experimental_mode()
-
     input_text = "This is a test for embeddings token metrics"
 
     with vcr.use_cassette("test_embeddings_token_metrics.yaml"):
@@ -302,7 +283,6 @@ def test_embeddings_token_metrics(span_exporter, metric_reader, openai_client, i
     assert_embedding_attributes(
         spans[0],
         DEFAULT_EMBEDDING_MODEL,
-        latest_experimental_enabled,
         response,
     )
 

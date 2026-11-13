@@ -18,10 +18,10 @@ from opentelemetry.instrumentation.genai.openai import (
     OpenAIInstrumentor as GenAIOpenAIInstrumentor,
 )
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.util.genai.environment_variables import (
+from opentelemetry.instrumentation.openai_v2.utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
+from opentelemetry.sdk._logs import LoggerProvider
 
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 try:
@@ -122,28 +122,11 @@ def vcr_config():
     }
 
 
-@pytest.fixture(
-    scope="function",
-    params=[(False, "True")],
-    name="content_mode",
-)
-def fixture_content_mode(request):
-    # returns tuple: (latest_experimental_enabled: bool, content_mode: str)
-    return request.param
-
-
-@pytest.fixture(scope="function")
-def instrument_no_content(
-    tracer_provider,
-    logger_provider,
-    meter_provider,
-    content_mode,
-):
+def _instrument(tracer_provider, logger_provider, meter_provider, capture_content):
     _OpenTelemetrySemanticConventionStability._initialized = False
-    latest_experimental_enabled, _ = content_mode
-    os.environ.update(
-        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
-    )
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    if capture_content:
+        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = "True"
 
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
@@ -154,83 +137,25 @@ def instrument_no_content(
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
     instrumentor.uninstrument()
+    _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(tracer_provider, logger_provider, meter_provider, content_mode):
-    _OpenTelemetrySemanticConventionStability._initialized = False
-
-    latest_experimental_enabled, content_mode_value = content_mode
-
-    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value})
-
-    os.environ.update(
-        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
-    )
-
-    instrumentor = OpenAIInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    instrumentor.uninstrument()
+def instrument_no_content(tracer_provider, logger_provider, meter_provider):
+    yield from _instrument(tracer_provider, logger_provider, meter_provider, False)
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content_unsampled(span_exporter, logger_provider, meter_provider, content_mode):
-    _OpenTelemetrySemanticConventionStability._initialized = False
-    latest_experimental_enabled, content_mode_value = content_mode
-    os.environ.update({OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value})
+def instrument_with_content(tracer_provider, logger_provider, meter_provider):
+    yield from _instrument(tracer_provider, logger_provider, meter_provider, True)
 
-    os.environ.update(
-        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental" if latest_experimental_enabled else ""}
-    )
 
+@pytest.fixture(scope="function")
+def instrument_with_content_unsampled(span_exporter, logger_provider, meter_provider):
     tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
     tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-
-    instrumentor = OpenAIInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    instrumentor.uninstrument()
-
-
-@pytest.fixture(scope="function")
-def instrument_event_only(tracer_provider, logger_provider, meter_provider):
-    _OpenTelemetrySemanticConventionStability._initialized = False
-
-    os.environ.update(
-        {
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "event_only",
-            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
-        }
-    )
-
-    instrumentor = OpenAIInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    instrumentor.uninstrument()
+    yield from _instrument(tracer_provider, logger_provider, meter_provider, True)
 
 
 @pytest.fixture(name="reset_instrumentors")
