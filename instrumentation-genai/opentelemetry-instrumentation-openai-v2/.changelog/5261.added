@@ -1,0 +1,1 @@
+With `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`, enable `opentelemetry-instrumentation-genai-openai` (new dependency, `~= 1.3.0b0`) and forward `instrument()` arguments to it. Without the flag, keep it disabled so auto-instrumentation does not instrument OpenAI twice.

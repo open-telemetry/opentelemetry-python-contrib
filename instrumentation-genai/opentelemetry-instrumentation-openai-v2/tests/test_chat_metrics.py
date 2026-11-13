@@ -4,6 +4,9 @@
 import pytest
 from tests.test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 
+from opentelemetry.instrumentation.openai_v2 import (
+    _is_latest_experimental_enabled as is_experimental_mode,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -14,7 +17,6 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 _DURATION_BUCKETS = (
     0.01,
