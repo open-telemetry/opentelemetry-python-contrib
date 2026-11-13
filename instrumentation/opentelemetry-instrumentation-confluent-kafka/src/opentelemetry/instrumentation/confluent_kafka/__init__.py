@@ -107,16 +107,9 @@ try:
     import confluent_kafka.aio as _aio_module  # pylint: disable=no-name-in-module
     from confluent_kafka.aio import AIOConsumer, AIOProducer  # pylint: disable=no-name-in-module
 except ImportError:
-    try:
-        import confluent_kafka.experimental.aio as _aio_module  # pylint: disable=no-name-in-module
-        from confluent_kafka.experimental.aio import (  # pylint: disable=no-name-in-module
-            AIOConsumer,
-            AIOProducer,
-        )
-    except ImportError:
-        AIOProducer = None
-        AIOConsumer = None
-        _aio_module = None
+    AIOProducer = None
+    AIOConsumer = None
+    _aio_module = None
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -186,7 +179,7 @@ class AutoInstrumentedConsumer(Consumer):
 
 
 # Instrument asynchronous AIOProducer and AIOConsumer if available in confluent-kafka
-if AIOProducer is not None:
+if _aio_module is not None:
 
     class AutoInstrumentedAIOProducer(AIOProducer):
         def __init__(self, *args, **kwargs):
@@ -196,11 +189,6 @@ if AIOProducer is not None:
         # Deliberately implemented so wrapt can intercept the async produce call
         async def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
             return await super().produce(topic, value, *args, **kwargs)
-else:
-    AutoInstrumentedAIOProducer = None
-
-
-if AIOConsumer is not None:
 
     class AutoInstrumentedAIOConsumer(AIOConsumer):
         def __init__(self, *args, **kwargs):
@@ -227,7 +215,9 @@ if AIOConsumer is not None:
         # Deliberately implemented so wrapt can intercept the async close call
         async def close(self):
             return await super().close()
+
 else:
+    AutoInstrumentedAIOProducer = None
     AutoInstrumentedAIOConsumer = None
 
 
