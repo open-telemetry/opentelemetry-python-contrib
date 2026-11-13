@@ -10,10 +10,12 @@ from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
+    _extract_cluster_id,
     _get_attributes,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
+    _patch_cluster_id_capture,
     _wrap_next,
     _wrap_send,
 )
@@ -102,7 +104,11 @@ class TestUtils(TestCase):
         )
 
         span = tracer.start_as_current_span().__enter__.return_value
-        get_attributes.assert_called_once_with(extract_bootstrap_servers.return_value, self.topic_name)
+        get_attributes.assert_called_once_with(
+            extract_bootstrap_servers.return_value,
+            self.topic_name,
+            cluster_id=kafka_producer._metadata.cluster_id,
+        )
         span.set_attribute.assert_called_once_with(
             SpanAttributes.MESSAGING_KAFKA_PARTITION, extract_send_partition.return_value
         )
@@ -150,6 +156,7 @@ class TestUtils(TestCase):
             bootstrap_servers,
             self.args,
             self.kwargs,
+            kafka_consumer._metadata.cluster_id,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
@@ -191,7 +198,7 @@ class TestUtils(TestCase):
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        get_attributes.assert_called_once_with(bootstrap_servers, record.topic, record.partition)
+        get_attributes.assert_called_once_with(bootstrap_servers, record.topic, record.partition, None)
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
@@ -249,6 +256,90 @@ class TestUtils(TestCase):
         attributes = _get_attributes(["localhost:9092"], self.topic_name, None)
 
         self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, attributes)
+
+    def test_cluster_id_in_attributes_when_known(self) -> None:
+        attributes = _get_attributes(["broker1:9092"], "topic-1", 0, "kp-cluster-uuid")
+
+        self.assertEqual(
+            attributes.get(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID),
+            "kp-cluster-uuid",
+        )
+
+    def test_cluster_id_absent_from_attributes_when_unresolved(self) -> None:
+        """Omitted, never set as an empty string."""
+        for unresolved in (None, ""):
+            with self.subTest(cluster_id=unresolved):
+                attributes = _get_attributes(["broker1:9092"], "topic-1", 0, unresolved)
+
+                self.assertNotIn(messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID, attributes)
+
+    def test_patch_cluster_id_capture_ignores_response_without_cluster_id(
+        self,
+    ) -> None:
+        """A v0/v1 MetadataResponse has no cluster id; leave the attribute alone.
+
+        kafka-python 2.0.x caps its metadata request at v1, so the hook must
+        not invent a value or crash when the field is simply absent.
+        """
+
+        class FakeCluster:
+            def update_metadata(self, metadata) -> None:
+                pass
+
+        class ResponseWithoutClusterId:
+            """Mirrors MetadataResponse_v0/v1: brokers and topics only."""
+
+            brokers = ()
+            topics = ()
+
+        instance = mock.MagicMock()
+        instance._metadata = FakeCluster()
+
+        _patch_cluster_id_capture(instance)
+        instance._metadata.update_metadata(ResponseWithoutClusterId())
+
+        self.assertIsNone(getattr(instance._metadata, "cluster_id", None))
+        self.assertIsNone(_extract_cluster_id(instance))
+
+    def test_extract_cluster_id_from_producer_metadata(self) -> None:
+        producer = mock.MagicMock()
+        producer._metadata.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(producer), "test-cluster-id")
+
+    def test_extract_cluster_id_from_consumer_client(self) -> None:
+        consumer = mock.MagicMock(spec=["_client"])
+        consumer._client.cluster.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(consumer), "test-cluster-id")
+
+    def test_extract_cluster_id_absent_returns_none(self) -> None:
+        instance = mock.MagicMock(spec=[])
+        self.assertIsNone(_extract_cluster_id(instance))
+
+    def test_patch_cluster_id_capture_captures_and_is_idempotent(
+        self,
+    ) -> None:
+        class FakeCluster:
+            def __init__(self) -> None:
+                self.update_calls = 0
+
+            def update_metadata(self, metadata) -> None:
+                self.update_calls += 1
+
+        class FakeMetadataResponse:
+            cluster_id = "test-cluster-id"
+
+        cluster = FakeCluster()
+        instance = mock.MagicMock()
+        instance._metadata = cluster
+
+        _patch_cluster_id_capture(instance)
+        # Second call must not double-wrap update_metadata.
+        _patch_cluster_id_capture(instance)
+
+        cluster.update_metadata(FakeMetadataResponse())
+
+        self.assertEqual(cluster.update_calls, 1)
+        self.assertEqual(_extract_cluster_id(instance), "test-cluster-id")
 
 
 @mock.patch(

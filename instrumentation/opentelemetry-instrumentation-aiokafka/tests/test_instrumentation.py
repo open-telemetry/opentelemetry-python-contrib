@@ -89,6 +89,11 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         consumer._client.bootstrap = mock.AsyncMock()
         consumer._client._wait_on_metadata = mock.AsyncMock()
+        # The cluster-id lookup picks a node and sends a metadata request;
+        # without both mocks the start wrapper waits on a broker that is not
+        # there and the suite hangs.
+        consumer._client.get_random_node = mock.Mock(return_value=0)
+        consumer._client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
         await consumer.start()
 
@@ -106,6 +111,8 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         producer._message_accumulator.add_message = mock.AsyncMock()
         producer._sender.start = mock.AsyncMock()
         producer._partition = mock.Mock(return_value=1)
+        producer.client.get_random_node = mock.Mock(return_value=0)
+        producer.client.send = mock.AsyncMock(return_value=mock.MagicMock(cluster_id=""))
 
         await producer.start()
 

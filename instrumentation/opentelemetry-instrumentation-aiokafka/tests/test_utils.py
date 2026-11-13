@@ -3,17 +3,26 @@
 # pylint: disable=unnecessary-dunder-call
 from __future__ import annotations
 
+import time
 from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
+from aiokafka.protocol.metadata import (
+    MetadataRequest_v1,
+    MetadataRequest_v2,
+    MetadataRequest_v5,
+)
 
+import opentelemetry.instrumentation.aiokafka.utils as utils_mod
 from opentelemetry.instrumentation.aiokafka.utils import (
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
     _aiokafka_getter,
     _aiokafka_setter,
     _create_consumer_span,
+    _extract_cluster_id_from_client,
     _extract_send_partition,
+    _fetch_and_cache_cluster_id,
     _get_span_name,
     _wrap_getmany,
     _wrap_getone,
@@ -22,7 +31,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
 from opentelemetry.trace import SpanKind
 
 
-class TestUtils(IsolatedAsyncioTestCase):
+class TestUtils(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         super().setUp()
         self.topic_name = "test_topic"
@@ -120,6 +129,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             topic=self.topic_name,
             partition=extract_send_partition.return_value,
             key=None,
+            cluster_id=kafka_producer.client._otel_cluster_id,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -177,6 +187,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group,
             self.args,
             self.kwargs,
+            kafka_consumer._client._otel_cluster_id,
         )
 
     @mock.patch("opentelemetry.propagate.extract")
@@ -234,6 +245,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group,
             self.args,
             self.kwargs,
+            kafka_consumer._client._otel_cluster_id,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
@@ -287,6 +299,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             partition=record.partition,
             key=str(record.key),
             offset=record.offset,
+            cluster_id=None,
         )
         consume_hook.assert_awaited_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
@@ -300,3 +313,173 @@ class TestUtils(IsolatedAsyncioTestCase):
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
         aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None
+
+    def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = "abc-uuid-1234"
+        self.assertEqual(_extract_cluster_id_from_client(client), "abc-uuid-1234")
+
+    def test_extract_cluster_id_from_client_returns_none_when_not_set(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    def test_extract_cluster_id_from_client_returns_none_when_no_attr(
+        self,
+    ) -> None:
+        client = mock.MagicMock(spec=[])  # no attributes
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    def test_extract_cluster_id_from_client_returns_none_on_empty_string(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = ""
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    async def test_fetch_and_cache_cluster_id_caches_on_success(self) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = "abc-cluster-id"
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "abc-cluster-id")
+        client.send.assert_awaited_once()
+
+    async def test_fetch_and_cache_cluster_id_request_is_preparable(
+        self,
+    ) -> None:
+        """The request must survive ``AIOKafkaConnection.send``.
+
+        That method calls ``request.prepare(self._versions)``; a versioned
+        request struct has no ``prepare``, so mocking ``client.send`` -- as the
+        tests above do -- hides a lookup that always fails at runtime.
+        """
+        if isinstance(utils_mod._MetadataRequest, list):
+            self.skipTest("prepare() only exists on the 0.13+ builder")
+
+        sent: list[object] = []
+
+        async def fake_send(node_id, request, **kwargs):
+            # Mirror what AIOKafkaConnection.send does to the request.
+            prepared = request.prepare({3: (0, 9)})
+            sent.append(prepared)
+            return mock.MagicMock(cluster_id="prepared-cluster-id")
+
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = fake_send
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "prepared-cluster-id")
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(getattr(sent[0], "API_KEY", None), 3)
+
+    async def test_fetch_and_cache_cluster_id_on_legacy_list_api(self) -> None:
+        """Before 0.13 ``MetadataRequest`` is a list of versioned classes.
+
+        aiokafka only exposes the callable builder from 0.13 on; 0.9 through
+        0.12 export a list, which is not callable, so building the request has
+        to work for both shapes.
+        """
+        legacy = [MetadataRequest_v1, MetadataRequest_v2, MetadataRequest_v5]
+        sent: list[object] = []
+
+        async def fake_send(node_id, request, **kwargs):
+            sent.append(request)
+            return mock.MagicMock(cluster_id="legacy-cluster-id")
+
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = fake_send
+
+        with mock.patch.object(utils_mod, "_MetadataRequest", legacy):
+            await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "legacy-cluster-id")
+        self.assertEqual(len(sent), 1)
+        # Only v2+ responses carry a cluster id, so an older version is useless.
+        self.assertGreaterEqual(sent[0].API_VERSION, 2)
+
+    async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = "already-cached"
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.send.await_count, 0)
+
+    async def test_fetch_and_cache_cluster_id_skips_during_backoff(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = time.monotonic()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.send.await_count, 0)
+
+    async def test_fetch_and_cache_cluster_id_force_update_when_no_node(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = None
+        client.force_metadata_update = mock.AsyncMock()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.force_metadata_update.await_count, 1)
+        self.assertEqual(client.send.await_count, 0)
+        # No node means no id, so the backoff must still be stamped or every
+        # later record would force another metadata update.
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
+
+    async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = ""
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
+
+    async def test_fetch_and_cache_cluster_id_exception_records_failure(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = mock.AsyncMock(side_effect=OSError("connection refused"))
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
