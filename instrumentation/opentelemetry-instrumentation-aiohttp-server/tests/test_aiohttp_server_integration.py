@@ -562,6 +562,38 @@ async def test_custom_request_headers_control_sampling(
 
 
 @pytest.mark.asyncio
+async def test_custom_request_headers_repeated(test_base: TestBase, aiohttp_server, monkeypatch):
+    expected = {
+        "http.request.header.custom_test_header_1": ["test-header-value-1", "test-header-value-2"],
+        "http.request.header.my_secret_header": ["[REDACTED]", "[REDACTED]"],
+    }
+    sampler = CapturingSampler()
+    server, exporter = await _create_server_with_sampler(aiohttp_server, monkeypatch, sampler)
+
+    try:
+        url = f"http://{server.host}:{server.port}/status/200"
+        async with aiohttp.ClientSession() as session:
+            headers = CIMultiDict(
+                [
+                    ("custom-test-header-1", "test-header-value-1"),
+                    ("custom-test-header-1", "test-header-value-2"),
+                    ("My-Secret-Header", "My Secret Value 1"),
+                    ("My-Secret-Header", "My Secret Value 2"),
+                ]
+            )
+            async with session.get(url, headers=headers) as response:
+                assert response.status == 200
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
+
+    assert _request_header_attributes(sampler.attributes) == expected
+
+    spans = exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert _request_header_attributes(spans[0].attributes) == {key: tuple(value) for key, value in expected.items()}
+
+
+@pytest.mark.asyncio
 async def test_custom_response_headers(test_base: TestBase, aiohttp_server, monkeypatch):
     monkeypatch.setenv(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -613,6 +645,46 @@ async def test_custom_response_headers(test_base: TestBase, aiohttp_server, monk
         assert span.attributes.get(attribute) == value
 
     assert "http.response.header.custom_test_header_3" not in span.attributes
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_custom_response_headers_repeated(test_base: TestBase, aiohttp_server, monkeypatch):
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+        "Custom-Test-Header-1",
+    )
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        headers = CIMultiDict(
+            [
+                ("custom-test-header-1", "test-header-value-1"),
+                ("Custom-Test-Header-1", "test-header-value-2"),
+            ]
+        )
+        return aiohttp.web.Response(text="hello", headers=headers)
+
+    app.router.add_get("/status/200", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/status/200"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    assert spans[0].attributes.get("http.response.header.custom_test_header_1") == (
+        "test-header-value-1",
+        "test-header-value-2",
+    )
 
     AioHttpServerInstrumentor().uninstrument()
 
