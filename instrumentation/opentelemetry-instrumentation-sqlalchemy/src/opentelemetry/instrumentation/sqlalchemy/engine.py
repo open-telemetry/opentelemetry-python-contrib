@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import re
+import time
 import weakref
 
 import sqlalchemy
@@ -115,6 +116,7 @@ def _wrap_create_async_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    connection_create_time=None,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -132,6 +134,7 @@ def _wrap_create_async_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            connection_create_time=connection_create_time,
         )
         return engine
 
@@ -144,6 +147,7 @@ def _wrap_create_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    connection_create_time=None,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -160,6 +164,7 @@ def _wrap_create_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            connection_create_time=connection_create_time,
         )
         return engine
 
@@ -199,6 +204,10 @@ def _wrap_connect(tracer):
     return _wrap_connect_internal
 
 
+# Key used to stash the connect start time on the pool's connection record.
+_CONNECT_START_TIME_KEY = "opentelemetry.connect_start_time"
+
+
 class EngineTracer:
     _remove_event_listener_params = []
 
@@ -210,6 +219,7 @@ class EngineTracer:
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
+        connection_create_time=None,
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -226,6 +236,7 @@ class EngineTracer:
 
         self.tracer = tracer
         self.connection_count = connection_count
+        self.connection_create_time = connection_create_time
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
@@ -240,6 +251,11 @@ class EngineTracer:
         self._register_event_listener(engine, "close", self._pool_close)
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
+        if self.connection_create_time is not None:
+            self._register_event_listener(engine, "do_connect", self._dialect_do_connect)
+            # Inserted first so the timing covers only the DBAPI connect, not
+            # other connect listeners such as the dialect's first-connect setup.
+            self._register_event_listener(engine, "connect", self._record_connection_create_time, insert=True)
 
     def _add_idle_to_connection_usage(self, value):
         self._add_connection_count(DbClientConnectionStateValues.IDLE.value, value)
@@ -273,6 +289,27 @@ class EngineTracer:
     def _pool_checkout(self, _dbapi_connection, _connection_record, _connection_proxy):
         self._add_idle_to_connection_usage(-1)
         self._add_used_to_connection_usage(1)
+
+    # Called right before a new DBAPI connection is created. Returning None
+    # lets SQLAlchemy create the connection as usual. Like the pool usage
+    # counter, this is not suppressed, since it measures the pool's state.
+    @staticmethod
+    def _dialect_do_connect(_dialect, connection_record, _cargs, _cparams):
+        if connection_record is not None:
+            connection_record.info[_CONNECT_START_TIME_KEY] = time.perf_counter()
+
+    # Called once the new DBAPI connection has been created.
+    def _record_connection_create_time(self, _dbapi_connection, connection_record):
+        start_time = connection_record.info.pop(_CONNECT_START_TIME_KEY, None)
+        if start_time is None:
+            return
+
+        self.connection_create_time.record(
+            time.perf_counter() - start_time,
+            attributes={
+                DB_CLIENT_CONNECTION_POOL_NAME: self._engine_attrs["pool.name"],
+            },
+        )
 
     @classmethod
     def _dispose_of_event_listener(cls, obj):
