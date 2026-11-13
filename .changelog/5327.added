@@ -1,0 +1,1 @@
+`opentelemetry-processor-baggage`: register `baggage` span and log record processor entry points for declarative configuration and add `included`/`excluded` baggage key patterns
