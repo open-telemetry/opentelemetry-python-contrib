@@ -207,6 +207,27 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Capture HTTP request body
+*************************
+To capture the HTTP request body in the ``http.request.body.content`` span attribute, pass
+``captured_request_body_size``, the maximum number of bytes of the body to capture. Default is ``0``,
+meaning capture is disabled.
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+
+    OpenTelemetryMiddleware(app, captured_request_body_size=4096)
+
+Only the bytes the application reads from ``wsgi.input`` are captured, and only on SERVER spans. The body is
+recorded as a string for textual content types, else as bytes. Bodies with a ``Content-Encoding`` are not captured.
+
+The body is not captured when ``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http``, since the attribute is not stable.
+
+Note:
+    The request body may contain sensitive data. This feature and the attribute are experimental, and thus are
+    subject to change.
+
 Sanitizing methods
 ******************
 In order to prevent unbound cardinality for HTTP methods by default nonstandard ones are labeled as ``NONSTANDARD``.
@@ -260,6 +281,7 @@ from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_HOST,
+    HTTP_REQUEST_BODY_CONTENT,
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
@@ -285,6 +307,11 @@ from opentelemetry.util.http import (
     normalize_user_agent,
     redact_url,
     sanitize_method,
+)
+from opentelemetry.util.http.body_capture import (
+    BodyBuffer,
+    CapturingStream,
+    create_body_buffer,
 )
 
 if TYPE_CHECKING:
@@ -575,6 +602,9 @@ class OpenTelemetryMiddleware:
                          globally configured one is used.
         meter_provider: Optional meter provider to use. If omitted the current
                          globally configured one is used.
+        captured_request_body_size: Maximum number of bytes of the request body
+                                    to capture as a span attribute.
+                                    ``0`` disables capture.
     """
 
     def __init__(
@@ -584,6 +614,7 @@ class OpenTelemetryMiddleware:
         response_hook: ResponseHook | None = None,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
+        captured_request_body_size: int = 0,
     ):
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -628,6 +659,24 @@ class OpenTelemetryMiddleware:
         self.request_hook = request_hook
         self.response_hook = response_hook
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self._captured_request_body_size = (
+            0 if sem_conv_opt_in_mode == _StabilityMode.HTTP else captured_request_body_size
+        )
+
+    def _wrap_request_body(self, span: trace.Span, environ: WSGIEnvironment) -> BodyBuffer | None:
+        if not (self._captured_request_body_size > 0 and span.is_recording() and span.kind == trace.SpanKind.SERVER):
+            return None
+        stream = environ.get("wsgi.input")
+        if stream is None:
+            return None
+        body_buffer = create_body_buffer(
+            self._captured_request_body_size,
+            environ.get("CONTENT_TYPE"),
+            environ.get("HTTP_CONTENT_ENCODING"),
+        )
+        if body_buffer is not None:
+            environ["wsgi.input"] = CapturingStream(stream, body_buffer)
+        return body_buffer
 
     @staticmethod
     def _create_start_response(
@@ -690,6 +739,7 @@ class OpenTelemetryMiddleware:
             context_getter=wsgi_getter,
             attributes=req_attrs,
         )
+        body_buffer = self._wrap_request_body(span, environ)
 
         if self.request_hook:
             self.request_hook(span, environ)
@@ -710,13 +760,14 @@ class OpenTelemetryMiddleware:
                     self._sem_conv_opt_in_mode,
                 )
                 iterable = self.wsgi(environ, start_response)
-                return _end_span_after_iterating(iterable, span, token)
+                return _end_span_after_iterating(iterable, span, token, body_buffer)
         except Exception as ex:
             if _report_new(self._sem_conv_opt_in_mode):
                 req_attrs[ERROR_TYPE] = type(ex).__qualname__
                 if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
+            _set_request_body_attribute(span, body_buffer)
             span.end()
             if token is not None:
                 context.detach(token)
@@ -741,10 +792,23 @@ class OpenTelemetryMiddleware:
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
 
+def _set_request_body_attribute(span: trace.Span, body_buffer: BodyBuffer | None) -> None:
+    if body_buffer is None:
+        return
+    body = body_buffer.to_attribute_value()
+    if body is not None:
+        span.set_attribute(HTTP_REQUEST_BODY_CONTENT, body)
+
+
 # Put this in a subfunction to not delay the call to the wrapped
 # WSGI application (instrumentation should change the application
 # behavior as little as possible).
-def _end_span_after_iterating(iterable: Iterable[T], span: trace.Span, token: object) -> Iterable[T]:
+def _end_span_after_iterating(
+    iterable: Iterable[T],
+    span: trace.Span,
+    token: object,
+    body_buffer: BodyBuffer | None,
+) -> Iterable[T]:
     try:
         with trace.use_span(span):
             yield from iterable
@@ -752,6 +816,7 @@ def _end_span_after_iterating(iterable: Iterable[T], span: trace.Span, token: ob
         close = getattr(iterable, "close", None)
         if close:
             close()
+        _set_request_body_attribute(span, body_buffer)
         span.end()
         if token is not None:
             context.detach(token)
