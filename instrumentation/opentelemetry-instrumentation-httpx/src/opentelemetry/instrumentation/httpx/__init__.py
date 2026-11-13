@@ -361,6 +361,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
@@ -444,12 +446,9 @@ from opentelemetry.util.http import (
 from opentelemetry.util.types import AttributeValue
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import TypeIs
-
-    try:
-        import httpx
-    except ImportError:
-        import httpx2 as httpx
+    import httpx
+    import httpx2
+    from typing_extensions import Self, TypeIs
 
     class _HTTPXModule(typing.Protocol):
         Request: type[httpx.Request]
@@ -467,6 +466,20 @@ if typing.TYPE_CHECKING:
         HTTPTransport: type[httpx.HTTPTransport]
         AsyncHTTPTransport: type[httpx.AsyncHTTPTransport]
 
+    _HttpxClient: typing.TypeAlias = httpx.Client | httpx.AsyncClient
+    _Httpx2Client: typing.TypeAlias = httpx2.Client | httpx2.AsyncClient
+    _HttpxSyncTransport: typing.TypeAlias = httpx.BaseTransport
+    _Httpx2SyncTransport: typing.TypeAlias = httpx2.BaseTransport
+    _HttpxAsyncTransport: typing.TypeAlias = httpx.AsyncBaseTransport
+    _Httpx2AsyncTransport: typing.TypeAlias = httpx2.AsyncBaseTransport
+else:
+    _HttpxClient = object
+    _Httpx2Client = object
+    _HttpxSyncTransport = object
+    _Httpx2SyncTransport = object
+    _HttpxAsyncTransport = object
+    _Httpx2AsyncTransport = object
+
 
 _logger = logging.getLogger(__name__)
 
@@ -475,6 +488,46 @@ _logger = logging.getLogger(__name__)
 _HTTP_CLIENT_DURATION_OLD = (
     MetricInstruments.HTTP_CLIENT_DURATION  # pyright: ignore[reportDeprecated]
 )
+
+
+class _SyncTransport(typing.Protocol):
+    def handle_request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any: ...
+
+    def close(self) -> None: ...
+
+    def __enter__(self) -> typing.Any: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+    ) -> None: ...
+
+
+class _AsyncTransport(typing.Protocol):
+    async def handle_async_request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any: ...
+
+    async def aclose(self) -> None: ...
+
+    async def __aenter__(self) -> typing.Any: ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+    ) -> None: ...
+
+
+class _InstrumentableClient(typing.Protocol):
+    _transport: typing.Any
+    _mounts: typing.Any
+
+
+_SyncTransportT = typing.TypeVar("_SyncTransportT", bound=_SyncTransport)
+_AsyncTransportT = typing.TypeVar("_AsyncTransportT", bound=_AsyncTransport)
+_ClientT = typing.TypeVar("_ClientT", bound=_InstrumentableClient)
 
 
 def _try_import(name: str) -> _HTTPXModule | None:
@@ -775,7 +828,7 @@ def _apply_response_client_attributes_to_metrics(
         )
 
 
-class _SyncOpenTelemetryTransportBase:
+class _SyncOpenTelemetryTransportBase(typing.Generic[_SyncTransportT]):
     """Sync transport class that will trace all requests made with a client.
 
     Args:
@@ -789,10 +842,11 @@ class _SyncOpenTelemetryTransportBase:
     """
 
     _module: _HTTPXModule
+    _transport: _SyncTransportT
 
     def __init__(
         self,
-        transport: httpx.BaseTransport,
+        transport: _SyncTransportT,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | None = None,
@@ -841,7 +895,7 @@ class _SyncOpenTelemetryTransportBase:
         self._captured_response_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE)
         self._sensitive_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
 
-    def __enter__(self) -> _SyncOpenTelemetryTransportBase:
+    def __enter__(self) -> Self:
         self._transport.__enter__()
         return self
 
@@ -858,7 +912,7 @@ class _SyncOpenTelemetryTransportBase:
         self,
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> httpx.Response:
+    ) -> typing.Any:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
@@ -971,7 +1025,7 @@ class _SyncOpenTelemetryTransportBase:
         self._transport.close()
 
 
-class _AsyncOpenTelemetryTransportBase:
+class _AsyncOpenTelemetryTransportBase(typing.Generic[_AsyncTransportT]):
     """Async transport class that will trace all requests made with a client.
 
     Args:
@@ -985,10 +1039,11 @@ class _AsyncOpenTelemetryTransportBase:
     """
 
     _module: _HTTPXModule
+    _transport: _AsyncTransportT
 
     def __init__(
         self,
-        transport: httpx.AsyncBaseTransport,
+        transport: _AsyncTransportT,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: AsyncRequestHook | None = None,
@@ -1039,7 +1094,7 @@ class _AsyncOpenTelemetryTransportBase:
         self._captured_response_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE)
         self._sensitive_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
 
-    async def __aenter__(self) -> _AsyncOpenTelemetryTransportBase:
+    async def __aenter__(self) -> Self:
         await self._transport.__aenter__()
         return self
 
@@ -1052,7 +1107,7 @@ class _AsyncOpenTelemetryTransportBase:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
     # pylint: disable=R0914
-    async def handle_async_request(self, *args: typing.Any, **kwargs: typing.Any) -> httpx.Response:
+    async def handle_async_request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
@@ -1167,7 +1222,7 @@ class _AsyncOpenTelemetryTransportBase:
         await self._transport.aclose()
 
 
-class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
+class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
     # pylint: disable=protected-access
     """Base instrumentor for httpx API-compatible clients.
 
@@ -1552,7 +1607,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
     @classmethod
     def instrument_client(
         cls,
-        client: httpx.Client | httpx.AsyncClient,
+        client: _ClientT,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         request_hook: RequestHook | AsyncRequestHook | None = None,
@@ -1717,7 +1772,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             setattr(client, "_is_instrumented_by_opentelemetry", True)
 
     @staticmethod
-    def uninstrument_client(client: httpx.Client | httpx.AsyncClient) -> None:
+    def uninstrument_client(client: _ClientT) -> None:
         """Disables instrumentation for the given client instance
 
         Args:
@@ -1735,20 +1790,83 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             setattr(client, "_is_instrumented_by_opentelemetry", False)
 
 
-if _httpx_module is not None:
+if typing.TYPE_CHECKING:
 
-    class SyncOpenTelemetryTransport(_SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport):
+    class SyncOpenTelemetryTransport(
+        _SyncOpenTelemetryTransportBase[_HttpxSyncTransport],
+        httpx.BaseTransport,
+    ):
         """Sync transport class that traces requests made with httpx."""
 
-        _module = _httpx_module
+        def handle_request(  # pylint: disable=no-self-use
+            self,
+            *args: typing.Any,
+            **kwargs: typing.Any,
+        ) -> httpx.Response: ...
 
-    class AsyncOpenTelemetryTransport(_AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport):
+    class AsyncOpenTelemetryTransport(
+        _AsyncOpenTelemetryTransportBase[_HttpxAsyncTransport],
+        httpx.AsyncBaseTransport,
+    ):
         """Async transport class that traces requests made with httpx."""
 
-        _module = _httpx_module
+        async def handle_async_request(  # pylint: disable=no-self-use
+            self,
+            *args: typing.Any,
+            **kwargs: typing.Any,
+        ) -> httpx.Response: ...
+
+    class SyncOpenTelemetryTransportHttpx2(
+        _SyncOpenTelemetryTransportBase[_Httpx2SyncTransport],
+        httpx2.BaseTransport,
+    ):
+        """Sync transport class that traces requests made with httpx2."""
+
+        def handle_request(  # pylint: disable=no-self-use
+            self,
+            *args: typing.Any,
+            **kwargs: typing.Any,
+        ) -> httpx2.Response: ...
+
+    class AsyncOpenTelemetryTransportHttpx2(
+        _AsyncOpenTelemetryTransportBase[_Httpx2AsyncTransport],
+        httpx2.AsyncBaseTransport,
+    ):
+        """Async transport class that traces requests made with httpx2."""
+
+        async def handle_async_request(  # pylint: disable=no-self-use
+            self,
+            *args: typing.Any,
+            **kwargs: typing.Any,
+        ) -> httpx2.Response: ...
+
+else:
+    if _httpx_module is not None:
+
+        class SyncOpenTelemetryTransport(_SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport):
+            """Sync transport class that traces requests made with httpx."""
+
+            _module = _httpx_module
+
+        class AsyncOpenTelemetryTransport(_AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport):
+            """Async transport class that traces requests made with httpx."""
+
+            _module = _httpx_module
+
+    if _httpx2_module is not None:
+
+        class SyncOpenTelemetryTransportHttpx2(_SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport):
+            """Sync transport class that traces requests made with httpx2."""
+
+            _module = _httpx2_module
+
+        class AsyncOpenTelemetryTransportHttpx2(_AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport):
+            """Async transport class that traces requests made with httpx2."""
+
+            _module = _httpx2_module
 
 
-class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
+class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor[_HttpxClient]):
     """An instrumentor for httpx Client and AsyncClient."""
 
     _module = _httpx_module
@@ -1756,20 +1874,7 @@ class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
     _instrumentation_dependencies = _instruments_httpx
 
 
-if _httpx2_module is not None:
-
-    class SyncOpenTelemetryTransportHttpx2(_SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport):
-        """Sync transport class that traces requests made with httpx2."""
-
-        _module = _httpx2_module
-
-    class AsyncOpenTelemetryTransportHttpx2(_AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport):
-        """Async transport class that traces requests made with httpx2."""
-
-        _module = _httpx2_module
-
-
-class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor):
+class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor[_Httpx2Client]):
     """An instrumentor for httpx2 Client and AsyncClient."""
 
     _module = _httpx2_module

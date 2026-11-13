@@ -308,6 +308,8 @@ We can configure the tags to be appended to the sqlquery log by adding below var
 | ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.                      | ``db_driver='django.db.backends.postgresql'``                             |
 +-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 
