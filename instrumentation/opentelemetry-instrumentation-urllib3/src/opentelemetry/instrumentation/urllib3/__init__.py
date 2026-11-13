@@ -442,7 +442,7 @@ def _instrument(
             return wrapped(*args, **kwargs)
 
         # avoid modifying original headers on inject
-        headers = headers.copy() if headers is not None else {}
+        headers = headers.copy() if headers is not None else instance.headers.copy()
 
         sanitized_method = sanitize_method(method)
         span_name = _get_span_name(sanitized_method)
