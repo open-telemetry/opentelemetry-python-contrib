@@ -3,6 +3,8 @@
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
+from unittest import mock
+
 from opentelemetry.instrumentation.confluent_kafka import (
     AutoInstrumentedConsumer,
     AutoInstrumentedProducer,
@@ -18,6 +20,8 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -27,12 +31,144 @@ from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind
 
 from .utils import MockConsumer, MockedMessage, MockedProducer
 
 
 class TestConfluentKafka(TestBase):
+    def _configure_sampler(self, sampler: CapturingSampler) -> None:
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+
+    def test_produce_attributes_passed_to_sampler(self) -> None:
+        sampler = CapturingSampler()
+        self._configure_sampler(sampler)
+        producer = ConfluentKafkaInstrumentor().instrument_producer(
+            MockedProducer([], {"bootstrap.servers": "broker-a:9092,broker-b:9093"}),
+            tracer_provider=self.tracer_provider,
+        )
+
+        producer.produce("topic-1", value="value-1")
+
+        expected = {
+            MESSAGING_SYSTEM: MessagingSystemValues.KAFKA.value,
+            SpanAttributes.MESSAGING_DESTINATION: "topic-1",
+            SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+            MESSAGING_OPERATION: MessagingOperationTypeValues.PUBLISH.value,
+            SERVER_ADDRESS: "broker-a",
+            SERVER_PORT: 9092,
+        }
+        self.assertEqual(sampler.kind, SpanKind.PRODUCER)
+        self.assertEqual(sampler.attributes, expected)
+        for key, value in expected.items():
+            self.assertIs(type(sampler.attributes[key]), type(value))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes, expected)
+
+    def test_consumer_attributes_passed_to_sampler(self) -> None:
+        for method in ("poll", "consume"):
+            with self.subTest(method=method):
+                sampler = CapturingSampler()
+                self._configure_sampler(sampler)
+                consumer = ConfluentKafkaInstrumentor().instrument_consumer(
+                    MockConsumer(
+                        [MockedMessage("topic-1", 0, 0, [])],
+                        {"bootstrap.servers": "broker-a:9092", "group.id": "group-1"},
+                    ),
+                    tracer_provider=self.tracer_provider,
+                )
+                self.addCleanup(consumer.close)
+
+                with mock.patch.object(sampler, "should_sample", wraps=sampler.should_sample) as should_sample:
+                    getattr(consumer, method)()
+                consumer.close()
+
+                expected = {
+                    MESSAGING_SYSTEM: MessagingSystemValues.KAFKA.value,
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-1",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    MESSAGING_OPERATION: MessagingOperationTypeValues.PROCESS.value,
+                    SERVER_ADDRESS: "broker-a",
+                    SERVER_PORT: 9092,
+                }
+                if method == "poll":
+                    expected[SpanAttributes.MESSAGING_KAFKA_PARTITION] = 0
+                    expected[MESSAGING_MESSAGE_ID] = "topic-1.0.0"
+                self.assertEqual(sampler.kind, SpanKind.CONSUMER)
+                self.assertEqual(sampler.attributes, expected)
+                for key, value in expected.items():
+                    self.assertIs(type(sampler.attributes[key]), type(value))
+                self.assertEqual(should_sample.call_count, 2)
+                receive_attributes = {
+                    **expected,
+                    MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
+                }
+                self.assertEqual(should_sample.call_args_list[0].args[3], SpanKind.CONSUMER)
+                self.assertEqual(should_sample.call_args_list[0].args[4], receive_attributes)
+                self.assertEqual(should_sample.call_args_list[1].args[4], expected)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 2)
+                self.assertEqual(spans[0].name, "recv")
+                self.assertEqual(spans[0].attributes, receive_attributes)
+                self.assertEqual(spans[1].attributes, expected)
+
+    def test_attributes_control_sampling(self) -> None:
+        for method in ("produce", "poll", "consume"):
+            for topic, expected_count in (("sample", 1), ("drop", 0)):
+                with self.subTest(method=method, topic=topic):
+                    sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                    self._configure_sampler(sampler)
+                    if method == "produce":
+                        messages = []
+                        producer = ConfluentKafkaInstrumentor().instrument_producer(
+                            MockedProducer(messages, {"bootstrap.servers": "localhost:9092"}),
+                            tracer_provider=self.tracer_provider,
+                        )
+                        producer.produce(topic, value="value-1")
+                        self.assertEqual(len(messages), 1)
+                        self.assertEqual(messages[0].topic(), topic)
+                    else:
+                        record = MockedMessage(topic, 0, 0, [])
+                        consumer = ConfluentKafkaInstrumentor().instrument_consumer(
+                            MockConsumer([record], {"bootstrap.servers": "localhost:9092", "group.id": "group-1"}),
+                            tracer_provider=self.tracer_provider,
+                        )
+                        self.addCleanup(consumer.close)
+                        result = getattr(consumer, method)()
+                        self.assertEqual(result, record if method == "poll" else [record])
+                        consumer.close()
+                    if method != "produce":
+                        expected_count *= 2
+                    self.assertEqual(len(self.memory_exporter.get_finished_spans()), expected_count)
+
+    def test_library_errors_propagate(self) -> None:
+        sampler = CapturingSampler()
+        self._configure_sampler(sampler)
+        for method in ("produce", "poll", "consume"):
+            with self.subTest(method=method):
+                if method == "produce":
+                    original = MockedProducer([], {"bootstrap.servers": "localhost:9092"})
+                    client = ConfluentKafkaInstrumentor().instrument_producer(
+                        original, tracer_provider=self.tracer_provider
+                    )
+                    args = ("topic-1",)
+                else:
+                    original = MockConsumer([], {"bootstrap.servers": "localhost:9092", "group.id": "group-1"})
+                    client = ConfluentKafkaInstrumentor().instrument_consumer(
+                        original, tracer_provider=self.tracer_provider
+                    )
+                    self.addCleanup(client.close)
+                    args = ()
+                error = RuntimeError("test error")
+                with mock.patch.object(original, method, side_effect=error):
+                    with self.assertRaises(RuntimeError) as raised:
+                        getattr(client, method)(*args)
+                self.assertIs(raised.exception, error)
+
     def test_instrument_api(self) -> None:
         from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 

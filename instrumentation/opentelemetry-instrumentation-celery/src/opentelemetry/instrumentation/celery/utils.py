@@ -14,8 +14,9 @@ from kombu import Exchange, Queue
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessagingDestinationKindValues, SpanAttributes
 from opentelemetry.trace import Span
+from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
@@ -34,39 +35,67 @@ logger = logging.getLogger(__name__)
 # Celery Context key
 CTX_KEY = "__otel_task_span"
 
-# Celery Context attributes
-CELERY_CONTEXT_ATTRIBUTES = (
+# Metadata read from top-level task.request fields. Entries marked "optional"
+# are retained for compatibility with explicitly supplied request metadata
+# (e.g. custom message headers); normal publishing does not populate them here.
+CELERY_REQUEST_ATTRIBUTES: tuple[str, ...] = (
     "compression",
     "correlation_id",
-    "countdown",
+    "countdown",  # Optional: Celery converts the publishing countdown to eta.
     "delivery_info",
-    "declare",
     "eta",
-    "exchange",
+    "exchange",  # Optional: normally nested in delivery_info.
     "expires",
     "hostname",
     "id",
-    "priority",
-    "queue",
+    "priority",  # Optional: normally nested in delivery_info.
+    "queue",  # Optional: the publishing queue is not copied to task.request.
     "reply_to",
     "retries",
-    "routing_key",
-    "serializer",
+    "routing_key",  # Optional: normally nested in delivery_info.
+    "serializer",  # Optional: serialization is represented by the message content_type.
     "timelimit",
     "origin",
-    "state",
 )
 
 
+def get_publish_attributes(context: Mapping[str, Any]) -> dict[str, AttributeValue]:
+    """Extract routing metadata from before_task_publish signal arguments."""
+    attributes: dict[str, AttributeValue] = {}
+    exchange = context.get("exchange")
+    if isinstance(exchange, Exchange):
+        exchange = exchange.name
+    if exchange is not None and exchange != "":
+        attributes["celery.exchange"] = exchange
+
+    routing_key = context.get("routing_key")
+    if routing_key is not None and routing_key != "":
+        attributes[SpanAttributes.MESSAGING_DESTINATION] = routing_key
+
+    # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
+    for declare in context.get("declare") or ():
+        if isinstance(declare, Exchange):
+            declaration_exchange = declare
+        elif isinstance(declare, Queue):
+            declaration_exchange = declare.exchange
+        else:
+            continue
+
+        if declaration_exchange.type == "direct":
+            attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.QUEUE.value
+            break
+        if declaration_exchange.type == "topic":
+            attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = MessagingDestinationKindValues.TOPIC.value
+            break
+
+    return attributes
+
+
 # pylint:disable=too-many-branches
-def set_attributes_from_context(
-    span: Span,
-    context: ContextCarrier,
-) -> None:
-    """Helper to extract meta values from a Celery Context"""
-    if not span.is_recording():
-        return
-    for key in CELERY_CONTEXT_ATTRIBUTES:
+def get_request_attributes(context: ContextCarrier) -> dict[str, AttributeValue]:
+    """Extract execution metadata from task.request."""
+    attributes: dict[str, AttributeValue] = {}
+    for key in CELERY_REQUEST_ATTRIBUTES:
         value = context.get(key)
 
         # Skip this key if it is not set
@@ -86,35 +115,18 @@ def set_attributes_from_context(
             continue
 
         attribute_name = None
-
         if key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
-
             if routing_key is not None:
-                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, routing_key)
-
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = routing_key
             value = str(value)
-
         elif key == "id":
             attribute_name = MESSAGING_MESSAGE_ID
-
         elif key == "correlation_id":
             attribute_name = SpanAttributes.MESSAGING_CONVERSATION_ID
-
         elif key == "routing_key":
             attribute_name = SpanAttributes.MESSAGING_DESTINATION
-
-        # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
-        elif key == "declare":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
-            for declare in value:
-                if declare.exchange.type == "direct":
-                    value = "queue"
-                    break
-                if declare.exchange.type == "topic":
-                    value = "topic"
-                    break
 
         # set attribute name if not set specially for a key
         if attribute_name is None:
@@ -125,7 +137,9 @@ def set_attributes_from_context(
             if value == "":
                 continue
 
-        span.set_attribute(attribute_name, value)
+        attributes[attribute_name] = value
+
+    return attributes
 
 
 def attach_context(
