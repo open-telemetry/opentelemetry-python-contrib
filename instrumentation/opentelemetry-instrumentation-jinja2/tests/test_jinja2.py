@@ -9,6 +9,7 @@ from packaging import version
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.jinja2 import Jinja2Instrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
@@ -207,3 +208,19 @@ class TestJinja2Instrumentor(TestBase):
         self.assertEqual(template.render(name="Jinja"), "Hello Jinja!")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_suppress_instrumentation_inline_template(self):
+        with suppress_instrumentation():
+            template = jinja2.environment.Template("Hello {{name}}!")
+            self.assertEqual(template.render(name="Jinja"), "Hello Jinja!")
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+    def test_suppress_instrumentation_file_template(self):
+        loader = jinja2.loaders.FileSystemLoader(TMPL_DIR)
+        env = jinja2.Environment(loader=loader, autoescape=True)
+        with suppress_instrumentation():
+            template = env.get_template("template.html")
+            self.assertEqual(template.render(name="Jinja"), "Message: Hello Jinja!")
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
