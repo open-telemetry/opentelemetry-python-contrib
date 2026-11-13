@@ -21,7 +21,7 @@ from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind, StatusCode
+from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 
 
 class TestUtils(TestCase):
@@ -405,3 +405,52 @@ class TestKafkaSampling(TestBase):
 
         self.assertIs(raised.exception, error)
         self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+
+class TestNoOpTracerProvider(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tracer = NoOpTracerProvider().get_tracer(__name__)
+        self.config = {"bootstrap_servers": ["localhost:9092"]}
+
+    def test_noop_producer(self) -> None:
+        producer = mock.MagicMock()
+        producer.config = self.config
+
+        original_send = mock.Mock()
+        produce_hook = mock.Mock()
+
+        args = ["test_topic"]
+        kwargs = {"headers": []}
+
+        wrapped_send = _wrap_send(self.tracer, produce_hook)
+        result = wrapped_send(original_send, producer, args, kwargs)
+
+        original_send.assert_called_once_with(*args, **kwargs)
+        self.assertIs(result, original_send.return_value)
+
+        produce_hook.assert_called_once()
+        span = produce_hook.call_args.args[0]
+        self.assertFalse(span.is_recording())
+
+    def test_noop_consumer(self) -> None:
+        consumer = mock.MagicMock()
+        consumer.config = self.config
+
+        record = mock.Mock(
+            topic="test_topic",
+            partition=0,
+            headers=[],
+        )
+        original_next = mock.Mock(return_value=record)
+        consume_hook = mock.Mock()
+
+        wrapped_next = _wrap_next(self.tracer, consume_hook)
+        result = wrapped_next(original_next, consumer, [], {})
+
+        original_next.assert_called_once_with()
+        self.assertIs(result, record)
+
+        consume_hook.assert_called_once()
+        span = consume_hook.call_args.args[0]
+        self.assertFalse(span.is_recording())
