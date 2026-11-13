@@ -109,20 +109,43 @@ async def _command_invoke_wrapper(
         PROCESS_PID: os.getpid(),
     }
 
+    # The span records exceptions itself: ctx.exit(0) raises asyncclick's
+    # Exit, an Exception subclass, and that is a successful exit.
     with tracer.start_as_current_span(
         name=span_name,
         kind=trace.SpanKind.INTERNAL,
         attributes=span_attributes,
+        record_exception=False,
+        set_status_on_exception=False,
     ) as span:
         try:
             result = await wrapped(*args, **kwargs)
             return result
-        except Exception as exc:
-            span.set_status(StatusCode.ERROR, str(exc))
-            if span.is_recording():
-                span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
-                span.set_attribute(PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1))
+        except (Exception, SystemExit) as exc:
+            _record_exit(span, exc)
             raise
+
+
+def _get_exit_code(exc: BaseException) -> int:
+    if isinstance(exc, SystemExit):
+        # sys.exit(None) exits 0, sys.exit("message") exits 1
+        if exc.code is None:
+            return 0
+        return exc.code if isinstance(exc.code, int) else 1
+    return getattr(exc, "exit_code", 1)
+
+
+def _record_exit(span: trace.Span, exc: BaseException) -> None:
+    exit_code = _get_exit_code(exc)
+    if span.is_recording():
+        span.set_attribute(PROCESS_EXIT_CODE, exit_code)
+    if exit_code == 0:
+        return
+    if isinstance(exc, Exception):
+        span.record_exception(exc)
+    span.set_status(StatusCode.ERROR, str(exc))
+    if span.is_recording():
+        span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
 
 
 # pylint: disable=no-self-use
