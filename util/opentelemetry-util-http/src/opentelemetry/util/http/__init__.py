@@ -219,7 +219,9 @@ def sanitize_method(method: str | None) -> str | None:
 def get_custom_headers(env_var: str) -> list[str]:
     custom_headers = environ.get(env_var, None)
     if custom_headers:
-        return [custom_headers.strip() for custom_headers in custom_headers.split(",")]
+        # A blank entry compiles to an empty pattern, which matches every
+        # header name and so redacts every captured value.
+        return [header.strip() for header in custom_headers.split(",") if header.strip()]
     return []
 
 
