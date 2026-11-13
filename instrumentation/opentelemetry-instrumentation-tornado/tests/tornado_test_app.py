@@ -124,6 +124,33 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class RaiseAfterFinishHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.finish("done")
+        raise ValueError("raised after finish")
+
+
+class RaiseAfterPartialFlushHandler(tornado.web.RequestHandler):
+    on_finish_called: bool = False
+
+    def get(self) -> None:
+        self.set_header("Content-Length", "8")
+        self.write("part")
+        self.flush()
+        raise ValueError("raised after partial flush")
+
+    def on_finish(self) -> None:
+        type(self).on_finish_called = True
+
+
+class RaiseHTTPErrorAfterFlushHandler(tornado.web.RequestHandler):
+    def get(self) -> None:
+        self.set_header("Content-Length", "4")
+        self.write("done")
+        self.flush()
+        raise tornado.web.HTTPError(403)
+
+
 class ParametrizedHandler(tornado.web.RequestHandler):
     async def get(self, message: str):
         self.write(message)
@@ -145,6 +172,11 @@ class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
             time.sleep(0.05)
 
 
+class RejectWebSocketHandler(tornado.websocket.WebSocketHandler):
+    def prepare(self) -> None:
+        raise tornado.web.HTTPError(403)
+
+
 def make_app(tracer):
     app = tornado.web.Application(
         [
@@ -157,8 +189,12 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/raise_after_finish", RaiseAfterFinishHandler),
+            (r"/raise_after_partial_flush", RaiseAfterPartialFlushHandler),
+            (r"/raise_403_after_flush", RaiseHTTPErrorAfterFlushHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
+            (r"/ws_reject", RejectWebSocketHandler),
             (r"/parametrized/(.*)/", ParametrizedHandler),
             (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
