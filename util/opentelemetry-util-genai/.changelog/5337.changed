@@ -1,0 +1,1 @@
+`opentelemetry-util-genai`: pass optional arguments to `get_logger` by keyword
