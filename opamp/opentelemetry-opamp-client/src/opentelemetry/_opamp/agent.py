@@ -42,7 +42,8 @@ class _Job:
         max_retries: int = 1,
         initial_backoff: float = 1.0,
         callback: Callable[..., None] | None = None,
-    ):
+        is_initial: bool = False,
+    ) -> None:
         if isinstance(payload, opamp_pb2.AgentToServer):
             queued_message = opamp_pb2.AgentToServer()
             queued_message.CopyFrom(payload)
@@ -51,8 +52,10 @@ class _Job:
         self.attempt = 0
         self.max_retries = max_retries
         self.initial_backoff = initial_backoff
+        self._backoff = initial_backoff
         # callback is called after OpAMP message handler is executed
         self.callback = callback
+        self.is_initial: bool = is_initial
 
     def __repr__(self) -> str:
         if isinstance(self.payload, opamp_pb2.AgentToServer):
@@ -65,9 +68,18 @@ class _Job:
         return self.attempt <= self.max_retries
 
     def delay(self) -> float:
-        """Calculate the delay before next retry"""
+        """Calculate the delay before next retry
+
+        Delay is capped at 60 seconds before applying 20% jitter"""
+        max_delay = 60.0
+        jitter = random.uniform(0.8, 1.2)
+        if self.is_initial:
+            delay = min(self._backoff, max_delay)
+            self._backoff = min(delay * 2, max_delay)
+            return delay * jitter
         assert self.attempt > 0
-        return self.initial_backoff * (2 ** (self.attempt - 1)) * random.uniform(0.8, 1.2)
+        delay = min(self.initial_backoff * (2 ** (self.attempt - 1)), max_delay)
+        return delay * jitter
 
 
 class OpAMPAgent:
@@ -96,6 +108,9 @@ class OpAMPAgent:
         :param heartbeat_max_retries: how many times to retry an heartbeat failed job
         :param initial_backoff: base seconds for exponential backoff
         :param client: an OpAMPClient instance
+
+        The initial state report retries until a response is received or the agent is
+        stopped. Its backoff is capped at 60 seconds before applying jitter.
         """
         self._interval = interval
         self._callbacks = callbacks
@@ -113,7 +128,7 @@ class OpAMPAgent:
 
         self._client = client
 
-    def _enable_scheduler(self):
+    def _enable_scheduler(self) -> None:
         self._schedule = True
         logger.debug("Connected with endpoint, enabling heartbeat")
 
@@ -129,10 +144,13 @@ class OpAMPAgent:
 
         # enqueue the connection message so we can then enable heartbeat
         payload = self._client.build_full_state_message()
-        self.send(
-            payload,
-            max_retries=self._max_retries,
-            callback=self._enable_scheduler,
+        self._queue.put(
+            _Job(
+                payload,
+                max_retries=self._max_retries,
+                initial_backoff=self._initial_backoff,
+                is_initial=True,
+            )
         )
 
     def send(
@@ -200,7 +218,7 @@ class OpAMPAgent:
                 continue
 
             response = None
-            while job.should_retry() and not self._stop.is_set():
+            while not self._stop.is_set():
                 try:
                     response = self._client.send(prepared_message)
                     _safe_invoke(self._callbacks.on_connect, self, self._client)
@@ -215,14 +233,14 @@ class OpAMPAgent:
                         exc,
                     )
                     logger.warning(
-                        "Job %r failed attempt %d/%d: %s",
+                        "Job %r failed attempt %d/%s: %s",
                         job,
                         job.attempt,
-                        job.max_retries + 1,
+                        "unlimited" if job.is_initial else job.max_retries + 1,
                         exc,
                     )
 
-                    if not job.should_retry():
+                    if not job.is_initial and not job.should_retry():
                         logger.error("Job %r dropped after max retries", job)
                         break
 
@@ -236,6 +254,8 @@ class OpAMPAgent:
 
             if response is not None:
                 self._process_message(response)
+                if job.is_initial:
+                    self._enable_scheduler()
 
             try:
                 if job.callback is not None:
@@ -246,6 +266,14 @@ class OpAMPAgent:
                 self._queue.task_done()
 
     def _process_message(self, message: opamp_pb2.ServerToAgent) -> None:
+        # The server may send a new instance UID alongside an error_response
+        # (e.g. when rejecting a duplicate), so apply it first.
+        if message.HasField("agent_identification"):
+            try:
+                self._client.update_instance_uid(message.agent_identification.new_instance_uid)
+            except ValueError as exc:
+                logger.warning("Ignoring agent_identification: %s", exc)
+
         if message.HasField("error_response"):
             _safe_invoke(
                 self._callbacks.on_error,

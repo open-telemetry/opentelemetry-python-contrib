@@ -1,0 +1,1 @@
+`opentelemetry-util-http`: redact `X-Amz-Signature`, `X-Amz-Credential`, and `X-Amz-Security-Token` query parameters

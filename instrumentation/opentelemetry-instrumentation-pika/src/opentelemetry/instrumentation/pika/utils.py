@@ -27,6 +27,7 @@ from opentelemetry.semconv.trace import (
 )
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
+from opentelemetry.util.types import AttributeValue
 
 _LOG = getLogger(__name__)
 
@@ -146,13 +147,12 @@ def _get_span(
     if not is_instrumentation_enabled():
         return None
     task_name = properties.type if properties.type else task_name
-    span = tracer.start_span(
+    attributes = _get_attributes(channel, properties, destination, operation)
+    return tracer.start_span(
         name=_generate_span_name(destination, operation),
         kind=span_kind,
+        attributes=attributes,
     )
-    if span.is_recording():
-        _enrich_span(span, channel, properties, destination, operation)
-    return span
 
 
 def _generate_span_name(task_name: str, operation: MessagingOperationValues | None) -> str:
@@ -161,34 +161,33 @@ def _generate_span_name(task_name: str, operation: MessagingOperationValues | No
     return f"{task_name} {operation.value}"
 
 
-def _enrich_span(
-    span: Span,
+def _get_attributes(
     channel: Channel | None,
     properties: BasicProperties,
     task_destination: str,
     operation: MessagingOperationValues | None = None,
-) -> None:
-    span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "rabbitmq")
+) -> dict[str, AttributeValue]:
+    attributes: dict[str, AttributeValue] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.RABBITMQ.value,
+        SpanAttributes.MESSAGING_DESTINATION: task_destination,
+    }
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        attributes[SpanAttributes.MESSAGING_OPERATION] = operation.value
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
+        attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
     if properties.message_id:
-        span.set_attribute(
-            messaging_attributes.MESSAGING_MESSAGE_ID,
-            properties.message_id,
-        )
+        attributes[messaging_attributes.MESSAGING_MESSAGE_ID] = properties.message_id
     if properties.correlation_id:
-        span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id)
+        attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = properties.correlation_id
     if not channel:
-        return
+        return attributes
     if not hasattr(channel.connection, "params"):
-        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
+        attributes[NET_PEER_NAME] = channel.connection._impl.params.host
+        attributes[NET_PEER_PORT] = channel.connection._impl.params.port
     else:
-        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
+        attributes[NET_PEER_NAME] = channel.connection.params.host
+        attributes[NET_PEER_PORT] = channel.connection.params.port
+    return attributes
 
 
 # pylint:disable=abstract-method

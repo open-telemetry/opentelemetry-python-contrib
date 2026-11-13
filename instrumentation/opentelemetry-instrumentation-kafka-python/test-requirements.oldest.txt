@@ -14,20 +14,18 @@ iniconfig==2.3.0
     # via pytest
 kafka-python==2.3.2
     # via -r instrumentation/opentelemetry-instrumentation-kafka-python/test-requirements.in
-packaging==18.0
+packaging==22.0
     # via
     #   opentelemetry-instrumentation
     #   pytest
 pluggy==1.6.0
     # via pytest
-pyparsing==3.3.2
-    # via packaging
-pytest==7.4.4
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-kafka-python/test-requirements.in
-six==1.17.0
-    # via packaging
 tomli==2.4.1 ; python_full_version < '3.11'
     # via pytest
 typing-extensions==4.16.0
