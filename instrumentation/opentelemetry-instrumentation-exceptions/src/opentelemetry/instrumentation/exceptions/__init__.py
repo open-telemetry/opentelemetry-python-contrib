@@ -43,7 +43,7 @@ from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry._logs import Logger, SeverityNumber, get_logger
+from opentelemetry._logs import Logger, SeverityNumber, get_logger_provider
 from opentelemetry.instrumentation.exceptions.package import _instruments
 from opentelemetry.instrumentation.exceptions.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -69,10 +69,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs: Any):
-        self._logger = get_logger(
+        logger_provider = kwargs.get("logger_provider") or get_logger_provider()
+        self._logger = logger_provider.get_logger(
             __name__,
-            __version__,
-            kwargs.get("logger_provider"),
+            version=__version__,
             schema_url=Schemas.V1_37_0.value,
         )
         self._install_sys_hook()

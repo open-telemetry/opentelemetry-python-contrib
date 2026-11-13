@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-exceptions`, `opentelemetry-instrumentation-vertexai`: pass optional arguments to `get_logger` by keyword
