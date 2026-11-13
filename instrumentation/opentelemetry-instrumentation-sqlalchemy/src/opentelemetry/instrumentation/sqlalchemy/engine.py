@@ -251,10 +251,11 @@ class EngineTracer:
         self._register_event_listener(engine, "close", self._pool_close)
         self._register_event_listener(engine, "checkin", self._pool_checkin)
         self._register_event_listener(engine, "checkout", self._pool_checkout)
-        self._register_event_listener(engine, "do_connect", self._dialect_do_connect)
-        # Inserted first so the timing covers only the DBAPI connect, not
-        # other connect listeners such as the dialect's first-connect setup.
-        self._register_event_listener(engine, "connect", self._record_connection_create_time, insert=True)
+        if self.connection_create_time is not None:
+            self._register_event_listener(engine, "do_connect", self._dialect_do_connect)
+            # Inserted first so the timing covers only the DBAPI connect, not
+            # other connect listeners such as the dialect's first-connect setup.
+            self._register_event_listener(engine, "connect", self._record_connection_create_time, insert=True)
 
     def _add_idle_to_connection_usage(self, value):
         self._add_connection_count(DbClientConnectionStateValues.IDLE.value, value)
@@ -292,14 +293,15 @@ class EngineTracer:
     # Called right before a new DBAPI connection is created. Returning None
     # lets SQLAlchemy create the connection as usual. Like the pool usage
     # counter, this is not suppressed, since it measures the pool's state.
-    def _dialect_do_connect(self, _dialect, connection_record, _cargs, _cparams):
-        if self.connection_create_time is not None and connection_record is not None:
+    @staticmethod
+    def _dialect_do_connect(_dialect, connection_record, _cargs, _cparams):
+        if connection_record is not None:
             connection_record.info[_CONNECT_START_TIME_KEY] = time.perf_counter()
 
     # Called once the new DBAPI connection has been created.
     def _record_connection_create_time(self, _dbapi_connection, connection_record):
         start_time = connection_record.info.pop(_CONNECT_START_TIME_KEY, None)
-        if start_time is None or self.connection_create_time is None:
+        if start_time is None:
             return
 
         self.connection_create_time.record(
