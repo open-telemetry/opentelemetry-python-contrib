@@ -71,8 +71,8 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Any):
         self._logger = get_logger(
             __name__,
-            __version__,
-            kwargs.get("logger_provider"),
+            version=__version__,
+            logger_provider=kwargs.get("logger_provider"),
             schema_url=Schemas.V1_37_0.value,
         )
         self._install_sys_hook()

@@ -100,8 +100,8 @@ class TelemetryHandler:
         self._metrics_recorder = InvocationMetricsRecorder(meter)
         self._logger = get_logger(
             __name__,
-            __version__,
-            logger_provider,
+            version=__version__,
+            logger_provider=logger_provider,
             schema_url=schema_url,
         )
         self._completion_hook = completion_hook or _NoOpCompletionHook()

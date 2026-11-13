@@ -131,7 +131,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
         logger_provider = kwargs.get("logger_provider")
         logger = get_logger(
             __name__,
-            "",
             logger_provider=logger_provider,
             schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
         )
