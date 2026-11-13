@@ -1928,6 +1928,16 @@ class TestAsgiAttributes(unittest.TestCase):
             },
         )
 
+    def test_request_attributes_server_address_excludes_port(self):
+        self.scope["server"] = ("127.0.0.1", 8000)
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP_DUP,
+        )
+        self.assertEqual(attrs[SERVER_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[SERVER_PORT], 8000)
+        self.assertEqual(attrs[HTTP_HOST], "127.0.0.1:8000")
+
     def test_request_attributes_both_semconv(self):
         self.scope["query_string"] = b"foo=bar"
         headers = []
