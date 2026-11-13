@@ -96,7 +96,50 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["set key"])
+        self.check_spans(spans, 1, ["set ?"])
+
+    def test_db_statement_is_sanitized(self):
+        client = self.make_client([b"VALUE session:abc123 0 5\r\nvalue\r\nEND\r\n"])
+        result = client.get(b"session:abc123")
+
+        self.assertTrue(result)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.check_spans(spans, 1, ["get ?"])
+        # sensitive memcached keys must not leak into span attributes
+        self.assertNotIn("session:abc123", spans[0].attributes[DB_STATEMENT])
+
+    def test_get_many_sanitizes_every_key(self):
+        client = self.make_client([b"END\r\n"])
+        result = client.get_many([b"session:abc123", b"user:42"])
+
+        assert not result
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.check_spans(spans, 1, ["get_many ? ?"])
+        self.assertNotIn("session:abc123", spans[0].attributes[DB_STATEMENT])
+        self.assertNotIn("user:42", spans[0].attributes[DB_STATEMENT])
+
+    def test_set_many_sanitizes_dict_keys(self):
+        client = self.make_client([b"STORED\r\n"])
+        result = client.set_many({b"session:abc123": b"value"}, noreply=False)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        # In pymemcache versions greater than 2, set_many now uses a batched call
+        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
+        if pymemcache_version_lt_2:
+            self.assertTrue(result)
+            self.check_spans(spans, 2, ["set ?", "set_many ?"])
+        else:
+            assert len(result) == 0
+            self.check_spans(spans, 1, ["set_many ?"])
+        self.assertNotIn(
+            "session:abc123",
+            self.memory_exporter.get_finished_spans()[0].attributes[DB_STATEMENT],
+        )
 
     def test_suppressed_commands(self) -> None:
         client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n", b"STORED\r\n"])
@@ -108,7 +151,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         self.assertEqual(self.memory_exporter.get_finished_spans(), ())
 
         self.assertTrue(client.set(b"key", b"value", noreply=False))
-        self.check_spans(self.memory_exporter.get_finished_spans(), 1, ["set key"])
+        self.check_spans(self.memory_exporter.get_finished_spans(), 1, ["set ?"])
 
     def test_suppressed_command_error(self) -> None:
         error = MemcacheServerError(b"server unavailable")
@@ -142,7 +185,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["get_many key1 key2"])
+        self.check_spans(spans, 1, ["get_many ? ?"])
 
     def test_get_multi_none_found(self):
         client = self.make_client([b"END\r\n"])
@@ -152,7 +195,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["get_multi key1 key2"])
+        self.check_spans(spans, 1, ["get_multi ? ?"])
 
     def test_set_multi_success(self):
         client = self.make_client([b"STORED\r\n"])
@@ -164,10 +207,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
             self.assertTrue(result)
-            self.check_spans(spans, 2, ["set key", "set_multi key"])
+            self.check_spans(spans, 2, ["set ?", "set_multi ?"])
         else:
             assert len(result) == 0
-            self.check_spans(spans, 1, ["set_multi key"])
+            self.check_spans(spans, 1, ["set_multi ?"])
 
     def test_delete_not_found(self):
         client = self.make_client([b"NOT_FOUND\r\n"])
@@ -176,7 +219,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["delete key"])
+        self.check_spans(spans, 1, ["delete ?"])
 
     def test_incr_found(self):
         client = self.make_client([b"STORED\r\n", b"1\r\n"])
@@ -186,7 +229,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 2, ["set key", "incr key"])
+        self.check_spans(spans, 2, ["set ?", "incr ?"])
 
     def test_get_found(self):
         client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"])
@@ -196,7 +239,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 2, ["set key", "get key"])
+        self.check_spans(spans, 2, ["set ?", "get ?"])
 
     def test_decr_found(self):
         client = self.make_client([b"STORED\r\n", b"1\r\n"])
@@ -206,7 +249,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 2, ["set key", "decr key"])
+        self.check_spans(spans, 2, ["set ?", "decr ?"])
 
     def test_add_stored(self):
         client = self.make_client([b"STORED\r", b"\n"])
@@ -215,7 +258,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["add key"])
+        self.check_spans(spans, 1, ["add ?"])
 
     def test_delete_many_found(self):
         client = self.make_client([b"STORED\r", b"\n", b"DELETED\r\n"])
@@ -229,9 +272,9 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         # In pymemcache versions greater than 2, delete_many now uses a batched call
         # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
-            self.check_spans(spans, 3, ["add key", "delete key", "delete_many key"])
+            self.check_spans(spans, 3, ["add ?", "delete ?", "delete_many ?"])
         else:
-            self.check_spans(spans, 2, ["add key", "delete_many key"])
+            self.check_spans(spans, 2, ["add ?", "delete_many ?"])
 
     def test_set_many_success(self):
         client = self.make_client([b"STORED\r\n"])
@@ -244,10 +287,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
             self.assertTrue(result)
-            self.check_spans(spans, 2, ["set key", "set_many key"])
+            self.check_spans(spans, 2, ["set ?", "set_many ?"])
         else:
             assert len(result) == 0
-            self.check_spans(spans, 1, ["set_many key"])
+            self.check_spans(spans, 1, ["set_many ?"])
 
     def test_set_get(self):
         client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"])
@@ -268,7 +311,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["append key"])
+        self.check_spans(spans, 1, ["append ?"])
 
     def test_prepend_stored(self):
         client = self.make_client([b"STORED\r\n"])
@@ -277,7 +320,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["prepend key"])
+        self.check_spans(spans, 1, ["prepend ?"])
 
     def test_cas_stored(self):
         client = self.make_client([b"STORED\r\n"])
@@ -286,7 +329,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["cas key"])
+        self.check_spans(spans, 1, ["cas ?"])
 
     def test_cas_exists(self):
         client = self.make_client([b"EXISTS\r\n"])
@@ -295,7 +338,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["cas key"])
+        self.check_spans(spans, 1, ["cas ?"])
 
     def test_cas_not_found(self):
         client = self.make_client([b"NOT_FOUND\r\n"])
@@ -304,7 +347,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["cas key"])
+        self.check_spans(spans, 1, ["cas ?"])
 
     def test_delete_exception(self):
         client = self.make_client([Exception("fail")])
@@ -321,7 +364,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["delete key"])
+        self.check_spans(spans, 1, ["delete ?"])
 
     def test_flush_all(self):
         client = self.make_client([b"OK\r\n"])
@@ -347,7 +390,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["incr key"])
+        self.check_spans(spans, 1, ["incr ?"])
 
     def test_get_error(self):
         client = self.make_client([b"ERROR\r\n"])
@@ -364,7 +407,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["get key"])
+        self.check_spans(spans, 1, ["get ?"])
 
     def test_get_unknown_error(self):
         client = self.make_client([b"foobarbaz\r\n"])
@@ -381,7 +424,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["get key"])
+        self.check_spans(spans, 1, ["get ?"])
 
     def test_gets_found(self):
         client = self.make_client([b"VALUE key 0 5 10\r\nvalue\r\nEND\r\n"])
@@ -390,7 +433,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["gets key"])
+        self.check_spans(spans, 1, ["gets ?"])
 
     def test_touch_not_found(self):
         client = self.make_client([b"NOT_FOUND\r\n"])
@@ -399,7 +442,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["touch key"])
+        self.check_spans(spans, 1, ["touch ?"])
 
     def test_set_client_error(self):
         client = self.make_client([b"CLIENT_ERROR some message\r\n"])
@@ -416,7 +459,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["set key"])
+        self.check_spans(spans, 1, ["set ?"])
 
     def test_set_server_error(self):
         client = self.make_client([b"SERVER_ERROR some message\r\n"])
@@ -433,7 +476,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["set key"])
+        self.check_spans(spans, 1, ["set ?"])
 
     def test_set_key_with_space(self):
         client = self.make_client([b""])
@@ -450,7 +493,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         self.assertFalse(span.status.is_ok)
 
-        self.check_spans(spans, 1, ["set key has space"])
+        self.check_spans(spans, 1, ["set ?"])
 
     def test_quit(self):
         client = self.make_client([])
@@ -467,7 +510,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.check_spans(spans, 1, ["replace key"])
+        self.check_spans(spans, 1, ["replace ?"])
 
     def test_version_success(self):
         client = self.make_client([b"VERSION 1.2.3\r\n"], default_noreply=False)
@@ -511,7 +554,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             span = spans[0]
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "memcached")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set key")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set ?")
             self.assertEqual(span.attributes[SERVER_ADDRESS], TEST_HOST)
             self.assertEqual(span.attributes[SERVER_PORT], TEST_PORT)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -540,11 +583,11 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             span = spans[0]
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "memcached")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set key")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set ?")
             self.assertEqual(span.attributes[SERVER_ADDRESS], TEST_HOST)
             self.assertEqual(span.attributes[SERVER_PORT], TEST_PORT)
             self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
-            self.assertEqual(span.attributes[DB_STATEMENT], "set key")
+            self.assertEqual(span.attributes[DB_STATEMENT], "set ?")
             self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
             self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
             self.assertEqual(
@@ -562,7 +605,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         span = spans[0]
 
         self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
-        self.assertEqual(span.attributes[DB_STATEMENT], "set key")
+        self.assertEqual(span.attributes[DB_STATEMENT], "set ?")
         self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
         self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
         self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
@@ -660,4 +703,4 @@ class PymemcacheHashClientTestCase(TestBase):
         self.assertTrue(result)
 
         spans = self.memory_exporter.get_finished_spans()
-        self.check_spans(spans, 2, ["add key", "delete key"])
+        self.check_spans(spans, 2, ["add ?", "delete ?"])
