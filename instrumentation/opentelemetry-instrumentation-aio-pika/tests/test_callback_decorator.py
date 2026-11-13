@@ -72,6 +72,38 @@ class TestInstrumentedQueueAioRmq7(TestCase):
         mocked_get_callback_span.assert_called_once()
         callback.assert_called_once_with(MESSAGE)
 
+    def test_decorate_callback_with_hook(self):
+        hook = mock.MagicMock()
+        queue = Queue(CHANNEL_7, QUEUE_NAME, False, False, False, None)
+        callback = mock.MagicMock(return_value=asyncio.sleep(0))
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
+            mock_span = mock.MagicMock()
+            mocked_get_callback_span.return_value = mock_span
+            callback_decorator = CallbackDecorator(
+                self.tracer, queue, consume_hook=hook
+            )
+            decorated_callback = callback_decorator.decorate(callback)
+            self.loop.run_until_complete(decorated_callback(MESSAGE))
+        mocked_get_callback_span.assert_called_once()
+        callback.assert_called_once_with(MESSAGE)
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
+    def test_decorate_callback_hook_exception_does_not_fail(self):
+        hook = mock.MagicMock(side_effect=RuntimeError("Hook failure"))
+        queue = Queue(CHANNEL_7, QUEUE_NAME, False, False, False, None)
+        callback = mock.MagicMock(return_value=asyncio.sleep(0))
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
+            mock_span = mock.MagicMock()
+            mocked_get_callback_span.return_value = mock_span
+            callback_decorator = CallbackDecorator(
+                self.tracer, queue, consume_hook=hook
+            )
+            decorated_callback = callback_decorator.decorate(callback)
+            self.loop.run_until_complete(decorated_callback(MESSAGE))
+        mocked_get_callback_span.assert_called_once()
+        callback.assert_called_once_with(MESSAGE)
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
 
 @skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
 class TestInstrumentedQueueAioRmq8(TestCase):
@@ -108,4 +140,36 @@ class TestInstrumentedQueueAioRmq8(TestCase):
             decorated_callback = callback_decorator.decorate(callback)
             self.loop.run_until_complete(decorated_callback(MESSAGE))
         mocked_get_callback_span.assert_called_once()
+
+    def test_decorate_callback_with_hook(self):
+        hook = mock.MagicMock()
+        queue = Queue(CHANNEL_8, QUEUE_NAME, False, False, False, None)
+        callback = mock.MagicMock(return_value=asyncio.sleep(0))
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
+            mock_span = mock.MagicMock()
+            mocked_get_callback_span.return_value = mock_span
+            callback_decorator = CallbackDecorator(
+                self.tracer, queue, consume_hook=hook
+            )
+            decorated_callback = callback_decorator.decorate(callback)
+            self.loop.run_until_complete(decorated_callback(MESSAGE))
+        mocked_get_callback_span.assert_called_once()
+        callback.assert_called_once_with(MESSAGE)
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
+    def test_decorate_callback_hook_exception_does_not_fail(self):
+        hook = mock.MagicMock(side_effect=RuntimeError("Hook failure"))
+        queue = Queue(CHANNEL_8, QUEUE_NAME, False, False, False, None)
+        callback = mock.MagicMock(return_value=asyncio.sleep(0))
+        with mock.patch.object(CallbackDecorator, "_get_span") as mocked_get_callback_span:
+            mock_span = mock.MagicMock()
+            mocked_get_callback_span.return_value = mock_span
+            callback_decorator = CallbackDecorator(
+                self.tracer, queue, consume_hook=hook
+            )
+            decorated_callback = callback_decorator.decorate(callback)
+            self.loop.run_until_complete(decorated_callback(MESSAGE))
+        mocked_get_callback_span.assert_called_once()
+        callback.assert_called_once_with(MESSAGE)
+        hook.assert_called_once_with(mock_span, MESSAGE)
         callback.assert_called_once_with(MESSAGE)
