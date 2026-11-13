@@ -3,6 +3,7 @@
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
+from types import SimpleNamespace
 from unittest import mock
 
 from opentelemetry.instrumentation.confluent_kafka import (
@@ -37,8 +38,36 @@ from opentelemetry.trace import SpanKind
 
 from .utils import MockConsumer, MockedMessage, MockedProducer
 
+_CONSUMER_CONFIG = {
+    "bootstrap.servers": "localhost:29092",
+    "group.id": "mygroup",
+    "auto.offset.reset": "earliest",
+}
 
-class TestConfluentKafka(TestBase):
+_PER_MESSAGE_ATTRIBUTES = (
+    SpanAttributes.MESSAGING_KAFKA_PARTITION,
+    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET,
+    MESSAGING_MESSAGE_ID,
+)
+
+# W3C Trace Context example identifiers, used as literal fixtures.
+_TRACE_ID_A = 0x0AF7651916CD43DD8448EB211C80319C
+_SPAN_ID_A = 0xB7AD6B7169203331
+_TRACE_ID_B = 0x4BF92F3577B34DA6A3CE929D0E0E4736
+_SPAN_ID_B = 0x00F067AA0BA902B7
+
+
+def _traceparent_header(trace_id: int, span_id: int) -> tuple[str, bytes]:
+    return ("traceparent", f"00-{trace_id:032x}-{span_id:016x}-01".encode())
+
+
+_HEADER_A = _traceparent_header(_TRACE_ID_A, _SPAN_ID_A)
+_HEADER_B = _traceparent_header(_TRACE_ID_B, _SPAN_ID_B)
+# all-zero trace and span ids are not a valid trace context
+_HEADER_INVALID = _traceparent_header(0, 0)
+
+
+class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
     def _configure_sampler(self, sampler: CapturingSampler) -> None:
         self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
         self.addCleanup(self.tracer_provider.shutdown)
@@ -57,7 +86,7 @@ class TestConfluentKafka(TestBase):
             MESSAGING_SYSTEM: MessagingSystemValues.KAFKA.value,
             SpanAttributes.MESSAGING_DESTINATION: "topic-1",
             SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            MESSAGING_OPERATION: MessagingOperationTypeValues.PUBLISH.value,
+            MESSAGING_OPERATION: MessagingOperationTypeValues.SEND.value,
             SERVER_ADDRESS: "broker-a",
             SERVER_PORT: 9092,
         }
@@ -95,26 +124,21 @@ class TestConfluentKafka(TestBase):
                     SERVER_ADDRESS: "broker-a",
                     SERVER_PORT: 9092,
                 }
-                if method == "poll":
-                    expected[SpanAttributes.MESSAGING_KAFKA_PARTITION] = 0
-                    expected[MESSAGING_MESSAGE_ID] = "topic-1.0.0"
+                # poll returns one record and consume returned exactly one record,
+                # so both carry the per-record attributes
+                expected[SpanAttributes.MESSAGING_KAFKA_PARTITION] = 0
+                expected[SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET] = 0
+                expected[MESSAGING_MESSAGE_ID] = "topic-1.0.0"
                 self.assertEqual(sampler.kind, SpanKind.CONSUMER)
                 self.assertEqual(sampler.attributes, expected)
                 for key, value in expected.items():
                     self.assertIs(type(sampler.attributes[key]), type(value))
-                self.assertEqual(should_sample.call_count, 2)
-                receive_attributes = {
-                    **expected,
-                    MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
-                }
+                self.assertEqual(should_sample.call_count, 1)
                 self.assertEqual(should_sample.call_args_list[0].args[3], SpanKind.CONSUMER)
-                self.assertEqual(should_sample.call_args_list[0].args[4], receive_attributes)
-                self.assertEqual(should_sample.call_args_list[1].args[4], expected)
+                self.assertEqual(should_sample.call_args_list[0].args[4], expected)
                 spans = self.memory_exporter.get_finished_spans()
-                self.assertEqual(len(spans), 2)
-                self.assertEqual(spans[0].name, "recv")
-                self.assertEqual(spans[0].attributes, receive_attributes)
-                self.assertEqual(spans[1].attributes, expected)
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes, expected)
 
     def test_attributes_control_sampling(self) -> None:
         for method in ("produce", "poll", "consume"):
@@ -141,8 +165,6 @@ class TestConfluentKafka(TestBase):
                         result = getattr(consumer, method)()
                         self.assertEqual(result, record if method == "poll" else [record])
                         consumer.close()
-                    if method != "produce":
-                        expected_count *= 2
                     self.assertEqual(len(self.memory_exporter.get_finished_spans()), expected_count)
 
     def test_library_errors_propagate(self) -> None:
@@ -288,7 +310,6 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-30", 1, 3, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-10 process",
                 "attributes": {
@@ -298,9 +319,9 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-10",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-20 process",
                 "attributes": {
@@ -310,9 +331,9 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-20",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 4,
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-30 process",
                 "attributes": {
@@ -322,6 +343,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-30",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 3,
                 },
             },
         ]
@@ -355,8 +377,8 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-2", 0, 1, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
+                # batch of three records: no single partition, offset or message id applies
                 "name": "topic-1 process",
                 "attributes": {
                     MESSAGING_OPERATION: "process",
@@ -364,19 +386,23 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
+                "absent": _PER_MESSAGE_ATTRIBUTES,
             },
-            {"name": "recv", "attributes": {}},
             {
+                # single record: per-message attributes are set
                 "name": "topic-2 process",
                 "attributes": {
                     MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+                    SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
+                    MESSAGING_MESSAGE_ID: "topic-2.0.0",
                 },
             },
-            {"name": "recv", "attributes": {}},
             {
+                # batch of two records
                 "name": "topic-3 process",
                 "attributes": {
                     MESSAGING_OPERATION: "process",
@@ -384,6 +410,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
+                "absent": _PER_MESSAGE_ATTRIBUTES,
             },
         ]
 
@@ -485,7 +512,6 @@ class TestConfluentKafka(TestBase):
             MockedMessage("topic-a", 0, 0, []),
         ]
         expected_spans = [
-            {"name": "recv", "attributes": {}},
             {
                 "name": "topic-a process",
                 "attributes": {
@@ -495,6 +521,7 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION: "topic-a",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-a.0.0",
+                    SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET: 0,
                 },
             },
         ]
@@ -521,6 +548,8 @@ class TestConfluentKafka(TestBase):
             self.assertEqual(expected_span["name"], span.name)
             for attribute_key, expected_attribute_value in expected_span["attributes"].items():
                 self.assertEqual(expected_attribute_value, span.attributes[attribute_key])
+            for attribute_key in expected_span.get("absent", ()):
+                self.assertNotIn(attribute_key, span.attributes)
 
     def _assert_topic(self, span, expected_topic: str) -> None:
         self.assertEqual(
@@ -569,6 +598,45 @@ class TestConfluentKafka(TestBase):
         self._assert_span_count(span_list, 1)
         self._assert_topic(span_list[0], "topic-1")
 
+    def test_poll_no_message(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        mocked_messages = []
+        consumer = MockConsumer(
+            mocked_messages,
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_producer_with_partition(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        message_queue = []
+
+        producer = MockedProducer(
+            message_queue,
+            {
+                "bootstrap.servers": "localhost:29092",
+            },
+        )
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", partition=1, key="key-1", value="value-1")
+        msg = producer.poll()
+        self.assertIsNotNone(msg)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(
+            span_list[0].attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION],
+            1,
+        )
+
     def test_producer_sets_bootstrap_servers_attributes(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         producer = MockedProducer(
@@ -606,3 +674,249 @@ class TestConfluentKafka(TestBase):
         process_span = next(s for s in self.memory_exporter.get_finished_spans() if s.name == "topic-1 process")
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+
+class TestConsumerParentContext(TestBase):
+    """Parent and links of the consumer ``process`` span.
+
+    See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/5195
+    for the expected behavior of ``use_message_context_as_parent``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.memory_exporter.clear()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+
+    @staticmethod
+    def _instrumented_consumer(messages, **options):
+        consumer = MockConsumer(list(messages), _CONSUMER_CONFIG)
+        return ConfluentKafkaInstrumentor.instrument_consumer(consumer, **options)
+
+    def _poll_and_handle(self, consumer) -> None:
+        consumer.poll()
+        with self.tracer.start_as_current_span("handle"):
+            pass
+        consumer.poll()  # empty poll ends the process span
+
+    def _consume_and_handle(self, consumer, num_messages: int) -> None:
+        consumer.consume(num_messages)
+        with self.tracer.start_as_current_span("handle"):
+            pass
+        consumer.consume(num_messages)  # empty consume ends the process span
+
+    @staticmethod
+    def _link_ids(span) -> list[tuple[int, int]]:
+        return [(link.context.trace_id, link.context.span_id) for link in span.links]
+
+    def _assert_child(self, child, parent) -> None:
+        self.assertEqual(child.context.trace_id, parent.context.trace_id)
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
+
+    # default: links, never a message parent
+
+    def test_default_single_record_links_message_context(self) -> None:
+        consumer = self._instrumented_consumer([MockedMessage("topic-1", 0, 5, [_HEADER_A])])
+        self._poll_and_handle(consumer)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.name, "topic-1 process")
+        self.assertIsNone(process_span.parent)
+        self.assertNotEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
+        self._assert_child(handle_span, process_span)
+
+    def test_explicit_false_matches_default(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 2, 9, [_HEADER_A])],
+            use_message_context_as_parent=False,
+        )
+        self._consume_and_handle(consumer, 1)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertIsNone(process_span.parent)
+        self.assertNotEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
+        self.assertEqual(process_span.attributes[MESSAGING_MESSAGE_ID], "topic-1.2.9")
+        self._assert_child(handle_span, process_span)
+
+    def test_default_batch_links_each_record(self) -> None:
+        consumer = self._instrumented_consumer(
+            [
+                MockedMessage("topic-1", 0, 0, [_HEADER_A]),
+                MockedMessage("topic-1", 1, 7, [_HEADER_B]),
+            ]
+        )
+        self._consume_and_handle(consumer, 2)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.name, "topic-1 process")
+        self.assertIsNone(process_span.parent)
+        self.assertNotIn(process_span.context.trace_id, (_TRACE_ID_A, _TRACE_ID_B))
+        self.assertEqual(
+            self._link_ids(process_span),
+            [(_TRACE_ID_A, _SPAN_ID_A), (_TRACE_ID_B, _SPAN_ID_B)],
+        )
+        for attribute_key in _PER_MESSAGE_ATTRIBUTES:
+            self.assertNotIn(attribute_key, process_span.attributes)
+        self._assert_child(handle_span, process_span)
+
+    def test_default_with_ambient_span_uses_ambient_parent(self) -> None:
+        consumer = self._instrumented_consumer([MockedMessage("topic-1", 0, 0, [_HEADER_A])])
+        with self.tracer.start_as_current_span("loop"):
+            self._poll_and_handle(consumer)
+
+        handle_span, process_span, loop_span = self.memory_exporter.get_finished_spans()
+        self._assert_child(process_span, loop_span)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
+        self._assert_child(handle_span, process_span)
+
+    def test_default_without_trace_context_creates_root_span(self) -> None:
+        consumer = self._instrumented_consumer([MockedMessage("topic-1", 0, 0, [])])
+        consumer.poll()
+        consumer.poll()  # empty poll ends the process span
+
+        (process_span,) = self.memory_exporter.get_finished_spans()
+        self.assertIsNone(process_span.parent)
+        self.assertTrue(process_span.context.is_valid)
+        self.assertEqual(len(process_span.links), 0)
+
+    # opt-in: the message context is the parent of a single-record span
+
+    def test_opt_in_poll_uses_message_context_as_parent(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 0, 5, [_HEADER_A])],
+            use_message_context_as_parent=True,
+        )
+        self._poll_and_handle(consumer)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.name, "topic-1 process")
+        self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
+        self._assert_child(handle_span, process_span)
+
+    def test_opt_in_consume_single_record_uses_message_context_as_parent(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 2, 9, [_HEADER_A])],
+            use_message_context_as_parent=True,
+        )
+        self._consume_and_handle(consumer, 1)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
+        self.assertEqual(self._link_ids(process_span), [(_TRACE_ID_A, _SPAN_ID_A)])
+        self.assertEqual(process_span.attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION], 2)
+        self.assertEqual(process_span.attributes[SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET], 9)
+        self.assertEqual(process_span.attributes[MESSAGING_MESSAGE_ID], "topic-1.2.9")
+        self._assert_child(handle_span, process_span)
+
+    def test_opt_in_batch_keeps_links(self) -> None:
+        consumer = self._instrumented_consumer(
+            [
+                MockedMessage("topic-1", 0, 0, [_HEADER_A]),
+                MockedMessage("topic-1", 1, 7, [_HEADER_B]),
+            ],
+            use_message_context_as_parent=True,
+        )
+        self._consume_and_handle(consumer, 2)
+
+        handle_span, process_span = self.memory_exporter.get_finished_spans()
+        self.assertIsNone(process_span.parent)
+        self.assertNotIn(process_span.context.trace_id, (_TRACE_ID_A, _TRACE_ID_B))
+        self.assertEqual(
+            self._link_ids(process_span),
+            [(_TRACE_ID_A, _SPAN_ID_A), (_TRACE_ID_B, _SPAN_ID_B)],
+        )
+        for attribute_key in _PER_MESSAGE_ATTRIBUTES:
+            self.assertNotIn(attribute_key, process_span.attributes)
+        self._assert_child(handle_span, process_span)
+
+    def test_opt_in_with_ambient_span_links_ambient_context(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 0, 0, [_HEADER_A])],
+            use_message_context_as_parent=True,
+        )
+        with self.tracer.start_as_current_span("loop"):
+            self._poll_and_handle(consumer)
+
+        handle_span, process_span, loop_span = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
+        self.assertEqual(
+            self._link_ids(process_span),
+            [
+                (_TRACE_ID_A, _SPAN_ID_A),
+                (loop_span.context.trace_id, loop_span.context.span_id),
+            ],
+        )
+        self._assert_child(handle_span, process_span)
+
+    def test_opt_in_missing_context_with_ambient_span_uses_ambient_parent(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            use_message_context_as_parent=True,
+        )
+        with self.tracer.start_as_current_span("loop"):
+            self._poll_and_handle(consumer)
+
+        handle_span, process_span, loop_span = self.memory_exporter.get_finished_spans()
+        self._assert_child(process_span, loop_span)
+        self.assertEqual(len(process_span.links), 0)
+        self._assert_child(handle_span, process_span)
+
+    def test_opt_in_invalid_context_creates_root_span(self) -> None:
+        consumer = self._instrumented_consumer(
+            [MockedMessage("topic-1", 0, 0, [_HEADER_INVALID])],
+            use_message_context_as_parent=True,
+        )
+        consumer.poll()
+        consumer.poll()  # empty poll ends the process span
+
+        (process_span,) = self.memory_exporter.get_finished_spans()
+        self.assertIsNone(process_span.parent)
+        self.assertTrue(process_span.context.is_valid)
+        self.assertEqual(len(process_span.links), 0)
+
+    def test_instrument_passes_option_to_poll_wrapper(self) -> None:
+        instrumentor = ConfluentKafkaInstrumentor()
+        instrumentor.instrument(tracer_provider=self.tracer_provider, use_message_context_as_parent=True)
+        try:
+            # AutoInstrumentedConsumer needs a broker to return messages, so call the
+            # wrapt wrapper that instrument() installed with a stub consumer and a stub poll
+            wrapper = AutoInstrumentedConsumer.poll._self_wrapper  # pylint: disable=no-member
+            consumer = SimpleNamespace(config=_CONSUMER_CONFIG, _current_consume_span=None, _current_context_token=None)
+            message = MockedMessage("topic-1", 0, 5, [_HEADER_A])
+            wrapper(lambda *args, **kwargs: message, consumer, (), {})
+            wrapper(lambda *args, **kwargs: None, consumer, (), {})
+        finally:
+            instrumentor.uninstrument()
+
+        (process_span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(process_span.context.trace_id, _TRACE_ID_A)
+        self.assertEqual(process_span.parent.span_id, _SPAN_ID_A)
+
+    def test_uninstrument_removes_every_wrapper(self) -> None:
+        wrapped = (
+            (AutoInstrumentedProducer, "produce"),
+            (AutoInstrumentedConsumer, "poll"),
+            (AutoInstrumentedConsumer, "consume"),
+            (AutoInstrumentedConsumer, "close"),
+        )
+        instrumentor = ConfluentKafkaInstrumentor()
+        instrumentor.instrument(tracer_provider=self.tracer_provider)
+        instrumentor.uninstrument()
+        for cls, name in wrapped:
+            self.assertFalse(hasattr(getattr(cls, name), "__wrapped__"), f"{cls.__name__}.{name} is still wrapped")
+
+        # instrument() after uninstrument() installs exactly one wrapper layer
+        instrumentor.instrument(tracer_provider=self.tracer_provider, use_message_context_as_parent=True)
+        try:
+            for cls, name in wrapped:
+                inner = getattr(getattr(cls, name), "__wrapped__", None)
+                self.assertIsNotNone(inner, f"{cls.__name__}.{name} is not wrapped")
+                self.assertFalse(hasattr(inner, "__wrapped__"), f"{cls.__name__}.{name} is wrapped twice")
+        finally:
+            instrumentor.uninstrument()
