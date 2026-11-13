@@ -149,6 +149,23 @@ both old and stable HTTP conventions.
 By default, when the environment variable is not set, the old experimental
 database and HTTP conventions are emitted.
 
+Capture of query parameters
+***************************
+You can optionally capture the prepared statement parameters of a query as
+``db.query.parameter.<key>`` span attributes by passing ``capture_parameters=True``.
+This is only emitted under the new database semantic conventions.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    SQLAlchemyInstrumentor().instrument(capture_parameters=True)
+
+Warning:
+    Query parameter values may contain sensitive data. Capture is disabled by
+    default (``capture_parameters=False``); only enable it when you are sure the
+    parameters do not contain sensitive information.
+
 API
 ---
 """
@@ -202,6 +219,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
                 ``enable_attribute_commenter``: bool to enable sqlcomment addition to span attribute, defaults to False. Must also set `enable_commenter`.
+                ``capture_parameters``: bool to capture prepared statement parameters as ``db.query.parameter.<key>`` span attributes under the new database semantic conventions, defaults to False.
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -239,6 +257,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
         enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         _w(
             "sqlalchemy",
@@ -249,6 +268,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                capture_parameters,
             ),
         )
         _w(
@@ -260,6 +280,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                capture_parameters,
             ),
         )
         _w(
@@ -271,6 +292,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                capture_parameters,
             ),
         )
         _w(
@@ -287,6 +309,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                capture_parameters,
             ),
         )
         if kwargs.get("engine") is not None:
@@ -297,6 +320,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
+                capture_parameters,
             )
         if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), Sequence):
             return [
@@ -307,6 +331,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                     kwargs.get("enable_attribute_commenter", False),
+                    capture_parameters,
                 )
                 for engine in kwargs.get("engines")
             ]
