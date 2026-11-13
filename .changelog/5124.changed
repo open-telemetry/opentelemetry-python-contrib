@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: defer to native FastAPI telemetry when available.
