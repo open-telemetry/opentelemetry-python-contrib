@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-urllib`: Increase duration tolerance in metrics tests to prevent flaky failures on PyPy.
