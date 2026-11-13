@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-server`: Fix HTTP 500 responses when using the backwards-compatible `middleware` imported before instrumentation.
