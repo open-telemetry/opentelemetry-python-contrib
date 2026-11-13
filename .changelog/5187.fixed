@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asgi`: fall back to the default span name and attributes, instead of failing the request, when a `default_span_details` callback raises
