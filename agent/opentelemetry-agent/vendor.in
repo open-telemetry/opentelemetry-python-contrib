@@ -1,0 +1,25 @@
+requests
+typing-extensions>=4.6.0
+protobuf<8.0
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-semantic-conventions
+opentelemetry-proto
+opentelemetry-proto-json
+opentelemetry-configuration
+opentelemetry-exporter-http-transport
+opentelemetry-exporter-otlp-common
+opentelemetry-exporter-otlp-json-common
+opentelemetry-exporter-otlp-json-file
+opentelemetry-exporter-otlp-json-http
+opentelemetry-exporter-otlp-proto-common
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-prometheus
+opentelemetry-propagator-b3
+opentelemetry-instrumentation
+opentelemetry-distro
+opentelemetry-instrumentation-aiohttp-client
+# Replace pyyaml and jsonschema (excluded in vendor-excludes.txt) in opentelemetry-configuration;
+# see patches/otel-configuration-loader.patch.
+ruamel.yaml
+fastjsonschema

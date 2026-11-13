@@ -1,0 +1,5 @@
+# Dependencies left out of the vendored tree (passed to uv pip compile --excludes).
+# opentelemetry-configuration: no pure-Python wheels (jsonschema needs rpds-py); replaced by
+# ruamel.yaml and fastjsonschema, see patches/otel-configuration-loader.patch.
+pyyaml
+jsonschema
