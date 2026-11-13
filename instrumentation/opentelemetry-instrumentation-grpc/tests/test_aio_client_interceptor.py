@@ -1,5 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+import asyncio
+import time
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
@@ -32,7 +34,7 @@ from ._aio_client import (
     simple_method,
 )
 from ._server import create_test_server
-from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
+from .protobuf import test_server_pb2, test_server_pb2_grpc  # pylint: disable=no-name-in-module
 
 
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
@@ -341,4 +343,51 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_SYSTEM: "grpc",
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
+        )
+
+    async def _wait_for_spans(self, expected_count=1, timeout=5.0):
+        start = time.time()
+        while time.time() - start < timeout:
+            spans = self.memory_exporter.get_finished_spans()
+            if len(spans) >= expected_count:
+                return spans
+            await asyncio.sleep(0.01)
+        return self.memory_exporter.get_finished_spans()
+
+    async def test_stream_unary_write(self):
+        """Ensure StreamUnary call.write() does not deadlock."""
+        call = self._stub.ClientStreamingMethod()
+        request = test_server_pb2.Request(client_id=1, request_data="data")
+        await call.write(request)
+        await call.done_writing()
+        response = await call
+        self.assertEqual(response.response_data, "data")
+
+        spans = await self._wait_for_spans(1)
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/ClientStreamingMethod")
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.OK.value[0],
+        )
+
+    async def test_unary_unary_cancellation(self):
+        """Ensure client cancellation propagates and does not hang the interceptor."""
+        call = self._stub.SimpleMethod(test_server_pb2.Request(client_id=1, request_data="data"))
+        call.cancel()
+        with self.assertRaises(grpc.aio.AioRpcError) as exc_info:
+            await call
+        self.assertEqual(
+            exc_info.exception.code(),
+            grpc.StatusCode.CANCELLED,
+        )
+
+        spans = await self._wait_for_spans(1)
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.CANCELLED.value[0],
         )
