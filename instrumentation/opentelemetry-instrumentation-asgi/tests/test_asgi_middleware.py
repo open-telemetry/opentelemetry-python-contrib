@@ -51,6 +51,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
@@ -1542,6 +1545,62 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 for attr in point.attributes:
                     self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def _assert_server_attributes(self, attrs, address, port):
+        self.assertEqual(attrs[SERVER_ADDRESS], address)
+        self.assertIsInstance(attrs[SERVER_ADDRESS], str)
+        self.assertEqual(attrs[SERVER_PORT], port)
+        self.assertIs(type(attrs[SERVER_PORT]), int)
+
+    async def _get_metrics_attributes(self, **middleware_kwargs):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi, **middleware_kwargs)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    async def test_asgi_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes()
+        self.assertIn(HTTP_SERVER_REQUEST_DURATION, metrics_attrs)
+        self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    async def test_asgi_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertIn(HTTP_SERVER_REQUEST_DURATION, metrics_attrs)
+        self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self._assert_server_attributes(attrs, "127.0.0.1", 80)
+
+    async def test_asgi_metrics_server_attributes_enabled_both_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        old_metric_names = {
+            MetricInstruments.HTTP_SERVER_DURATION,
+            MetricInstruments.HTTP_SERVER_REQUEST_SIZE,
+            MetricInstruments.HTTP_SERVER_RESPONSE_SIZE,
+        }
+        self.assertIn(HTTP_SERVER_REQUEST_DURATION, metrics_attrs)
+        self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metrics_attrs)
+        self.assertIn(MetricInstruments.HTTP_SERVER_DURATION, metrics_attrs)
+        for name, attrs in metrics_attrs.items():
+            if name in old_metric_names:
+                self.assertNotIn(SERVER_ADDRESS, attrs)
+                self.assertNotIn(SERVER_PORT, attrs)
+            else:
+                self._assert_server_attributes(attrs, "127.0.0.1", 80)
+
+    async def test_asgi_metrics_server_attributes_enabled_old_semconv(self):
+        metrics_attrs = await self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertIn(MetricInstruments.HTTP_SERVER_DURATION, metrics_attrs)
+        self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metrics_attrs)
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
         """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""

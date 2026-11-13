@@ -5,7 +5,10 @@
 from timeit import default_timer
 from unittest.mock import Mock, patch
 
+import flask
 from flask import Flask, request
+from werkzeug.test import Client
+from werkzeug.wrappers import Response
 
 from opentelemetry import baggage, trace
 from opentelemetry.instrumentation._semconv import (
@@ -56,9 +59,16 @@ from opentelemetry.semconv._incubating.attributes.url_attributes import (
     URL_PATH,
     URL_SCHEME,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_HEADER_TEMPLATE,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -717,6 +727,70 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             expected_requests_count_attributes,
             expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
+
+    def _assert_server_attributes(self, attrs, address, port):
+        self.assertEqual(attrs[SERVER_ADDRESS], address)
+        self.assertIsInstance(attrs[SERVER_ADDRESS], str)
+        self.assertEqual(attrs[SERVER_PORT], port)
+        self.assertIs(type(attrs[SERVER_PORT]), int)
+
+    def _get_metrics_attributes(self, **instrument_kwargs):
+        if instrument_kwargs:
+            FlaskInstrumentor().uninstrument_app(self.app)
+            FlaskInstrumentor().instrument_app(self.app, **instrument_kwargs)
+        self.client.get("/hello/123")
+        return {
+            metric.name: dict(next(iter(metric.data.data_points)).attributes)
+            for metric in self.get_sorted_metrics(SCOPE)
+        }
+
+    def test_flask_metrics_server_attributes_default_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes()
+        self.assertEqual(
+            set(metrics_attrs),
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    def test_flask_metrics_server_attributes_enabled_new_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION},
+        )
+        for attrs in metrics_attrs.values():
+            self._assert_server_attributes(attrs, "localhost", 80)
+
+    def test_flask_metrics_server_attributes_enabled_both_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        for name in (HTTP_SERVER_ACTIVE_REQUESTS, HTTP_SERVER_REQUEST_DURATION):
+            self._assert_server_attributes(metrics_attrs[name], "localhost", 80)
+        self.assertNotIn(SERVER_ADDRESS, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
+        self.assertNotIn(SERVER_PORT, metrics_attrs[MetricInstruments.HTTP_SERVER_DURATION])
+
+    def test_flask_metrics_server_attributes_enabled_old_semconv(self):
+        metrics_attrs = self._get_metrics_attributes(enable_server_attributes_in_metrics=True)
+        self.assertEqual(
+            set(metrics_attrs),
+            {HTTP_SERVER_ACTIVE_REQUESTS, MetricInstruments.HTTP_SERVER_DURATION},
+        )
+        for attrs in metrics_attrs.values():
+            self.assertNotIn(SERVER_ADDRESS, attrs)
+            self.assertNotIn(SERVER_PORT, attrs)
+
+    def test_flask_metrics_server_attributes_instrument_new_semconv(self):
+        FlaskInstrumentor().instrument(enable_server_attributes_in_metrics=True)
+        try:
+            app = flask.Flask(__name__)
+            app.route("/hello/<int:helloid>")(self._hello_endpoint)
+            Client(app, Response).get("/hello/123")
+        finally:
+            FlaskInstrumentor().uninstrument()
+        for metric in self.get_sorted_metrics(SCOPE):
+            attrs = dict(next(iter(metric.data.data_points)).attributes)
+            self._assert_server_attributes(attrs, "localhost", 80)
 
     def test_metric_uninstrument(self):
         self.client.delete("/hello/756")
