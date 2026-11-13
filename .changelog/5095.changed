@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: include the application `root_path` in `http.route` and the span name, as required by the semantic conventions

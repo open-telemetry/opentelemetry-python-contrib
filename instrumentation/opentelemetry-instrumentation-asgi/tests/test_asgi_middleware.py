@@ -2049,34 +2049,34 @@ class TestAsgiAttributes(unittest.TestCase):
             "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
-    def test_collect_target_attribute_missing(self):
-        self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
+    def test_collect_target_attribute_from_scope_missing(self):
+        self.assertIsNone(otel_asgi._collect_target_attribute_from_scope(self.scope))
 
-    def test_collect_target_attribute_fastapi(self):
+    def test_collect_target_attribute_from_scope_fastapi(self):
         class TestRoute:
             path_format = "/api/users/{user_id}"
 
         self.scope["route"] = TestRoute()
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "/api/users/{user_id}",
         )
 
-    def test_collect_target_attribute_fastapi_mounted(self):
+    def test_collect_target_attribute_from_scope_fastapi_mounted(self):
         class TestRoute:
             path_format = "/users/{user_id}"
 
         self.scope["route"] = TestRoute()
         self.scope["root_path"] = "/api/v2"
         self.assertEqual(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "/api/v2/users/{user_id}",
         )
 
-    def test_collect_target_attribute_fastapi_starlette_invalid(self):
+    def test_collect_target_attribute_from_scope_invalid_route(self):
         self.scope["route"] = object()
         self.assertIsNone(
-            otel_asgi._collect_target_attribute(self.scope),
+            otel_asgi._collect_target_attribute_from_scope(self.scope),
             "HTTP_TARGET values is not None",
         )
 
