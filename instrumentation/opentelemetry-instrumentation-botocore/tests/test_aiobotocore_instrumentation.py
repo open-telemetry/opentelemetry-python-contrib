@@ -400,6 +400,36 @@ class TestAiobotocoreInstrumentor(TestBase):
             },
         )
 
+    def test_response_hook_on_client_error(self):
+        """Test that response hook receives the response when a request fails."""
+        response_error_code = None
+
+        def response_hook(span, service_name, operation_name, result):
+            nonlocal response_error_code
+            response_error_code = result["Error"]["Code"]
+
+        AiobotocoreInstrumentor().uninstrument()
+        AiobotocoreInstrumentor().instrument(response_hook=response_hook)
+
+        async def _test():
+            async with self._make_client("s3") as client:
+                with botocore.stub.Stubber(client) as stubber:
+                    stubber.add_client_error(
+                        "get_object",
+                        service_error_code="NoSuchKey",
+                        service_message="The specified key does not exist.",
+                        http_status_code=404,
+                    )
+                    with self.assertRaises(ClientError):
+                        await client.get_object(
+                            Bucket="test-bucket",
+                            Key="test-key",
+                        )
+
+        asyncio.run(_test())
+
+        self.assertEqual("NoSuchKey", response_error_code)
+
     def test_multiple_operations(self):
         """Test tracing multiple sequential operations."""
 
