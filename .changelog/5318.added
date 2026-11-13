@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: support the messaging semantic convention stability opt-in through `OTEL_SEMCONV_STABILITY_OPT_IN`

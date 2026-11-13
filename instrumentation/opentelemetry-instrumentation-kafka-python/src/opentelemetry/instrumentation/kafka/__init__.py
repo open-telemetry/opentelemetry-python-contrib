@@ -78,6 +78,48 @@ For example:
         # process message
         process_msg(message)
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the messaging semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``messaging`` - emit the stable messaging conventions and stop emitting the
+  old experimental conventions.
+- ``messaging/dup`` - emit both the old experimental and stable messaging
+  conventions during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``messaging,http/dup`` enables stable messaging conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+messaging conventions are emitted.
+
+The old and stable attributes correspond as follows:
+
+============================= ======================================
+old                           stable
+============================= ======================================
+``messaging.destination``     ``messaging.destination.name``
+``messaging.kafka.partition`` ``messaging.destination.partition.id``
+``messaging.url``             ``server.address`` and ``server.port``
+============================= ======================================
+
+``messaging.destination.partition.id`` is a string, while
+``messaging.kafka.partition`` was an integer.
+
+``messaging.url`` carries the whole ``bootstrap_servers`` value JSON-encoded.
+``server.address`` and ``server.port`` carry the host and the port of its
+first entry instead, parsed out of it, because the stable conventions define
+them as one host and one port rather than as a connection string.
+``server.port`` is omitted when that entry names no port.
+
+The stable conventions also add ``messaging.operation.name`` and
+``messaging.operation.type``, which the old conventions did not have.
+``messaging.system`` is emitted in every mode.
+
 API
 ---
 """
@@ -88,6 +130,11 @@ import kafka
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
@@ -116,18 +163,26 @@ class KafkaInstrumentor(BaseInstrumentor):
         produce_hook = kwargs.get("produce_hook")
         consume_hook = kwargs.get("consume_hook")
 
+        sem_conv_opt_in_mode = _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,))[
+            _OpenTelemetryStabilitySignalType.MESSAGING
+        ]
+
         tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING]),
         )
 
-        wrap_function_wrapper(kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook))
+        wrap_function_wrapper(
+            kafka.KafkaProducer,
+            "send",
+            _wrap_send(tracer, produce_hook, sem_conv_opt_in_mode),
+        )
         wrap_function_wrapper(
             kafka.KafkaConsumer,
             "__next__",
-            _wrap_next(tracer, consume_hook),
+            _wrap_next(tracer, consume_hook, sem_conv_opt_in_mode),
         )
 
     def _uninstrument(self, **kwargs):
