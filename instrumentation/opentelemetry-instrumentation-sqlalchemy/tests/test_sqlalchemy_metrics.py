@@ -1,17 +1,23 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+from unittest import mock
+
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.sqlalchemy.engine import _wrap_create_async_engine
 from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.sdk.metrics.export import Histogram
 from opentelemetry.test.test_base import TestBase
 
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
 CONNECTION_COUNT = "db.client.connection.count"
 CONNECTIONS_USAGE = "db.client.connections.usage"
+CONNECTION_USE_TIME = "db.client.connection.use_time"
 POOL_NAME = "db.client.connection.pool.name"
 STATE = "db.client.connection.state"
 
@@ -27,12 +33,35 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    @staticmethod
+    def create_instrumented_async_engine():
+        # sqlalchemy.ext.asyncio keeps a reference to the instrumented
+        # create_engine even after uninstrumenting, so create the engine with
+        # instrumentation suppressed and instrument it directly. This gives it
+        # a single EngineTracer, which uninstrument() can cleanly remove.
+        SQLAlchemyInstrumentor().uninstrument()
+        from sqlalchemy.ext.asyncio import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            create_async_engine,
+        )
+
+        with suppress_instrumentation():
+            engine = create_async_engine(
+                "sqlite+aiosqlite:///:memory:",
+                pool_logging_name="pool_test_name",
+            )
+        SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)
+        return engine
+
+    def get_metric(self, name):
+        metrics = [m for m in self.get_sorted_metrics(SCOPE) if m.name == name]
+        self.assertLessEqual(len(metrics), 1)
+        return metrics[0] if metrics else None
+
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
-        metrics = self.get_sorted_metrics(SCOPE)
-        self.assertEqual(len(metrics), 1)
-        self.assertEqual(metrics[0].name, CONNECTION_COUNT)
+        metric = self.get_metric(CONNECTION_COUNT)
+        self.assertIsNotNone(metric)
         self.assert_metric_expected(
-            metrics[0],
+            metric,
             [
                 self.create_number_data_point(
                     value=idle,
@@ -167,3 +196,135 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         self.assertIn(CONNECTION_COUNT, metric_names)
         self.assertNotIn(CONNECTIONS_USAGE, metric_names)
+
+    def test_use_time_recorded_on_checkin(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with engine.connect():
+            # Nothing is recorded while the connection is still checked out
+            self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        self.assertEqual(metric.unit, "s")
+        self.assertIsInstance(metric.data, Histogram)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        point = data_points[0]
+        self.assertEqual(dict(point.attributes), {POOL_NAME: pool_name})
+        self.assertIsInstance(point.attributes[POOL_NAME], str)
+        self.assertEqual(point.count, 1)
+        self.assertIsInstance(point.sum, float)
+        self.assertGreaterEqual(point.sum, 0)
+
+    def test_use_time_recorded_per_checkout(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with engine.connect():
+            with engine.connect():
+                pass
+        with engine.connect():
+            pass
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        self.assertEqual(data_points[0].count, 3)
+
+    def test_use_time_recorded_for_suppressed_checkout(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        with suppress_instrumentation():
+            conn = engine.connect()
+        conn.close()
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: pool_name})
+
+    def test_use_time_recorded_for_suppressed_checkin(self):
+        pool_name = "pool_test_name"
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name=pool_name,
+        )
+
+        conn = engine.connect()
+        with suppress_instrumentation():
+            conn.close()
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: pool_name})
+
+    def test_use_time_records_exact_duration(self):
+        engine = sqlalchemy.create_engine(
+            "sqlite:///:memory:",
+            poolclass=QueuePool,
+            pool_logging_name="pool_test_name",
+        )
+
+        # The clock is read once on checkout and once on checkin
+        with mock.patch("opentelemetry.instrumentation.sqlalchemy.engine.time") as mock_time:
+            mock_time.perf_counter.side_effect = [100.0, 102.5, 200.0, 201.0]
+            with engine.connect():
+                pass
+            with engine.connect():
+                pass
+
+        point = list(self.get_metric(CONNECTION_USE_TIME).data.data_points)[0]
+        self.assertEqual(point.count, 2)
+        self.assertEqual(point.sum, 3.5)
+        self.assertEqual(point.min, 1.0)
+        self.assertEqual(point.max, 2.5)
+
+    def test_use_time_recorded_for_async_engine(self):
+        async def run():
+            engine = self.create_instrumented_async_engine()
+            async with engine.connect():
+                # Nothing is recorded while the connection is still checked out
+                self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+            await engine.dispose()
+
+        asyncio.run(run())
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        self.assertEqual(metric.unit, "s")
+        self.assertIsInstance(metric.data, Histogram)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: "pool_test_name"})
+
+    def test_create_async_engine_wrapper_passes_use_time(self):
+        histogram = mock.Mock()
+        engine = mock.Mock()
+        wrapper = _wrap_create_async_engine(mock.Mock(), mock.Mock(), connection_use_time=histogram)
+
+        with mock.patch("opentelemetry.instrumentation.sqlalchemy.engine.EngineTracer") as tracer_cls:
+            self.assertIs(wrapper(lambda: engine, None, (), {}), engine)
+
+        tracer_cls.assert_called_once()
+        self.assertIs(tracer_cls.call_args.args[1], engine.sync_engine)
+        self.assertIs(tracer_cls.call_args.kwargs["connection_use_time"], histogram)
