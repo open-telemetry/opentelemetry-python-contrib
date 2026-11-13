@@ -99,9 +99,17 @@ For example:
 
 from collections.abc import Collection
 
-import confluent_kafka
+import confluent_kafka  # pylint: disable=import-self
 import wrapt
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer  # pylint: disable=import-self
+
+try:
+    import confluent_kafka.aio as _aio_module  # pylint: disable=no-name-in-module
+    from confluent_kafka.aio import AIOConsumer, AIOProducer  # pylint: disable=no-name-in-module
+except ImportError:
+    AIOProducer = None
+    AIOConsumer = None
+    _aio_module = None
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -130,9 +138,10 @@ def _capture_config(args, kwargs):
     ``conf=`` kwarg, or (for Consumer) expanded as **kwargs."""
     if args and isinstance(args[0], dict):
         return args[0]
-    conf = kwargs.get("conf")
-    if isinstance(conf, dict):
-        return conf
+    for key in ("conf", "producer_conf", "consumer_conf"):
+        conf = kwargs.get(key)
+        if isinstance(conf, dict):
+            return conf
     # confluent_kafka.Consumer also supports Consumer(**conf) — in that case
     # the kwargs themselves are the config.
     if kwargs:
@@ -167,6 +176,49 @@ class AutoInstrumentedConsumer(Consumer):
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def close(self):  # pylint: disable=useless-super-delegation
         return super().close()
+
+
+# Instrument asynchronous AIOProducer and AIOConsumer if available in confluent-kafka
+if _aio_module is not None:
+
+    class AutoInstrumentedAIOProducer(AIOProducer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.config = _capture_config(args, kwargs)
+
+        # Deliberately implemented so wrapt can intercept the async produce call
+        async def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
+            return await super().produce(topic, value, *args, **kwargs)
+
+    class AutoInstrumentedAIOConsumer(AIOConsumer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.config = _capture_config(args, kwargs)
+            # Token for the span re-attached to the caller's async task context.
+            # Managed by wrap_aio_poll / wrap_aio_consume / wrap_aio_close.
+            self._aio_context_token = None
+            inner = getattr(self, "_consumer", None)
+            if inner is not None:
+                try:
+                    inner._is_aio = True
+                except AttributeError:
+                    pass
+
+        # Deliberately implemented so wrapt can intercept the async poll call
+        async def poll(self, timeout=-1):
+            return await super().poll(timeout)
+
+        # Deliberately implemented so wrapt can intercept the async consume call
+        async def consume(self, *args, **kwargs):  # pylint: disable=useless-super-delegation
+            return await super().consume(*args, **kwargs)
+
+        # Deliberately implemented so wrapt can intercept the async close call
+        async def close(self):
+            return await super().close()
+
+else:
+    AutoInstrumentedAIOProducer = None
+    AutoInstrumentedAIOConsumer = None
 
 
 class ProxiedProducer(Producer):
@@ -297,6 +349,21 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         confluent_kafka.Producer = AutoInstrumentedProducer
         confluent_kafka.Consumer = AutoInstrumentedConsumer
 
+        if _aio_module is not None:
+            if hasattr(_aio_module, "AIOProducer") and AutoInstrumentedAIOProducer is not None:
+                self._original_kafka_aio_producer = _aio_module.AIOProducer
+                _aio_module.AIOProducer = AutoInstrumentedAIOProducer
+            if hasattr(_aio_module, "AIOConsumer") and AutoInstrumentedAIOConsumer is not None:
+                self._original_kafka_aio_consumer = _aio_module.AIOConsumer
+                _aio_module.AIOConsumer = AutoInstrumentedAIOConsumer
+
+        if hasattr(confluent_kafka, "AIOProducer") and AutoInstrumentedAIOProducer is not None:
+            self._original_kafka_top_aio_producer = confluent_kafka.AIOProducer
+            confluent_kafka.AIOProducer = AutoInstrumentedAIOProducer
+        if hasattr(confluent_kafka, "AIOConsumer") and AutoInstrumentedAIOConsumer is not None:
+            self._original_kafka_top_aio_consumer = confluent_kafka.AIOConsumer
+            confluent_kafka.AIOConsumer = AutoInstrumentedAIOConsumer
+
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
             __name__,
@@ -342,13 +409,67 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             "close",
             _inner_wrap_close,
         )
+        if AutoInstrumentedAIOProducer is not None:
+
+            def _inner_wrap_aio_produce(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_produce(func, instance, self._tracer, args, kwargs)
+
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOProducer,
+                "produce",
+                _inner_wrap_aio_produce,
+            )
+
+        if AutoInstrumentedAIOConsumer is not None:
+
+            def _inner_wrap_aio_poll(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_poll(func, instance, self._tracer, args, kwargs)
+
+            def _inner_wrap_aio_consume(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_consume(func, instance, self._tracer, args, kwargs)
+
+            def _inner_wrap_aio_close(func, instance, args, kwargs):
+                return ConfluentKafkaInstrumentor.wrap_aio_close(func, instance, args, kwargs)
+
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOConsumer,
+                "poll",
+                _inner_wrap_aio_poll,
+            )
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOConsumer,
+                "consume",
+                _inner_wrap_aio_consume,
+            )
+            wrapt.wrap_function_wrapper(
+                AutoInstrumentedAIOConsumer,
+                "close",
+                _inner_wrap_aio_close,
+            )
 
     def _uninstrument(self, **kwargs):
         confluent_kafka.Producer = self._original_kafka_producer
         confluent_kafka.Consumer = self._original_kafka_consumer
 
+        if _aio_module is not None:
+            if hasattr(self, "_original_kafka_aio_producer") and self._original_kafka_aio_producer is not None:
+                _aio_module.AIOProducer = self._original_kafka_aio_producer
+            if hasattr(self, "_original_kafka_aio_consumer") and self._original_kafka_aio_consumer is not None:
+                _aio_module.AIOConsumer = self._original_kafka_aio_consumer
+
+        if hasattr(self, "_original_kafka_top_aio_producer") and self._original_kafka_top_aio_producer is not None:
+            confluent_kafka.AIOProducer = self._original_kafka_top_aio_producer
+        if hasattr(self, "_original_kafka_top_aio_consumer") and self._original_kafka_top_aio_consumer is not None:
+            confluent_kafka.AIOConsumer = self._original_kafka_top_aio_consumer
+
         unwrap(AutoInstrumentedProducer, "produce")
         unwrap(AutoInstrumentedConsumer, "poll")
+        if AutoInstrumentedAIOProducer is not None:
+            unwrap(AutoInstrumentedAIOProducer, "produce")
+        if AutoInstrumentedAIOConsumer is not None:
+            unwrap(AutoInstrumentedAIOConsumer, "poll")
+            unwrap(AutoInstrumentedAIOConsumer, "consume")
+            unwrap(AutoInstrumentedAIOConsumer, "close")
 
     @staticmethod
     def wrap_produce(func, instance, tracer, args, kwargs):
@@ -399,7 +520,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER, attributes=receive_attributes
             ):
                 _create_new_consume_span(instance, tracer, [record], attributes)
-            instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
+            if not getattr(instance, "_is_aio", False):
+                instance._current_context_token = context.attach(
+                    trace.set_span_in_context(instance._current_consume_span)
+                )
 
         return record
 
@@ -424,12 +548,98 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER, attributes=receive_attributes
             ):
                 _create_new_consume_span(instance, tracer, records, attributes)
-            instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
+            if not getattr(instance, "_is_aio", False):
+                instance._current_context_token = context.attach(
+                    trace.set_span_in_context(instance._current_consume_span)
+                )
 
         return records
 
     @staticmethod
     def wrap_close(func, instance, args, kwargs):
+
         if instance._current_consume_span:
             _end_current_consume_span(instance)
         func(*args, **kwargs)
+
+    @staticmethod
+    async def wrap_aio_produce(func, instance, tracer, args, kwargs):
+        topic = kwargs.get("topic")
+        if not topic:
+            topic = args[0]
+
+        span_name = _get_span_name("send", topic)
+        topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+        attributes = _get_attributes(
+            topic,
+            operation=MessagingOperationTypeValues.PUBLISH,
+            bootstrap_servers=bootstrap_servers,
+        )
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes):
+            # Note: confluent-kafka's AIOProducer does not currently support the
+            # headers keyword argument and raises NotImplementedError if headers are
+            # passed when none were provided. Trace context propagation via headers
+            # is therefore applied only when the caller explicitly passes headers.
+            headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
+            if headers is not None:
+                propagate.inject(
+                    headers,
+                    setter=_kafka_setter,
+                )
+
+            return await func(*args, **kwargs)
+
+    @staticmethod
+    async def wrap_aio_poll(func, instance, tracer, args, kwargs):
+        # Detach any span attached to the caller's async context from a
+        # previous poll call.  Keeping the token lifetime to a single poll
+        # prevents stale context if the caller never calls close().
+        if getattr(instance, "_aio_context_token", None):
+            context.detach(instance._aio_context_token)
+            instance._aio_context_token = None
+
+        # The real AIOConsumer runs Consumer.poll() inside a ThreadPoolExecutor
+        # via loop.run_in_executor().  Any context.attach() done in that worker
+        # thread is confined to the thread's context copy and is NOT visible in
+        # the caller's async task.  We therefore await first and then
+        # re-attach the span to the caller's async task context ourselves.
+        record = await func(*args, **kwargs)
+
+        if record:
+            # Read the span created by the instrumented inner Consumer on the
+            # worker thread and attach it to the caller's async task context.
+            inner = getattr(instance, "_consumer", None)
+            if inner is not None:
+                span = getattr(inner, "_current_consume_span", None)
+                if span is not None:
+                    instance._aio_context_token = context.attach(trace.set_span_in_context(span))
+
+        return record
+
+    @staticmethod
+    async def wrap_aio_consume(func, instance, tracer, args, kwargs):
+        # Detach any span attached to the caller's async context from a
+        # previous consume or poll call.
+        if getattr(instance, "_aio_context_token", None):
+            context.detach(instance._aio_context_token)
+            instance._aio_context_token = None
+
+        records = await func(*args, **kwargs)
+
+        if records and len(records) > 0:
+            inner = getattr(instance, "_consumer", None)
+            if inner is not None:
+                span = getattr(inner, "_current_consume_span", None)
+                if span is not None:
+                    instance._aio_context_token = context.attach(trace.set_span_in_context(span))
+
+        return records
+
+    @staticmethod
+    async def wrap_aio_close(func, instance, args, kwargs):
+        # Detach any span still attached to the async task before closing.
+        if getattr(instance, "_aio_context_token", None):
+            context.detach(instance._aio_context_token)
+            instance._aio_context_token = None
+        return await func(*args, **kwargs)
