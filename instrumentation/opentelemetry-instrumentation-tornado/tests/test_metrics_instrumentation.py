@@ -31,6 +31,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
     URL_PATH,
@@ -435,6 +439,27 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self.assertNotIn(HTTP_METHOD, client_span.attributes)
         self.assertNotIn(HTTP_URL, client_span.attributes)
         self.assertNotIn(HTTP_STATUS_CODE, client_span.attributes)
+
+    def test_client_metrics_server_address_and_port_new_semconv(self):
+        response = self.fetch("/")
+        self.assertEqual(response.code, 201)
+        metrics = self.get_sorted_metrics(SCOPE)
+        client_metrics = [
+            metric
+            for metric in metrics
+            if metric.name
+            in (
+                "http.client.request.duration",
+                "http.client.request.body.size",
+                "http.client.response.body.size",
+            )
+        ]
+        self.assertEqual(len(client_metrics), 3)
+        for metric in client_metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(point.attributes[SERVER_ADDRESS], "127.0.0.1")
+                self.assertEqual(point.attributes[SERVER_PORT], self.get_http_port())
+                self.assertIsInstance(point.attributes[SERVER_PORT], int)
 
     def test_server_metrics_new_semconv(self):
         """Test that server metrics use new semantic conventions in http mode."""

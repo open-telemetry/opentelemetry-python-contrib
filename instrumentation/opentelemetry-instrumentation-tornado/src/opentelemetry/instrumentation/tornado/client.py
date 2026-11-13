@@ -3,6 +3,7 @@
 
 import functools
 from time import time_ns
+from urllib.parse import urlparse
 
 from tornado.httpclient import HTTPError, HTTPRequest
 
@@ -204,17 +205,14 @@ def _create_metric_attributes_new(response):
         HTTP_REQUEST_METHOD: sanitize_method(response.request.method),
     }
 
-    # Add server address and port if available
-    if hasattr(response.request, "host") and response.request.host:
-        host = response.request.host
-        if ":" in host:
-            server_address, port_str = host.rsplit(":", 1)
-            metric_attributes[SERVER_ADDRESS] = server_address
-            try:
-                metric_attributes[SERVER_PORT] = int(port_str)
-            except ValueError:
-                pass
-        else:
-            metric_attributes[SERVER_ADDRESS] = host
+    try:
+        parsed_url = urlparse(response.request.url)
+        port = parsed_url.port
+    except ValueError:
+        return metric_attributes
+    if parsed_url.hostname:
+        metric_attributes[SERVER_ADDRESS] = parsed_url.hostname
+    if port:
+        metric_attributes[SERVER_PORT] = port
 
     return metric_attributes
