@@ -298,6 +298,8 @@ ResponseHook = Callable[[trace.Span, "WSGIEnvironment", str, "list[tuple[str, st
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
+# PEP 3333: these two headers have no HTTP_ prefix and may be empty or absent
+_UNPREFIXED_HEADER_KEYS = ("CONTENT_TYPE", "CONTENT_LENGTH")
 
 
 class WSGIGetter(Getter[dict[str, Any]]):
@@ -312,8 +314,11 @@ class WSGIGetter(Getter[dict[str, Any]]):
              A list with a single string with the header value if it exists,
              else None.
         """
-        environ_key = "HTTP_" + key.upper().replace("-", "_")
-        value = carrier.get(environ_key)
+        environ_key = key.upper().replace("-", "_")
+        if environ_key in _UNPREFIXED_HEADER_KEYS:
+            value = carrier.get(environ_key)
+            return [value] if value else None
+        value = carrier.get(_CARRIER_KEY_PREFIX + environ_key)
         if value is not None:
             return [value]
         return None
@@ -323,7 +328,7 @@ class WSGIGetter(Getter[dict[str, Any]]):
             key[_CARRIER_KEY_PREFIX_LEN:].lower().replace("_", "-")
             for key in carrier
             if key.startswith(_CARRIER_KEY_PREFIX)
-        ]
+        ] + [key.lower().replace("_", "-") for key in _UNPREFIXED_HEADER_KEYS if carrier.get(key)]
 
 
 wsgi_getter = WSGIGetter()
@@ -448,6 +453,10 @@ def collect_custom_request_headers_attributes(environ: WSGIEnvironment) -> dict[
         for key, val in environ.items()
         if key.startswith(_CARRIER_KEY_PREFIX)
     }
+    for key in _UNPREFIXED_HEADER_KEYS:
+        val = environ.get(key)
+        if val:
+            headers[key.replace("_", "-")] = val
 
     return sanitize.sanitize_header_values(
         headers,

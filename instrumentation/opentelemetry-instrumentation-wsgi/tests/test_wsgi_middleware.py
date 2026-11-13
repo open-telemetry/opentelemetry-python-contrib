@@ -1210,6 +1210,31 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
 
     @mock.patch.dict(
         "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Content-Type,Content-Length"},
+    )
+    def test_custom_request_headers_content_type_and_length(self) -> None:
+        self.environ.update(
+            {
+                "CONTENT_TYPE": "application/json",
+                "CONTENT_LENGTH": "7",
+                "HTTP_CONTENT_TYPE": "text/html",
+            }
+        )
+        self.assertEqual(
+            otel_wsgi.collect_custom_request_headers_attributes(self.environ),
+            {
+                "http.request.header.content_type": ["application/json"],
+                "http.request.header.content_length": ["7"],
+            },
+        )
+        self.environ["CONTENT_LENGTH"] = ""
+        self.assertEqual(
+            otel_wsgi.collect_custom_request_headers_attributes(self.environ),
+            {"http.request.header.content_type": ["application/json"]},
+        )
+
+    @mock.patch.dict(
+        "os.environ",
         {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1"},
     )
     def test_custom_request_headers_not_added_in_internal_span(self) -> None:

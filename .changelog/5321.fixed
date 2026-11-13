@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-wsgi`: capture `Content-Type` and `Content-Length` request headers and return them from `WSGIGetter`
