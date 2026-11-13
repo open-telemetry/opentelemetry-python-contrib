@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 from collections.abc import Callable
+from logging import getLogger
+from typing import Any
 
 import aiormq
 from aio_pika import Exchange
@@ -10,11 +12,19 @@ from opentelemetry import propagate, trace
 from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 from opentelemetry.trace import Span, Tracer
 
+_LOG = getLogger(__name__)
+
 
 class PublishDecorator:
-    def __init__(self, tracer: Tracer, exchange: Exchange):
+    def __init__(
+        self,
+        tracer: Tracer,
+        exchange: Exchange,
+        publish_hook: Callable[[Span, AbstractMessage], Any] | None = None,
+    ):
         self._tracer = tracer
         self._exchange = exchange
+        self._publish_hook = publish_hook
 
     def _get_publish_span(self, message: AbstractMessage, routing_key: str) -> Span | None:
         builder = SpanBuilder(self._tracer)
@@ -33,6 +43,14 @@ class PublishDecorator:
                 return await publish(message, routing_key, **kwargs)
             with trace.use_span(span, end_on_exit=True):
                 propagate.inject(message.properties.headers)
+                if self._publish_hook is not None:
+                    try:
+                        self._publish_hook(span, message)
+                    except Exception as hook_exc:  # pylint: disable=broad-except
+                        _LOG.exception(
+                            "Exception occurred in aio_pika publish_hook: %s",
+                            hook_exc,
+                        )
                 return_value = await publish(message, routing_key, **kwargs)
             return return_value
 
