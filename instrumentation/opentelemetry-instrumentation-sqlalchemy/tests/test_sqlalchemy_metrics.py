@@ -1,12 +1,14 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from unittest import mock
 
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.sqlalchemy.engine import _wrap_create_async_engine
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.metrics.export import Histogram
 from opentelemetry.test.test_base import TestBase
@@ -30,6 +32,25 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
     def tearDown(self):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
+
+    @staticmethod
+    def create_instrumented_async_engine():
+        # sqlalchemy.ext.asyncio keeps a reference to the instrumented
+        # create_engine even after uninstrumenting, so create the engine with
+        # instrumentation suppressed and instrument it directly. This gives it
+        # a single EngineTracer, which uninstrument() can cleanly remove.
+        SQLAlchemyInstrumentor().uninstrument()
+        from sqlalchemy.ext.asyncio import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            create_async_engine,
+        )
+
+        with suppress_instrumentation():
+            engine = create_async_engine(
+                "sqlite+aiosqlite:///:memory:",
+                pool_logging_name="pool_test_name",
+            )
+        SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)
+        return engine
 
     def get_metric(self, name):
         metrics = [m for m in self.get_sorted_metrics(SCOPE) if m.name == name]
@@ -276,3 +297,34 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         self.assertEqual(point.sum, 3.5)
         self.assertEqual(point.min, 1.0)
         self.assertEqual(point.max, 2.5)
+
+    def test_use_time_recorded_for_async_engine(self):
+        async def run():
+            engine = self.create_instrumented_async_engine()
+            async with engine.connect():
+                # Nothing is recorded while the connection is still checked out
+                self.assertIsNone(self.get_metric(CONNECTION_USE_TIME))
+            await engine.dispose()
+
+        asyncio.run(run())
+
+        metric = self.get_metric(CONNECTION_USE_TIME)
+        self.assertIsNotNone(metric)
+        self.assertEqual(metric.unit, "s")
+        self.assertIsInstance(metric.data, Histogram)
+        data_points = list(metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+        self.assertEqual(data_points[0].count, 1)
+        self.assertEqual(dict(data_points[0].attributes), {POOL_NAME: "pool_test_name"})
+
+    def test_create_async_engine_wrapper_passes_use_time(self):
+        histogram = mock.Mock()
+        engine = mock.Mock()
+        wrapper = _wrap_create_async_engine(mock.Mock(), mock.Mock(), connection_use_time=histogram)
+
+        with mock.patch("opentelemetry.instrumentation.sqlalchemy.engine.EngineTracer") as tracer_cls:
+            self.assertIs(wrapper(lambda: engine, None, (), {}), engine)
+
+        tracer_cls.assert_called_once()
+        self.assertIs(tracer_cls.call_args.args[1], engine.sync_engine)
+        self.assertIs(tracer_cls.call_args.kwargs["connection_use_time"], histogram)
