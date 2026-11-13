@@ -1,5 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from collections.abc import Collection
+from typing import Collection, Final
 
 _instruments: Collection[str] = ("aio_pika >= 7.2.0, < 11.0.0",)
+
+_instrumentation_name: Final[str] = "opentelemetry.instrumentation.aio_pika"
