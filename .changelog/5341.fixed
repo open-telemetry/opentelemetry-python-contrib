@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-click`: skip the root span for `python -m uvicorn`
