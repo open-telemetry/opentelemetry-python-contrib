@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: Backport SQLAlchemy 2.1 compatibility without changing the existing minimum supported version.

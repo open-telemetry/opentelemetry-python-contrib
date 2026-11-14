@@ -49,7 +49,7 @@ libraries = [
     {"library": "redis >= 2.6", "instrumentation": "opentelemetry-instrumentation-redis==0.66b2"},
     {"library": "remoulade >= 0.50", "instrumentation": "opentelemetry-instrumentation-remoulade==0.66b2"},
     {"library": "requests ~= 2.0", "instrumentation": "opentelemetry-instrumentation-requests==0.66b2"},
-    {"library": "sqlalchemy >= 1.0.0, < 2.1.0", "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.66b2"},
+    {"library": "sqlalchemy >= 1.0.0, < 2.2.0", "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.66b2"},
     {"library": "starlette >= 0.13", "instrumentation": "opentelemetry-instrumentation-starlette==0.66b2"},
     {"library": "structlog >= 21.1", "instrumentation": "opentelemetry-instrumentation-structlog==0.66b2"},
     {"library": "psutil >= 5", "instrumentation": "opentelemetry-instrumentation-system-metrics==0.66b2"},

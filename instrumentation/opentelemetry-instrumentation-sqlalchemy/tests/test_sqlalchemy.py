@@ -141,8 +141,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(len(spans), 1)
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_async_trace_integration(self):
         async def run():
@@ -167,7 +167,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "opentelemetry.instrumentation.sqlalchemy",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -384,8 +384,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(spans[0].resource.attributes["service.version"], "1234")
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_create_async_engine_wrapper(self):
         async def run():
@@ -412,11 +412,11 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "opentelemetry.instrumentation.sqlalchemy",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_create_async_engine_wrapper_enable_commenter(self):
         async def run():
@@ -450,11 +450,11 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "SELECT  1;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_create_async_engine_wrapper_enable_commenter_stmt_enabled(self):
         async def run():
@@ -489,11 +489,11 @@ class TestSqlalchemyInstrumentation(TestBase):
                 r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_create_async_engine_wrapper_enable_commenter_otel_values_false(
         self,
@@ -530,11 +530,11 @@ class TestSqlalchemyInstrumentation(TestBase):
                 "SELECT  1;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_create_async_engine_wrapper_enable_commenter_stmt_enabled_otel_values_false(
         self,
@@ -572,7 +572,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 r"SELECT  1 /\*db_driver='(.*)'*/;",
             )
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_uninstrument(self):
         engine = create_engine("sqlite:///:memory:")
@@ -677,8 +677,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertTrue(not isinstance(engine, EngineTracer))
 
     @pytest.mark.skipif(
-        not sqlalchemy.__version__.startswith("1.4"),
-        reason="only run async tests for 1.4",
+        not sqlalchemy.__version__.startswith(("1.4", "2.")),
+        reason="requires SQLAlchemy 1.4 or newer",
     )
     def test_suppress_instrumentation_create_async_engine(self):
         async def run():
@@ -692,7 +692,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             self.assertTrue(not isinstance(engine, EngineTracer))
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
     def test_suppress_instrumentation_connect(self):
         engine = create_engine("sqlite:///:memory:")
