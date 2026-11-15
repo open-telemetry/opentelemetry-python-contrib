@@ -13,6 +13,7 @@ from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
     DatabaseApiIntegration,
 )
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import SpanKind
 
@@ -106,6 +107,10 @@ class AsyncCursorTracer(CursorTracer):
         *args: tuple[typing.Any, typing.Any],
         **kwargs: dict[typing.Any, typing.Any],
     ):
+        if not is_instrumentation_enabled():
+            # Skip telemetry and call the original query method directly.
+            return await query_method(*args, **kwargs)
+
         operation_name = self.get_operation_name(cursor, args)
 
         span_name = operation_name

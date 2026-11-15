@@ -145,6 +145,29 @@ To capture query parameters in the span attribute `db.statement.parameters`, ena
         capture_parameters=True,
     )
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -332,8 +355,11 @@ class CursorTracer(dbapi.CursorTracer):
             statement = statement.as_string(cursor)
 
         if isinstance(statement, str):
-            # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", statement).split()[0]
+            # Strip leading comments so we get the operation name. A statement that
+            # is truthy but has no tokens left (comment-only or whitespace-only)
+            # must not raise IndexError; return an empty operation name instead.
+            tokens = self._leading_comment_remover.sub("", statement).split()
+            return tokens[0] if tokens else ""
 
         return ""
 

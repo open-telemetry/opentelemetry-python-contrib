@@ -40,6 +40,7 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
+from opentelemetry.util.types import AttributeValue
 
 from .package import _instruments
 from .version import __version__
@@ -125,30 +126,26 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         return _instruments
 
     @staticmethod
-    def _enrich_span(
-        span: Span,
+    def _get_attributes(
         queue_name: str,
         queue_url: str,
         conversation_id: str | None = None,
         operation: MessagingOperationValues | None = None,
         message_id: str | None = None,
-    ) -> None:
-        if not span.is_recording():
-            return
-        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
-        span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_KIND,
-            MessagingDestinationKindValues.QUEUE.value,
-        )
-        span.set_attribute(SpanAttributes.MESSAGING_URL, queue_url)
-
+    ) -> dict[str, AttributeValue]:
+        attributes: dict[str, AttributeValue] = {
+            messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemNameValues.AWS_SQS.value,
+            SpanAttributes.MESSAGING_DESTINATION: queue_name,
+            SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+            SpanAttributes.MESSAGING_URL: queue_url,
+        }
         if operation:
-            span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+            attributes[SpanAttributes.MESSAGING_OPERATION] = operation.value
         if conversation_id:
-            span.set_attribute(SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id)
+            attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = conversation_id
         if message_id:
-            span.set_attribute(messaging_attributes.MESSAGING_MESSAGE_ID, message_id)
+            attributes[messaging_attributes.MESSAGING_MESSAGE_ID] = message_id
+        return attributes
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:
@@ -179,17 +176,16 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         if parent_span_ctx.is_valid:
             links.append(Link(context=parent_span_ctx))
 
-        span = self._tracer.start_span(name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER)
-        with trace.use_span(span):
-            message_id = message.get("MessageId")
-            Boto3SQSInstrumentor.received_messages_spans[receipt_handle] = span
-            Boto3SQSInstrumentor._enrich_span(
-                span,
-                queue_name,
-                queue_url,
-                message_id=message_id,
-                operation=MessagingOperationValues.PROCESS,
-            )
+        attributes = self._get_attributes(
+            queue_name,
+            queue_url,
+            message_id=message.get("MessageId"),
+            operation=MessagingOperationValues.PROCESS,
+        )
+        span = self._tracer.start_span(
+            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER, attributes=attributes
+        )
+        Boto3SQSInstrumentor.received_messages_spans[receipt_handle] = span
 
     def _wrap_send_message(self, sqs_class: type) -> None:
         def send_wrapper(wrapped, instance, args, kwargs):
@@ -203,8 +199,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 name=f"{queue_name} send",
                 kind=SpanKind.PRODUCER,
                 end_on_exit=True,
+                attributes=self._get_attributes(queue_name, queue_url),
             ) as span:
-                Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
@@ -231,9 +227,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             ids_to_spans: dict[str, Span] = {}
             for entry in entries:
                 entry_id = entry["Id"]
-                span = self._tracer.start_span(name=f"{queue_name} send", kind=SpanKind.PRODUCER)
+                span = self._tracer.start_span(
+                    name=f"{queue_name} send",
+                    kind=SpanKind.PRODUCER,
+                    attributes=self._get_attributes(queue_name, queue_url, conversation_id=entry_id),
+                )
                 ids_to_spans[entry_id] = span
-                Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url, conversation_id=entry_id)
                 with trace.use_span(span):
                     if "MessageAttributes" not in entry:
                         entry["MessageAttributes"] = {}
@@ -264,13 +263,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 name=f"{queue_name} receive",
                 end_on_exit=True,
                 kind=SpanKind.CONSUMER,
-            ) as span:
-                Boto3SQSInstrumentor._enrich_span(
-                    span,
-                    queue_name,
-                    queue_url,
-                    operation=MessagingOperationValues.RECEIVE,
-                )
+                attributes=self._get_attributes(queue_name, queue_url, operation=MessagingOperationValues.RECEIVE),
+            ):
                 retval = wrapped(
                     *args,
                     MessageAttributeNames=message_attribute_names,
@@ -304,6 +298,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _wrap_delete_message_batch(sqs_class: type) -> None:
         def delete_message_wrapper_batch(wrapped, instance, args, kwargs):
             entries = kwargs.get("Entries")
+            # Without Entries, call wrapped so botocore raises its own validation error
+            if not entries:
+                return wrapped(*args, **kwargs)
             for entry in entries:
                 receipt_handle = entry.get("ReceiptHandle")
                 if receipt_handle:

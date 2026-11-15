@@ -183,6 +183,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
@@ -652,8 +654,10 @@ def _instrument(
         kwargs["trace_configs"] = client_trace_configs
         return wrapped(*args, **kwargs)
 
-    wrapt.wrap_function_wrapper(  # type: ignore[reportUnknownVariableType]
-        aiohttp.ClientSession, "__init__", instrumented_init
+    wrapt.wrap_function_wrapper(
+        aiohttp.ClientSession,
+        "__init__",
+        instrumented_init,  # pyright: ignore[reportArgumentType]
     )
 
 

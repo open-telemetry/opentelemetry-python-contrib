@@ -6,6 +6,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from opentelemetry.instrumentation._semconv import (
+    _DB_STATEMENT_PARAMETERS,
     _LEGACY_SCHEMA_VERSION,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _get_schema_url_for_signal_types,
@@ -15,25 +16,30 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
     _set_db_operation,
+    _set_db_query_parameters,
     _set_db_redis_database_index,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_messaging_conversation_id,
+    _set_messaging_destination,
+    _set_messaging_operation,
+    _set_messaging_temp_destination,
     _set_net_transport,
     _set_status,
     _StabilityMode,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
 )
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_TRANSPORT,
-)
+from opentelemetry.semconv._incubating.attributes.net_attributes import NET_TRANSPORT
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_NAME,
@@ -43,6 +49,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
 )
+from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.trace.status import StatusCode
 
 
@@ -77,6 +84,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.DEFAULT,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
             ),
             _StabilityMode.DEFAULT,
         )
@@ -115,6 +128,33 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.DATABASE
             ),
             _StabilityMode.DATABASE_DUP,
+        )
+
+    @stability_mode("messaging")
+    def test_messaging_stable_mode(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING,
+        )
+
+    @stability_mode("messaging/dup")
+    def test_messaging_dup_mode(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING_DUP,
+        )
+
+    @stability_mode("messaging,messaging/dup")
+    def test_messaging_dup_mode_precedence(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ),
+            _StabilityMode.MESSAGING_DUP,
         )
 
     @stability_mode("gen_ai_latest_experimental")
@@ -174,6 +214,15 @@ class TestOpenTelemetrySemConvStability(TestCase):
             {
                 _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
                 _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP_DUP,
+            },
+        )
+
+    @stability_mode("messaging")
+    def test_get_semconv_opt_in_modes_messaging(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes((_OpenTelemetryStabilitySignalType.MESSAGING,)),
+            {
+                _OpenTelemetryStabilitySignalType.MESSAGING: _StabilityMode.MESSAGING,
             },
         )
 
@@ -254,6 +303,11 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
         version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.DEFAULT)
         self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
 
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.MESSAGING, _StabilityMode.DEFAULT
+        )
+        self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
+
     @stability_mode("")
     def test_get_schema_version_for_opt_in_mode_http_stable(self):
         version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.HTTP)
@@ -275,6 +329,14 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
         self.assertEqual(version, "1.26.0")
 
     @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_messaging_stable(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.MESSAGING,
+            _StabilityMode.MESSAGING,
+        )
+        self.assertEqual(version, "1.44.0")
+
+    @stability_mode("")
     def test_get_schema_url_for_signal_types_single_http_default(self):
         url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.HTTP])
         self.assertEqual(url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}")
@@ -288,6 +350,11 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
     def test_get_schema_url_for_signal_types_single_database_stable(self):
         url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE])
         self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("messaging")
+    def test_get_schema_url_for_signal_types_single_messaging_stable(self):
+        url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.MESSAGING])
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.44.0")
 
     @stability_mode("http,database")
     def test_get_schema_url_for_signal_types_multiple_both_stable(self):
@@ -707,3 +774,186 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         _set_db_operation(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_OPERATION, result)
         self.assertNotIn(DB_OPERATION_NAME, result)
+
+    def test_db_query_parameters_default_sets_only_legacy_blob(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            ("jdoe", 42),
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        # Under the old semconv the parameters are a single stringified blob.
+        self.assertEqual(result, {_DB_STATEMENT_PARAMETERS: "('jdoe', 42)"})
+
+    def test_db_query_parameters_positional(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            ("jdoe", 42),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        self.assertEqual(
+            result,
+            {
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.0": "jdoe",
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.1": "42",
+            },
+        )
+
+    def test_db_query_parameters_named(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            {"userName": "jdoe", "age": 42},
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        # DATABASE_DUP reports both the legacy blob and the new attributes.
+        self.assertEqual(
+            result,
+            {
+                _DB_STATEMENT_PARAMETERS: "{'userName': 'jdoe', 'age': 42}",
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.userName": "jdoe",
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.age": "42",
+            },
+        )
+
+    def test_db_query_parameters_are_strings(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (False, 0, None),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        # Every value is stringified, including falsy values.
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "False")
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "0")
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.2"], "None")
+
+    def test_db_query_parameters_scalar_string_not_iterated(self):
+        result = {}
+        _set_db_query_parameters(result, "jdoe", sem_conv_opt_in_mode=_StabilityMode.DATABASE)
+        # A bare string is a single scalar parameter, not a sequence of
+        # single-character parameters, so nothing is captured.
+        self.assertEqual(result, {})
+
+    def test_db_query_parameters_none(self):
+        result = {}
+        _set_db_query_parameters(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE)
+        self.assertEqual(result, {})
+
+    def test_db_query_parameters_batch_keeps_only_legacy_blob(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (("jdoe", 42), ("asmith", 43)),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+            is_batch=True,
+        )
+        # The legacy blob still covers batch operations, the new attributes
+        # must not.
+        self.assertEqual(
+            result,
+            {_DB_STATEMENT_PARAMETERS: "(('jdoe', 42), ('asmith', 43))"},
+        )
+
+    def test_db_query_parameters_batch_new_only_is_noop(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (("jdoe", 42), ("asmith", 43)),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+            is_batch=True,
+        )
+        self.assertEqual(result, {})
+
+
+class TestOpenTelemetrySemConvStabilityMessaging(TestCase):
+    def _assert_attribute_mapping(
+        self,
+        setter,
+        input_value,
+        expected_old_value,
+        expected_new_value,
+        old_key,
+        new_key,
+        expected_type,
+    ):
+        cases = (
+            (_StabilityMode.DEFAULT, {old_key: expected_old_value}),
+            (_StabilityMode.MESSAGING, {new_key: expected_new_value}),
+            (
+                _StabilityMode.MESSAGING_DUP,
+                {old_key: expected_old_value, new_key: expected_new_value},
+            ),
+        )
+        for mode, expected_attributes in cases:
+            with self.subTest(mode=mode):
+                result = {}
+                setter(result, input_value, sem_conv_opt_in_mode=mode)
+                self.assertEqual(result, expected_attributes)
+                for value in result.values():
+                    self.assertIs(type(value), expected_type)
+
+    def test_string_attribute_mappings(self):
+        mappings = (
+            (
+                _set_messaging_destination,
+                "orders",
+                SpanAttributes.MESSAGING_DESTINATION,
+                messaging_attributes.MESSAGING_DESTINATION_NAME,
+            ),
+            (
+                _set_messaging_conversation_id,
+                "conversation-1",
+                SpanAttributes.MESSAGING_CONVERSATION_ID,
+                messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID,
+            ),
+        )
+        for setter, value, old_key, new_key in mappings:
+            with self.subTest(setter=setter.__name__):
+                self._assert_attribute_mapping(
+                    setter,
+                    value,
+                    value,
+                    value,
+                    old_key,
+                    new_key,
+                    str,
+                )
+
+    def test_operation_mapping(self):
+        old_operation = MessagingOperationValues.PUBLISH.value
+        new_operation = messaging_attributes.MessagingOperationTypeValues.SEND.value
+        self._assert_attribute_mapping(
+            _set_messaging_operation,
+            old_operation,
+            old_operation,
+            new_operation,
+            SpanAttributes.MESSAGING_OPERATION,
+            messaging_attributes.MESSAGING_OPERATION_TYPE,
+            str,
+        )
+
+    def test_temporary_destination_mapping_preserves_false(self):
+        self._assert_attribute_mapping(
+            _set_messaging_temp_destination,
+            False,
+            False,
+            False,
+            SpanAttributes.MESSAGING_TEMP_DESTINATION,
+            messaging_attributes.MESSAGING_DESTINATION_TEMPORARY,
+            bool,
+        )
+
+    def test_none_values_are_ignored(self):
+        setters = (
+            _set_messaging_operation,
+            _set_messaging_temp_destination,
+            _set_messaging_destination,
+            _set_messaging_conversation_id,
+        )
+        for setter in setters:
+            with self.subTest(setter=setter.__name__):
+                result = {}
+                setter(result, None, sem_conv_opt_in_mode=_StabilityMode.MESSAGING_DUP)
+                self.assertEqual(result, {})

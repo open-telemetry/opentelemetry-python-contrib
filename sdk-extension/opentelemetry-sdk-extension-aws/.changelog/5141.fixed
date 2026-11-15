@@ -1,0 +1,1 @@
+**Breaking** | `opentelemetry-sdk-extension-aws`: report Lambda `faas.max_memory` in bytes instead of MB

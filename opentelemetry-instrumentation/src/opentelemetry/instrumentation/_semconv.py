@@ -5,16 +5,20 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Container, Mapping, MutableMapping
+from collections.abc import Container, Mapping, MutableMapping, Sequence
+from contextlib import suppress
 from enum import Enum
+from typing import Any
 from urllib.parse import urlparse
 
 from packaging import version as package_version
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
@@ -74,6 +78,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.semconv.trace import MessagingOperationValues, SpanAttributes
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
@@ -177,10 +182,15 @@ OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 # Legacy/default schema version when schema_url was first introduced
 _LEGACY_SCHEMA_VERSION = "1.11.0"
 
+# Legacy query parameter blob. This attribute predates the database semantic
+# conventions and has no semconv module to import a name from.
+_DB_STATEMENT_PARAMETERS = "db.statement.parameters"
+
 
 class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
     DATABASE = "database"
+    MESSAGING = "messaging"
     GEN_AI = "gen_ai"
 
 
@@ -190,6 +200,8 @@ class _StabilityMode(Enum):
     HTTP_DUP = "http/dup"
     DATABASE = "database"
     DATABASE_DUP = "database/dup"
+    MESSAGING = "messaging"
+    MESSAGING_DUP = "messaging/dup"
     GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
 
 
@@ -198,7 +210,11 @@ def _report_new(mode: _StabilityMode):
 
 
 def _report_old(mode: _StabilityMode):
-    return mode not in (_StabilityMode.HTTP, _StabilityMode.DATABASE)
+    return mode not in (
+        _StabilityMode.HTTP,
+        _StabilityMode.DATABASE,
+        _StabilityMode.MESSAGING,
+    )
 
 
 class _OpenTelemetrySemanticConventionStability:
@@ -213,7 +229,7 @@ class _OpenTelemetrySemanticConventionStability:
                 return
 
             # Users can pass in comma delimited string for opt-in options
-            # Only values for http, gen ai, and database stability are supported for now
+            # Only values for http, gen ai, database, and messaging stability are supported for now
             opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN)
 
             if not opt_in:
@@ -221,6 +237,7 @@ class _OpenTelemetrySemanticConventionStability:
                 cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {
                     _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.MESSAGING: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
                 }
                 cls._initialized = True
@@ -243,12 +260,18 @@ class _OpenTelemetrySemanticConventionStability:
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[_OpenTelemetryStabilitySignalType.MESSAGING] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.MESSAGING,
+                _StabilityMode.MESSAGING_DUP,
+            )
             cls._initialized = True
 
     @staticmethod
     def _filter_mode(opt_in_list, stable_mode, dup_mode):
         # Process semconv stability opt-in
-        # http/dup,database/dup has higher precedence over http,database
+        # http/dup,database/dup,messaging/dup have higher precedence over http,database,messaging
         if dup_mode.value in opt_in_list:
             return dup_mode
 
@@ -264,7 +287,7 @@ def _get_semconv_opt_in_modes(
     signal_types: tuple[_OpenTelemetryStabilitySignalType, ...],
 ) -> dict[_OpenTelemetryStabilitySignalType, _StabilityMode]:
     """Returns a mapping of signal type to mode for the provided
-    signal_types (one/more of DATABASE, HTTP, GEN_AI).
+    signal_types (one/more of DATABASE, HTTP, MESSAGING, GEN_AI).
     """
     _OpenTelemetrySemanticConventionStability._initialize()
     return {
@@ -581,6 +604,37 @@ def _set_db_statement(
         result[DB_QUERY_TEXT] = statement
 
 
+def _set_db_query_parameters(
+    result: MutableMapping[str, AttributeValue],
+    parameters: Sequence[Any] | Mapping[str, Any] | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+    is_batch: bool = False,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        with suppress(Exception):
+            result[_DB_STATEMENT_PARAMETERS] = str(parameters)
+    # db.query.parameter.<key> is only defined in the new (stable) database
+    # semantic conventions, and it SHOULD NOT be captured on batch operations.
+    if not _report_new(sem_conv_opt_in_mode) or is_batch or parameters is None:
+        return
+    # Named parameters are keyed by their name; positional parameters use their
+    # 0-based index, both matching the placeholders in db.query.text. A string
+    # or bytes value is a single scalar parameter, not a sequence of parameters.
+    if isinstance(parameters, Mapping):
+        items = parameters.items()
+    elif isinstance(parameters, (str, bytes, bytearray)):
+        return
+    elif isinstance(parameters, Sequence):
+        items = enumerate(parameters)
+    else:
+        return
+    for key, value in items:
+        # Assign directly instead of using set_string_attribute so that falsy
+        # values (empty string, 0, False, None) are still captured.
+        with suppress(Exception):
+            result[f"{DB_QUERY_PARAMETER_TEMPLATE}.{key}"] = str(value)
+
+
 def _set_db_user(
     result: MutableMapping[str, AttributeValue],
     user: str,
@@ -611,6 +665,61 @@ def _set_db_redis_database_index(
         if database_index is not None:
             result[DB_REDIS_DATABASE_INDEX] = int(database_index)
     # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
+
+
+# Messaging
+
+
+def _set_messaging_operation(
+    result: MutableMapping[str, AttributeValue],
+    operation: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_OPERATION, operation)
+    if _report_new(sem_conv_opt_in_mode):
+        new_operation = (
+            messaging_attributes.MessagingOperationTypeValues.SEND.value
+            if operation == MessagingOperationValues.PUBLISH.value
+            else operation
+        )
+        set_string_attribute(result, messaging_attributes.MESSAGING_OPERATION_TYPE, new_operation)
+
+
+def _set_messaging_temp_destination(
+    result: MutableMapping[str, AttributeValue],
+    temporary: bool,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if temporary is None:
+        return
+
+    if _report_old(sem_conv_opt_in_mode):
+        result[SpanAttributes.MESSAGING_TEMP_DESTINATION] = temporary
+    if _report_new(sem_conv_opt_in_mode):
+        result[messaging_attributes.MESSAGING_DESTINATION_TEMPORARY] = temporary
+
+
+def _set_messaging_destination(
+    result: MutableMapping[str, AttributeValue],
+    destination: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_DESTINATION, destination)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_DESTINATION_NAME, destination)
+
+
+def _set_messaging_conversation_id(
+    result: MutableMapping[str, AttributeValue],
+    conversation_id: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID, conversation_id)
 
 
 def _set_net_transport(
@@ -689,6 +798,7 @@ def _get_schema_version_for_opt_in_mode(
     signal_versions = {
         _OpenTelemetryStabilitySignalType.HTTP: Schemas.V1_21_0.value,
         _OpenTelemetryStabilitySignalType.DATABASE: Schemas.V1_25_0.value,
+        _OpenTelemetryStabilitySignalType.MESSAGING: Schemas.V1_44_0.value,
         _OpenTelemetryStabilitySignalType.GEN_AI: Schemas.V1_26_0.value,
     }
     schema_url = signal_versions.get(signal_type)

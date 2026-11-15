@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from functools import cached_property
 from logging import getLogger
 from os import environ
@@ -88,11 +90,7 @@ def _load_instrumentors(distro):
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                _logger.debug(
-                    "Skipping instrumentation %s: %s",
-                    entry_point.name,
-                    conflict,
-                )
+                conflict._log(_logger, entry_point.name)
                 continue
 
             # tell instrumentation to not run dep checks again as we already did it above
@@ -103,11 +101,7 @@ def _load_instrumentors(distro):
             # returning a DependencyConflict. Keeping this error handling in case custom
             # distro and instrumentor behavior raises a DependencyConflictError later.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
-            _logger.debug(
-                "Skipping instrumentation %s: %s",
-                entry_point.name,
-                exc.conflict,
-            )
+            exc.conflict._log(_logger, entry_point.name)
             continue
         except ModuleNotFoundError as exc:
             # ModuleNotFoundError is raised when the library is not installed

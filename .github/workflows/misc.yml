@@ -30,18 +30,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e spellcheck
+        run: uv run --no-sync tox -e spellcheck
 
   docker-tests:
     name: docker-tests
@@ -49,21 +54,26 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Install Microsoft SQL ODBC driver
         run: sudo apt update -y && ACCEPT_EULA=Y sudo apt install -y msodbcsql18 unixodbc-dev unixodbc
 
       - name: Run tests
-        run: tox -e docker-tests
+        run: uv run --no-sync tox -e docker-tests
 
   docs:
     name: docs
@@ -75,18 +85,23 @@ jobs:
       github.event.pull_request.user.login != 'otelbot[bot]')
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e docs
+        run: uv run --no-sync tox -e docs
 
   generate:
     name: generate
@@ -94,18 +109,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e generate
+        run: uv run --no-sync tox -e generate
 
       - name: Check workflows are up to date
         run: git diff --exit-code || (echo 'Generated code is out of date, run "tox -e generate" and commit the changes in this PR.' && exit 1)
@@ -119,18 +139,23 @@ jobs:
       && github.event.pull_request.user.login != 'otelbot[bot]' && github.event_name == 'pull_request'
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e generate-workflows
+        run: uv run --no-sync tox -e generate-workflows
 
       - name: Check workflows are up to date
         run: git diff --exit-code || (echo 'Generated workflows are out of date, run "tox -e generate-workflows" and commit the changes in this PR.' && exit 1)
@@ -141,18 +166,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e shellcheck
+        run: uv run --no-sync tox -e shellcheck
 
   precommit:
     name: precommit
@@ -160,18 +190,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e precommit
+        run: uv run --no-sync tox -e precommit
 
   typecheck:
     name: typecheck
@@ -179,15 +214,20 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e typecheck
+        run: uv run --no-sync tox -e typecheck

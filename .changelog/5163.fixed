@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: make captured request headers available to samplers

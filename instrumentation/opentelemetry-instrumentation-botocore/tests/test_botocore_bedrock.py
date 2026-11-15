@@ -15,11 +15,16 @@ from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
+)
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -93,6 +98,99 @@ def test_converse_with_content(
     output_tokens = response["usage"]["outputTokens"]
     metrics = metric_reader.get_metrics_data().resource_metrics
     assert_metrics(metrics, "chat", llm_model_value, input_tokens, output_tokens)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 38, 0),
+    reason="Prompt cache token usage not in the bedrock-runtime service model",
+)
+@pytest.mark.vcr()
+def test_converse_with_prompt_caching(
+    span_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    # A prefix is only cached once it clears the model minimum (1k tokens for
+    # Nova Micro), so pad the system prompt past it.
+    system_content = [
+        {"text": "You are a helpful assistant for instrumentation tests. " * 300},
+        {"cachePoint": {"type": "default"}},
+    ]
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+    llm_model_value = "us.amazon.nova-micro-v1:0"
+
+    # The first call writes the prefix to the cache, the second reads it back.
+    responses = [
+        bedrock_runtime_client.converse(
+            system=system_content,
+            messages=messages,
+            modelId=llm_model_value,
+            inferenceConfig={"maxTokens": 10},
+        )
+        for _ in range(2)
+    ]
+
+    write_span, read_span = span_exporter.get_finished_spans()
+
+    cache_write = responses[0]["usage"]["cacheWriteInputTokens"]
+    assert cache_write > 0
+    written = write_span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+    assert written == cache_write
+    assert isinstance(written, int)
+
+    cache_read = responses[1]["usage"]["cacheReadInputTokens"]
+    assert cache_read > 0
+    read = read_span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+    assert read == cache_read
+    assert isinstance(read, int)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 38, 0),
+    reason="Prompt cache token usage not in the bedrock-runtime service model",
+)
+@pytest.mark.vcr()
+def test_converse_stream_with_prompt_caching(
+    span_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    # A prefix is only cached once it clears the model minimum (1k tokens for
+    # Nova Micro), so pad the system prompt past it.
+    system_content = [
+        {"text": "You are a helpful assistant for streaming tests. " * 300},
+        {"cachePoint": {"type": "default"}},
+    ]
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+    llm_model_value = "us.amazon.nova-micro-v1:0"
+
+    # The first call writes the prefix to the cache, the second reads it back.
+    usages = []
+    for _ in range(2):
+        response = bedrock_runtime_client.converse_stream(
+            system=system_content,
+            messages=messages,
+            modelId=llm_model_value,
+            inferenceConfig={"maxTokens": 10},
+        )
+        # consume the stream in order to have it traced
+        for event in response["stream"]:
+            if "metadata" in event:
+                usages.append(event["metadata"]["usage"])
+
+    write_span, read_span = span_exporter.get_finished_spans()
+
+    cache_write = usages[0]["cacheWriteInputTokens"]
+    assert cache_write > 0
+    written = write_span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+    assert written == cache_write
+    assert isinstance(written, int)
+
+    cache_read = usages[1]["cacheReadInputTokens"]
+    assert cache_read > 0
+    read = read_span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+    assert read == cache_read
+    assert isinstance(read, int)
 
 
 @pytest.mark.skipif(BOTO3_VERSION < (1, 35, 56), reason="Converse API not available")
@@ -1357,7 +1455,7 @@ def test_invoke_model_with_content(
         }
         finish_reason = "length"
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
@@ -1495,7 +1593,7 @@ def test_invoke_model_with_content_different_events(
         finish_reason = "end_turn"
         choice_content = [{"type": "text", "text": "This is a test"}]
     else:
-        pytest.xfail("llm_model_value not handled: {llm_model_value}")
+        raise pytest.xfail.Exception("llm_model_value not handled: {llm_model_value}")
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -1896,7 +1994,7 @@ def test_invoke_model_with_content_tool_call(
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     invoke_model_tool_call(
         span_exporter,
@@ -1973,7 +2071,7 @@ def test_invoke_model_no_content(
         choice_message = {}
         finish_reason = "length"
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     choice_body = {
         "index": 0,
@@ -2006,7 +2104,7 @@ def test_invoke_model_no_content_different_events(
         system = anthropic_claude_system()
         finish_reason = "end_turn"
     else:
-        pytest.xfail("llm_model_value not handled: {llm_model_value}")
+        raise pytest.xfail.Exception("llm_model_value not handled: {llm_model_value}")
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2061,7 +2159,7 @@ def test_invoke_model_no_content_tool_call(
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     invoke_model_tool_call(
         span_exporter,
@@ -2203,7 +2301,7 @@ def test_invoke_model_with_response_stream_with_content(
     elif model_family == "amazon.titan":
         choice_message = {"content": [{"text": "\nHello! I am a computer program designed to"}]}
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     choice_body = {
         "index": 0,
@@ -2238,7 +2336,7 @@ def test_invoke_model_with_response_stream_with_content_different_events(
         finish_reason = "end_turn"
         choice_content = [{"text": "This is a test", "type": "text"}]
     else:
-        pytest.xfail("llm_model_value not handled: {llm_model_value}")
+        raise pytest.xfail.Exception("llm_model_value not handled: {llm_model_value}")
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2454,7 +2552,7 @@ def test_invoke_model_with_response_stream_with_content_tool_call(
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
@@ -2580,7 +2678,7 @@ def test_invoke_model_with_response_stream_no_content_different_events(
         system = anthropic_claude_system()
         finish_reason = "end_turn"
     else:
-        pytest.xfail("llm_model_value not handled: {llm_model_value}")
+        raise pytest.xfail.Exception("llm_model_value not handled: {llm_model_value}")
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2642,7 +2740,7 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
     else:
-        pytest.xfail("model family not handled: {model_family}")
+        raise pytest.xfail.Exception("model family not handled: {model_family}")
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
@@ -2859,6 +2957,35 @@ def test_converse_stream_with_missing_output_in_response():
     assert choice.finish_reason == "end_turn"
     assert choice.message == {}
     assert choice.index == 0
+
+
+def test_converse_stream_accumulates_cache_tokens():
+    # The ConverseStream metadata event carries prompt cache token usage;
+    # the wrapper should accumulate it alongside input/output tokens.
+    wrapper = ConverseStreamWrapper(
+        stream=mock.MagicMock(),
+        stream_done_callback=lambda *args, **kwargs: None,
+        stream_error_callback=lambda *args, **kwargs: None,
+    )
+
+    wrapper._process_event(
+        {
+            "metadata": {
+                "usage": {
+                    "inputTokens": 8,
+                    "outputTokens": 10,
+                    "cacheReadInputTokens": 1500,
+                    "cacheWriteInputTokens": 25,
+                }
+            }
+        }
+    )
+
+    usage = wrapper._response["usage"]
+    assert usage["inputTokens"] == 8
+    assert usage["outputTokens"] == 10
+    assert usage["cacheReadInputTokens"] == 1500
+    assert usage["cacheWriteInputTokens"] == 25
 
 
 def amazon_nova_messages():
