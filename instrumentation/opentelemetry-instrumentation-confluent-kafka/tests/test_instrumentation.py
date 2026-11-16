@@ -86,7 +86,7 @@ class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
             MESSAGING_SYSTEM: MessagingSystemValues.KAFKA.value,
             SpanAttributes.MESSAGING_DESTINATION: "topic-1",
             SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            MESSAGING_OPERATION: MessagingOperationTypeValues.SEND.value,
+            MESSAGING_OPERATION: MessagingOperationTypeValues.PUBLISH.value,
             SERVER_ADDRESS: "broker-a",
             SERVER_PORT: 9092,
         }

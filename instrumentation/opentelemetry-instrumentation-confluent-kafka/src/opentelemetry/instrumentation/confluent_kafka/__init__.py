@@ -432,7 +432,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         attributes = _get_attributes(
             topic,
             partition=partition,
-            operation=MessagingOperationTypeValues.SEND,
+            operation=MessagingOperationTypeValues.PUBLISH,
             bootstrap_servers=bootstrap_servers,
         )
         with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes):
