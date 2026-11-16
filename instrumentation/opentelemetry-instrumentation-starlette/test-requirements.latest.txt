@@ -46,8 +46,6 @@ idna==3.10
     #   anyio
     #   httpx
     #   requests
-importlib-metadata==8.6.1
-    # via opentelemetry-api
 iniconfig==2.0.0
     # via pytest
 packaging==24.2
@@ -56,7 +54,9 @@ packaging==24.2
     #   pytest
 pluggy==1.6.0
     # via pytest
-pytest==7.4.4
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
@@ -64,8 +64,6 @@ requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
-sniffio==1.3.1
-    # via anyio
 starlette==0.46.2
     # via opentelemetry-instrumentation-starlette
 tomli==2.2.1 ; python_full_version < '3.11'
@@ -82,8 +80,6 @@ urllib3==2.8.0
     #   requests
 wrapt==1.14.1
     # via opentelemetry-instrumentation
-zipp==3.21.0
-    # via importlib-metadata
 
 # The following packages were excluded from the output:
 # opentelemetry-api

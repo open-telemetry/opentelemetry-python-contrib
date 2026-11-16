@@ -38,7 +38,9 @@ pluggy==1.6.0
     # via pytest
 propcache==0.5.2
     # via yarl
-pytest==7.4.4
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-aio-pika/test-requirements.in

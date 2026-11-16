@@ -137,9 +137,28 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     _our_factory = None
     _log_hook = None
     _logging_handler = None
+    _old_handlers_state = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
+
+    @staticmethod
+    def _configure_logging(log_format: str, log_level: int) -> None:
+        root = logging.getLogger()
+        old_level = root.level
+        old_handlers = list(root.handlers)
+        logging.basicConfig(format=log_format, level=log_level)
+        # Record only the handlers basicConfig actually added so that
+        # uninstrument removes exactly those and does not drop handlers the
+        # application added while instrumented.
+        added_handlers = [handler for handler in root.handlers if handler not in old_handlers]
+        LoggingInstrumentor._old_handlers_state = {
+            "old_level": old_level,
+            "added_handlers": added_handlers,
+            # basicConfig is a no-op when the root logger already has a
+            # handler. Only restore a level that instrumentation changed.
+            "configured_level": (log_level if added_handlers and old_level != log_level else None),
+        }
 
     def _instrument(self, **kwargs):
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
@@ -159,7 +178,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
-            logging.basicConfig(format=log_format, level=log_level)
+            LoggingInstrumentor._configure_logging(log_format, log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
@@ -266,3 +285,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
             LoggingInstrumentor._logging_handler = None
+
+        if LoggingInstrumentor._old_handlers_state is not None:
+            state = LoggingInstrumentor._old_handlers_state
+            LoggingInstrumentor._old_handlers_state = None
+
+            root = logging.getLogger()
+            if state["configured_level"] is not None and root.level == state["configured_level"]:
+                root.setLevel(state["old_level"])
+
+            for handler in list(root.handlers):
+                if handler in state["added_handlers"]:
+                    root.removeHandler(handler)

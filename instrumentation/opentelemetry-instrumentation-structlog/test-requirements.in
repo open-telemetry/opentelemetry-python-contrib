@@ -1,5 +1,5 @@
 # Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
-pytest~=7.4
+pytest~=9.0
 packaging>=21.0
 wrapt>=1.16.0,<3.0.0
 -e opentelemetry-instrumentation
