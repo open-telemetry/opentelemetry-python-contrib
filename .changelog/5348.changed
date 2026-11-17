@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: Pass the URL and method attributes to the HTTP client span at creation so samplers can use them
