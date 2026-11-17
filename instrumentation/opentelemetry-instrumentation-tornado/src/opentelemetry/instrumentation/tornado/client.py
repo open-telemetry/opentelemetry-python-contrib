@@ -79,25 +79,23 @@ def fetch_async(  # pylint: disable=too-many-locals
     span_name = sanitize_method(request.method)
     if span_name == "_OTHER":
         span_name = "HTTP"
+
+    attributes = {}
+    _set_http_url(attributes, redact_url(request.url), sem_conv_opt_in_mode)
+    _set_http_method(
+        attributes,
+        request.method,
+        sanitize_method(request.method),
+        sem_conv_opt_in_mode,
+    )
     span = tracer.start_span(
         span_name,
         kind=trace.SpanKind.CLIENT,
+        attributes=attributes,
         start_time=start_time,
     )
     if request_hook:
         request_hook(span, request)
-
-    if span.is_recording():
-        attributes = {}
-        _set_http_url(attributes, redact_url(request.url), sem_conv_opt_in_mode)
-        _set_http_method(
-            attributes,
-            request.method,
-            sanitize_method(request.method),
-            sem_conv_opt_in_mode,
-        )
-
-        span.set_attributes(attributes)
 
     with trace.use_span(span):
         inject(request.headers)
