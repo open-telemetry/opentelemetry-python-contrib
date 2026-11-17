@@ -1332,6 +1332,32 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         }
         self.assertSpanHasAttributes(span, expected)
 
+class TestNonSdkSpanWithoutKind(unittest.TestCase):
+    def test_middleware_span_without_kind_attribute(self):
+        span = mock.MagicMock(spec=trace_api.Span)
+        span.is_recording.return_value = True
 
+        tracer = mock.MagicMock(spec=trace_api.Tracer)
+        tracer.start_span.return_value = span
+
+        tracer_provider = mock.MagicMock(spec=trace_api.TracerProvider)
+        tracer_provider.get_tracer.return_value = tracer
+
+        def simple_app(environ, start_response):
+            start_response("200 OK", [("Content-Type", "text/plain")])
+            return [b"ok"]
+
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            simple_app, tracer_provider=tracer_provider
+        )
+        environ = {
+            "REQUEST_METHOD": "GET",
+            "SERVER_NAME": "localhost",
+            "SERVER_PORT": "80",
+            "PATH_INFO": "/",
+            "wsgi.url_scheme": "http",
+        }
+        result = list(app(environ, lambda status, headers: None))
+        self.assertEqual(result, [b"ok"])
 if __name__ == "__main__":
     unittest.main()
