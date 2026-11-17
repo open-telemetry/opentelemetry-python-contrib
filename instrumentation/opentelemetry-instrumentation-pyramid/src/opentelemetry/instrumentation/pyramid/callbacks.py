@@ -44,6 +44,7 @@ from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
+SETTING_TRACER_PROVIDER = "opentelemetry-pyramid.tracer_provider"
 _SETTING_CALLBACKS_REGISTERED = "opentelemetry-pyramid.callbacks_registered"
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-pyramid.starttime_key"
@@ -102,6 +103,7 @@ def _before_traversal(event):
     tracer = trace.get_tracer(
         __name__,
         __version__,
+        tracer_provider=request.registry.settings.get(SETTING_TRACER_PROVIDER),
         schema_url=_get_schema_url(_sem_conv_opt_in_mode),
     )
 
