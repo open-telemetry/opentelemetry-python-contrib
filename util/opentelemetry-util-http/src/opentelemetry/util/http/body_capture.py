@@ -139,18 +139,18 @@ class CapturingStream(_StreamProxy):
         self._self_buffer.write(self._self_position, data)
         self._self_position += len(data)
 
-    def read(self, *args: Any) -> bytes:
-        data = self.__wrapped__.read(*args)
+    def read(self, *args: Any, **kwargs: Any) -> bytes:
+        data = self.__wrapped__.read(*args, **kwargs)
         self._self_capture(data)
         return data
 
-    def readline(self, *args: Any) -> bytes:
-        data = self.__wrapped__.readline(*args)
+    def readline(self, *args: Any, **kwargs: Any) -> bytes:
+        data = self.__wrapped__.readline(*args, **kwargs)
         self._self_capture(data)
         return data
 
-    def readlines(self, *args: Any) -> list[bytes]:
-        lines = self.__wrapped__.readlines(*args)
+    def readlines(self, *args: Any, **kwargs: Any) -> list[bytes]:
+        lines = self.__wrapped__.readlines(*args, **kwargs)
         for line in lines:
             self._self_capture(line)
         return lines
@@ -165,16 +165,22 @@ class CapturingStream(_StreamProxy):
         self._self_capture(data)
         return data
 
-    def _self_readinto(self, target: bytearray | memoryview) -> int | None:
-        count = self.__wrapped__.readinto(target)
-        if count:
-            # count is in bytes, so view the target as bytes even when it is a
-            # memoryview with a wider item format.
-            self._self_capture(memoryview(target).cast("B")[:count])
+    def _self_readinto(self, *args: Any, **kwargs: Any) -> int | None:
+        count = self.__wrapped__.readinto(*args, **kwargs)
+        if not count:
+            return count
+        if not args:
+            # The target was passed by a keyword whose name depends on the
+            # stream, so the bytes read cannot be located.
+            self._self_position = None
+            return count
+        # count is in bytes, so view the target as bytes even when it is a
+        # memoryview with a wider item format.
+        self._self_capture(memoryview(args[0]).cast("B")[:count])
         return count
 
-    def _self_seek(self, *args: Any) -> int:
-        position = self.__wrapped__.seek(*args)
+    def _self_seek(self, *args: Any, **kwargs: Any) -> int:
+        position = self.__wrapped__.seek(*args, **kwargs)
         # Without a known position, further reads cannot be placed in the
         # buffer, so stop capturing instead of corrupting it.
         self._self_position = position if isinstance(position, int) else None

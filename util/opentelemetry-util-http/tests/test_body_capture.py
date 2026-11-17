@@ -293,3 +293,60 @@ class TestCapturingStream(unittest.TestCase):
     def test_attribute_assignment_reaches_wrapped_stream(self):
         self.stream.marker = "set"
         self.assertEqual(vars(self.raw)["marker"], "set")
+
+
+class KeywordStream:
+    """Input stream whose methods accept keyword arguments, unlike io.BytesIO."""
+
+    def __init__(self, data):
+        self._raw = io.BytesIO(data)
+
+    def read(self, size=-1):
+        return self._raw.read(size)
+
+    def readline(self, size=-1):
+        return self._raw.readline(size)
+
+    def readlines(self, hint=-1):
+        return self._raw.readlines(hint)
+
+    def readinto(self, buffer):
+        return self._raw.readinto(buffer)
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        return self._raw.seek(offset, whence)
+
+    def __iter__(self):
+        return iter(self._raw)
+
+
+class TestCapturingStreamKeywordArguments(unittest.TestCase):
+    def setUp(self):
+        self.buffer = BodyBuffer(100, "text/plain")
+        self.stream = CapturingStream(KeywordStream(b"line one\nline two\n"), self.buffer)
+
+    def test_read(self):
+        self.assertEqual(self.stream.read(size=4), b"line")
+        self.assertEqual(self.buffer.to_attribute_value(), "line")
+
+    def test_readline(self):
+        self.assertEqual(self.stream.readline(size=4), b"line")
+        self.assertEqual(self.buffer.to_attribute_value(), "line")
+
+    def test_readlines(self):
+        self.assertEqual(self.stream.readlines(hint=1), [b"line one\n"])
+        self.assertEqual(self.buffer.to_attribute_value(), "line one\n")
+
+    def test_seek(self):
+        self.stream.read()
+        self.assertEqual(self.stream.seek(offset=5, whence=io.SEEK_SET), 5)
+        self.assertEqual(self.stream.read(), b"one\nline two\n")
+        self.assertEqual(self.buffer.to_attribute_value(), "line one\nline two\n")
+
+    def test_readinto_by_keyword_stops_capture(self):
+        self.assertEqual(self.stream.read(4), b"line")
+        target = bytearray(4)
+        self.assertEqual(self.stream.readinto(buffer=target), 4)
+        self.assertEqual(target, b" one")
+        self.stream.read()
+        self.assertEqual(self.buffer.to_attribute_value(), "line")
