@@ -33,9 +33,40 @@ def test_detects_not_on_cloud_functions() -> None:
     assert not _faas.on_cloud_functions()
 
 
+def test_detects_on_cloud_run_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUD_RUN_JOB", "fake-job")
+    assert _faas.on_cloud_run_job()
+
+
+def test_detects_not_on_cloud_run_job() -> None:
+    assert not _faas.on_cloud_run_job()
+
+
 def test_detects_faas_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("K_SERVICE", "fake-service")
     assert _faas.faas_name() == "fake-service"
+
+
+def test_detects_cloud_run_job_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUD_RUN_JOB", "fake-job")
+    assert _faas.cloud_run_job_name() == "fake-job"
+
+
+def test_detects_cloud_run_job_execution(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _faas.cloud_run_job_execution() is None
+    monkeypatch.setenv("CLOUD_RUN_EXECUTION", "fake-execution")
+    assert _faas.cloud_run_job_execution() == "fake-execution"
+
+
+def test_detects_cloud_run_job_task_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _faas.cloud_run_job_task_index() is None
+    monkeypatch.setenv("CLOUD_RUN_TASK_INDEX", "2")
+    assert _faas.cloud_run_job_task_index() == 2
+
+
+def test_cloud_run_job_task_index_malformed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUD_RUN_TASK_INDEX", "not-an-int")
+    assert _faas.cloud_run_job_task_index() is None
 
 
 def test_detects_faas_version(monkeypatch: pytest.MonkeyPatch) -> None:
