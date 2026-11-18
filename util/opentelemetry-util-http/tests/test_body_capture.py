@@ -145,10 +145,6 @@ class TestCreateBodyBuffer(unittest.TestCase):
         self.assertIsNone(create_body_buffer(10, "text/plain", "gzip"))
         self.assertIsNone(create_body_buffer(10, "text/plain", "deflate, br"))
 
-    def test_no_buffer_for_non_positive_size(self):
-        self.assertIsNone(create_body_buffer(0, "text/plain", None))
-        self.assertIsNone(create_body_buffer(-1, "text/plain", None))
-
 
 class TestCapturingStream(unittest.TestCase):
     def setUp(self):

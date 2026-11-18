@@ -106,8 +106,6 @@ def create_body_buffer(
 
     Bodies with a content encoding are not captured.
     """
-    if max_size <= 0:
-        return None
     if content_encoding and content_encoding.strip().lower() != "identity":
         return None
     return BodyBuffer(max_size, content_type)

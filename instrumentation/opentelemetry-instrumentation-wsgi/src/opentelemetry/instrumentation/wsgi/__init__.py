@@ -210,14 +210,14 @@ Note:
 Capture HTTP request body
 *************************
 To capture the HTTP request body in the ``http.request.body.content`` span attribute, pass
-``captured_request_body_size``, the maximum number of bytes of the body to capture. Default is ``0``,
-meaning capture is disabled.
+``capture_request_body=True``. ``captured_request_body_size`` sets the maximum number of bytes of the body to
+capture and must be positive. Default is ``1024``.
 
 .. code-block:: python
 
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
-    OpenTelemetryMiddleware(app, captured_request_body_size=4096)
+    OpenTelemetryMiddleware(app, capture_request_body=True, captured_request_body_size=4096)
 
 Only the bytes the application reads from ``wsgi.input`` are captured, and only on SERVER spans. The body is
 recorded as a string for textual content types, else as bytes. Bodies with a ``Content-Encoding`` are not captured.
@@ -602,9 +602,10 @@ class OpenTelemetryMiddleware:
                          globally configured one is used.
         meter_provider: Optional meter provider to use. If omitted the current
                          globally configured one is used.
+        capture_request_body: Whether to capture the request body as a span
+                              attribute.
         captured_request_body_size: Maximum number of bytes of the request body
-                                    to capture as a span attribute.
-                                    ``0`` disables capture.
+                                    to capture. Must be positive.
     """
 
     def __init__(
@@ -614,8 +615,11 @@ class OpenTelemetryMiddleware:
         response_hook: ResponseHook | None = None,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
-        captured_request_body_size: int = 0,
+        capture_request_body: bool = False,
+        captured_request_body_size: int = 1024,
     ):
+        if captured_request_body_size <= 0:
+            raise ValueError(f"captured_request_body_size must be positive, got {captured_request_body_size}")
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -659,12 +663,11 @@ class OpenTelemetryMiddleware:
         self.request_hook = request_hook
         self.response_hook = response_hook
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
-        self._captured_request_body_size = (
-            0 if sem_conv_opt_in_mode == _StabilityMode.HTTP else captured_request_body_size
-        )
+        self._capture_request_body = capture_request_body and sem_conv_opt_in_mode != _StabilityMode.HTTP
+        self._captured_request_body_size = captured_request_body_size
 
     def _wrap_request_body(self, span: trace.Span, environ: WSGIEnvironment) -> BodyBuffer | None:
-        if not (self._captured_request_body_size > 0 and span.is_recording() and span.kind == trace.SpanKind.SERVER):
+        if not (self._capture_request_body and span.is_recording() and span.kind == trace.SpanKind.SERVER):
             return None
         stream = environ.get("wsgi.input")
         if stream is None:

@@ -1388,28 +1388,41 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
         self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
         self.assertIs(self.environ["wsgi.input"], original_input)
 
-    def test_not_captured_with_non_positive_size(self):
+    def test_size_alone_does_not_enable_capture(self):
         original_input = self.environ["wsgi.input"]
-        for size in (0, -1):
-            with self.subTest(size=size):
-                self.memory_exporter.clear()
-                span = self.get_span(read_body_wsgi, captured_request_body_size=size)
-                self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
-                self.assertIs(self.environ["wsgi.input"], original_input)
+        span = self.get_span(read_body_wsgi, captured_request_body_size=4)
+        self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
+        self.assertIs(self.environ["wsgi.input"], original_input)
+
+    def test_non_positive_size_is_rejected(self):
+        for capture_request_body in (True, False):
+            for size in (0, -1):
+                with self.subTest(capture_request_body=capture_request_body, size=size):
+                    with self.assertRaises(ValueError):
+                        otel_wsgi.OpenTelemetryMiddleware(
+                            read_body_wsgi,
+                            capture_request_body=capture_request_body,
+                            captured_request_body_size=size,
+                        )
+
+    def test_default_size(self):
+        self.set_body(b"a" * 2000, "text/plain")
+        span = self.get_span(read_body_wsgi, capture_request_body=True)
+        self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], "a" * 1024)
 
     def test_text_body_captured_as_string(self):
-        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        span = self.get_span(read_body_wsgi, capture_request_body=True)
         self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hello": "world"}')
         self.assertIsInstance(span.attributes[HTTP_REQUEST_BODY_CONTENT], str)
 
     def test_binary_body_captured_as_bytes(self):
         self.set_body(b"\x00\x01\xff", "application/octet-stream")
-        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        span = self.get_span(read_body_wsgi, capture_request_body=True)
         self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], b"\x00\x01\xff")
         self.assertIsInstance(span.attributes[HTTP_REQUEST_BODY_CONTENT], bytes)
 
     def test_body_truncated_to_captured_request_body_size(self):
-        span = self.get_span(read_body_wsgi, captured_request_body_size=6)
+        span = self.get_span(read_body_wsgi, capture_request_body=True, captured_request_body_size=6)
         self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hell')
 
     def test_application_reads_full_body_past_limit(self):
@@ -1417,20 +1430,20 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
             self.assertEqual(environ["wsgi.input"].read(), b'{"hello": "world"}')
             return read_body_wsgi(environ, start_response)
 
-        span = self.get_span(app, captured_request_body_size=6)
+        span = self.get_span(app, capture_request_body=True, captured_request_body_size=6)
         self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hell')
 
     def test_unread_body_not_captured(self):
-        span = self.get_span(simple_wsgi, captured_request_body_size=1024)
+        span = self.get_span(simple_wsgi, capture_request_body=True)
         self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
         self.assertEqual(self.environ["wsgi.input"].tell(), 0)
 
     def test_body_read_while_iterating_response(self):
-        span = self.get_span(read_body_lazily_wsgi, captured_request_body_size=1024)
+        span = self.get_span(read_body_lazily_wsgi, capture_request_body=True)
         self.assertEqual(span.attributes[HTTP_REQUEST_BODY_CONTENT], '{"hello": "world"}')
 
     def test_body_captured_when_application_raises(self):
-        app = otel_wsgi.OpenTelemetryMiddleware(read_body_then_raise_wsgi, captured_request_body_size=1024)
+        app = otel_wsgi.OpenTelemetryMiddleware(read_body_then_raise_wsgi, capture_request_body=True)
         with self.assertRaises(ValueError):
             app(self.environ, self.start_response)
         span = self.memory_exporter.get_finished_spans()[0]
@@ -1439,7 +1452,7 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
     def test_content_encoded_body_not_captured(self):
         self.environ["HTTP_CONTENT_ENCODING"] = "gzip"
         original_input = self.environ["wsgi.input"]
-        span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+        span = self.get_span(read_body_wsgi, capture_request_body=True)
         self.assertNotIn(HTTP_REQUEST_BODY_CONTENT, span.attributes)
         self.assertIs(self.environ["wsgi.input"], original_input)
 
@@ -1447,7 +1460,7 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
         tracer = self.tracer_provider.get_tracer(__name__)
         original_input = self.environ["wsgi.input"]
         with tracer.start_as_current_span("test", kind=trace_api.SpanKind.SERVER):
-            app = otel_wsgi.OpenTelemetryMiddleware(read_body_wsgi, captured_request_body_size=1024)
+            app = otel_wsgi.OpenTelemetryMiddleware(read_body_wsgi, capture_request_body=True)
             self.assertEqual(list(app(self.environ, self.start_response)), [b"*"])
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(span.kind, trace_api.SpanKind.INTERNAL)
@@ -1459,7 +1472,7 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(
             read_body_wsgi,
             tracer_provider=trace_api.NoOpTracerProvider(),
-            captured_request_body_size=1024,
+            capture_request_body=True,
         )
         self.assertEqual(list(app(self.environ, self.start_response)), [b"*"])
         self.assertIs(self.environ["wsgi.input"], original_input)
@@ -1470,7 +1483,7 @@ class TestWsgiRequestBodyCapture(WsgiTestBase):
                 self.memory_exporter.clear()
                 self.set_sem_conv_mode(mode)
                 self.set_body(b"hello", "text/plain")
-                span = self.get_span(read_body_wsgi, captured_request_body_size=1024)
+                span = self.get_span(read_body_wsgi, capture_request_body=True)
                 self.assertEqual(HTTP_REQUEST_BODY_CONTENT in span.attributes, captured)
 
 
