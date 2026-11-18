@@ -268,6 +268,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
                 _, exporter, app = self._create_app_with_sampler(sampler)
                 self.seed_app(app)
                 await self.send_default_request()
+                await self.communicator.wait(timeout=0.5)
                 outputs = await self.get_all_output()
                 self.assertEqual(outputs[0]["status"], 200)
                 self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)

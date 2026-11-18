@@ -174,6 +174,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 API
 ---
 """
@@ -250,7 +252,8 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
     _instrumented_falcon_apps = set()
 
     def __init__(self, *args, **kwargs):
-        otel_opts = kwargs.pop("_otel_opts", {})
+        # copy, as the same options are passed to every instrumented app
+        otel_opts = dict(kwargs.pop("_otel_opts", {}))
 
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
@@ -263,7 +266,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         tracer_provider = otel_opts.pop("tracer_provider", None)
         meter_provider = otel_opts.pop("meter_provider", None)
-        if not isinstance(self._middlewares_list, (list, tuple)):
+        if isinstance(self._middlewares_list, (list, tuple)):
+            # copy, as the caller's list may be shared with other apps
+            self._middlewares_list = list(self._middlewares_list)
+        else:
             self._middlewares_list = [self._middlewares_list]
 
         self._otel_tracer = trace.get_tracer(

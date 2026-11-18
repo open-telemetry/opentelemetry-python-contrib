@@ -18,6 +18,7 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.instrumentation.tornado import (
+    _OTEL_PATCHED_KEY,
     TornadoInstrumentor,
     patch_handler_class,
     unpatch_handler_class,
@@ -144,6 +145,26 @@ class TestTornadoInstrumentor(TornadoTest):
         self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
         self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
         self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+        unpatch_handler_class(AsyncHandler)
+
+    def test_unpatch_subclass_of_patched_class_is_a_noop(self):
+        tracer = trace.get_tracer(__name__)
+        self.assertTrue(patch_handler_class(tracer, {}, AsyncHandler))
+
+        # pylint: disable=abstract-method
+        class SubclassOfAsyncHandler(AsyncHandler):
+            pass
+
+        # The subclass only inherits the patched marker, it does not own it,
+        # so unpatching the subclass must do nothing instead of raising
+        # AttributeError.
+        unpatch_handler_class(SubclassOfAsyncHandler)
+
+        self.assertNotIn(_OTEL_PATCHED_KEY, SubclassOfAsyncHandler.__dict__)
+        # The base class must still be patched and still own the marker.
+        self.assertIn(_OTEL_PATCHED_KEY, AsyncHandler.__dict__)
+        self.assertFalse(patch_handler_class(tracer, {}, AsyncHandler))
+
         unpatch_handler_class(AsyncHandler)
 
 
@@ -810,6 +831,27 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
+
+    def test_http_client_attributes_passed_to_sampler(self):
+        sampler = CapturingSampler()
+        _instrument_with_sampler(self, sampler)
+
+        # /healthz is excluded on the server, so the client span is the only span the sampler sees.
+        response = self.fetch("/healthz")
+        self.assertEqual(response.code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.CLIENT)
+        self.assertEqual(sampler.attributes, {HTTP_URL: self.get_url("/healthz"), HTTP_METHOD: "GET"})
+
+    def test_http_client_attributes_control_sampling(self):
+        for path, expected_span_count in (("/healthz", 1), ("/ping", 0)):
+            with self.subTest(path=path):
+                sampler = CapturingSampler(required_attributes={HTTP_URL: self.get_url("/healthz")})
+                _, exporter = _instrument_with_sampler(self, sampler)
+
+                response = self.fetch(path)
+                self.assertEqual(response.code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
 
 
 class TestTornadoUninstrument(TornadoTest):

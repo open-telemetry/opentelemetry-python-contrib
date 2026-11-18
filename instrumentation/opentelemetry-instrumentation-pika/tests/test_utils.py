@@ -28,9 +28,9 @@ class TestUtils(TestCase):
     @staticmethod
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_attributes")
     def test_get_span(
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         generate_span_name: mock.MagicMock,
         get_value: mock.MagicMock,
     ) -> None:
@@ -58,10 +58,10 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
-    @mock.patch("opentelemetry.instrumentation.pika.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_attributes")
     def test_get_span_suppressed(
         self,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         generate_span_name: mock.MagicMock,
         get_value: mock.MagicMock,
     ) -> None:
@@ -75,7 +75,7 @@ class TestUtils(TestCase):
         span = utils._get_span(tracer, channel, properties, task_name, span_kind, ctx)
         self.assertEqual(span, None)
         generate_span_name.assert_not_called()
-        enrich_span.assert_not_called()
+        get_attributes.assert_not_called()
 
     def test_generate_span_name_no_operation(self) -> None:
         task_name = "test.test"
@@ -90,8 +90,7 @@ class TestUtils(TestCase):
         span_name = utils._generate_span_name(task_name, operation)
         self.assertEqual(span_name, f"{task_name} {operation.value}")
 
-    @staticmethod
-    def test_enrich_span_basic_values() -> None:
+    def test_get_attributes_basic_values(self) -> None:
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_destination = "test.test"
@@ -137,8 +136,7 @@ class TestUtils(TestCase):
             ],
         )
 
-    @staticmethod
-    def test_enrich_span_without_operation() -> None:
+    def test_get_attributes_unique_connection(self) -> None:
         channel = mock.MagicMock()
         properties = mock.MagicMock()
         task_destination = "test.test"

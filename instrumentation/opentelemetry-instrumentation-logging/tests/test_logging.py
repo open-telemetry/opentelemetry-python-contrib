@@ -245,6 +245,248 @@ class TestLoggingInstrumentor(TestBase):
         logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_uninstrument_after_set_logging_format_allows_further_logging(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        # Save existing handlers to restore after test
+        orig_handlers = list(root_logger.handlers)
+
+        try:
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            logger = logging.getLogger("test_uninstrument_logging")
+            with self.caplog.at_level(level=logging.INFO):
+                logger.info("while instrumented")
+                self.assertEqual(len(self.caplog.records), 1)
+                self.assertTrue(hasattr(self.caplog.records[0], "otelTraceID"))
+
+            LoggingInstrumentor().uninstrument()
+
+            # Logging after uninstrument should succeed without KeyError / ValueError on formatting
+            with self.caplog.at_level(level=logging.INFO):
+                logger.info("after uninstrument")
+                self.assertEqual(len(self.caplog.records), 2)
+                # Ensure the new log record does not have otelTraceID and formats cleanly
+                after_record = self.caplog.records[1]
+                self.assertFalse(hasattr(after_record, "otelTraceID"))
+                # Format with all active root handlers should not raise
+                for handler in root_logger.handlers:
+                    if handler.formatter:
+                        formatted = handler.format(after_record)
+                        self.assertIn("after uninstrument", formatted)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+
+    def test_uninstrument_removes_only_handlers_added_by_basicconfig(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+
+        custom_handler = logging.StreamHandler()
+        custom_formatter = logging.Formatter("CUSTOM: %(message)s")
+        custom_handler.setFormatter(custom_formatter)
+
+        try:
+            # Start from a handler-less root so that basicConfig actually runs
+            # (it only adds a handler when the root logger has no handlers).
+            root_logger.handlers = []
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+
+            # basicConfig ran: it added a StreamHandler and set the root level.
+            basic_config_handlers = [h for h in root_logger.handlers if not isinstance(h, LoggingHandler)]
+            self.assertEqual(len(basic_config_handlers), 1)
+            self.assertEqual(root_logger.level, logging.INFO)
+
+            # A handler the application adds while instrumented must survive
+            # uninstrument (regression: uninstrument used to drop it).
+            root_logger.addHandler(custom_handler)
+
+            LoggingInstrumentor().uninstrument()
+
+            self.assertNotIn(basic_config_handlers[0], root_logger.handlers)
+            self.assertIn(custom_handler, root_logger.handlers)
+            self.assertEqual(custom_handler.formatter, custom_formatter)
+            self.assertEqual(root_logger.level, orig_level)
+
+            record = root_logger.makeRecord("test", logging.INFO, "test.py", 1, "restored message", (), None)
+            formatted = custom_handler.format(record)
+            self.assertEqual(formatted, "CUSTOM: restored message")
+        finally:
+            LoggingInstrumentor().uninstrument()
+            if custom_handler in root_logger.handlers:
+                root_logger.removeHandler(custom_handler)
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
+    def test_uninstrument_preserves_level_changed_by_application(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+
+        try:
+            root_logger.handlers = []
+            root_logger.setLevel(logging.WARNING)
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            self.assertEqual(root_logger.level, logging.INFO)
+
+            root_logger.setLevel(logging.ERROR)
+            LoggingInstrumentor().uninstrument()
+
+            self.assertEqual(root_logger.level, logging.ERROR)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
+    def test_uninstrument_does_not_restore_level_when_basicconfig_is_no_op(self):
+        LoggingInstrumentor().uninstrument()
+        root_logger = logging.getLogger()
+        orig_handlers = list(root_logger.handlers)
+        orig_level = root_logger.level
+        custom_handler = logging.StreamHandler()
+
+        try:
+            root_logger.handlers = [custom_handler]
+            root_logger.setLevel(logging.WARNING)
+
+            LoggingInstrumentor().instrument(set_logging_format=True)
+            root_logger.setLevel(logging.ERROR)
+            LoggingInstrumentor().uninstrument()
+
+            self.assertEqual(root_logger.level, logging.ERROR)
+            self.assertIn(custom_handler, root_logger.handlers)
+        finally:
+            LoggingInstrumentor().uninstrument()
+            root_logger.handlers = orig_handlers
+            root_logger.setLevel(orig_level)
+
+    def test_uninstrument_stops_the_orphaned_factory_injecting(self):
+        # The factory cannot be unlinked from the middle of the chain, so
+        # uninstrument has to neutralise it in place: records built afterwards
+        # must carry no OTel attributes.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertTrue(hasattr(record, "otelTraceID"))
+
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertFalse(hasattr(record, "otelServiceName"))
+            self.assertFalse(hasattr(record, "otelSpanID"))
+            self.assertFalse(hasattr(record, "otelTraceID"))
+            self.assertFalse(hasattr(record, "otelTraceSampled"))
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_stops_the_orphaned_factory_calling_the_log_hook(self):
+        # The log hook is the other way the orphan can keep mutating records,
+        # and it runs on a different branch of record_factory than the context
+        # injection above.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        calls = []
+        LoggingInstrumentor().instrument(log_hook=lambda span, record: calls.append(record))
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            with self.tracer.start_as_current_span("s1"):
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+
+                LoggingInstrumentor().uninstrument()
+
+                logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+                self.assertEqual(len(calls), 1)
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_reinstrument_disables_an_orphan_left_by_an_earlier_instrument(self):
+        # _our_factory is class state, so re-instrumenting rebinds it to the new
+        # wrapper and the orphan stranded by the previous cycle must stay
+        # disabled. Reaching past the new head is the only way to observe that:
+        # injection is idempotent, so a doubled pass looks identical from above.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        orphan = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return orphan(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+            LoggingInstrumentor().instrument(inject_trace_context=True)
+
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertTrue(hasattr(record, "otelTraceID"))
+
+            record = app_factory("n", logging.INFO, "p", 1, "m", None, None)
+            self.assertFalse(hasattr(record, "otelTraceID"))
+        finally:
+            LoggingInstrumentor().uninstrument()
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_keeps_factories_chained_after_ours(self):
+        # A factory installed after ours must survive uninstrument: the
+        # logging module offers no way to unlink a factory from the middle of
+        # the chain, so restoring the old factory here would silently drop it.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument()
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            record = chained_onto(*args, **kwargs)
+            record.custom_app_attribute = "some-value"
+            return record
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            with self.caplog.at_level(level=logging.INFO):
+                logging.getLogger("test logger").info("hello")
+                records = [record for record in self.caplog.records if record.name == "test logger"]
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0].custom_app_attribute, "some-value")
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_restores_factory_when_nothing_chained(self):
+        # Observe the pre-instrumentation factory rather than reading it back
+        # out of LoggingInstrumentor._old_factory: sourcing the expected value
+        # from the code under test would let this pass vacuously if that
+        # attribute were ever None. setUp() has already instrumented, so unwind
+        # once before taking the reading.
+        LoggingInstrumentor().uninstrument()
+        original_factory = logging.getLogRecordFactory()
+
+        LoggingInstrumentor().instrument()
+        self.assertIsNot(logging.getLogRecordFactory(), original_factory)
+
+        LoggingInstrumentor().uninstrument()
+        self.assertIs(logging.getLogRecordFactory(), original_factory)
+
     @mock.patch("logging.basicConfig")
     def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
