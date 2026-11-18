@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 from unittest import IsolatedAsyncioTestCase
+import unittest
 from unittest.mock import patch
 
 import grpc
@@ -342,3 +343,98 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
+
+import unittest
+class TestAioClientCancellationPropagation(unittest.IsolatedAsyncioTestCase):
+    async def test_unary_unary_cancellation_propagates_to_server(self):
+        import asyncio
+        import grpc
+        from opentelemetry.instrumentation.grpc import aio_client_interceptors
+
+        server_started = asyncio.Event()
+        server_cancelled = asyncio.Event()
+
+        async def unary_unary_handler(request, context):
+            server_started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                server_cancelled.set()
+                raise
+            return b"ok"
+
+        handler = grpc.method_handlers_generic_handler(
+            "test.CancelService",
+            {"Unary": grpc.unary_unary_rpc_method_handler(unary_unary_handler)},
+        )
+        server = grpc.aio.server()
+        server.add_generic_rpc_handlers((handler,))
+        port = server.add_insecure_port("localhost:0")
+        await server.start()
+
+        try:
+            async with grpc.aio.insecure_channel(
+                f"localhost:{port}", interceptors=aio_client_interceptors()
+            ) as channel:
+                call = channel.unary_unary("/test.CancelService/Unary")
+
+                async def invoke():
+                    return await call(b"req")
+
+                task = asyncio.create_task(invoke())
+                await asyncio.wait_for(server_started.wait(), timeout=2.0)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+                await asyncio.wait_for(server_cancelled.wait(), timeout=2.0)
+        finally:
+            await server.stop(0)
+
+    async def test_stream_unary_cancellation_propagates_to_server(self):
+        import asyncio
+        import grpc
+        from opentelemetry.instrumentation.grpc import aio_client_interceptors
+
+        server_started = asyncio.Event()
+        server_cancelled = asyncio.Event()
+
+        async def stream_unary_handler(request_iterator, context):
+            async for _ in request_iterator:
+                pass
+            server_started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                server_cancelled.set()
+                raise
+            return b"ok"
+
+        handler = grpc.method_handlers_generic_handler(
+            "test.CancelService",
+            {"StreamUnary": grpc.stream_unary_rpc_method_handler(stream_unary_handler)},
+        )
+        server = grpc.aio.server()
+        server.add_generic_rpc_handlers((handler,))
+        port = server.add_insecure_port("localhost:0")
+        await server.start()
+
+        async def req_iter():
+            yield b"req-1"
+
+        try:
+            async with grpc.aio.insecure_channel(
+                f"localhost:{port}", interceptors=aio_client_interceptors()
+            ) as channel:
+                call = channel.stream_unary("/test.CancelService/StreamUnary")
+
+                async def invoke():
+                    return await call(req_iter())
+
+                task = asyncio.create_task(invoke())
+                await asyncio.wait_for(server_started.wait(), timeout=2.0)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+                await asyncio.wait_for(server_cancelled.wait(), timeout=2.0)
+        finally:
+            await server.stop(0)
