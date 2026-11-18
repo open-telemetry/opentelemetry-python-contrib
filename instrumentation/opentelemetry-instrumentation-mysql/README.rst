@@ -18,6 +18,12 @@ Installation
     pip install opentelemetry-instrumentation-mysql
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry MySQL Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/mysql/mysql.html>`_

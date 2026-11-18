@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-sqlite3
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry SQLite3 Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/sqlite3/sqlite3.html>`_

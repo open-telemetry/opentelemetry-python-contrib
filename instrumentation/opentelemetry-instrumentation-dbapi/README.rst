@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-dbapi
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 

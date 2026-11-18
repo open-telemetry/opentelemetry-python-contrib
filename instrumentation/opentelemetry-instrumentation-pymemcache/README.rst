@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-pymemcache
 
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry Pymemcache Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/pymemcache/pymemcache.html>`_

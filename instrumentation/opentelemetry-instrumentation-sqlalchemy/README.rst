@@ -16,6 +16,12 @@ Installation
     pip install opentelemetry-instrumentation-sqlalchemy
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 

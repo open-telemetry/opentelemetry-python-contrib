@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-mysqlclient
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry mysqlclient Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/mysqlclient/mysqlclient.html>`_
