@@ -183,6 +183,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+.. include:: /_includes/http-semconv.rst
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
@@ -481,8 +483,7 @@ def _wrapped_before_request(
             request_hook(span, flask_request_environ)
 
         if span.is_recording():
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
+            span.set_attributes(attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call

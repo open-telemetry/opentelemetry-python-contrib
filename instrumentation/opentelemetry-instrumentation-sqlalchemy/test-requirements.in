@@ -1,5 +1,5 @@
 # Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
-pytest~=7.4
+pytest~=9.0
 # 1.4.3 is the first release with the sqlite+aiosqlite dialect used by the async tests
 sqlalchemy>=1.4.3,<2.2.0
 aiosqlite>=0.20.0

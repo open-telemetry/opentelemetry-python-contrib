@@ -1,0 +1,1 @@
+`opentelemetry-util-http`: ignore empty entries in excluded URLs so a trailing or doubled comma no longer excludes every request

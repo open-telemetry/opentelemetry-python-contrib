@@ -5,7 +5,7 @@ packaging==24.0
 pluggy==1.6.0
 py-cpuinfo==9.0.0
 pymemcache==3.4.2
-pytest==7.4.4
+pytest==9.0.3
 six==1.16.0
 tomli==2.0.1
 typing_extensions==4.12.2
