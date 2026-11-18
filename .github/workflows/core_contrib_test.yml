@@ -33,29 +33,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai-v2-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-openai-v2-oldest -- -ra
 
   py310-test-instrumentation-openai-v2-latest:
     name: instrumentation-openai-v2-latest 
@@ -63,29 +68,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai-v2-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-openai-v2-latest -- -ra
 
   py310-test-instrumentation-openai_agents-v2-oldest:
     name: instrumentation-openai_agents-v2-oldest 
@@ -93,29 +103,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai_agents-v2-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-openai_agents-v2-oldest -- -ra
 
   py310-test-instrumentation-openai_agents-v2-latest:
     name: instrumentation-openai_agents-v2-latest 
@@ -123,29 +138,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai_agents-v2-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-openai_agents-v2-latest -- -ra
 
   py310-test-instrumentation-vertexai-oldest:
     name: instrumentation-vertexai-oldest 
@@ -153,29 +173,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-vertexai-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-vertexai-oldest -- -ra
 
   py310-test-instrumentation-vertexai-latest:
     name: instrumentation-vertexai-latest 
@@ -183,29 +208,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-vertexai-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-vertexai-latest -- -ra
 
   py310-test-resource-detector-containerid:
     name: resource-detector-containerid 
@@ -213,29 +243,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-containerid -- -ra
+        run: uv run --no-sync tox -e py310-test-resource-detector-containerid -- -ra
 
   py310-test-resource-detector-azure-0:
     name: resource-detector-azure-0 
@@ -243,29 +278,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-azure-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-resource-detector-azure-0 -- -ra
 
   py310-test-resource-detector-azure-1:
     name: resource-detector-azure-1 
@@ -273,29 +313,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-azure-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-resource-detector-azure-1 -- -ra
 
   py310-test-resourcedetector-gcp-0:
     name: resourcedetector-gcp-0 
@@ -303,29 +348,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-resourcedetector-gcp-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-resourcedetector-gcp-0 -- -ra
 
   py310-test-resourcedetector-gcp-1:
     name: resourcedetector-gcp-1 
@@ -333,29 +383,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-resourcedetector-gcp-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-resourcedetector-gcp-1 -- -ra
 
   py310-test-sdk-extension-aws-0:
     name: sdk-extension-aws-0 
@@ -363,29 +418,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-sdk-extension-aws-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-sdk-extension-aws-0 -- -ra
 
   py310-test-sdk-extension-aws-1:
     name: sdk-extension-aws-1 
@@ -393,29 +453,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-sdk-extension-aws-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-sdk-extension-aws-1 -- -ra
 
   py310-test-distro:
     name: distro 
@@ -423,29 +488,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-distro -- -ra
+        run: uv run --no-sync tox -e py310-test-distro -- -ra
 
   py310-test-opentelemetry-instrumentation-wrapt1:
     name: opentelemetry-instrumentation-wrapt1 
@@ -453,29 +523,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-opentelemetry-instrumentation-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-opentelemetry-instrumentation-wrapt1 -- -ra
 
   py310-test-opentelemetry-instrumentation-wrapt2:
     name: opentelemetry-instrumentation-wrapt2 
@@ -483,29 +558,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-opentelemetry-instrumentation-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-opentelemetry-instrumentation-wrapt2 -- -ra
 
   py310-test-instrumentation-aiohttp-client:
     name: instrumentation-aiohttp-client 
@@ -513,29 +593,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aiohttp-client -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aiohttp-client -- -ra
 
   py310-test-instrumentation-aiohttp-server:
     name: instrumentation-aiohttp-server 
@@ -543,29 +628,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aiohttp-server -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aiohttp-server -- -ra
 
   py310-test-instrumentation-aiopg-wrapt1:
     name: instrumentation-aiopg-wrapt1 
@@ -573,29 +663,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aiopg-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aiopg-wrapt1 -- -ra
 
   py310-test-instrumentation-aiopg-wrapt2:
     name: instrumentation-aiopg-wrapt2 
@@ -603,29 +698,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aiopg-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aiopg-wrapt2 -- -ra
 
   py310-test-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda 
@@ -633,29 +733,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aws-lambda -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aws-lambda -- -ra
 
   py310-test-instrumentation-botocore-0-wrapt1:
     name: instrumentation-botocore-0-wrapt1 
@@ -663,29 +768,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-0-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-0-wrapt1 -- -ra
 
   py310-test-instrumentation-botocore-0-wrapt2:
     name: instrumentation-botocore-0-wrapt2 
@@ -693,29 +803,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-0-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-0-wrapt2 -- -ra
 
   py310-test-instrumentation-botocore-1-wrapt1:
     name: instrumentation-botocore-1-wrapt1 
@@ -723,29 +838,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-1-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-1-wrapt1 -- -ra
 
   py310-test-instrumentation-botocore-1-wrapt2:
     name: instrumentation-botocore-1-wrapt2 
@@ -753,29 +873,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-1-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-1-wrapt2 -- -ra
 
   py310-test-instrumentation-botocore-2:
     name: instrumentation-botocore-2 
@@ -783,29 +908,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-2 -- -ra
 
   py310-test-instrumentation-botocore-3:
     name: instrumentation-botocore-3 
@@ -813,29 +943,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-botocore-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-botocore-3 -- -ra
 
   py310-test-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs 
@@ -843,29 +978,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-boto3sqs -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-boto3sqs -- -ra
 
   py310-test-instrumentation-django-0:
     name: instrumentation-django-0 
@@ -873,29 +1013,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-django-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-django-0 -- -ra
 
   py310-test-instrumentation-django-1:
     name: instrumentation-django-1 
@@ -903,29 +1048,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-django-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-django-1 -- -ra
 
   py310-test-instrumentation-django-2:
     name: instrumentation-django-2 
@@ -933,29 +1083,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-django-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-django-2 -- -ra
 
   py310-test-instrumentation-django-3:
     name: instrumentation-django-3 
@@ -963,29 +1118,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-django-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-django-3 -- -ra
 
   py310-test-instrumentation-dbapi-wrapt1:
     name: instrumentation-dbapi-wrapt1 
@@ -993,29 +1153,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-dbapi-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-dbapi-wrapt1 -- -ra
 
   py310-test-instrumentation-dbapi-wrapt2:
     name: instrumentation-dbapi-wrapt2 
@@ -1023,59 +1188,104 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-dbapi-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-dbapi-wrapt2 -- -ra
 
-  py310-test-instrumentation-asyncclick:
-    name: instrumentation-asyncclick 
+  py310-test-instrumentation-asyncclick-oldest:
+    name: instrumentation-asyncclick-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asyncclick -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-asyncclick-oldest -- -ra
+
+  py310-test-instrumentation-asyncclick-latest:
+    name: instrumentation-asyncclick-latest 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+          persist-credentials: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install tox
+        run: uv sync --locked --only-group tox
+
+      - name: Run tests
+        run: uv run --no-sync tox -e py310-test-instrumentation-asyncclick-latest -- -ra
 
   py310-test-instrumentation-click:
     name: instrumentation-click 
@@ -1083,29 +1293,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-click -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-click -- -ra
 
   py310-test-instrumentation-falcon-1:
     name: instrumentation-falcon-1 
@@ -1113,29 +1328,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-falcon-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-falcon-1 -- -ra
 
   py310-test-instrumentation-falcon-2:
     name: instrumentation-falcon-2 
@@ -1143,29 +1363,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-falcon-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-falcon-2 -- -ra
 
   py310-test-instrumentation-falcon-3:
     name: instrumentation-falcon-3 
@@ -1173,29 +1398,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-falcon-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-falcon-3 -- -ra
 
   py310-test-instrumentation-falcon-4:
     name: instrumentation-falcon-4 
@@ -1203,29 +1433,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-falcon-4 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-falcon-4 -- -ra
 
   py310-test-instrumentation-fastapi-oldest:
     name: instrumentation-fastapi-oldest 
@@ -1233,29 +1468,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-fastapi-oldest -- -ra
 
   py310-test-instrumentation-fastapi-latest:
     name: instrumentation-fastapi-latest 
@@ -1263,29 +1503,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-fastapi-latest -- -ra
 
   py310-test-instrumentation-flask-0:
     name: instrumentation-flask-0 
@@ -1293,29 +1538,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-flask-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-flask-0 -- -ra
 
   py310-test-instrumentation-flask-1:
     name: instrumentation-flask-1 
@@ -1323,29 +1573,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-flask-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-flask-1 -- -ra
 
   py310-test-instrumentation-flask-2:
     name: instrumentation-flask-2 
@@ -1353,29 +1608,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-flask-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-flask-2 -- -ra
 
   py310-test-instrumentation-flask-3:
     name: instrumentation-flask-3 
@@ -1383,29 +1643,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-flask-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-flask-3 -- -ra
 
   py310-test-instrumentation-urllib:
     name: instrumentation-urllib 
@@ -1413,29 +1678,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-urllib -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-urllib -- -ra
 
   py310-test-instrumentation-urllib3-0:
     name: instrumentation-urllib3-0 
@@ -1443,29 +1713,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-urllib3-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-urllib3-0 -- -ra
 
   py310-test-instrumentation-urllib3-1:
     name: instrumentation-urllib3-1 
@@ -1473,29 +1748,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-urllib3-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-urllib3-1 -- -ra
 
   py310-test-instrumentation-requests:
     name: instrumentation-requests 
@@ -1503,29 +1783,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-requests -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-requests -- -ra
 
   py310-test-instrumentation-starlette-oldest:
     name: instrumentation-starlette-oldest 
@@ -1533,29 +1818,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-starlette-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-starlette-oldest -- -ra
 
   py310-test-instrumentation-starlette-latest:
     name: instrumentation-starlette-latest 
@@ -1563,29 +1853,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-starlette-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-starlette-latest -- -ra
 
   py310-test-instrumentation-structlog-oldest:
     name: instrumentation-structlog-oldest 
@@ -1593,29 +1888,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-structlog-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-structlog-oldest -- -ra
 
   py310-test-instrumentation-structlog-latest:
     name: instrumentation-structlog-latest 
@@ -1623,29 +1923,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-structlog-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-structlog-latest -- -ra
 
   py310-test-instrumentation-jinja2:
     name: instrumentation-jinja2 
@@ -1653,29 +1958,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-jinja2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-jinja2 -- -ra
 
   py310-test-instrumentation-logging:
     name: instrumentation-logging 
@@ -1683,29 +1993,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-logging -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-logging -- -ra
 
   py310-test-instrumentation-exceptions:
     name: instrumentation-exceptions 
@@ -1713,29 +2028,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-exceptions -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-exceptions -- -ra
 
   py310-test-exporter-richconsole:
     name: exporter-richconsole 
@@ -1743,29 +2063,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-exporter-richconsole -- -ra
+        run: uv run --no-sync tox -e py310-test-exporter-richconsole -- -ra
 
   py310-test-exporter-prometheus-remote-write:
     name: exporter-prometheus-remote-write 
@@ -1773,29 +2098,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-exporter-prometheus-remote-write -- -ra
+        run: uv run --no-sync tox -e py310-test-exporter-prometheus-remote-write -- -ra
 
   py310-test-instrumentation-mysql-0:
     name: instrumentation-mysql-0 
@@ -1803,29 +2133,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-mysql-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-mysql-0 -- -ra
 
   py310-test-instrumentation-mysql-1:
     name: instrumentation-mysql-1 
@@ -1833,29 +2168,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-mysql-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-mysql-1 -- -ra
 
   py310-test-instrumentation-mysql-2:
     name: instrumentation-mysql-2 
@@ -1863,29 +2203,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-mysql-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-mysql-2 -- -ra
 
   py310-test-instrumentation-mysqlclient:
     name: instrumentation-mysqlclient 
@@ -1893,29 +2238,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-mysqlclient -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-mysqlclient -- -ra
 
   py310-test-instrumentation-psycopg2:
     name: instrumentation-psycopg2 
@@ -1923,29 +2273,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-psycopg2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-psycopg2 -- -ra
 
   py310-test-instrumentation-psycopg2-binary:
     name: instrumentation-psycopg2-binary 
@@ -1953,29 +2308,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-psycopg2-binary -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-psycopg2-binary -- -ra
 
   py310-test-instrumentation-psycopg:
     name: instrumentation-psycopg 
@@ -1983,29 +2343,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-psycopg -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-psycopg -- -ra
 
   py310-test-instrumentation-pymemcache-0:
     name: instrumentation-pymemcache-0 
@@ -2013,29 +2378,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymemcache-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymemcache-0 -- -ra
 
   py310-test-instrumentation-pymemcache-1:
     name: instrumentation-pymemcache-1 
@@ -2043,29 +2413,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymemcache-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymemcache-1 -- -ra
 
   py310-test-instrumentation-pymemcache-2:
     name: instrumentation-pymemcache-2 
@@ -2073,29 +2448,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymemcache-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymemcache-2 -- -ra
 
   py310-test-instrumentation-pymemcache-3:
     name: instrumentation-pymemcache-3 
@@ -2103,29 +2483,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymemcache-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymemcache-3 -- -ra
 
   py310-test-instrumentation-pymemcache-4:
     name: instrumentation-pymemcache-4 
@@ -2133,29 +2518,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymemcache-4 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymemcache-4 -- -ra
 
   py310-test-instrumentation-pymongo:
     name: instrumentation-pymongo 
@@ -2163,29 +2553,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymongo -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymongo -- -ra
 
   py310-test-instrumentation-pymysql:
     name: instrumentation-pymysql 
@@ -2193,29 +2588,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymysql -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymysql -- -ra
 
   py310-test-instrumentation-pymssql:
     name: instrumentation-pymssql 
@@ -2223,29 +2623,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pymssql -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pymssql -- -ra
 
   py310-test-instrumentation-pyramid:
     name: instrumentation-pyramid 
@@ -2253,29 +2658,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-pyramid -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-pyramid -- -ra
 
   py310-test-instrumentation-asgi:
     name: instrumentation-asgi 
@@ -2283,29 +2693,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asgi -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-asgi -- -ra
 
   py310-test-instrumentation-asyncpg-wrapt1:
     name: instrumentation-asyncpg-wrapt1 
@@ -2313,29 +2728,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asyncpg-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-asyncpg-wrapt1 -- -ra
 
   py310-test-instrumentation-asyncpg-wrapt2:
     name: instrumentation-asyncpg-wrapt2 
@@ -2343,29 +2763,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asyncpg-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-asyncpg-wrapt2 -- -ra
 
   py310-test-instrumentation-sqlite3:
     name: instrumentation-sqlite3 
@@ -2373,29 +2798,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlite3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sqlite3 -- -ra
 
   py310-test-instrumentation-wsgi:
     name: instrumentation-wsgi 
@@ -2403,29 +2833,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-wsgi -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-wsgi -- -ra
 
   py310-test-instrumentation-grpc-0-wrapt1:
     name: instrumentation-grpc-0-wrapt1 
@@ -2433,29 +2868,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-grpc-0-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-grpc-0-wrapt1 -- -ra
 
   py310-test-instrumentation-grpc-0-wrapt2:
     name: instrumentation-grpc-0-wrapt2 
@@ -2463,29 +2903,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-grpc-0-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-grpc-0-wrapt2 -- -ra
 
   py310-test-instrumentation-grpc-1-wrapt1:
     name: instrumentation-grpc-1-wrapt1 
@@ -2493,29 +2938,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-grpc-1-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-grpc-1-wrapt1 -- -ra
 
   py310-test-instrumentation-grpc-1-wrapt2:
     name: instrumentation-grpc-1-wrapt2 
@@ -2523,89 +2973,104 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-grpc-1-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-grpc-1-wrapt2 -- -ra
 
-  py310-test-instrumentation-sqlalchemy-1:
-    name: instrumentation-sqlalchemy-1 
+  py310-test-instrumentation-sqlalchemy-oldest:
+    name: instrumentation-sqlalchemy-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sqlalchemy-oldest -- -ra
 
-  py310-test-instrumentation-sqlalchemy-2:
-    name: instrumentation-sqlalchemy-2 
+  py310-test-instrumentation-sqlalchemy-latest:
+    name: instrumentation-sqlalchemy-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sqlalchemy-2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sqlalchemy-latest -- -ra
 
   py310-test-instrumentation-redis:
     name: instrumentation-redis 
@@ -2613,29 +3078,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-redis -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-redis -- -ra
 
   py310-test-instrumentation-remoulade:
     name: instrumentation-remoulade 
@@ -2643,29 +3113,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-remoulade -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-remoulade -- -ra
 
   py310-test-instrumentation-celery:
     name: instrumentation-celery 
@@ -2673,29 +3148,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-celery -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-celery -- -ra
 
   py310-test-instrumentation-system-metrics:
     name: instrumentation-system-metrics 
@@ -2703,29 +3183,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-system-metrics -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-system-metrics -- -ra
 
   py310-test-instrumentation-threading:
     name: instrumentation-threading 
@@ -2733,29 +3218,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-threading -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-threading -- -ra
 
   py310-test-instrumentation-tornado:
     name: instrumentation-tornado 
@@ -2763,29 +3253,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-tornado -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-tornado -- -ra
 
   py310-test-instrumentation-tortoiseorm:
     name: instrumentation-tortoiseorm 
@@ -2793,29 +3288,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-tortoiseorm -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-tortoiseorm -- -ra
 
   py310-test-instrumentation-httpx-0-wrapt1:
     name: instrumentation-httpx-0-wrapt1 
@@ -2823,29 +3323,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-0-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-0-wrapt1 -- -ra
 
   py310-test-instrumentation-httpx-0-wrapt2:
     name: instrumentation-httpx-0-wrapt2 
@@ -2853,29 +3358,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-0-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-0-wrapt2 -- -ra
 
   py310-test-instrumentation-httpx-1-wrapt1:
     name: instrumentation-httpx-1-wrapt1 
@@ -2883,29 +3393,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-1-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-1-wrapt1 -- -ra
 
   py310-test-instrumentation-httpx-1-wrapt2:
     name: instrumentation-httpx-1-wrapt2 
@@ -2913,29 +3428,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-1-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-1-wrapt2 -- -ra
 
   py310-test-instrumentation-httpx-2-wrapt1:
     name: instrumentation-httpx-2-wrapt1 
@@ -2943,29 +3463,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-2-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-2-wrapt1 -- -ra
 
   py310-test-instrumentation-httpx-2-wrapt2:
     name: instrumentation-httpx-2-wrapt2 
@@ -2973,29 +3498,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-2-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-2-wrapt2 -- -ra
 
   py310-test-instrumentation-httpx-3-wrapt1:
     name: instrumentation-httpx-3-wrapt1 
@@ -3003,29 +3533,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-3-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-3-wrapt1 -- -ra
 
   py310-test-instrumentation-httpx-3-wrapt2:
     name: instrumentation-httpx-3-wrapt2 
@@ -3033,29 +3568,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-httpx-3-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-httpx-3-wrapt2 -- -ra
 
   py310-test-util-http:
     name: util-http 
@@ -3063,29 +3603,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-util-http -- -ra
+        run: uv run --no-sync tox -e py310-test-util-http -- -ra
 
   py310-test-exporter-credential-provider-gcp:
     name: exporter-credential-provider-gcp 
@@ -3093,29 +3638,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-exporter-credential-provider-gcp -- -ra
+        run: uv run --no-sync tox -e py310-test-exporter-credential-provider-gcp -- -ra
 
   py310-test-util-genai:
     name: util-genai 
@@ -3123,29 +3673,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-util-genai -- -ra
+        run: uv run --no-sync tox -e py310-test-util-genai -- -ra
 
   py310-test-propagator-aws-xray-0:
     name: propagator-aws-xray-0 
@@ -3153,29 +3708,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-propagator-aws-xray-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-propagator-aws-xray-0 -- -ra
 
   py310-test-propagator-aws-xray-1:
     name: propagator-aws-xray-1 
@@ -3183,29 +3743,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-propagator-aws-xray-1 -- -ra
+        run: uv run --no-sync tox -e py310-test-propagator-aws-xray-1 -- -ra
 
   py310-test-propagator-ot-trace:
     name: propagator-ot-trace 
@@ -3213,29 +3778,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-propagator-ot-trace -- -ra
+        run: uv run --no-sync tox -e py310-test-propagator-ot-trace -- -ra
 
   py310-test-instrumentation-sio-pika-0-wrapt1:
     name: instrumentation-sio-pika-0-wrapt1 
@@ -3243,29 +3813,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sio-pika-0-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sio-pika-0-wrapt1 -- -ra
 
   py310-test-instrumentation-sio-pika-0-wrapt2:
     name: instrumentation-sio-pika-0-wrapt2 
@@ -3273,29 +3848,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sio-pika-0-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sio-pika-0-wrapt2 -- -ra
 
   py310-test-instrumentation-sio-pika-1-wrapt1:
     name: instrumentation-sio-pika-1-wrapt1 
@@ -3303,29 +3883,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sio-pika-1-wrapt1 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sio-pika-1-wrapt1 -- -ra
 
   py310-test-instrumentation-sio-pika-1-wrapt2:
     name: instrumentation-sio-pika-1-wrapt2 
@@ -3333,149 +3918,104 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-sio-pika-1-wrapt2 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-sio-pika-1-wrapt2 -- -ra
 
-  py310-test-instrumentation-aio-pika-0:
-    name: instrumentation-aio-pika-0 
+  py310-test-instrumentation-aio-pika-oldest:
+    name: instrumentation-aio-pika-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aio-pika-0 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aio-pika-oldest -- -ra
 
-  py310-test-instrumentation-aio-pika-1:
-    name: instrumentation-aio-pika-1 
+  py310-test-instrumentation-aio-pika-latest:
+    name: instrumentation-aio-pika-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-aio-pika-1 -- -ra
-
-  py310-test-instrumentation-aio-pika-2:
-    name: instrumentation-aio-pika-2 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          architecture: "x64"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aio-pika-2 -- -ra
-
-  py310-test-instrumentation-aio-pika-3:
-    name: instrumentation-aio-pika-3 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          architecture: "x64"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-aio-pika-3 -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aio-pika-latest -- -ra
 
   py310-test-instrumentation-aiokafka:
     name: instrumentation-aiokafka 
@@ -3483,29 +4023,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-aiokafka -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-aiokafka -- -ra
 
   py310-test-instrumentation-kafka-python-oldest:
     name: instrumentation-kafka-python-oldest 
@@ -3513,29 +4058,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-python-oldest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-kafka-python-oldest -- -ra
 
   py310-test-instrumentation-kafka-python-latest:
     name: instrumentation-kafka-python-latest 
@@ -3543,29 +4093,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-python-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-kafka-python-latest -- -ra
 
   py310-test-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka 
@@ -3573,29 +4128,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-confluent-kafka -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-confluent-kafka -- -ra
 
   py310-test-instrumentation-asyncio:
     name: instrumentation-asyncio 
@@ -3603,29 +4163,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-asyncio -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-asyncio -- -ra
 
   py310-test-instrumentation-cassandra-driver:
     name: instrumentation-cassandra-driver 
@@ -3633,29 +4198,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-cassandra-driver -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-cassandra-driver -- -ra
 
   py310-test-instrumentation-cassandra-scylla:
     name: instrumentation-cassandra-scylla 
@@ -3663,29 +4233,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-cassandra-scylla -- -ra
+        run: uv run --no-sync tox -e py310-test-instrumentation-cassandra-scylla -- -ra
 
   py310-test-processor-baggage:
     name: processor-baggage 
@@ -3693,29 +4268,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-processor-baggage -- -ra
+        run: uv run --no-sync tox -e py310-test-processor-baggage -- -ra
 
   py310-test-opamp-client-latest:
     name: opamp-client-latest 
@@ -3723,29 +4303,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-opamp-client-latest -- -ra
+        run: uv run --no-sync tox -e py310-test-opamp-client-latest -- -ra
 
   py310-test-opamp-client-lowest:
     name: opamp-client-lowest 
@@ -3753,26 +4338,31 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e py310-test-opamp-client-lowest -- -ra
+        run: uv run --no-sync tox -e py310-test-opamp-client-lowest -- -ra

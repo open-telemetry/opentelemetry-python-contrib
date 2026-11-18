@@ -56,7 +56,15 @@ _active_requests_count_attrs = {
     HTTP_SERVER_NAME,
 }
 
-PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
+PARAMS_TO_REDACT = [
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature",
+    "X-Amz-Signature",
+    "X-Amz-Credential",
+    "X-Amz-Security-Token",
+]
 
 
 class ExcludeList:
@@ -133,7 +141,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
     Small helper to put an arbitrary url list inside an ExcludeList
     """
     if excluded_urls:
-        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",")]
+        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",") if excluded_url.strip()]
     else:
         excluded_url_list = []
 

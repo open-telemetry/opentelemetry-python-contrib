@@ -20,6 +20,30 @@ Usage
 
     FastAPIInstrumentor.instrument_app(app)
 
+Auto-instrumentation
+********************
+
+FastAPI can also be instrumented without code changes by using the
+``opentelemetry-instrument`` command from the
+`opentelemetry-instrumentation <https://pypi.org/project/opentelemetry-instrumentation/>`_
+package. For installation, runtime command, exporter configuration, and
+environment variables, see
+`Python zero-code instrumentation <https://opentelemetry.io/docs/zero-code/python/>`_.
+Install ``opentelemetry-instrumentation-fastapi`` in the same environment so
+the FastAPI integration is available to auto-instrumentation. FastAPI-specific
+options, such as excluded URLs and HTTP header capture, are documented below.
+
+Trace propagation
+*****************
+
+FastAPI instrumentation uses the underlying ASGI instrumentation, which extracts
+incoming context from request headers using the configured global OpenTelemetry
+propagator. WebSocket connections are instrumented as ASGI ``websocket`` scopes,
+with context extracted from the handshake headers. Propagation data inside
+WebSocket message payloads is not parsed automatically. For more information,
+see `Python context propagation <https://opentelemetry.io/docs/languages/python/propagation/>`_
+and `Python distro configuration <https://opentelemetry.io/docs/languages/python/distro/>`_.
+
 Configuration
 -------------
 
@@ -42,6 +66,19 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 .. code-block:: python
 
     FastAPIInstrumentor.instrument_app(app, excluded_urls="client/.*/info,healthcheck")
+
+To skip the internal ``http send`` and ``http receive`` spans, set the environment variable
+``OTEL_PYTHON_ASGI_EXCLUDE_SPANS`` to a comma delimited list of ``send`` and/or ``receive``:
+
+::
+
+    export OTEL_PYTHON_ASGI_EXCLUDE_SPANS="send,receive"
+
+or pass the ``exclude_spans`` keyword argument, which takes precedence over the environment variable:
+
+.. code-block:: python
+
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["send", "receive"])
 
 Request/Response hooks
 **********************
@@ -174,6 +211,8 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+.. include:: /_includes/http-semconv.rst
 
 API
 ---

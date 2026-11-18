@@ -24,8 +24,8 @@ This package provides commands that help automatically instrument a program:
 
         pip install "opentelemetry-distro[otlp]"
 
-    When creating a custom distro and/or configurator, be sure to add entry points for each under `opentelemetry_distro` and `opentelemetry_configurator` respectfully.
-    If you have entry points for multiple distros or configurators present in your environment, you should specify the entry point name of the distro and configurator you want to be used via the `OTEL_PYTHON_DISTRO` and `OTEL_PYTHON_CONFIGURATOR` environment variables.
+    When creating a custom distro and/or configurator, be sure to add entry points for each under ``opentelemetry_distro`` and ``opentelemetry_configurator`` respectfully.
+    If you have entry points for multiple distros or configurators present in your environment, you should specify the entry point name of the distro and configurator you want to be used via the ``OTEL_PYTHON_DISTRO`` and ``OTEL_PYTHON_CONFIGURATOR`` environment variables.
 
 
 opentelemetry-bootstrap
@@ -40,7 +40,7 @@ to figure out which instrumentation packages the user might want to install. By 
 prints out a list of the default and detected instrumentation packages that can be added to a
 requirements.txt file. It also supports installing the packages when run with
 :code:`--action=install` or :code:`-a install` flag. All default and detectable
-instrumentation packages are defined `here <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py>`.
+instrumentation packages are defined `here <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py>`__.
 
 
 opentelemetry-instrument
@@ -69,9 +69,9 @@ The exporter options define what exporter destination to use and can be set to o
 exporter names (see below). You can pass multiple values to configure multiple exporters
 (e.g., ``zipkin_json,otlp``).
 
-    - Defaults to `otlp`.
-    - Can be set to `none` to disable automatic tracer initialization.
-    - Can be set to 'console` to display JSON results locally.
+    - Defaults to ``otlp``.
+    - Can be set to ``none`` to disable automatic tracer initialization.
+    - Can be set to ``console`` to display JSON results locally.
 
 Trace exporter names:
 
@@ -79,15 +79,15 @@ Trace exporter names:
     - jaeger_thrift
     - opencensus
     - otlp
-    - otlp_proto_grpc (`deprecated`)
-    - otlp_proto_http (`deprecated`)
+    - otlp_proto_grpc (``deprecated``)
+    - otlp_proto_http (``deprecated``)
     - zipkin_json
     - zipkin_proto
 
 Metric exporter names:
 
     - otlp
-    - otlp_proto_grpc (`deprecated`)
+    - otlp_proto_grpc (``deprecated``)
     - prometheus
 
 Note: The default transport protocol for ``otlp`` is gRPC.
@@ -110,7 +110,7 @@ If the variables contains ``*`` as member no instrumentation will be enabled.
 
 * ``OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH``
 
-If set by the user to `patch_all` , opentelemetry instrument will call the gevent monkeypatching method ``patch_all``.
+If set by the user to ``patch_all`` , opentelemetry instrument will call the gevent monkeypatching method ``patch_all``.
 This is considered experimental but can be useful to instrument gevent applications.
 e.g OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH=patch_all
 

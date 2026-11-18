@@ -40,6 +40,7 @@ from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_TYPE,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_HEADER_TEMPLATE,
     HTTP_REQUEST_METHOD,
     HTTP_REQUEST_METHOD_ORIGINAL,
     HTTP_RESPONSE_STATUS_CODE,
@@ -50,6 +51,7 @@ from opentelemetry.semconv.attributes.network_attributes import (
 )
 from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
     SpanKind,
@@ -96,6 +98,16 @@ urlpatterns = [
     re_path(r"^span_name/([0-9]{4})/$", async_route_span_name),
 ]
 _django_instrumentor = DjangoInstrumentor()
+
+SCOPE = "opentelemetry.instrumentation.django"
+
+_CUSTOM_REQUEST_HEADER_ATTRIBUTE = f"{HTTP_REQUEST_HEADER_TEMPLATE}.custom_test_header_1"
+
+
+def _request_header_attributes(attributes):
+    return {
+        key: value for key, value in (attributes or {}).items() if key.startswith(f"{HTTP_REQUEST_HEADER_TEMPLATE}.")
+    }
 
 
 @pytest.mark.skipif(not DJANGO_3_1, reason="AsyncClient implemented since Django 3.1")
@@ -744,6 +756,78 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
         self.memory_exporter.clear()
+
+    def _instrument_with_sampler(self, sampler):
+        _django_instrumentor.uninstrument()
+        tracer_provider, exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        _django_instrumentor.instrument(tracer_provider=tracer_provider)
+        return tracer_provider, exporter
+
+    async def test_http_custom_request_headers_passed_to_sampler(self):
+        expected = {
+            "http.request.header.custom_test_header_1": ["test-header-value-1"],
+            "http.request.header.regex_test_header_1": ["Regex Test Value 1"],
+            "http.request.header.my_secret_header": ["[REDACTED]"],
+        }
+        sampler = CapturingSampler()
+        _, exporter = self._instrument_with_sampler(sampler)
+
+        response = await self.async_client.get(
+            "/traced/",
+            **{
+                "custom-test-header-1": "test-header-value-1",
+                "Regex-Test-Header-1": "Regex Test Value 1",
+                "My-Secret-Header": "My Secret Value",
+                "Uncaptured-Header": "Uncaptured Value",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.SERVER)
+        self.assertEqual(_request_header_attributes(sampler.attributes), expected)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].kind, SpanKind.SERVER)
+        self.assertEqual(
+            _request_header_attributes(spans[0].attributes),
+            {key: tuple(value) for key, value in expected.items()},
+        )
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(metrics)
+        for metric in metrics:
+            for point in metric.data.data_points:
+                self.assertEqual(_request_header_attributes(point.attributes), {})
+
+    async def test_http_custom_request_headers_control_sampling(self):
+        for value, expected_span_count in (("sample", 1), ("drop", 0)):
+            with self.subTest(value=value):
+                sampler = CapturingSampler(required_attributes={_CUSTOM_REQUEST_HEADER_ATTRIBUTE: ["sample"]})
+                _, exporter = self._instrument_with_sampler(sampler)
+
+                response = await self.async_client.get("/traced/", **{"custom-test-header-1": value})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
+    async def test_http_custom_request_headers_not_passed_to_sampler_for_internal_span(self):
+        sampler = CapturingSampler()
+        tracer_provider, exporter = self._instrument_with_sampler(sampler)
+        tracer = tracer_provider.get_tracer(__name__)
+
+        with tracer.start_as_current_span("test", kind=SpanKind.SERVER) as parent_span:
+            await self.async_client.get("/traced/", **{"custom-test-header-1": "test-header-value-1"})
+
+        self.assertEqual(sampler.kind, SpanKind.INTERNAL)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, sampler.attributes)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        span = spans[0]
+        self.assertEqual(span.kind, SpanKind.INTERNAL)
+        self.assertEqual(span.parent.span_id, parent_span.get_span_context().span_id)
+        self.assertNotIn(_CUSTOM_REQUEST_HEADER_ATTRIBUTE, span.attributes)
 
     async def test_http_custom_response_headers_in_span_attributes(self):
         expected = {

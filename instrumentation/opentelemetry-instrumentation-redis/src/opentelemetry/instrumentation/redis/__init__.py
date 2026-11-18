@@ -128,6 +128,29 @@ creating spans for internal operations, health checks, or during specific code p
     # This will report a span again
     client.get("another-key")
 
+Stable Semantic Conventions
+***************************
+
+This instrumentation supports the database semantic convention migration plan.
+You can control which conventions are emitted by setting the
+``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to one of these values:
+
+- ``database`` - emit the stable database conventions and stop emitting the
+  old experimental conventions.
+- ``database/dup`` - emit both the old experimental and stable database
+  conventions during a transition period.
+- ``http`` - emit the stable HTTP conventions and stop emitting the old
+  experimental conventions.
+- ``http/dup`` - emit both the old experimental and stable HTTP conventions
+  during a transition period.
+
+The environment variable accepts a comma-separated list of opt-in values. For
+example, ``database,http/dup`` enables stable database conventions and emits
+both old and stable HTTP conventions.
+
+By default, when the environment variable is not set, the old experimental
+database and HTTP conventions are emitted.
+
 API
 ---
 """
@@ -249,8 +272,7 @@ def _traced_execute_factory(
                 span_attrs["db.redis.args_length"] = len(args)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -309,8 +331,7 @@ def _traced_execute_pipeline_factory(
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -370,8 +391,7 @@ def _async_traced_execute_factory(
                 span_attrs["db.redis.args_length"] = len(args)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,
@@ -427,8 +447,7 @@ def _async_traced_execute_pipeline_factory(
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
-                for key, value in span_attrs.items():
-                    span.set_attribute(key, value)
+                span.set_attributes(span_attrs)
 
                 _set_connection_attributes(
                     span,

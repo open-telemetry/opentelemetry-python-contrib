@@ -34,27 +34,32 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout contrib repo @ SHA - ${% raw %}{{ env.CONTRIB_REPO_SHA }}{% endraw %}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${% raw %}{{ env.CONTRIB_REPO_SHA }}{% endraw %}
+          persist-credentials: false
 
       - name: Checkout core repo @ SHA - ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: open-telemetry/opentelemetry-python
           ref: ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
           path: opentelemetry-python
+          persist-credentials: false
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e {{ job_data.tox_env }} -- -ra
+        run: uv run --no-sync tox -e {{ job_data.tox_env }} -- -ra
   {%- endfor %}

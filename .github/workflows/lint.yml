@@ -30,18 +30,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-openai-v2
+        run: uv run --no-sync tox -e lint-instrumentation-openai-v2
 
   lint-instrumentation-openai_agents-v2:
     name: instrumentation-openai_agents-v2
@@ -49,18 +54,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-openai_agents-v2
+        run: uv run --no-sync tox -e lint-instrumentation-openai_agents-v2
 
   lint-instrumentation-vertexai:
     name: instrumentation-vertexai
@@ -68,18 +78,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-vertexai
+        run: uv run --no-sync tox -e lint-instrumentation-vertexai
 
   lint-resource-detector-containerid:
     name: resource-detector-containerid
@@ -87,18 +102,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-resource-detector-containerid
+        run: uv run --no-sync tox -e lint-resource-detector-containerid
 
   lint-resource-detector-azure:
     name: resource-detector-azure
@@ -106,18 +126,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-resource-detector-azure
+        run: uv run --no-sync tox -e lint-resource-detector-azure
 
   lint-resourcedetector-gcp:
     name: resourcedetector-gcp
@@ -125,18 +150,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-resourcedetector-gcp
+        run: uv run --no-sync tox -e lint-resourcedetector-gcp
 
   lint-sdk-extension-aws:
     name: sdk-extension-aws
@@ -144,18 +174,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-sdk-extension-aws
+        run: uv run --no-sync tox -e lint-sdk-extension-aws
 
   lint-distro:
     name: distro
@@ -163,18 +198,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-distro
+        run: uv run --no-sync tox -e lint-distro
 
   lint-opentelemetry-instrumentation:
     name: opentelemetry-instrumentation
@@ -182,18 +222,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-opentelemetry-instrumentation
+        run: uv run --no-sync tox -e lint-opentelemetry-instrumentation
 
   lint-instrumentation-aiohttp-client:
     name: instrumentation-aiohttp-client
@@ -201,18 +246,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aiohttp-client
+        run: uv run --no-sync tox -e lint-instrumentation-aiohttp-client
 
   lint-instrumentation-aiohttp-server:
     name: instrumentation-aiohttp-server
@@ -220,18 +270,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aiohttp-server
+        run: uv run --no-sync tox -e lint-instrumentation-aiohttp-server
 
   lint-instrumentation-aiopg:
     name: instrumentation-aiopg
@@ -239,18 +294,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aiopg
+        run: uv run --no-sync tox -e lint-instrumentation-aiopg
 
   lint-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda
@@ -258,18 +318,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aws-lambda
+        run: uv run --no-sync tox -e lint-instrumentation-aws-lambda
 
   lint-instrumentation-botocore:
     name: instrumentation-botocore
@@ -277,18 +342,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-botocore
+        run: uv run --no-sync tox -e lint-instrumentation-botocore
 
   lint-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs
@@ -296,18 +366,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-boto3sqs
+        run: uv run --no-sync tox -e lint-instrumentation-boto3sqs
 
   lint-instrumentation-django:
     name: instrumentation-django
@@ -315,18 +390,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-django
+        run: uv run --no-sync tox -e lint-instrumentation-django
 
   lint-instrumentation-dbapi:
     name: instrumentation-dbapi
@@ -334,18 +414,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-dbapi
+        run: uv run --no-sync tox -e lint-instrumentation-dbapi
 
   lint-instrumentation-asyncclick:
     name: instrumentation-asyncclick
@@ -353,18 +438,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-asyncclick
+        run: uv run --no-sync tox -e lint-instrumentation-asyncclick
 
   lint-instrumentation-click:
     name: instrumentation-click
@@ -372,18 +462,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-click
+        run: uv run --no-sync tox -e lint-instrumentation-click
 
   lint-instrumentation-falcon:
     name: instrumentation-falcon
@@ -391,18 +486,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-falcon
+        run: uv run --no-sync tox -e lint-instrumentation-falcon
 
   lint-instrumentation-fastapi:
     name: instrumentation-fastapi
@@ -410,18 +510,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-fastapi
+        run: uv run --no-sync tox -e lint-instrumentation-fastapi
 
   lint-instrumentation-flask:
     name: instrumentation-flask
@@ -429,18 +534,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-flask
+        run: uv run --no-sync tox -e lint-instrumentation-flask
 
   lint-instrumentation-urllib:
     name: instrumentation-urllib
@@ -448,18 +558,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-urllib
+        run: uv run --no-sync tox -e lint-instrumentation-urllib
 
   lint-instrumentation-urllib3:
     name: instrumentation-urllib3
@@ -467,18 +582,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-urllib3
+        run: uv run --no-sync tox -e lint-instrumentation-urllib3
 
   lint-instrumentation-requests:
     name: instrumentation-requests
@@ -486,18 +606,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-requests
+        run: uv run --no-sync tox -e lint-instrumentation-requests
 
   lint-instrumentation-starlette:
     name: instrumentation-starlette
@@ -505,18 +630,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-starlette
+        run: uv run --no-sync tox -e lint-instrumentation-starlette
 
   lint-instrumentation-structlog:
     name: instrumentation-structlog
@@ -524,18 +654,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-structlog
+        run: uv run --no-sync tox -e lint-instrumentation-structlog
 
   lint-instrumentation-jinja2:
     name: instrumentation-jinja2
@@ -543,18 +678,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-jinja2
+        run: uv run --no-sync tox -e lint-instrumentation-jinja2
 
   lint-instrumentation-logging:
     name: instrumentation-logging
@@ -562,18 +702,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-logging
+        run: uv run --no-sync tox -e lint-instrumentation-logging
 
   lint-instrumentation-exceptions:
     name: instrumentation-exceptions
@@ -581,18 +726,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-exceptions
+        run: uv run --no-sync tox -e lint-instrumentation-exceptions
 
   lint-exporter-richconsole:
     name: exporter-richconsole
@@ -600,18 +750,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-exporter-richconsole
+        run: uv run --no-sync tox -e lint-exporter-richconsole
 
   lint-exporter-prometheus-remote-write:
     name: exporter-prometheus-remote-write
@@ -619,18 +774,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-exporter-prometheus-remote-write
+        run: uv run --no-sync tox -e lint-exporter-prometheus-remote-write
 
   lint-instrumentation-mysql:
     name: instrumentation-mysql
@@ -638,18 +798,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-mysql
+        run: uv run --no-sync tox -e lint-instrumentation-mysql
 
   lint-instrumentation-mysqlclient:
     name: instrumentation-mysqlclient
@@ -657,18 +822,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-mysqlclient
+        run: uv run --no-sync tox -e lint-instrumentation-mysqlclient
 
   lint-instrumentation-psycopg2:
     name: instrumentation-psycopg2
@@ -676,18 +846,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-psycopg2
+        run: uv run --no-sync tox -e lint-instrumentation-psycopg2
 
   lint-instrumentation-psycopg:
     name: instrumentation-psycopg
@@ -695,18 +870,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-psycopg
+        run: uv run --no-sync tox -e lint-instrumentation-psycopg
 
   lint-instrumentation-pymemcache:
     name: instrumentation-pymemcache
@@ -714,18 +894,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-pymemcache
+        run: uv run --no-sync tox -e lint-instrumentation-pymemcache
 
   lint-instrumentation-pymongo:
     name: instrumentation-pymongo
@@ -733,18 +918,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-pymongo
+        run: uv run --no-sync tox -e lint-instrumentation-pymongo
 
   lint-instrumentation-pymysql:
     name: instrumentation-pymysql
@@ -752,18 +942,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-pymysql
+        run: uv run --no-sync tox -e lint-instrumentation-pymysql
 
   lint-instrumentation-pymssql:
     name: instrumentation-pymssql
@@ -771,18 +966,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-pymssql
+        run: uv run --no-sync tox -e lint-instrumentation-pymssql
 
   lint-instrumentation-pyramid:
     name: instrumentation-pyramid
@@ -790,18 +990,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-pyramid
+        run: uv run --no-sync tox -e lint-instrumentation-pyramid
 
   lint-instrumentation-asgi:
     name: instrumentation-asgi
@@ -809,18 +1014,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-asgi
+        run: uv run --no-sync tox -e lint-instrumentation-asgi
 
   lint-instrumentation-asyncpg:
     name: instrumentation-asyncpg
@@ -828,18 +1038,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-asyncpg
+        run: uv run --no-sync tox -e lint-instrumentation-asyncpg
 
   lint-instrumentation-sqlite3:
     name: instrumentation-sqlite3
@@ -847,18 +1062,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-sqlite3
+        run: uv run --no-sync tox -e lint-instrumentation-sqlite3
 
   lint-instrumentation-wsgi:
     name: instrumentation-wsgi
@@ -866,18 +1086,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-wsgi
+        run: uv run --no-sync tox -e lint-instrumentation-wsgi
 
   lint-instrumentation-grpc:
     name: instrumentation-grpc
@@ -885,18 +1110,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-grpc
+        run: uv run --no-sync tox -e lint-instrumentation-grpc
 
   lint-instrumentation-sqlalchemy:
     name: instrumentation-sqlalchemy
@@ -904,18 +1134,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-sqlalchemy
+        run: uv run --no-sync tox -e lint-instrumentation-sqlalchemy
 
   lint-instrumentation-redis:
     name: instrumentation-redis
@@ -923,18 +1158,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-redis
+        run: uv run --no-sync tox -e lint-instrumentation-redis
 
   lint-instrumentation-remoulade:
     name: instrumentation-remoulade
@@ -942,18 +1182,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-remoulade
+        run: uv run --no-sync tox -e lint-instrumentation-remoulade
 
   lint-instrumentation-celery:
     name: instrumentation-celery
@@ -961,18 +1206,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-celery
+        run: uv run --no-sync tox -e lint-instrumentation-celery
 
   lint-instrumentation-system-metrics:
     name: instrumentation-system-metrics
@@ -980,18 +1230,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-system-metrics
+        run: uv run --no-sync tox -e lint-instrumentation-system-metrics
 
   lint-instrumentation-threading:
     name: instrumentation-threading
@@ -999,18 +1254,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-threading
+        run: uv run --no-sync tox -e lint-instrumentation-threading
 
   lint-instrumentation-tornado:
     name: instrumentation-tornado
@@ -1018,18 +1278,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-tornado
+        run: uv run --no-sync tox -e lint-instrumentation-tornado
 
   lint-instrumentation-tortoiseorm:
     name: instrumentation-tortoiseorm
@@ -1037,18 +1302,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-tortoiseorm
+        run: uv run --no-sync tox -e lint-instrumentation-tortoiseorm
 
   lint-instrumentation-httpx:
     name: instrumentation-httpx
@@ -1056,18 +1326,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-httpx
+        run: uv run --no-sync tox -e lint-instrumentation-httpx
 
   lint-util-http:
     name: util-http
@@ -1075,18 +1350,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-util-http
+        run: uv run --no-sync tox -e lint-util-http
 
   lint-exporter-credential-provider-gcp:
     name: exporter-credential-provider-gcp
@@ -1094,18 +1374,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-exporter-credential-provider-gcp
+        run: uv run --no-sync tox -e lint-exporter-credential-provider-gcp
 
   lint-util-genai:
     name: util-genai
@@ -1113,18 +1398,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-util-genai
+        run: uv run --no-sync tox -e lint-util-genai
 
   lint-propagator-aws-xray:
     name: propagator-aws-xray
@@ -1132,18 +1422,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-propagator-aws-xray
+        run: uv run --no-sync tox -e lint-propagator-aws-xray
 
   lint-propagator-ot-trace:
     name: propagator-ot-trace
@@ -1151,18 +1446,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-propagator-ot-trace
+        run: uv run --no-sync tox -e lint-propagator-ot-trace
 
   lint-instrumentation-sio-pika:
     name: instrumentation-sio-pika
@@ -1170,18 +1470,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-sio-pika
+        run: uv run --no-sync tox -e lint-instrumentation-sio-pika
 
   lint-instrumentation-aio-pika:
     name: instrumentation-aio-pika
@@ -1189,18 +1494,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aio-pika
+        run: uv run --no-sync tox -e lint-instrumentation-aio-pika
 
   lint-instrumentation-aiokafka:
     name: instrumentation-aiokafka
@@ -1208,18 +1518,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-aiokafka
+        run: uv run --no-sync tox -e lint-instrumentation-aiokafka
 
   lint-instrumentation-kafka-python:
     name: instrumentation-kafka-python
@@ -1227,18 +1542,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-kafka-python
+        run: uv run --no-sync tox -e lint-instrumentation-kafka-python
 
   lint-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka
@@ -1246,18 +1566,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-confluent-kafka
+        run: uv run --no-sync tox -e lint-instrumentation-confluent-kafka
 
   lint-instrumentation-asyncio:
     name: instrumentation-asyncio
@@ -1265,18 +1590,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-asyncio
+        run: uv run --no-sync tox -e lint-instrumentation-asyncio
 
   lint-instrumentation-cassandra:
     name: instrumentation-cassandra
@@ -1284,18 +1614,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-instrumentation-cassandra
+        run: uv run --no-sync tox -e lint-instrumentation-cassandra
 
   lint-processor-baggage:
     name: processor-baggage
@@ -1303,18 +1638,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-processor-baggage
+        run: uv run --no-sync tox -e lint-processor-baggage
 
   lint-opamp-client:
     name: opamp-client
@@ -1322,18 +1662,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-opamp-client
+        run: uv run --no-sync tox -e lint-opamp-client
 
   lint-license-header-check:
     name: license-header-check
@@ -1341,15 +1686,20 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e lint-license-header-check
+        run: uv run --no-sync tox -e lint-license-header-check

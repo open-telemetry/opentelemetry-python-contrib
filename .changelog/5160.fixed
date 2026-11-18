@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-falcon`: make captured request headers available to samplers

@@ -5,11 +5,13 @@
 
 set -ev
 
-# Get the latest versions of packaging tools
-python3 -m pip install --upgrade pip build setuptools wheel
-
 BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
+
+# Get the versions of packaging tools recorded in the lockfile
+uv sync --locked --only-group build --project "$BASEDIR"
+PATH="$BASEDIR/.venv/bin:$PATH"
+export PATH
 
 (
   cd $BASEDIR
@@ -35,6 +37,10 @@ DISTDIR=dist
     # FIXME: Remove this once opentelemetry-resource-detector-azure package goes 1.X
     if echo "$x" | grep -Eq "^opentelemetry_(resource_detector_azure|util_genai).*(\.tar\.gz|\.whl)$"; then
       echo "Skipping $x because of manual upload by Azure maintainers."
+      rm $x
+    # opentelemetry-instrumentation-valkey-py is released independently via package-release.yml
+    elif echo "$x" | grep -Eq "^opentelemetry_instrumentation_valkey_py-.*(\.tar\.gz|\.whl)$"; then
+      echo "Skipping $x because it is released independently via package-release.yml."
       rm $x
     # NOTE: We filter beta vs 1.0 package at this point because we can read the
     # version directly from the .tar.gz/whl file

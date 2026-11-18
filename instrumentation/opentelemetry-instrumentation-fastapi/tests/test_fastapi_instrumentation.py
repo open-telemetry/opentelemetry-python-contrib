@@ -34,7 +34,10 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
-from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi import (
+    OTEL_PYTHON_ASGI_EXCLUDE_SPANS,
+    OpenTelemetryMiddleware,
+)
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
@@ -1200,7 +1203,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
     @staticmethod
     def _instrumentation_failed_to_load_call(dependency_conflict):
-        return call("Skipping instrumentation %s: %s", "fastapi", dependency_conflict)
+        return call(dependency_conflict._format_message("fastapi"))
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_fastapi_installed(self, mock_logger):
@@ -1220,7 +1223,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.debug.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
+        mock_logger.error.assert_has_calls([self._instrumentation_failed_to_load_call(dependency_conflict)])
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
@@ -1254,6 +1257,12 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
             excluded_urls=to_exclude,
         )
         return self._create_fastapi_app()
+
+    def test_exclude_spans_from_env(self):
+        with patch.dict("os.environ", {OTEL_PYTHON_ASGI_EXCLUDE_SPANS: "receive,send"}):
+            TestClient(self._create_fastapi_app()).get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual([span.name for span in spans], ["GET /foobar"])
 
     def test_request(self):
         self._client.get("/foobar")
