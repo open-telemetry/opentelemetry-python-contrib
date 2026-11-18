@@ -18509,6 +18509,7 @@ jobs:
   py314-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.14 Ubuntu
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -18529,6 +18530,30 @@ jobs:
 
       - name: Run tests
         run: uv run --no-sync tox -e py314-test-instrumentation-confluent-kafka -- -ra
+
+  py315-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.15 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.15
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.15"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install tox
+        run: uv sync --locked --only-group tox
+
+      - name: Run tests
+        run: uv run --no-sync tox -e py315-test-instrumentation-confluent-kafka -- -ra
 
   py310-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.10 Ubuntu
