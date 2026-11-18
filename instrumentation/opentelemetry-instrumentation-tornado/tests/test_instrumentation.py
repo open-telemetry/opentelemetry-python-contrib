@@ -832,6 +832,27 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
 
+    def test_http_client_attributes_passed_to_sampler(self):
+        sampler = CapturingSampler()
+        _instrument_with_sampler(self, sampler)
+
+        # /healthz is excluded on the server, so the client span is the only span the sampler sees.
+        response = self.fetch("/healthz")
+        self.assertEqual(response.code, 200)
+
+        self.assertEqual(sampler.kind, SpanKind.CLIENT)
+        self.assertEqual(sampler.attributes, {HTTP_URL: self.get_url("/healthz"), HTTP_METHOD: "GET"})
+
+    def test_http_client_attributes_control_sampling(self):
+        for path, expected_span_count in (("/healthz", 1), ("/ping", 0)):
+            with self.subTest(path=path):
+                sampler = CapturingSampler(required_attributes={HTTP_URL: self.get_url("/healthz")})
+                _, exporter = _instrument_with_sampler(self, sampler)
+
+                response = self.fetch(path)
+                self.assertEqual(response.code, 200)
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
+
 
 class TestTornadoUninstrument(TornadoTest):
     def test_uninstrument(self):
