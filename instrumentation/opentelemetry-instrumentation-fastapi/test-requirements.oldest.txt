@@ -40,7 +40,9 @@ exceptiongroup==1.3.1 ; python_full_version < '3.11'
     #   anyio
     #   pytest
 fastapi==0.119.1
-    # via opentelemetry-instrumentation-fastapi
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
+    #   opentelemetry-instrumentation-fastapi
 h11==0.16.0
     # via httpcore
 httpcore==1.0.9
@@ -54,7 +56,7 @@ idna==3.18
     #   requests
 iniconfig==2.3.0
     # via pytest
-packaging==18.0
+packaging==22.0
     # via
     #   opentelemetry-instrumentation
     #   pytest
@@ -63,12 +65,10 @@ pluggy==1.6.0
 pydantic==2.12.5
     # via fastapi
 pydantic-core==2.41.5
-    # via
-    #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
-    #   pydantic
-pyparsing==3.3.2
-    # via packaging
-pytest==7.4.4
+    # via pydantic
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
@@ -76,8 +76,6 @@ requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
-six==1.17.0
-    # via packaging
 starlette==0.48.0
     # via fastapi
 tomli==2.4.1 ; python_full_version < '3.11'

@@ -34,7 +34,10 @@ from opentelemetry.instrumentation._semconv import (
     _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
-from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi import (
+    OTEL_PYTHON_ASGI_EXCLUDE_SPANS,
+    OpenTelemetryMiddleware,
+)
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
@@ -1254,6 +1257,12 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
             excluded_urls=to_exclude,
         )
         return self._create_fastapi_app()
+
+    def test_exclude_spans_from_env(self):
+        with patch.dict("os.environ", {OTEL_PYTHON_ASGI_EXCLUDE_SPANS: "receive,send"}):
+            TestClient(self._create_fastapi_app()).get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual([span.name for span in spans], ["GET /foobar"])
 
     def test_request(self):
         self._client.get("/foobar")

@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-click`,`opentelemetry-instrumentation-asyncclick`: do not mark a zero exit code as an error, and record the code passed to `sys.exit()`

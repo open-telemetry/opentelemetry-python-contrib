@@ -13,6 +13,7 @@ from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
+from opentelemetry.util.types import AttributeValue
 
 _LOG = getLogger(__name__)
 
@@ -88,18 +89,19 @@ _kafka_getter = KafkaContextGetter()
 _kafka_setter = KafkaContextSetter()
 
 
-def _enrich_span(
-    span,
+def _get_attributes(
     bootstrap_servers: list[str],
     topic: str,
-    partition: int | None,
-):
-    if span.is_recording():
-        span.set_attribute(messaging_attributes.MESSAGING_SYSTEM, "kafka")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        if partition is not None:
-            span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-        span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
+    partition: int | None = None,
+) -> dict[str, AttributeValue]:
+    attributes: dict[str, AttributeValue] = {
+        messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+        SpanAttributes.MESSAGING_DESTINATION: topic,
+        SpanAttributes.MESSAGING_URL: json.dumps(bootstrap_servers),
+    }
+    if partition is not None:
+        attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+    return attributes
 
 
 def _get_span_name(operation: str, topic: str):
@@ -116,7 +118,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
+        attributes = _get_attributes(bootstrap_servers, topic)
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes) as span:
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -130,7 +133,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
 
             future = func(*args, **kwargs)
             partition = KafkaPropertiesExtractor.extract_send_partition(future)
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            if partition is not None:
+                span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
             return future
 
     return _traced_send
@@ -146,14 +150,15 @@ def _create_consumer_span(
     kwargs,
 ):
     span_name = _get_span_name("receive", record.topic)
+    attributes = _get_attributes(bootstrap_servers, record.topic, record.partition)
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
         kind=trace.SpanKind.CONSUMER,
+        attributes=attributes,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)

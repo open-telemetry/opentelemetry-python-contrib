@@ -20,7 +20,7 @@ iniconfig==2.3.0
     # via pytest
 multidict==6.9.1
     # via yarl
-packaging==18.0
+packaging==22.0
     # via
     #   opentelemetry-instrumentation
     #   pytest
@@ -30,14 +30,12 @@ pluggy==1.6.0
     # via pytest
 propcache==0.5.2
     # via yarl
-pyparsing==3.3.2
-    # via packaging
-pytest==7.4.4
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-aio-pika/test-requirements.in
-six==1.17.0
-    # via packaging
 tomli==2.4.1 ; python_full_version < '3.11'
     # via pytest
 typing-extensions==4.16.0
