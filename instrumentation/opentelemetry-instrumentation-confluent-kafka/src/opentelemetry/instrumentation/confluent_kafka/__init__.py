@@ -107,6 +107,7 @@ from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_OPERATION,
     MessagingOperationTypeValues,
 )
 from opentelemetry.trace import Tracer
@@ -116,7 +117,7 @@ from .utils import (
     KafkaPropertiesExtractor,
     _create_new_consume_span,
     _end_current_consume_span,
-    _enrich_span,
+    _get_attributes,
     _get_span_name,
     _kafka_setter,
 )
@@ -356,20 +357,19 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             topic = args[0]
 
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER) as span:
+        topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+        attributes = _get_attributes(
+            topic,
+            operation=MessagingOperationTypeValues.PUBLISH,
+            bootstrap_servers=bootstrap_servers,
+        )
+        with tracer.start_as_current_span(name=span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes):
             headers = KafkaPropertiesExtractor.extract_produce_headers(args, kwargs)
             if headers is None:
                 headers = []
                 kwargs["headers"] = headers
 
-            topic = KafkaPropertiesExtractor.extract_produce_topic(args, kwargs)
-            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            _enrich_span(
-                span,
-                topic,
-                operation=MessagingOperationTypeValues.PUBLISH,
-                bootstrap_servers=bootstrap_servers,
-            )  # Publish
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
@@ -384,16 +384,21 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         record = func(*args, **kwargs)
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, [record])
-                _enrich_span(
-                    instance._current_consume_span,
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            attributes = _get_attributes(
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+            receive_attributes = {
+                **attributes,
+                MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
+            }
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER, attributes=receive_attributes
+            ):
+                _create_new_consume_span(instance, tracer, [record], attributes)
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return record
@@ -406,14 +411,19 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         records = func(*args, **kwargs)
         if len(records) > 0:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            with tracer.start_as_current_span("recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER):
-                _create_new_consume_span(instance, tracer, records)
-                _enrich_span(
-                    instance._current_consume_span,
-                    records[0].topic(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                    bootstrap_servers=bootstrap_servers,
-                )
+            attributes = _get_attributes(
+                records[0].topic(),
+                operation=MessagingOperationTypeValues.PROCESS,
+                bootstrap_servers=bootstrap_servers,
+            )
+            receive_attributes = {
+                **attributes,
+                MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
+            }
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER, attributes=receive_attributes
+            ):
+                _create_new_consume_span(instance, tracer, records, attributes)
             instance._current_context_token = context.attach(trace.set_span_in_context(instance._current_consume_span))
 
         return records

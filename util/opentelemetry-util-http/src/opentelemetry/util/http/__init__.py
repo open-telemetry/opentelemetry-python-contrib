@@ -56,7 +56,15 @@ _active_requests_count_attrs = {
     HTTP_SERVER_NAME,
 }
 
-PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
+PARAMS_TO_REDACT = [
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature",
+    "X-Amz-Signature",
+    "X-Amz-Credential",
+    "X-Amz-Security-Token",
+]
 
 
 class ExcludeList:
@@ -133,7 +141,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
     Small helper to put an arbitrary url list inside an ExcludeList
     """
     if excluded_urls:
-        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",")]
+        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",") if excluded_url.strip()]
     else:
         excluded_url_list = []
 
@@ -211,7 +219,9 @@ def sanitize_method(method: str | None) -> str | None:
 def get_custom_headers(env_var: str) -> list[str]:
     custom_headers = environ.get(env_var, None)
     if custom_headers:
-        return [custom_headers.strip() for custom_headers in custom_headers.split(",")]
+        # A blank entry compiles to an empty pattern, which matches every
+        # header name and so redacts every captured value.
+        return [header.strip() for header in custom_headers.split(",") if header.strip()]
     return []
 
 

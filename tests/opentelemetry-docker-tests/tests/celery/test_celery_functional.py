@@ -2,8 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from itertools import product
+from socket import gethostname
+from threading import Event
+from typing import Any
+
 import celery
 from celery.exceptions import Retry
+from kombu import Exchange, Queue
 from pytest import mark
 
 import opentelemetry.instrumentation.celery
@@ -11,6 +20,7 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider, export
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.semconv._incubating.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_TYPE,
@@ -18,6 +28,7 @@ from opentelemetry.semconv._incubating.attributes.exception_attributes import (
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
 )
+from opentelemetry.semconv.trace import MessagingDestinationKindValues, SpanAttributes
 from opentelemetry.trace import StatusCode
 
 # set a high timeout for async executions due to issues in CI
@@ -26,6 +37,120 @@ ASYNC_GET_TIMEOUT = 120
 
 class MyException(Exception):
     pass
+
+
+@mark.celery(
+    task_queues=tuple(
+        Queue(
+            f"otel-{exchange_type}",
+            exchange=Exchange(f"otel-{exchange_type}", type=exchange_type),
+            routing_key=f"otel.{exchange_type}",
+        )
+        for exchange_type in ("direct", "topic")
+    ),
+)
+def test_task_attributes(celery_app: celery.Celery, memory_exporter: InMemorySpanExporter) -> None:
+    @celery_app.task
+    def task(fail: bool) -> int:
+        if fail:
+            raise MyException("attribute test failure")
+        return 42
+
+    for exchange_type, fail in product(("direct", "topic"), (False, True)):
+        _assert_task_attributes(task, memory_exporter, exchange_type, fail)
+
+
+def _assert_task_attributes(
+    task: celery.Task,
+    memory_exporter: InMemorySpanExporter,
+    exchange_type: str,
+    fail: bool,
+) -> None:
+    exchange = Exchange(f"otel-{exchange_type}", type=exchange_type)
+    routing_key = f"otel.{exchange_type}"
+    queue = Queue(f"otel-{exchange_type}", exchange=exchange, routing_key=routing_key)
+    memory_exporter.clear()
+
+    # The result backend can be ready before task_postrun ends the run span.
+    finished = Event()
+
+    def task_finished(**kwargs: Any) -> None:
+        finished.set()
+
+    celery.signals.task_postrun.connect(task_finished, sender=task, weak=False)
+    eta = datetime.now(timezone.utc) + timedelta(seconds=1)
+    expires = eta + timedelta(minutes=5)
+    try:
+        result = task.apply_async(
+            args=(fail,),
+            queue=queue,
+            exchange=exchange.name,
+            routing_key=routing_key,
+            correlation_id="otel-conversation",
+            reply_to="otel-reply",
+            origin="otel-publisher",
+            retries=2,
+            eta=eta,
+            expires=expires,
+            soft_time_limit=10,
+            time_limit=20,
+            priority=4,
+            compression="gzip",
+        )
+        value = result.get(timeout=ASYNC_GET_TIMEOUT, propagate=False)
+        if fail:
+            assert isinstance(value, MyException)
+        else:
+            assert value == 42
+        assert finished.wait(ASYNC_GET_TIMEOUT)
+    finally:
+        celery.signals.task_postrun.disconnect(task_finished, sender=task)
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 2
+    publish_span = next(span for span in spans if span.attributes["celery.action"] == "apply_async")
+    run_span = next(span for span in spans if span.attributes["celery.action"] == "run")
+    # Routing attributes come directly from before_task_publish signal arguments.
+    expected_publish = {
+        "celery.action": "apply_async",
+        "celery.task_name": task.name,
+        MESSAGING_MESSAGE_ID: result.id,
+        "celery.exchange": exchange.name,
+        SpanAttributes.MESSAGING_DESTINATION: routing_key,
+        SpanAttributes.MESSAGING_DESTINATION_KIND: (
+            MessagingDestinationKindValues.QUEUE.value
+            if exchange_type == "direct"
+            else MessagingDestinationKindValues.TOPIC.value
+        ),
+    }
+    # The worker places broker routing and priority in task.request.delivery_info.
+    delivery_info = {"exchange": exchange.name, "routing_key": routing_key, "priority": 4, "redelivered": False}
+    # Execution attributes come from task.request; task_postrun supplies state.
+    expected_run = {
+        "celery.compression": "application/x-gzip",
+        "celery.action": "run",
+        "celery.task_name": task.name,
+        MESSAGING_MESSAGE_ID: result.id,
+        SpanAttributes.MESSAGING_CONVERSATION_ID: "otel-conversation",
+        SpanAttributes.MESSAGING_DESTINATION: routing_key,
+        "celery.delivery_info": str(delivery_info),
+        "celery.eta": eta.isoformat(),
+        "celery.expires": expires.isoformat(),
+        # Celery's trace_task_ret overwrites the worker node name with gethostname().
+        "celery.hostname": gethostname(),
+        "celery.origin": "otel-publisher",
+        "celery.reply_to": "otel-reply",
+        "celery.retries": 2,
+        "celery.timelimit": (20, 10),
+        "celery.state": "FAILURE" if fail else "SUCCESS",
+    }
+    for span, expected in ((publish_span, expected_publish), (run_span, expected_run)):
+        assert dict(span.attributes) == expected
+        for key, value in expected.items():
+            assert type(span.attributes[key]) is type(value)
+            if isinstance(value, tuple):
+                assert all(type(item) is int for item in span.attributes[key])
+    assert run_span.status.status_code == (StatusCode.ERROR if fail else StatusCode.UNSET)
 
 
 @mark.skip(reason="inconsistent test results")

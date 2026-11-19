@@ -308,6 +308,7 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("GetItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
+        self.assert_projection(span, "PE")
         self.assert_consumed_capacity(span, self.default_table_name)
 
     @mock_aws
@@ -318,14 +319,16 @@ class TestDynamoDbExtension(TestBase):
             TableName=self.default_table_name,
             Key={"id": {"S": "1"}},
             ConsistentRead=True,
-            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
         span = self.assert_span("GetItem")
+        self.assertNotIn(
+            aws_attributes.AWS_DYNAMODB_PROJECTION,
+            span.attributes,
+        )
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
-        self.assert_projection(span, "PE")
         self.assert_consumed_capacity(span, self.default_table_name)
 
     @mock_aws

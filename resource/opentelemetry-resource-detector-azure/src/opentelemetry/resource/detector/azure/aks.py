@@ -6,11 +6,14 @@ from os import environ
 from pathlib import Path
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
+from opentelemetry.semconv.resource import ResourceAttributes
 
 from ._constants import (
     _AKS_CLUSTER_RESOURCE_ID,
     _AKS_CLUSTER_RESOURCE_ID_KEY,
     _AKS_METADATA_FILE_PATH,
+    _K8S_POD_NAME,
+    _K8S_POD_UID,
 )
 
 _logger = getLogger(__name__)
@@ -69,6 +72,10 @@ def _get_aks_metadata_from_file() -> str | None:
 
 
 class AzureAKSResourceDetector(ResourceDetector):
+    # pylint: disable=no-self-use
+    def is_process_dependent(self) -> bool:
+        return True
+
     def detect(self) -> Resource:
         resource_id = environ.get(_AKS_CLUSTER_RESOURCE_ID) or _get_aks_metadata_from_file()
         if not resource_id:
@@ -82,5 +89,12 @@ class AzureAKSResourceDetector(ResourceDetector):
         subscription_id = _extract_subscription_id(resource_id)
         if subscription_id:
             attributes[_CLOUD_ACCOUNT_ID] = subscription_id
+
+        pod_name = environ.get(_K8S_POD_NAME)
+        if pod_name:
+            attributes[ResourceAttributes.K8S_POD_NAME] = pod_name
+        pod_uid = environ.get(_K8S_POD_UID)
+        if pod_uid:
+            attributes[ResourceAttributes.K8S_POD_UID] = pod_uid
 
         return Resource(attributes)
