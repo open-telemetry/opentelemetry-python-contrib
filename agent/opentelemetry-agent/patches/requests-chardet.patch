@@ -1,0 +1,46 @@
+Use the vendored charset_normalizer instead of looking up chardet.
+
+Upstream prefers an installed chardet (via importlib.import_module and a version
+import), which would load the application's package.
+
+diff --git a/requests/__init__.py b/requests/__init__.py
+--- a/requests/__init__.py
++++ b/requests/__init__.py
+@@ -51,10 +51,8 @@ try:
+ except ImportError:
+     charset_normalizer_version = None
+ 
+-try:
+-    from chardet import __version__ as chardet_version  # type: ignore[import-not-found]
+-except ImportError:
+-    chardet_version = None
++# Only the vendored charset_normalizer is used, never the application's chardet.
++chardet_version = None
+ 
+ 
+ def check_compatibility(
+diff --git a/requests/compat.py b/requests/compat.py
+--- a/requests/compat.py
++++ b/requests/compat.py
+@@ -34,19 +34,8 @@ except (TypeError, AttributeError):
+ # -------------------
+ 
+ 
+-def _resolve_char_detection() -> ModuleType | None:
+-    """Find supported character detection libraries."""
+-    chardet = None
+-    for lib in ("chardet", "charset_normalizer"):
+-        if chardet is None:
+-            try:
+-                chardet = importlib.import_module(lib)
+-            except ImportError:
+-                pass
+-    return chardet
+-
+-
+-chardet = _resolve_char_detection()
++# Always use the vendored charset_normalizer, never the application's chardet.
++from opentelemetry.agent._vendor import charset_normalizer as chardet
+ 
+ # -------
+ # Pythons

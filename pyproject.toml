@@ -71,6 +71,7 @@ dependencies = [
   "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
+  "opentelemetry-vendor",
 ]
 
 
@@ -148,6 +149,8 @@ opentelemetry-util-http = { workspace = true }
 opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
+opentelemetry-vendor = { workspace = true }
+opentelemetry-agent = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
@@ -159,6 +162,7 @@ members = [
   "opentelemetry-distro",
   "propagator/*",
   "util/*",
+  "agent/*",
 ]
 
 [tool.ruff]

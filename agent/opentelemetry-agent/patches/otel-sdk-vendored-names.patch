@@ -1,0 +1,65 @@
+Report upstream module names from the vendored SDK.
+
+Instrumentations name their tracers, meters and loggers after their module (get_tracer(__name__)),
+which is opentelemetry.agent._vendor.opentelemetry... once vendored. InstrumentationScope (and the
+deprecated InstrumentationInfo) strip the vendor prefix, so telemetry reports the same scope names as
+the upstream packages, e.g. opentelemetry.instrumentation.aiohttp_client.
+
+The TracerProvider's warning filter for its own InstrumentationInfo deprecation names its module by
+string; use __name__ so it matches the vendored module rather than the application's SDK.
+
+diff --git a/opentelemetry/sdk/trace/__init__.py b/opentelemetry/sdk/trace/__init__.py
+index 06fd2b3..1f7ab18 100644
+--- a/opentelemetry/sdk/trace/__init__.py
++++ b/opentelemetry/sdk/trace/__init__.py
+@@ -1351,7 +1351,8 @@ class TracerProvider(trace_api.TracerProvider):
+             "ignore",
+             message=(r"You should use InstrumentationScope. Deprecated since version 1.11.1."),
+             category=DeprecationWarning,
+-            module="opentelemetry.sdk.trace",
++            # opentelemetry-agent: match this (vendored) module, not the application's SDK.
++            module=__name__,
+         )
+ 
+         instrumentation_info = InstrumentationInfo(
+diff --git a/opentelemetry/sdk/util/instrumentation.py b/opentelemetry/sdk/util/instrumentation.py
+index ac64c2d..9cf8491 100644
+--- a/opentelemetry/sdk/util/instrumentation.py
++++ b/opentelemetry/sdk/util/instrumentation.py
+@@ -13,6 +13,18 @@ from opentelemetry.agent._vendor.opentelemetry.util.types import (  # TODO: see
+ )
+ 
+ 
++# opentelemetry-agent: instrumentations vendored under the agent's namespace name their scope after
++# their module (get_tracer(__name__)); report the upstream module name instead, e.g.
++# "opentelemetry.instrumentation.aiohttp_client" rather than "opentelemetry.agent._vendor.opentelemetry...".
++_VENDOR_PREFIX = __name__.removesuffix("opentelemetry.sdk.util.instrumentation")
++
++
++def _unvendored_name(name: str) -> str:
++    if isinstance(name, str) and name.startswith(_VENDOR_PREFIX):
++        return name[len(_VENDOR_PREFIX) :]
++    return name
++
++
+ class InstrumentationInfo:
+     """Immutable information about an instrumentation library module.
+ 
+@@ -29,7 +41,7 @@ class InstrumentationInfo:
+         version: str | None = None,
+         schema_url: str | None = None,
+     ):
+-        self._name = name
++        self._name = _unvendored_name(name)
+         self._version = version
+         if schema_url is None:
+             schema_url = ""
+@@ -92,7 +104,7 @@ class InstrumentationScope:
+         schema_url: str | None = None,
+         attributes: Attributes = None,
+     ) -> None:
+-        self._name = name
++        self._name = _unvendored_name(name)
+         self._version = version
+         if schema_url is None:
+             schema_url = ""

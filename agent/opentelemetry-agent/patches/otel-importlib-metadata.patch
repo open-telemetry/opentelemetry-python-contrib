@@ -1,0 +1,69 @@
+Scope OpenTelemetry's entry point lookups to the vendored distributions.
+
+All OpenTelemetry plugin discovery (distro, configurator, instrumentors, exporters, samplers,
+propagators, resource detectors, HTTP transports) goes through opentelemetry.util._importlib_metadata.
+Upstream it reads every installed distribution's entry points: the vendored copies have no
+dist-info on sys.path, and the application's OpenTelemetry plugins point at un-vendored modules.
+opentelemetry-vendor sync keeps the vendored distributions' METADATA and namespaced entry points in
+_vendor/_metadata (metadata-dir); entry_points() and distributions() only search there.
+
+version() and requires() keep looking at the application's distributions: instrumentors check that the
+installed version of the library they patch matches their "instruments" requirements.
+
+diff --git a/opentelemetry/util/_importlib_metadata.py b/opentelemetry/util/_importlib_metadata.py
+index 656afbb..c7c5399 100644
+--- a/opentelemetry/util/_importlib_metadata.py
++++ b/opentelemetry/util/_importlib_metadata.py
+@@ -11,38 +11,35 @@ It also normalizes minor differences across python versions 3.10+. References to
+ - https://github.com/open-telemetry/opentelemetry-python/pull/5203
+ """
+ 
+-import itertools
++import os
+ from functools import cache
+ from importlib.metadata import (
+     Distribution,
+     EntryPoint,
+     EntryPoints,
+     PackageNotFoundError,
+-    distributions,
+     requires,
+     version,
+ )
+-from importlib.metadata import entry_points as original_entry_points
+-from typing import Any
++from importlib.metadata import distributions as _all_distributions
++from typing import Any, Iterable
++
++# opentelemetry-agent: entry points are only looked up in the vendored distributions' metadata
++# (written to _vendor/_metadata by opentelemetry-vendor sync), never in the application's, whose
++# OpenTelemetry plugins point at un-vendored modules. version() and requires() still see the
++# application's distributions: instrumentors check the installed versions of the libraries they patch.
++_VENDORED_METADATA_PATH = [
++    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "_metadata")
++]
+ 
+ 
+-def _as_entry_points(eps: Any) -> EntryPoints:
+-    # Python versions greater than 3.11 return EntryPoints.
+-    if isinstance(eps, EntryPoints):
+-        return eps
+-    # In Python 3.10 and 3.11 entry_points() returns
+-    # a dict-like SelectableGroups object.
+-    # Use dict.values() instead of eps.values() to avoid the DeprecationWarning
+-    # that SelectableGroups raises when calling .values().
+-    if isinstance(eps, dict):
+-        return EntryPoints(itertools.chain.from_iterable(dict.values(eps)))
+-    # This case should be unreachable, but is included as a fallback.
+-    return EntryPoints(ep for group in eps.groups for ep in eps.select(group=group))
++def distributions(**kwargs: Any) -> Iterable[Distribution]:
++    return _all_distributions(path=_VENDORED_METADATA_PATH, **kwargs)
+ 
+ 
+ @cache
+ def _original_entry_points_cached() -> EntryPoints:
+-    return _as_entry_points(original_entry_points())
++    return EntryPoints(entry_point for dist in distributions() for entry_point in dist.entry_points)
+ 
+ 
+ def entry_points(**params) -> EntryPoints:

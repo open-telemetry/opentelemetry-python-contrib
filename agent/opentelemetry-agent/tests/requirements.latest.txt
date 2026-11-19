@@ -1,0 +1,5 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# The application's opentelemetry-api (and SDK) come from the core repository ([testenv] test_deps).
+pytest==7.4.4

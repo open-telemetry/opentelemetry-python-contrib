@@ -1,0 +1,17 @@
+Default the distro's OTLP protocol to http/protobuf.
+
+The distro defaults OTEL_EXPORTER_OTLP_PROTOCOL to grpc, but the gRPC exporters aren't vendored
+(grpcio has no pure-Python wheel). With http/protobuf the SDK resolves the "otlp" exporter to the
+vendored otlp_proto_http one. An explicitly set OTEL_EXPORTER_OTLP_PROTOCOL still wins.
+
+diff --git a/opentelemetry/distro/__init__.py b/opentelemetry/distro/__init__.py
+index 4d00198..6165e7a 100644
+--- a/opentelemetry/distro/__init__.py
++++ b/opentelemetry/distro/__init__.py
+@@ -28,4 +28,5 @@ class OpenTelemetryDistro(BaseDistro):
+         os.environ.setdefault(OTEL_TRACES_EXPORTER, "otlp")
+         os.environ.setdefault(OTEL_METRICS_EXPORTER, "otlp")
+         os.environ.setdefault(OTEL_LOGS_EXPORTER, "otlp")
+-        os.environ.setdefault(OTEL_EXPORTER_OTLP_PROTOCOL, "grpc")
++        # opentelemetry-agent: the gRPC exporters aren't vendored (grpcio has no pure-Python wheel).
++        os.environ.setdefault(OTEL_EXPORTER_OTLP_PROTOCOL, "http/protobuf")
