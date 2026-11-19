@@ -1,1 +1,1 @@
-`opentelemetry-resourcedetector-gcp`: check `K_CONFIGURATION` before `FUNCTION_TARGET` so Cloud Run functions and Cloud Functions (2nd gen) are detected as `gcp_cloud_run` with a `//run.googleapis.com/.../services/{name}` `cloud.resource_id`
+[BREAKING] `opentelemetry-resourcedetector-gcp`: detect Cloud Run functions and Cloud Functions (2nd gen) as `cloud.platform=gcp_cloud_run` (previously `gcp_cloud_functions`) with `cloud.resource_id=//run.googleapis.com/.../services/{name}` by checking `K_CONFIGURATION` before `FUNCTION_TARGET`
