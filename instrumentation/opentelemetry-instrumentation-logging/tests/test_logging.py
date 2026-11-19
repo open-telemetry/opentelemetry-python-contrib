@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 from unittest import mock
 
@@ -11,9 +12,18 @@ from opentelemetry.instrumentation.logging import (
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
+from opentelemetry.instrumentation.logging.constants import _DEFAULT_SPEC_LOGGING_FORMAT
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
+from opentelemetry.trace import (
+    NonRecordingSpan,
+    NoOpTracerProvider,
+    ProxyTracer,
+    SpanContext,
+    TraceFlags,
+    get_tracer,
+    use_span,
+)
 
 
 class FakeTracerProvider:
@@ -662,3 +672,154 @@ class TestLoggingInstrumentor(TestBase):
             log_code_attributes=False,
             level=logging.DEBUG,
         )
+
+
+_LEGACY_FIELD_NAMES = ("otelSpanID", "otelTraceID", "otelTraceSampled", "otelServiceName")
+_SPEC_FIELD_NAMES = ("span_id", "trace_id", "trace_flags", "service_name")
+
+
+class TestLoggingInstrumentorSpecFieldNames(TestBase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog
+
+    def setUp(self):
+        super().setUp()
+        self.tracer = get_tracer(__name__)
+
+    def tearDown(self):
+        super().tearDown()
+        LoggingInstrumentor().uninstrument()
+
+    def emit_record(self) -> logging.LogRecord:
+        with self.caplog.at_level(level=logging.INFO):
+            logging.getLogger("test logger").info("hello")
+        self.assertEqual(len(self.caplog.records), 1)
+        return self.caplog.records[0]
+
+    def assert_spec_trace_context_injected(self, record: logging.LogRecord, span) -> None:
+        span_ctx = span.get_span_context()
+        self.assertEqual(record.span_id, format(span_ctx.span_id, "016x"))
+        self.assertEqual(record.trace_id, format(span_ctx.trace_id, "032x"))
+        # The SDK may set flags besides the sampled one, so the expected value
+        # is derived from the span; the exact rendering is pinned by
+        # test_spec_trace_flags_use_w3c_format.
+        self.assertEqual(record.trace_flags, format(span_ctx.trace_flags, "02x"))
+        self.assertIsInstance(record.trace_flags, str)
+        self.assertEqual(record.service_name, span.resource.attributes["service.name"])
+        for name in _LEGACY_FIELD_NAMES:
+            self.assertFalse(hasattr(record, name))
+
+    def test_spec_field_names_from_instrument_arg(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="spec")
+        with self.tracer.start_as_current_span("s1") as span:
+            self.assert_spec_trace_context_injected(self.emit_record(), span)
+
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN": " Spec "})
+    def test_spec_field_names_from_env_var(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        with self.tracer.start_as_current_span("s1") as span:
+            self.assert_spec_trace_context_injected(self.emit_record(), span)
+
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN": "spec"})
+    def test_instrument_arg_takes_precedence_over_env_var(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="legacy")
+        with self.tracer.start_as_current_span("s1"):
+            record = self.emit_record()
+        for name in _LEGACY_FIELD_NAMES:
+            self.assertTrue(hasattr(record, name))
+        for name in _SPEC_FIELD_NAMES:
+            self.assertFalse(hasattr(record, name))
+
+    def test_legacy_field_names_by_default(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        with self.tracer.start_as_current_span("s1"):
+            record = self.emit_record()
+        for name in _LEGACY_FIELD_NAMES:
+            self.assertTrue(hasattr(record, name))
+        for name in _SPEC_FIELD_NAMES:
+            self.assertFalse(hasattr(record, name))
+
+    def test_invalid_field_names_fall_back_to_legacy(self):
+        with self.assertLogs("opentelemetry.instrumentation.logging", level=logging.WARNING) as logs:
+            LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="snake")
+        self.assertIn("Invalid trace context field names 'snake'", logs.output[0])
+        self.caplog.clear()
+        with self.tracer.start_as_current_span("s1"):
+            record = self.emit_record()
+        for name in _LEGACY_FIELD_NAMES:
+            self.assertTrue(hasattr(record, name))
+        for name in _SPEC_FIELD_NAMES:
+            self.assertFalse(hasattr(record, name))
+
+    def test_spec_trace_flags_use_w3c_format(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="spec")
+        for trace_flags, expected in ((TraceFlags.DEFAULT, "00"), (TraceFlags.SAMPLED, "01")):
+            with self.subTest(trace_flags=trace_flags):
+                self.caplog.clear()
+                span_context = SpanContext(
+                    trace_id=0x000000000000000000000000DEADBEEF,
+                    span_id=0x00000000DEADBEF0,
+                    is_remote=False,
+                    trace_flags=TraceFlags(trace_flags),
+                )
+                with use_span(NonRecordingSpan(span_context)):
+                    record = self.emit_record()
+                self.assertEqual(record.trace_id, "000000000000000000000000deadbeef")
+                self.assertEqual(record.span_id, "00000000deadbef0")
+                self.assertEqual(record.trace_flags, expected)
+
+    def test_spec_field_names_without_span(self):
+        LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="spec")
+        record = self.emit_record()
+        self.assertEqual(record.span_id, "")
+        self.assertEqual(record.trace_id, "")
+        self.assertEqual(record.trace_flags, "")
+        self.assertEqual(record.service_name, self.tracer.resource.attributes["service.name"])
+
+    def test_spec_field_names_not_injected_without_injection(self):
+        LoggingInstrumentor().instrument(trace_context_field_names="spec")
+        with self.tracer.start_as_current_span("s1"):
+            record = self.emit_record()
+        for name in _SPEC_FIELD_NAMES + _LEGACY_FIELD_NAMES:
+            self.assertFalse(hasattr(record, name))
+
+    @mock.patch("logging.basicConfig")
+    def test_spec_default_logging_format(self, basic_config_mock):
+        LoggingInstrumentor().instrument(set_logging_format=True, trace_context_field_names="spec")
+        basic_config_mock.assert_called_once_with(format=_DEFAULT_SPEC_LOGGING_FORMAT, level=logging.INFO)
+        with self.tracer.start_as_current_span("s1") as span:
+            record = self.emit_record()
+            span_ctx = span.get_span_context()
+        self.assertIn(
+            f"[trace_id={format(span_ctx.trace_id, '032x')} span_id={format(span_ctx.span_id, '016x')} "
+            f"trace_flags={format(span_ctx.trace_flags, '02x')} resource.service.name={span.resource.attributes['service.name']}] - hello",
+            logging.Formatter(_DEFAULT_SPEC_LOGGING_FORMAT).format(record),
+        )
+
+    @mock.patch("logging.basicConfig")
+    def test_custom_format_with_spec_field_names(self, basic_config_mock):
+        LoggingInstrumentor().instrument(
+            set_logging_format=True,
+            logging_format="%(message)s span_id=%(span_id)s",
+            trace_context_field_names="spec",
+        )
+        basic_config_mock.assert_called_once_with(format="%(message)s span_id=%(span_id)s", level=logging.INFO)
+
+    def test_json_formatter_emits_spec_field_names(self):
+        """A formatter that dumps every record attribute emits the spec's top-level fields."""
+
+        class JsonFormatter(logging.Formatter):
+            def format(self, record: logging.LogRecord) -> str:
+                return json.dumps({key: value for key, value in vars(record).items() if key != "args"}, default=str)
+
+        LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="spec")
+        with self.tracer.start_as_current_span("s1") as span:
+            record = self.emit_record()
+            span_ctx = span.get_span_context()
+        payload = json.loads(JsonFormatter().format(record))
+        self.assertEqual(payload["trace_id"], format(span_ctx.trace_id, "032x"))
+        self.assertEqual(payload["span_id"], format(span_ctx.span_id, "016x"))
+        self.assertEqual(payload["trace_flags"], format(span_ctx.trace_flags, "02x"))
+        for name in _LEGACY_FIELD_NAMES:
+            self.assertNotIn(name, payload)

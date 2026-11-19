@@ -11,6 +11,7 @@ from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
 from opentelemetry.instrumentation.logging import LoggingInstrumentor, _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
+    _SPEC_TRACE_CONTEXT_ATTRS,
     _TRACE_CONTEXT_ATTRS,
     LoggingHandler,
     _setup_logging_handler,
@@ -656,6 +657,65 @@ class TestLoggingHandler(unittest.TestCase):
         finally:
             logger.removeHandler(handler)
             LoggingInstrumentor().uninstrument()
+
+    # --- spec-compliant trace context field names (issue #4643) ---
+
+    def test_injected_spec_trace_context_not_duplicated_in_attributes(self):
+        LoggingInstrumentor().instrument(
+            inject_trace_context=True,
+            trace_context_field_names="spec",
+            enable_log_auto_instrumentation=False,
+        )
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            tracer = trace.TracerProvider().get_tracer(__name__)
+            with self.assertLogs(level=logging.WARNING):
+                with tracer.start_as_current_span("test") as span:
+                    logger.warning("Warning message", extra={"http.status_code": 200})
+                    span_context = span.get_span_context()
+
+            record = processor.get_log_record(0)
+            self.assertEqual(record.log_record.attributes["http.status_code"], 200)
+            for name in _SPEC_TRACE_CONTEXT_ATTRS + _TRACE_CONTEXT_ATTRS:
+                self.assertNotIn(name, record.log_record.attributes)
+            self.assertEqual(record.log_record.trace_id, span_context.trace_id)
+            self.assertEqual(record.log_record.span_id, span_context.span_id)
+            self.assertEqual(record.log_record.trace_flags, span_context.trace_flags)
+        finally:
+            logger.removeHandler(handler)
+            LoggingInstrumentor().uninstrument()
+
+    def test_user_attributes_named_like_spec_fields_exported_with_legacy_names(self):
+        """The spec names are only dropped while the instrumentor injects them."""
+        LoggingInstrumentor().instrument(inject_trace_context=True, enable_log_auto_instrumentation=False)
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            with self.assertLogs(level=logging.WARNING):
+                logger.warning("Warning message", extra={"trace_id": "abc", "service_name": "billing"})
+
+            record = processor.get_log_record(0)
+            self.assertEqual(record.log_record.attributes["trace_id"], "abc")
+            self.assertEqual(record.log_record.attributes["service_name"], "billing")
+        finally:
+            logger.removeHandler(handler)
+            LoggingInstrumentor().uninstrument()
+
+    def test_user_attributes_named_like_spec_fields_exported_after_uninstrument(self):
+        LoggingInstrumentor().instrument(
+            inject_trace_context=True,
+            trace_context_field_names="spec",
+            enable_log_auto_instrumentation=False,
+        )
+        LoggingInstrumentor().uninstrument()
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        try:
+            with self.assertLogs(level=logging.WARNING):
+                logger.warning("Warning message", extra={"trace_id": "abc"})
+
+            record = processor.get_log_record(0)
+            self.assertEqual(record.log_record.attributes["trace_id"], "abc")
+        finally:
+            logger.removeHandler(handler)
 
     # --- event_name promotion tests (issue #4743) ---
 
