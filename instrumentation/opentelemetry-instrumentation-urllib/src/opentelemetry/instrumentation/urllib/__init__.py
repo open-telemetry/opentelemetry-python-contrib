@@ -169,6 +169,7 @@ API
 from __future__ import annotations
 
 import functools
+import socket
 import types
 from collections.abc import Callable, Collection
 from http import client
@@ -334,7 +335,12 @@ def _instrument(
     opener_open = OpenerDirector.open
 
     @functools.wraps(opener_open)
-    def instrumented_open(opener, fullurl, data=None, timeout=None):
+    def instrumented_open(
+        opener,
+        fullurl,
+        data=None,
+        timeout=socket._GLOBAL_DEFAULT_TIMEOUT,  # pylint: disable=protected-access
+    ):
         if isinstance(fullurl, str):
             # in case of multiple entries for the same header Opener.open sends the first value
             request_ = Request(fullurl, data, headers=dict(reversed(opener.addheaders)))
