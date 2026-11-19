@@ -5,9 +5,6 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
 from openai.resources.chat.completions import AsyncCompletions, Completions
 from openai.resources.embeddings import AsyncEmbeddings, Embeddings
 from wrapt import FunctionWrapper
@@ -17,11 +14,19 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    openai_attributes as OpenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
+WEATHER_TOOL_PROMPT = [
+    {"role": "system", "content": "You're a helpful assistant."},
+    {
+        "role": "user",
+        "content": "What's the weather in Seattle and San Francisco today?",
+    },
+]
 
 V2_SCOPE = "opentelemetry.instrumentation.openai_v2"
 GENAI_OPENAI_SCOPE = "opentelemetry.instrumentation.genai.openai"
@@ -47,51 +52,6 @@ def not_wrapped() -> bool:
     return all(_wrapper_module(cls) is None for cls in PATCHED_CLASSES)
 
 
-DEFAULT_MODEL = "gpt-4o-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
-GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
-USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
-USER_ONLY_EXPECTED_INPUT_MESSAGES = [
-    {
-        "role": "user",
-        "parts": [
-            {
-                "type": "text",
-                "content": USER_ONLY_PROMPT[0]["content"],
-            }
-        ],
-    }
-]
-WEATHER_TOOL_PROMPT = [
-    {"role": "system", "content": "You're a helpful assistant."},
-    {
-        "role": "user",
-        "content": "What's the weather in Seattle and San Francisco today?",
-    },
-]
-WEATHER_TOOL_EXPECTED_INPUT_MESSAGES = [
-    {
-        "role": "system",
-        "parts": [
-            {
-                "type": "text",
-                "content": WEATHER_TOOL_PROMPT[0]["content"],
-            }
-        ],
-    },
-    {
-        "role": "user",
-        "parts": [
-            {
-                "type": "text",
-                "content": WEATHER_TOOL_PROMPT[1]["content"],
-            }
-        ],
-    },
-]
-
-
 def _assert_optional_attribute(span, attribute_name, expected_value):
     """Helper to assert optional span attributes."""
     if expected_value is not None:
@@ -103,7 +63,6 @@ def _assert_optional_attribute(span, attribute_name, expected_value):
 def assert_all_attributes(
     span: ReadableSpan,
     request_model: str,
-    latest_experimental_enabled: bool,
     response_id: str = None,
     response_model: str = None,
     input_tokens: int | None = None,
@@ -116,10 +75,7 @@ def assert_all_attributes(
 ):
     assert span.name == f"{operation_name} {request_model}"
     assert operation_name == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-
-    provider_name_attr_name = "gen_ai.provider.name" if latest_experimental_enabled else GenAIAttributes.GEN_AI_SYSTEM
-
-    assert GenAIAttributes.GenAiProviderNameValues.OPENAI.value == span.attributes[provider_name_attr_name]
+    assert GenAIAttributes.GenAiSystemValues.OPENAI.value == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
     assert request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
 
     _assert_optional_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model)
@@ -131,25 +87,14 @@ def assert_all_attributes(
     if server_port != 443 and server_port > 0:
         assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
-    request_service_tier_attr_name = (
-        OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
-        if latest_experimental_enabled
-        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
-    )
     _assert_optional_attribute(
         span,
-        request_service_tier_attr_name,
+        GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
         request_service_tier,
     )
-
-    response_service_tier_attr_name = (
-        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER
-        if latest_experimental_enabled
-        else GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-    )
     _assert_optional_attribute(
         span,
-        response_service_tier_attr_name,
+        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
         response_service_tier,
     )
 
@@ -183,46 +128,6 @@ def get_current_weather_tool_definition():
     }
 
 
-def get_responses_weather_tool_definition():
-    return {
-        "type": "function",
-        "name": "get_current_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "The city and state, e.g. Boston, MA",
-                },
-            },
-            "required": ["location"],
-            "additionalProperties": False,
-        },
-        "strict": True,
-    }
-
-
-EXPECTED_TOOL_DEFINITIONS = [
-    {
-        "type": "function",
-        "name": "get_current_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "The city and state, e.g. Boston, MA",
-                },
-            },
-            "required": ["location"],
-            "additionalProperties": False,
-        },
-    }
-]
-
-
 def remove_none_values(body):
     """Remove None values from a dictionary recursively"""
     result = {}
@@ -236,67 +141,6 @@ def remove_none_values(body):
         else:
             result[key] = value
     return result
-
-
-def assert_completion_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    response: Any,
-    latest_experimental_enabled: bool,
-    operation_name: str = "chat",
-    server_address: str = "api.openai.com",
-):
-    return assert_all_attributes(
-        span,
-        request_model,
-        latest_experimental_enabled,
-        response.id,
-        response.model,
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
-        operation_name,
-        server_address,
-    )
-
-
-def assert_messages_attribute(actual, expected):
-    assert json.loads(actual) == expected
-
-
-def format_simple_expected_output_message(content: str, finish_reason: str = "stop"):
-    return [
-        {
-            "role": "assistant",
-            "parts": [
-                {
-                    "type": "text",
-                    "content": content,
-                }
-            ],
-            "finish_reason": finish_reason,
-        }
-    ]
-
-
-def _get_usage_details(usage):
-    return getattr(usage, "input_tokens_details", None) or getattr(usage, "prompt_tokens_details", None)
-
-
-def assert_cache_attributes(span, usage):
-    details = _get_usage_details(usage)
-    assert details is not None
-
-    cached_tokens = getattr(details, "cached_tokens", None)
-    if cached_tokens is None:
-        assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS not in span.attributes
-    else:
-        assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cached_tokens
-
-    cache_creation = getattr(details, "cache_creation_input_tokens", None)
-    if cache_creation is None:
-        assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS not in span.attributes
-    else:
-        assert span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == cache_creation
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
@@ -314,7 +158,6 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
 def assert_embedding_attributes(
     span: ReadableSpan,
     request_model: str,
-    latest_experimental_enabled: bool,
     response,
 ):
     """Assert that the span contains all required attributes for embeddings operation"""
@@ -322,7 +165,6 @@ def assert_embedding_attributes(
     assert_all_attributes(
         span,
         request_model,
-        latest_experimental_enabled,
         response_id=None,  # Embeddings don't have a response ID
         response_model=response.model,
         input_tokens=response.usage.prompt_tokens,

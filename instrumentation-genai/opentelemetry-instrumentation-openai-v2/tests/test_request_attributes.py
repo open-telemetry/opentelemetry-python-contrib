@@ -33,17 +33,6 @@ def test_model_omitted_when_missing():
     attrs = get_llm_request_attributes(
         kwargs={},
         client_instance=_make_client(),
-        latest_experimental_enabled=False,
-    )
-    assert GenAIAttributes.GEN_AI_REQUEST_MODEL not in attrs
-
-
-def test_model_omitted_when_missing_experimental():
-    """Same as above but with latest_experimental_enabled=True."""
-    attrs = get_llm_request_attributes(
-        kwargs={},
-        client_instance=_make_client(),
-        latest_experimental_enabled=True,
     )
     assert GenAIAttributes.GEN_AI_REQUEST_MODEL not in attrs
 
@@ -53,7 +42,6 @@ def test_model_preserved_when_provided():
     attrs = get_llm_request_attributes(
         kwargs={"model": "gpt-4o-mini"},
         client_instance=_make_client(),
-        latest_experimental_enabled=False,
     )
     assert attrs[GenAIAttributes.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
 
@@ -63,7 +51,6 @@ def test_span_name_includes_model_when_present():
     attrs = get_llm_request_attributes(
         kwargs={"model": "gpt-4o"},
         client_instance=_make_client(),
-        latest_experimental_enabled=False,
     )
     operation_name = attrs[GenAIAttributes.GEN_AI_OPERATION_NAME]
     model = attrs.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
@@ -76,7 +63,6 @@ def test_span_name_uses_operation_only_when_model_missing():
     attrs = get_llm_request_attributes(
         kwargs={},
         client_instance=_make_client(),
-        latest_experimental_enabled=False,
     )
     operation_name = attrs[GenAIAttributes.GEN_AI_OPERATION_NAME]
     model = attrs.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
