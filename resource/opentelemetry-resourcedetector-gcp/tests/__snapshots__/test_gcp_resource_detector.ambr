@@ -36,6 +36,18 @@
     'gcp.cloud_run.job.task_index': 0,
   })
 # ---
+# name: test_detects_cloud_run_worker_pool
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.platform': 'gcp_cloud_run',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'cloud.resource_id': '//run.googleapis.com/projects/fakeProject/locations/us-east4/workerPools/fake-worker-pool',
+    'faas.instance': '0087244a',
+    'faas.name': 'fake-worker-pool',
+    'faas.version': 'fake-worker-pool-00001',
+  })
+# ---
 # name: test_detects_empty_as_fallback
   dict({
   })

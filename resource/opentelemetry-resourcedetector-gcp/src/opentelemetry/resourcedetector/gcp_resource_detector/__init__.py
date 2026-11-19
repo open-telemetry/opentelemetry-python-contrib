@@ -18,6 +18,7 @@ from opentelemetry.util.types import AttributeValue
 
 _CLOUD_RUN_SERVICE_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/services/{name}"
 _CLOUD_RUN_JOB_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/jobs/{name}"
+_CLOUD_RUN_WORKER_POOL_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/workerPools/{name}"
 _CLOUD_FUNCTIONS_RESOURCE_ID = (
     "//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/{name}"
 )
@@ -31,12 +32,14 @@ class GoogleCloudResourceDetector(ResourceDetector):
 
         if _gke.on_gke():
             return _gke_resource()
-        if _faas.on_cloud_functions():
-            return _cloud_functions_resource()
         if _faas.on_cloud_run():
             return _cloud_run_resource()
+        if _faas.on_cloud_functions():
+            return _cloud_functions_resource()
         if _faas.on_cloud_run_job():
             return _cloud_run_job_resource()
+        if _faas.on_cloud_run_worker_pool():
+            return _cloud_run_worker_pool_resource()
         if _gae.on_app_engine():
             return _gae_resource()
         if _gce.on_gce():
@@ -106,6 +109,18 @@ def _cloud_run_job_resource() -> Resource:
     )
 
 
+def _cloud_run_worker_pool_resource() -> Resource:
+    extra_attrs: dict[str, AttributeValue] = {}
+    if (revision := _faas.cloud_run_worker_pool_revision()) is not None:
+        extra_attrs[ResourceAttributes.FAAS_VERSION] = revision
+    return _faas_resource(
+        platform=ResourceAttributes.GCP_CLOUD_RUN,
+        resource_id_template=_CLOUD_RUN_WORKER_POOL_RESOURCE_ID,
+        name=_faas.cloud_run_worker_pool_name(),
+        extra_attrs=extra_attrs,
+    )
+
+
 def _faas_resource(
     platform: str,
     resource_id_template: str,
@@ -127,7 +142,7 @@ def _faas_resource(
             region=region,
             name=name,
         )
-    return _make_resource(attrs, project_id=project_id)
+    return _make_resource(attrs)
 
 
 def _gae_resource() -> Resource:
@@ -155,13 +170,11 @@ def _gae_resource() -> Resource:
     )
 
 
-def _make_resource(attrs: Mapping[str, AttributeValue], project_id: str | None = None) -> Resource:
-    if project_id is None:
-        project_id = _metadata.get_metadata()["project"]["projectId"]
+def _make_resource(attrs: Mapping[str, AttributeValue]) -> Resource:
     return Resource(
         {
             ResourceAttributes.CLOUD_PROVIDER: "gcp",
-            ResourceAttributes.CLOUD_ACCOUNT_ID: project_id,
+            ResourceAttributes.CLOUD_ACCOUNT_ID: _metadata.get_metadata()["project"]["projectId"],
             **attrs,
         }
     )

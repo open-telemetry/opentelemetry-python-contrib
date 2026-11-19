@@ -1,1 +1,1 @@
-`opentelemetry-resourcedetector-gcp`: detect Cloud Run Jobs and `cloud.resource_id`
+`opentelemetry-resourcedetector-gcp`: detect Cloud Run Jobs and populate `cloud.resource_id` for Cloud Run services/jobs and Cloud Functions
