@@ -16,6 +16,7 @@ _CLOUD_RUN_EXECUTION_ENV = "CLOUD_RUN_EXECUTION"
 _CLOUD_RUN_TASK_INDEX_ENV = "CLOUD_RUN_TASK_INDEX"
 _CLOUD_RUN_WORKER_POOL_ENV = "CLOUD_RUN_WORKER_POOL"
 _CLOUD_RUN_REVISION_ENV = "CLOUD_RUN_REVISION"
+_CLOUD_RUN_INSTANCE_ENV = "CLOUD_RUN_INSTANCE"
 _FAAS_SERVICE_ENV = "K_SERVICE"
 _FAAS_REVISION_ENV = "K_REVISION"
 
@@ -36,6 +37,10 @@ def on_cloud_run_job() -> bool:
 
 def on_cloud_run_worker_pool() -> bool:
     return _CLOUD_RUN_WORKER_POOL_ENV in os.environ
+
+
+def on_cloud_run_instance() -> bool:
+    return _CLOUD_RUN_INSTANCE_ENV in os.environ
 
 
 def faas_name() -> str:
@@ -84,6 +89,14 @@ def cloud_run_worker_pool_name() -> str:
 
 def cloud_run_worker_pool_revision() -> str | None:
     return os.environ.get(_CLOUD_RUN_REVISION_ENV)
+
+
+def cloud_run_instance_name() -> str:
+    """The name of the Cloud Run instance.
+
+    Check that on_cloud_run_instance() is true before calling this, or it may throw exceptions.
+    """
+    return os.environ[_CLOUD_RUN_INSTANCE_ENV]
 
 
 def faas_version() -> str:

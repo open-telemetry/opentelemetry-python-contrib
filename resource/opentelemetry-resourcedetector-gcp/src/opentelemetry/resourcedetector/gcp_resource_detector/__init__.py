@@ -19,6 +19,7 @@ from opentelemetry.util.types import AttributeValue
 _CLOUD_RUN_SERVICE_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/services/{name}"
 _CLOUD_RUN_JOB_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/jobs/{name}"
 _CLOUD_RUN_WORKER_POOL_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/workerPools/{name}"
+_CLOUD_RUN_INSTANCE_RESOURCE_ID = "//run.googleapis.com/projects/{project_id}/locations/{region}/instances/{name}"
 _CLOUD_FUNCTIONS_RESOURCE_ID = (
     "//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/{name}"
 )
@@ -40,6 +41,8 @@ class GoogleCloudResourceDetector(ResourceDetector):
             return _cloud_run_job_resource()
         if _faas.on_cloud_run_worker_pool():
             return _cloud_run_worker_pool_resource()
+        if _faas.on_cloud_run_instance():
+            return _cloud_run_instance_resource()
         if _gae.on_app_engine():
             return _gae_resource()
         if _gce.on_gce():
@@ -118,6 +121,15 @@ def _cloud_run_worker_pool_resource() -> Resource:
         resource_id_template=_CLOUD_RUN_WORKER_POOL_RESOURCE_ID,
         name=_faas.cloud_run_worker_pool_name(),
         extra_attrs=extra_attrs,
+    )
+
+
+def _cloud_run_instance_resource() -> Resource:
+    return _faas_resource(
+        platform=ResourceAttributes.GCP_CLOUD_RUN,
+        resource_id_template=_CLOUD_RUN_INSTANCE_RESOURCE_ID,
+        name=_faas.cloud_run_instance_name(),
+        extra_attrs={},
     )
 
 

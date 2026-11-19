@@ -23,6 +23,17 @@
     'faas.version': 'fake-revision',
   })
 # ---
+# name: test_detects_cloud_run_instance
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.platform': 'gcp_cloud_run',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'cloud.resource_id': '//run.googleapis.com/projects/fakeProject/locations/us-east4/instances/fake-instance',
+    'faas.instance': '0087244a',
+    'faas.name': 'fake-instance',
+  })
+# ---
 # name: test_detects_cloud_run_job
   dict({
     'cloud.account.id': 'fakeProject',
