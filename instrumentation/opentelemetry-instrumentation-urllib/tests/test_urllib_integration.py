@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import abc
+import socket
 import urllib
 from unittest import mock
 from unittest.mock import patch
@@ -907,6 +908,12 @@ class TestURLLibIntegration(URLLibIntegrationTestBase, TestBase):
         if headers:
             opener.addheaders = headers
         return opener.open(fullurl=url)
+
+    def test_default_timeout_is_kept(self):
+        req = request.Request(self.URL)
+        result = urllib.request.build_opener().open(req)
+        self.assertEqual(result.read(), b"Hello!")
+        self.assertIs(req.timeout, socket._GLOBAL_DEFAULT_TIMEOUT)  # pylint: disable=protected-access
 
     def test_invalid_url(self):
         url = "http://[::1/nope"

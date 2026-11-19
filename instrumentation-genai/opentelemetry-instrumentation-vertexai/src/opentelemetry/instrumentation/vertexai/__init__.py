@@ -115,7 +115,6 @@ class VertexAIInstrumentor(BaseInstrumentor):
         logger_provider = kwargs.get("logger_provider")
         logger = get_logger(
             __name__,
-            "",
             logger_provider=logger_provider,
             schema_url=schema,
         )
