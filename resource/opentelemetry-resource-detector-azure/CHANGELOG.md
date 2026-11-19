@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 0.4.0 (2026-11-19)
+
+### Added
+
+- `opentelemetry-resource-detector-azure`: detect AKS pod identity via the
+  Downward API
+  ([#5217](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5217))
+
+### Fixed
+
+- `opentelemetry-resource-detector-azure`: report `faas.max_memory` in bytes
+  instead of megabytes, increasing reported values by a factor of 1,048,576;
+  update dashboards, alerts and processors that interpret this attribute as
+  megabytes
+  ([#5155](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5155))
+- Mark the AKS resource detector as process-dependent so it is rerun during
+  post-fork resource refresh.
+  ([#5217](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5217))
+
 ## Version 0.3.0 (2026-09-29)
 
 ### Added
