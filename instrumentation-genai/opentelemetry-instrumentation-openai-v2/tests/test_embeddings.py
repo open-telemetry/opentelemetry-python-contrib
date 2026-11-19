@@ -16,6 +16,9 @@ try:
 except ImportError:
     not_given = NOT_GIVEN
 
+from opentelemetry.instrumentation.openai_v2 import (
+    _is_latest_experimental_enabled as is_experimental_mode,
+)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -26,7 +29,6 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_EMBEDDING_MODEL,

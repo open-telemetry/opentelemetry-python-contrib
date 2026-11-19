@@ -6,6 +6,9 @@
 import pytest
 from openai import AsyncOpenAI, NotFoundError
 
+from opentelemetry.instrumentation.openai_v2 import (
+    _is_latest_experimental_enabled as is_experimental_mode,
+)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -13,7 +16,6 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_EMBEDDING_MODEL,

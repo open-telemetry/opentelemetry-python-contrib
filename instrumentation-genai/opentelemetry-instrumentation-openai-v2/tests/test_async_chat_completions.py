@@ -8,6 +8,9 @@ from unittest.mock import AsyncMock
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, NotFoundError
 
+from opentelemetry.instrumentation.openai_v2 import (
+    _is_latest_experimental_enabled as is_experimental_mode,
+)
 from opentelemetry.instrumentation.openai_v2.patch import (
     AsyncLegacyChatStreamWrapper,
 )
@@ -23,7 +26,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_MODEL,
