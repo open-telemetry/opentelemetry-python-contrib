@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: add opt-in `trace_context_field_names` / `OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN` to inject spec-compliant `trace_id`, `span_id` and `trace_flags` field names
