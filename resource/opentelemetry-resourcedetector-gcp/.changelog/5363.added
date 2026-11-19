@@ -1,0 +1,1 @@
+`opentelemetry-resourcedetector-gcp`: detect Cloud Run worker pools (`CLOUD_RUN_WORKER_POOL`, `CLOUD_RUN_REVISION`) and populate `cloud.resource_id`
