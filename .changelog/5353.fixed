@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: report `str(exception)` as `exception.message` instead of its first argument
