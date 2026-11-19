@@ -1,0 +1,1 @@
+Cap `openai < 3`; openai 3.x no longer depends on `httpx`, which this package imports.
