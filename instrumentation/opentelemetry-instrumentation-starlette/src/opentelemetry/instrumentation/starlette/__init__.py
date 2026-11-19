@@ -23,6 +23,26 @@ Usage
 Configuration
 -------------
 
+Semantic convention stability
+*****************************
+HTTP instrumentations emit span attributes according to OpenTelemetry HTTP
+semantic conventions.
+
+By default, the old experimental HTTP and networking conventions are emitted.
+
+Set the ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable to opt in to
+the stable conventions:
+
+- ``http`` — emit the new, stable HTTP and networking conventions, and stop
+  emitting the old experimental HTTP and networking conventions that the
+  instrumentation emitted previously.
+- ``http/dup`` — emit both the old experimental and the stable HTTP and
+  networking conventions, allowing for a seamless transition.
+
+The value is a comma-separated list of signals (for example ``http`` or
+``http/dup``).
+
+
 Exclude lists
 *************
 To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_STARLETTE_EXCLUDED_URLS``
