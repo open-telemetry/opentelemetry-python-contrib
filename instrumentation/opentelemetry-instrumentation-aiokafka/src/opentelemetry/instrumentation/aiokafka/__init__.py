@@ -97,14 +97,19 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 import aiokafka
 from wrapt import (
     wrap_function_wrapper,
 )
 
-from opentelemetry import trace
+from opentelemetry import metrics, trace
+from opentelemetry.semconv._incubating.metrics.messaging_metrics import (
+    MESSAGING_CLIENT_CONSUMED_MESSAGES,
+    MESSAGING_CLIENT_OPERATION_DURATION,
+    MESSAGING_CLIENT_SENT_MESSAGES,
+)
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
     _wrap_getmany,
@@ -125,6 +130,7 @@ if TYPE_CHECKING:
 
     class InstrumentKwargs(TypedDict, total=False):
         tracer_provider: trace.TracerProvider
+        meter_provider: metrics.MeterProvider
         async_produce_hook: ProduceHookT
         async_consume_hook: ConsumeHookT
 
@@ -165,21 +171,43 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             schema_url=Schemas.V1_27_0.value,
         )
+        meter_provider = kwargs.get("meter_provider")
+        meter = metrics.get_meter(
+            __name__,
+            __version__,
+            meter_provider=meter_provider,
+            schema_url=Schemas.V1_27_0.value,
+        )
+        operation_duration = meter.create_histogram(
+            name=MESSAGING_CLIENT_OPERATION_DURATION,
+            unit="s",
+            description="Duration of messaging operation initiated by a client or consumer library.",
+        )
+        sent_messages = meter.create_counter(
+            name=MESSAGING_CLIENT_SENT_MESSAGES,
+            unit="{message}",
+            description="Number of messages producer attempted to send to the broker.",
+        )
+        consumed_messages = meter.create_counter(
+            name=MESSAGING_CLIENT_CONSUMED_MESSAGES,
+            unit="{message}",
+            description="Number of messages that were delivered to the application.",
+        )
 
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
             "send",
-            _wrap_send(tracer, async_produce_hook),
+            _wrap_send(tracer, async_produce_hook, operation_duration, sent_messages),
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
             "getone",
-            _wrap_getone(tracer, async_consume_hook),
+            _wrap_getone(tracer, async_consume_hook, operation_duration, consumed_messages),
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
             "getmany",
-            _wrap_getmany(tracer, async_consume_hook),
+            _wrap_getmany(tracer, async_consume_hook, operation_duration, consumed_messages),
         )
 
     def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):

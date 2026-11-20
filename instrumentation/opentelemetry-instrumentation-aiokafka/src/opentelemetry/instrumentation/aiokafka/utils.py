@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+from timeit import default_timer
+from opentelemetry.metrics import Counter, Histogram
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import MESSAGING_DESTINATION_NAME, MESSAGING_OPERATION_TYPE, MESSAGING_SYSTEM
 import contextlib
 import json
 from collections.abc import Awaitable, Callable, MutableSequence, Sequence
@@ -347,7 +350,10 @@ def _get_span_name(operation: str, topic: str):
 
 
 def _wrap_send(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_produce_hook: ProduceHookT | None
+    tracer: Tracer,
+    async_produce_hook: ProduceHookT | None,
+    operation_duration: Histogram | None = None,
+    sent_messages: Counter | None = None,
 ) -> Callable[..., Awaitable[asyncio.Future[RecordMetadata]]]:
     async def _traced_send(
         func: AIOKafkaSendProto,
@@ -386,7 +392,33 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
-        return await func(*args, **kwargs)
+        metric_attrs: dict[str, str] = {
+            MESSAGING_SYSTEM: "kafka",
+            MESSAGING_DESTINATION_NAME: topic,
+            MESSAGING_OPERATION_TYPE: "send",
+        }
+        start = default_timer()
+        try:
+            fut = await func(*args, **kwargs)
+        except Exception:
+            if operation_duration is not None:
+                operation_duration.record(max(default_timer() - start, 0), attributes=metric_attrs)
+            raise
+
+        if sent_messages is not None:
+            sent_messages.add(1, attributes=metric_attrs)
+
+        if operation_duration is not None:
+            if asyncio.isfuture(fut):
+
+                def _record_duration(_fut: asyncio.Future[RecordMetadata]) -> None:
+                    operation_duration.record(max(default_timer() - start, 0), attributes=metric_attrs)
+
+                fut.add_done_callback(_record_duration)
+            else:
+                operation_duration.record(max(default_timer() - start, 0), attributes=metric_attrs)
+
+        return fut
 
     return _traced_send
 
@@ -432,7 +464,10 @@ async def _create_consumer_span(
 
 
 def _wrap_getone(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
+    operation_duration: Histogram | None = None,
+    consumed_messages: Counter | None = None,
 ) -> Callable[..., Awaitable[aiokafka.ConsumerRecord[object, object]]]:
     async def _traced_getone(
         func: AIOKafkaGetOneProto,
@@ -440,7 +475,19 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
         args: tuple[aiokafka.TopicPartition, ...],
         kwargs: dict[str, Any],
     ) -> aiokafka.ConsumerRecord[object, object]:
+        start = default_timer()
         record = await func(*args, **kwargs)
+        duration = max(default_timer() - start, 0)
+        metric_attrs: dict[str, str] = {
+            MESSAGING_SYSTEM: "kafka",
+            MESSAGING_OPERATION_TYPE: "receive",
+        }
+        if record:
+            metric_attrs[MESSAGING_DESTINATION_NAME] = record.topic
+        if operation_duration is not None:
+            operation_duration.record(duration, attributes=metric_attrs)
+        if record and consumed_messages is not None:
+            consumed_messages.add(1, attributes=metric_attrs)
 
         if record:
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
@@ -465,7 +512,10 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
 
 
 def _wrap_getmany(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
+    operation_duration: Histogram | None = None,
+    consumed_messages: Counter | None = None,
 ) -> Callable[
     ...,
     Awaitable[
@@ -481,7 +531,28 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
         args: tuple[aiokafka.TopicPartition, ...],
         kwargs: dict[str, Any],
     ) -> dict[aiokafka.TopicPartition, list[aiokafka.ConsumerRecord[object, object]]]:
+        start = default_timer()
         records = await func(*args, **kwargs)
+        duration = max(default_timer() - start, 0)
+        op_attrs: dict[str, str] = {
+            MESSAGING_SYSTEM: "kafka",
+            MESSAGING_OPERATION_TYPE: "receive",
+        }
+        if records and len(records) == 1:
+            op_attrs[MESSAGING_DESTINATION_NAME] = next(iter(records.keys())).topic
+        if operation_duration is not None:
+            operation_duration.record(duration, attributes=op_attrs)
+        if records and consumed_messages is not None:
+            for tp, tp_records in records.items():
+                if tp_records:
+                    consumed_messages.add(
+                        len(tp_records),
+                        attributes={
+                            MESSAGING_SYSTEM: "kafka",
+                            MESSAGING_DESTINATION_NAME: tp.topic,
+                            MESSAGING_OPERATION_TYPE: "receive",
+                        },
+                    )
 
         if records:
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
