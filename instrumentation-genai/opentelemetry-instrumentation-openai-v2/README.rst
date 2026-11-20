@@ -5,8 +5,9 @@ OpenTelemetry OpenAI Instrumentation
 
    **This package is deprecated.** Use the
    `opentelemetry-instrumentation-genai-openai <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
-   package instead. ``opentelemetry-instrumentation-openai-v2`` now only
-   receives security patches. Please
+   package instead (`source <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai>`_).
+   ``opentelemetry-instrumentation-openai-v2`` now only receives security patches
+   and won't receive new features for Semantic Conventions v1.30.0. Please
    migrate by replacing it with ``opentelemetry-instrumentation-genai-openai``:
 
    .. code-block:: console
