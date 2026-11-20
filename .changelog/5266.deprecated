@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-botocore`: deprecate Bedrock runtime extension in favor of `opentelemetry-instrumentation-genai-bedrock`
