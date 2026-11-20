@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: Clean up failed task publications.
