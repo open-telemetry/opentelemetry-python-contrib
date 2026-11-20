@@ -3,6 +3,8 @@
 
 DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
 
+_DEFAULT_SPEC_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(trace_id)s span_id=%(span_id)s trace_flags=%(trace_flags)s resource.service.name=%(service_name)s] - %(message)s"
+
 
 _MODULE_DOC = f"""
 The OpenTelemetry ``logging`` instrumentation automatically instruments Python logging
@@ -46,6 +48,32 @@ Trace context injection is opt-in and can be enabled in two ways:
   ``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName`` available on each record.
 - Set ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` (or pass ``set_logging_format=True``) to inject the same
   trace context attributes and call ``logging.basicConfig()`` with a format string that includes them.
+
+Spec-compliant field names
+--------------------------
+
+The keys above predate the OpenTelemetry specification for
+`trace context in non-OTLP log formats <https://opentelemetry.io/docs/specs/otel/compatibility/logging_trace_context/>`_.
+Formatters that serialize every log record attribute, as JSON formatters usually do, emit them verbatim.
+Pass ``trace_context_field_names="spec"`` (or set ``OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN`` to ``spec``)
+to inject the following keys instead:
+
+- ``trace_id``: the trace ID, lowercase and hex-encoded
+- ``span_id``: the span ID, lowercase and hex-encoded
+- ``trace_flags``: the trace flags in W3C format, two lowercase hex digits whose lowest bit is the sampled flag
+- ``service_name``: the ``service.name`` resource attribute, which the specification does not cover
+
+The three trace context keys are empty strings when there is no active span. The default logging format becomes:
+
+.. code-block::
+
+    {_DEFAULT_SPEC_LOGGING_FORMAT}
+
+.. warning::
+
+    The standard library raises ``KeyError`` when a key passed via ``extra`` is already set on the log record.
+    With the spec-compliant names enabled, calls such as ``logger.info("msg", extra={{"trace_id": ...}})`` fail,
+    so remove these keys from your own ``extra`` arguments before enabling them.
 
 Environment variables
 ---------------------
@@ -92,6 +120,20 @@ The default value is:
 .. code-block::
 
     {DEFAULT_LOGGING_FORMAT}
+
+.. envvar:: OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN
+
+Set this env var to ``spec`` to inject trace context under the spec-compliant field names (``trace_id``, ``span_id``,
+``trace_flags`` and ``service_name``) instead of the legacy ones. When it is unset, or set to an unrecognized value,
+the legacy names are injected.
+
+Alternatively, the names can be selected via the ``trace_context_field_names`` argument:
+
+.. code-block::
+
+    LoggingInstrumentor(trace_context_field_names="spec")
+
+This env var is unset by default.
 
 .. envvar:: OTEL_PYTHON_LOG_HANDLER_LEVEL
 
