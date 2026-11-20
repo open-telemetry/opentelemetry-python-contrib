@@ -295,6 +295,23 @@ We can configure the tags to be appended to the sqlquery log by adding below var
 | ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.                      | ``db_driver='django.db.backends.postgresql'``                             |
 +-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
+Server address and port in metrics
+**********************************
+``server.address`` and ``server.port`` are opt-in attributes of the HTTP server metrics and are not recorded by
+default. Set ``enable_server_attributes_in_metrics`` to ``True`` to add them to
+``http.server.request.duration`` and ``http.server.active_requests``:
+
+.. code:: python
+
+    DjangoInstrumentor().instrument(enable_server_attributes_in_metrics=True)
+
+This only affects metrics that follow the new HTTP semantic conventions, that is when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http`` or ``http/dup``.
+
+Note:
+    ``server.address`` can come from the ``Host`` request header, so enabling these attributes can increase
+    the cardinality of the metrics.
+
 .. include:: /_includes/http-semconv.rst
 
 API
@@ -412,6 +429,7 @@ class DjangoInstrumentor(BaseInstrumentor):
         )
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
         _DjangoMiddleware._otel_response_hook = kwargs.pop("response_hook", None)
+        _DjangoMiddleware._server_attributes_in_metrics = kwargs.pop("enable_server_attributes_in_metrics", False)
         _DjangoMiddleware._duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
             _DjangoMiddleware._duration_histogram_old = meter.create_histogram(

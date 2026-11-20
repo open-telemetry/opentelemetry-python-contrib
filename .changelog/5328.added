@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-django`, `opentelemetry-instrumentation-aiohttp-server`: add `enable_server_attributes_in_metrics` option to opt in to `server.address` and `server.port` on HTTP server metrics

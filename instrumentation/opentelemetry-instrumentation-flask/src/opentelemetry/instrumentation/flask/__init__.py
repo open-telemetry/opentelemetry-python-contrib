@@ -183,6 +183,23 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Server address and port in metrics
+**********************************
+``server.address`` and ``server.port`` are opt-in attributes of the HTTP server metrics and are not recorded by
+default. Set ``enable_server_attributes_in_metrics`` to ``True`` to add them to
+``http.server.request.duration`` and ``http.server.active_requests``:
+
+.. code-block:: python
+
+    FlaskInstrumentor().instrument_app(app, enable_server_attributes_in_metrics=True)
+
+This only affects metrics that follow the new HTTP semantic conventions, that is when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http`` or ``http/dup``.
+
+Note:
+    ``server.address`` can come from the ``Host`` request header, so enabling these attributes can increase
+    the cardinality of the metrics.
+
 .. include:: /_includes/http-semconv.rst
 
 SQLCommenter
@@ -341,6 +358,7 @@ def _rewrapped_app(
     excluded_urls=None,
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
+    server_attributes_in_metrics: bool = False,
 ):
     # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -354,6 +372,7 @@ def _rewrapped_app(
         active_requests_count_attrs = otel_wsgi._parse_active_request_count_attrs(
             attributes,
             sem_conv_opt_in_mode,
+            server_attributes_in_metrics,
         )
 
         active_requests_counter.add(1, active_requests_count_attrs)
@@ -424,7 +443,11 @@ def _rewrapped_app(
                         context=metrics_context,
                     )
                 if duration_histogram_new:
-                    duration_attrs_new = otel_wsgi._parse_duration_attrs(attributes, _StabilityMode.HTTP)
+                    duration_attrs_new = otel_wsgi._parse_duration_attrs(
+                        attributes,
+                        _StabilityMode.HTTP,
+                        server_attributes_in_metrics,
+                    )
 
                     if request_route:
                         duration_attrs_new[HTTP_ROUTE] = str(request_route)
@@ -611,6 +634,7 @@ class _InstrumentedFlask(flask.Flask):
     _commenter_options = None
     _meter_provider = None
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+    _server_attributes_in_metrics: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -657,6 +681,7 @@ class _InstrumentedFlask(flask.Flask):
             excluded_urls=_InstrumentedFlask._excluded_urls,
             sem_conv_opt_in_mode=_InstrumentedFlask._sem_conv_opt_in_mode,
             duration_histogram_new=duration_histogram_new,
+            server_attributes_in_metrics=_InstrumentedFlask._server_attributes_in_metrics,
         )
 
         tracer = trace.get_tracer(
@@ -714,6 +739,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         _InstrumentedFlask._commenter_options = commenter_options
         meter_provider = kwargs.get("meter_provider")
         _InstrumentedFlask._meter_provider = meter_provider
+        _InstrumentedFlask._server_attributes_in_metrics = kwargs.get("enable_server_attributes_in_metrics", False)
 
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
@@ -737,6 +763,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         enable_commenter=True,
         commenter_options=None,
         meter_provider=None,
+        enable_server_attributes_in_metrics: bool = False,
     ):
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
@@ -787,6 +814,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                 excluded_urls=excluded_urls,
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 duration_histogram_new=duration_histogram_new,
+                server_attributes_in_metrics=enable_server_attributes_in_metrics,
             )
 
             tracer = trace.get_tracer(
