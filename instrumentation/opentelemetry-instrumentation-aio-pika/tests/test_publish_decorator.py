@@ -101,6 +101,35 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
     def test_publish_works_with_not_recording_span_robust(self):
         self._test_publish_works_with_not_recording_span(RobustExchange)
 
+    def test_publish_with_hook(self):
+        hook = mock.MagicMock()
+        exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
+            mock_span = MagicMock()
+            mock_get_publish_span.return_value = mock_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                decorated_publish = PublishDecorator(
+                    self.tracer, exchange, publish_hook=hook
+                ).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
+        mock_publish.assert_called_once()
+        mock_get_publish_span.assert_called_once()
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
+    def test_publish_hook_exception_does_not_fail(self):
+        hook = mock.MagicMock(side_effect=RuntimeError("Hook failure"))
+        exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
+            mock_span = MagicMock()
+            mock_get_publish_span.return_value = mock_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                decorated_publish = PublishDecorator(
+                    self.tracer, exchange, publish_hook=hook
+                ).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
+        mock_publish.assert_called_once()
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
 
 @skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
 class TestInstrumentedExchangeAioRmq8(TestCase):
@@ -165,3 +194,32 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
 
     def test_publish_works_with_not_recording_span_robust(self):
         self._test_publish_works_with_not_recording_span(RobustExchange)
+
+    def test_publish_with_hook(self):
+        hook = mock.MagicMock()
+        exchange = Exchange(CONNECTION_8, CHANNEL_8, EXCHANGE_NAME)
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
+            mock_span = MagicMock()
+            mock_get_publish_span.return_value = mock_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                decorated_publish = PublishDecorator(
+                    self.tracer, exchange, publish_hook=hook
+                ).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
+        mock_publish.assert_called_once()
+        mock_get_publish_span.assert_called_once()
+        hook.assert_called_once_with(mock_span, MESSAGE)
+
+    def test_publish_hook_exception_does_not_fail(self):
+        hook = mock.MagicMock(side_effect=RuntimeError("Hook failure"))
+        exchange = Exchange(CONNECTION_8, CHANNEL_8, EXCHANGE_NAME)
+        with mock.patch.object(PublishDecorator, "_get_publish_span") as mock_get_publish_span:
+            mock_span = MagicMock()
+            mock_get_publish_span.return_value = mock_span
+            with mock.patch.object(Exchange, "publish") as mock_publish:
+                decorated_publish = PublishDecorator(
+                    self.tracer, exchange, publish_hook=hook
+                ).decorate(mock_publish)
+                self.loop.run_until_complete(decorated_publish(MESSAGE, ROUTING_KEY))
+        mock_publish.assert_called_once()
+        hook.assert_called_once_with(mock_span, MESSAGE)

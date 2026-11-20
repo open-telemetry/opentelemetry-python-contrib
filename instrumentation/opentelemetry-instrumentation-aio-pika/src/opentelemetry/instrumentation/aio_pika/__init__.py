@@ -35,6 +35,25 @@ Run instrumented task
     if __name__ == "__main__":
         asyncio.run(main())
 
+Hooks
+-----
+AioPikaInstrumentor also supports instrumenting with hooks that will be called when producing or consuming a message.
+The hooks should be of type "Callable[[Span, AbstractMessage], None]" for publish_hook and
+"Callable[[Span, AbstractIncomingMessage], None]" for consume_hook.
+
+.. code-block:: python
+
+    from aio_pika.abc import AbstractMessage, AbstractIncomingMessage
+    from opentelemetry.trace import Span
+
+    def publish_hook(span: Span, message: AbstractMessage):
+        span.set_attribute("custom.publish.tag", "my-value")
+
+    def consume_hook(span: Span, message: AbstractIncomingMessage):
+        span.set_attribute("custom.consume.tag", "my-value")
+
+    AioPikaInstrumentor().instrument(publish_hook=publish_hook, consume_hook=consume_hook)
+
 API
 ---
 """
