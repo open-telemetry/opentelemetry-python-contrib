@@ -450,8 +450,8 @@ class TestAiobotocoreInstrumentor(TestBase):
 
         mock_logger.debug.assert_has_calls(
             [
-                call("Instrumented %s", "aiobotocore"),
-                call("Instrumented %s", "botocore"),
+                call("Loaded OpenTelemetry instrumentation for %s", "aiobotocore"),
+                call("Loaded OpenTelemetry instrumentation for %s", "botocore"),
             ],
             any_order=True,
         )
