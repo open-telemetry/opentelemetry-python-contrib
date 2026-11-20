@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-boto3sqs`: end the processing span of every entry in delete_message_batch
