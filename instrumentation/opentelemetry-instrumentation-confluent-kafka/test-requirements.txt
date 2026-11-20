@@ -1,5 +1,5 @@
 asgiref==3.8.1
-confluent-kafka==2.13.2
+confluent-kafka==2.16.2
 Deprecated==1.2.14
 iniconfig==2.0.0
 packaging==24.0
@@ -7,7 +7,7 @@ pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==9.0.3
 tomli==2.0.1
-typing_extensions==4.12.2
+typing_extensions==4.14.0
 wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
