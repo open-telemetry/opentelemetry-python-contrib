@@ -47,6 +47,7 @@ from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.trace import Status, StatusCode
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
 _REMOULADE_MESSAGE_SEND = "send"
@@ -98,6 +99,14 @@ class _InstrumentationMiddleware(Middleware):
                     messaging_attributes.MESSAGING_MESSAGE_ID: message.message_id,
                 }
             )
+            if exception is not None:
+                span.record_exception(exception)
+                span.set_status(
+                    Status(
+                        StatusCode.ERROR,
+                        f"{type(exception).__name__}: {exception}",
+                    )
+                )
 
         activation.__exit__(None, None, None)
         utils.detach_span(self._span_registry, message.message_id)
