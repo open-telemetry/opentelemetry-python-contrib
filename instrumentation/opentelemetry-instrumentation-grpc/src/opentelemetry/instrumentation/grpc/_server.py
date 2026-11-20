@@ -12,6 +12,7 @@ Implementation of the service-side open-telemetry interceptor.
 
 import logging
 from contextlib import contextmanager
+from typing import NoReturn
 from urllib.parse import unquote
 
 import grpc
@@ -125,7 +126,11 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
         self._active_span.set_status(status)
         return self._servicer_context.abort(code, details)
 
-    def abort_with_status(self, status):
+    def abort_with_status(self, status: grpc.Status) -> NoReturn:
+        self._code = status.code
+        self._details = status.details
+        self._active_span.set_attribute(RPC_GRPC_STATUS_CODE, status.code.value[0])
+        self._active_span.set_status(_server_status(status.code, status.details))
         return self._servicer_context.abort_with_status(status)
 
     def code(self):

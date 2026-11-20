@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import NoReturn
+
 import grpc
 import grpc.aio
 
@@ -34,6 +36,13 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
         status = _server_status(code, details)
         self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
+
+    async def abort_with_status(self, status: grpc.Status) -> NoReturn:
+        self._self_code = status.code
+        self._self_details = status.details
+        self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, status.code.value[0])
+        self._self_active_span.set_status(_server_status(status.code, status.details))
+        return await self.__wrapped__.abort_with_status(status)
 
     def set_code(self, code):
         self._self_code = code
