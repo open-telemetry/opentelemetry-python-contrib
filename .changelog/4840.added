@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-django`: add opt-in `OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES` env var to add Django View references using code attributes into the span.
