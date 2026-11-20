@@ -1,0 +1,1 @@
+`opentelemetry-resourcedetector-gcp`: detect GCE managed instance group attributes (`gcp.gce.instance_group_manager.name`, `gcp.gce.instance_group_manager.zone`, `gcp.gce.instance_group_manager.region`) and `gcp.gce.instance.name` / `gcp.gce.instance.hostname`

@@ -56,6 +56,7 @@ def test_detects_gce(snapshot, fake_metadata: _metadata.Metadata):
             "project": {"projectId": "fakeProject"},
             "instance": {
                 "name": "fakeName",
+                "hostname": "fakeName.c.fakeProject.internal",
                 "id": "0087244a",
                 "machineType": "fakeMachineType",
                 "zone": "projects/233510669999/zones/us-east4-b",
@@ -65,6 +66,66 @@ def test_detects_gce(snapshot, fake_metadata: _metadata.Metadata):
     )
 
     assert dict(GoogleCloudResourceDetector().detect().attributes) == snapshot
+
+
+@pytest.mark.parametrize(
+    ("created_by", "expected_mig_attrs"),
+    (
+        pytest.param(
+            "projects/233510669999/zones/us-east4-b/instanceGroupManagers/my-zonal-mig",
+            {
+                "gcp.gce.instance_group_manager.name": "my-zonal-mig",
+                "gcp.gce.instance_group_manager.zone": "us-east4-b",
+            },
+            id="zonal",
+        ),
+        pytest.param(
+            "projects/233510669999/regions/us-east4/instanceGroupManagers/my-regional-mig",
+            {
+                "gcp.gce.instance_group_manager.name": "my-regional-mig",
+                "gcp.gce.instance_group_manager.region": "us-east4",
+            },
+            id="regional",
+        ),
+        pytest.param(
+            "projects/233510669999/zones/us-east4-b/otherResource/not-a-mig",
+            {},
+            id="non-mig",
+        ),
+    ),
+)
+def test_detects_gce_managed_instance_group(
+    fake_metadata: _metadata.Metadata,
+    created_by: str,
+    expected_mig_attrs: dict[str, str],
+):
+    fake_metadata.update(
+        {
+            "project": {"projectId": "fakeProject"},
+            "instance": {
+                "name": "fakeName",
+                "hostname": "fakeName.c.fakeProject.internal",
+                "id": "0087244a",
+                "machineType": "fakeMachineType",
+                "zone": "projects/233510669999/zones/us-east4-b",
+                "attributes": {"created-by": created_by},
+            },
+        }
+    )
+
+    assert dict(GoogleCloudResourceDetector().detect().attributes) == {
+        "cloud.account.id": "fakeProject",
+        "cloud.availability_zone": "us-east4-b",
+        "cloud.platform": "gcp_compute_engine",
+        "cloud.provider": "gcp",
+        "cloud.region": "us-east4",
+        "gcp.gce.instance.hostname": "fakeName.c.fakeProject.internal",
+        "gcp.gce.instance.name": "fakeName",
+        "host.id": "0087244a",
+        "host.name": "fakeName",
+        "host.type": "fakeMachineType",
+        **expected_mig_attrs,
+    }
 
 
 @pytest.mark.parametrize(
