@@ -62,8 +62,17 @@ For example, to only copy baggage entries that match the regex `^key.+`:
 
 ::
 
-    regex_predicate = lambda baggage_key: baggage_key.startswith("^key.+")
+    regex_predicate = lambda baggage_key: re.match(r"^key.+", baggage_key) is not None
     tracer_provider.add_span_processor(BaggageSpanProcessor(regex_predicate))
+
+Instead of a predicate, you can pass ``included`` and/or ``excluded`` wildcard
+patterns. See `Baggage key patterns`_ for the matching rules.
+
+::
+
+    tracer_provider.add_span_processor(
+        BaggageSpanProcessor(included=["user.*"], excluded=["user.secret?"])
+    )
 
 BaggageLogProcessor
 -------------------
@@ -110,6 +119,42 @@ For example, to copy baggage entries matching multiple predicates:
         lambda baggage_key: baggage_key.startswith("other-key"),
     ]
     logger_provider.add_log_record_processor(BaggageLogProcessor(multiple_predicates))
+
+Baggage key patterns
+--------------------
+
+Both processors accept ``included`` and ``excluded`` lists of wildcard patterns
+in place of ``baggage_key_predicate``. They cannot be combined with a predicate.
+
+* ``*`` matches any number of any character (including none) and ``?`` matches
+  exactly one character. All other characters match literally.
+* Matching is case-sensitive and applies to the whole baggage key.
+* When ``included`` is empty or not set, all keys are included.
+* ``excluded`` is applied after ``included``, so a key that matches both is excluded.
+* When neither a predicate nor any patterns are given, all baggage entries are copied.
+
+Declarative configuration
+-------------------------
+
+Both processors are registered as the ``baggage`` processor for declarative
+configuration, in the ``opentelemetry_traces_processor`` and
+``opentelemetry_logs_processor`` entry point groups:
+
+.. code-block:: yaml
+
+    tracer_provider:
+      processors:
+        - baggage:
+            included: ["user.*"]
+            excluded: ["user.secret?"]
+
+    logger_provider:
+      processors:
+        - baggage:
+            included: ["user.*"]
+            max_baggage_attributes: 64
+
+``- baggage:`` with no options copies all baggage entries.
 
 References
 ----------
