@@ -68,7 +68,7 @@ def make_mysqlclient_connection_mock():
 
 
 class TestMySQLClientIntegration(TestBase):
-    # pylint: disable=invalid-name
+    # pylint: disable=invalid-name,too-many-public-methods
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
@@ -605,3 +605,56 @@ class TestMySQLClientIntegration(TestBase):
             self.assertEqual(span.attributes[NET_PEER_PORT], 3306)
             self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
             self.assertEqual(span.attributes[SERVER_PORT], 3306)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_capture_parameters_default(
+        self,
+        mock_connect,
+        mock_wrap_connect,
+    ):
+        MySQLClientInstrumentor()._instrument()
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_capture_parameters_enabled(
+        self,
+        mock_connect,
+        mock_wrap_connect,
+    ):
+        MySQLClientInstrumentor()._instrument(capture_parameters=True)
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_capture_parameters_default(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = MySQLdb.connect(database="test")
+        MySQLClientInstrumentor().instrument_connection(cnx)
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_capture_parameters_enabled(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = MySQLdb.connect(database="test")
+        MySQLClientInstrumentor().instrument_connection(
+            cnx,
+            capture_parameters=True,
+        )
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], True)
