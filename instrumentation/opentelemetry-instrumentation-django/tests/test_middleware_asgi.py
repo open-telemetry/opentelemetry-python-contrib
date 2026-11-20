@@ -3,6 +3,7 @@
 
 # pylint: disable=E0611
 
+import asyncio
 from sys import modules
 from unittest.mock import Mock, patch
 
@@ -858,4 +859,32 @@ class TestMiddlewareAsgiWithCustomHeaders(SimpleTestCase, TestBase):
         self.assertEqual(span.kind, SpanKind.SERVER)
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
+        self.memory_exporter.clear()
+
+    async def test_cancelled_http_requests_clean_up_spans(self):
+        """
+        An ASGI request handling task can be cancelled by Django
+        if it detects that a connection is closed.
+
+        This manifests in an asyncio.CancelledError
+        """
+        # HACK unfortunately asyncio.CancelledError bubbles up to the top of the AsyncClient,
+        # making a bit of a mess
+        #
+        # Django's ASGI runner will call task.cancel() in practice if it detects a closed
+        # connection
+        with self.assertRaises(asyncio.CancelledError):
+            # simulate a cancellation while the request is in flight,
+            # so get_response never returns and process_response never runs
+            with patch(
+                "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_view",
+                side_effect=asyncio.CancelledError,
+            ):
+                await self.async_client.get("/traced/")
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.name, "GET ^traced/")
         self.memory_exporter.clear()
