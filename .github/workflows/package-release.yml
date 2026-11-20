@@ -25,6 +25,8 @@ jobs:
     permissions:
       contents: write # required for creating releases
       pull-requests: write # required for creating pull requests
+      id-token: write # required for generating OIDC token for attestation
+      attestations: write # required for persisting build provenance attestations
     runs-on: ubuntu-latest
     steps:
       - run: |
@@ -35,6 +37,7 @@ jobs:
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set environment variables
@@ -87,6 +90,7 @@ jobs:
         # back to the release branch
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
         # next few steps publish to pypi
@@ -99,6 +103,11 @@ jobs:
 
       - name: Build wheels
         run: ./scripts/build_a_package.sh
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "dist/*"
 
       - name: Install twine
         run: |
@@ -135,17 +144,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create --target $GITHUB_REF_NAME \
+          # Always tag the exact immutable commit SHA that was built, never a mutable branch ref
+          release_target=$(git rev-parse HEAD)
+          gh release create --target "$release_target" \
                             --title "${PACKAGE_NAME} ${VERSION}" \
                             --notes-file /tmp/release-notes.txt \
                             --discussion-category announcements \
-                            $RELEASE_TAG
+                            $RELEASE_TAG \
+                            dist/*
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
-          # zizmor: ignore[artipacked] Credentials are required by the branch push below.
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Copy change log updates to main
         env:
@@ -164,8 +175,9 @@ jobs:
 
       - name: Create pull request against main
         env:
-          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # not using secrets.GITHUB_TOKEN for pr create since pull requests from that token do not run workflows
+          PR_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Copy changelog updates from $GITHUB_REF_NAME"
           body="Copy changelog updates from \`$GITHUB_REF_NAME\`."
@@ -179,8 +191,9 @@ jobs:
           fi
 
           git commit -a -m "$message"
+          gh auth setup-git
           git push origin HEAD:$branch
-          gh pr create --title "$message" \
+          GH_TOKEN="${PR_TOKEN}" gh pr create --title "$message" \
                        --body "$body" \
                        --head $branch \
                        --base main

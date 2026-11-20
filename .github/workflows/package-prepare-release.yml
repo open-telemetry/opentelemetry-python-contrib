@@ -100,8 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # zizmor: ignore[artipacked] Credentials are required by the branch pushes below.
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set environment variables
         env:
@@ -118,7 +117,10 @@ jobs:
           echo "PACKAGE_NAME=$PACKAGE_NAME_OUTPUT" >> $GITHUB_ENV
 
       - name: Create package release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh auth setup-git
           git push origin HEAD:$RELEASE_BRANCH_NAME
 
       - name: Update package version
@@ -152,15 +154,17 @@ jobs:
 
       - name: Create pull request against the release branch
         env:
-          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # not using secrets.GITHUB_TOKEN for pr create since pull requests from that token do not run workflows
+          PR_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Prepare release for ${PACKAGE_NAME} v${VERSION}"
           branch="otelbot/prepare-${RELEASE_BRANCH_NAME}"
 
           git commit -a -m "$message"
+          gh auth setup-git
           git push origin HEAD:$branch
-          gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
+          GH_TOKEN="${PR_TOKEN}" gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
                        --body "$message." \
                        --head $branch \
                        --base $RELEASE_BRANCH_NAME
@@ -174,8 +178,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # zizmor: ignore[artipacked] Credentials are required by the branch push below.
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set environment variables
         env:
@@ -222,16 +225,18 @@ jobs:
 
       - name: Create pull request against main
         env:
-          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ steps.otelbot-token-main.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # not using secrets.GITHUB_TOKEN for pr create since pull requests from that token do not run workflows
+          PR_TOKEN: ${{ steps.otelbot-token-main.outputs.token }}
         run: |
           message="Update ${PACKAGE_NAME} version to v${NEXT_VERSION}"
           body="Update \`${PACKAGE_NAME}\` version to v\`${NEXT_VERSION}\`."
           branch="otelbot/update-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
 
           git commit -a -m "$message"
+          gh auth setup-git
           git push origin HEAD:$branch
-          gh pr create --title "$message" \
+          GH_TOKEN="${PR_TOKEN}" gh pr create --title "$message" \
                        --body "$body" \
                        --head $branch \
                        --base main
