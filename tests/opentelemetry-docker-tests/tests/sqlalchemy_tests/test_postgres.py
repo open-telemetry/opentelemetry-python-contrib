@@ -109,11 +109,19 @@ class PostgresMetricsTestCase(PostgresTestCase):
             POSTGRES_CONFIG["port"],
             self.SQL_DB,
         )
-        metrics = self.get_sorted_metrics(SCOPE)
-        self.assertEqual(len(metrics), 1)
-        self.assertEqual(metrics[0].name, "db.client.connection.count")
+        metrics = {metric.name: metric for metric in self.get_sorted_metrics(SCOPE)}
+        self.assertEqual(
+            set(metrics),
+            {"db.client.connection.count", "db.client.connection.use_time"},
+        )
+        use_time_points = list(metrics["db.client.connection.use_time"].data.data_points)
+        self.assertEqual(len(use_time_points), 1)
+        self.assertEqual(
+            dict(use_time_points[0].attributes),
+            {DB_CLIENT_CONNECTION_POOL_NAME: pool_name},
+        )
         self.assert_metric_expected(
-            metrics[0],
+            metrics["db.client.connection.count"],
             [
                 self.create_number_data_point(
                     value=0,
