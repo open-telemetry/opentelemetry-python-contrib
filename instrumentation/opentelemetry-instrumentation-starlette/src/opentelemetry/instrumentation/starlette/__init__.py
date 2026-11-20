@@ -361,8 +361,7 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
             try:
                 route = starlette_route.path
             except AttributeError:
-                # routes added via host routing won't have a path attribute
-                route = scope.get("path")
+                route = None
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
