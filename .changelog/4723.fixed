@@ -1,0 +1,1 @@
+﻿`opentelemetry-instrumentation-django`: fix spans ending prematurely for StreamingHttpResponse
