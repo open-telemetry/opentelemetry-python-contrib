@@ -24,7 +24,7 @@ from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
 )
-from opentelemetry.trace import Link, SpanKind, Tracer
+from opentelemetry.trace import Link, SpanKind, Tracer, get_current_span
 from opentelemetry.util.types import Attributes, AttributeValue
 
 if TYPE_CHECKING:
@@ -56,6 +56,11 @@ class KafkaPropertiesExtractor:
     def extract_produce_topic(args, kwargs):
         """extract topic from `produce` method arguments in Producer class"""
         return kwargs.get("topic") or (args[0] if args else "unknown")
+
+    @staticmethod
+    def extract_produce_partition(args, kwargs):
+        """extract partition from `produce` method arguments in Producer class"""
+        return KafkaPropertiesExtractor._extract_argument("partition", 3, None, args, kwargs)
 
     @staticmethod
     def extract_produce_headers(args, kwargs):
@@ -115,13 +120,41 @@ def _end_current_consume_span(instance):
     instance._current_consume_span = None
 
 
-def _create_new_consume_span(instance: Any, tracer: Tracer, records: Sequence[Message], attributes: Attributes) -> None:
-    links = _get_links_from_records(records)
+def _create_new_consume_span(
+    instance: Any,
+    tracer: Tracer,
+    records: Sequence[Message],
+    attributes: Attributes,
+    use_message_context_as_parent: bool = False,
+) -> None:
+    # By default the process span takes the ambient context as parent and links
+    # to the creation context of every record. Records in a batch can belong to
+    # different traces, so a batch span never takes a record context as parent.
+    # https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#message-creation-context-as-parent-of-process-span
+    ctx = None
+    links: list[Link] = []
+
+    if use_message_context_as_parent and len(records) == 1:
+        message_ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
+        message_span_context = get_current_span(message_ctx).get_span_context()
+        if message_span_context.is_valid:
+            # One record with a valid creation context: use it as parent, keep a
+            # link to it, and link the ambient span to preserve that correlation.
+            ctx = message_ctx
+            links.append(Link(context=message_span_context))
+            ambient_span_context = get_current_span().get_span_context()
+            if ambient_span_context.is_valid:
+                links.append(Link(context=ambient_span_context))
+
+    if ctx is None:
+        links = _get_links_from_records(records)
+
     instance._current_consume_span = tracer.start_span(
         name=f"{records[0].topic()} process",
         links=links,
         attributes=attributes,
         kind=SpanKind.CONSUMER,
+        context=ctx,
     )
 
 
@@ -175,6 +208,9 @@ def _get_attributes(
 
     if partition is not None:
         attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+
+    if offset is not None:
+        attributes[SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET] = offset
 
     if operation:
         attributes[MESSAGING_OPERATION] = operation.value
