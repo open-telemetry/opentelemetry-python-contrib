@@ -325,11 +325,11 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 
 1. First time run (e.g., opentelemetry-instrumentation-aiopg)
 ```console
-tox -e py315-test-instrumentation-aiopg
+tox -e py315-test-instrumentation-aiopg-wrapt2
 ```
 2. Run tests again without pre-steps:
 ```console
-.tox/py315-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+.tox/py315-test-instrumentation-aiopg-wrapt2/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
 
 ### Testing against a different Core repo branch/commit
