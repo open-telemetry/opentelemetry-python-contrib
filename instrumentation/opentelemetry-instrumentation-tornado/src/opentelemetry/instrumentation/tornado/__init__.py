@@ -841,7 +841,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
             server_span=True,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
-        if ctx.span.is_recording() and ctx.span.kind == trace.SpanKind.SERVER:
+        if ctx.span.is_recording() and getattr(ctx.span, "kind", None) == trace.SpanKind.SERVER:
             custom_attributes = _collect_custom_response_headers_attributes(handler._headers)
             if len(custom_attributes) > 0:
                 ctx.span.set_attributes(custom_attributes)

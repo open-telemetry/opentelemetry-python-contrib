@@ -289,7 +289,7 @@ def trace_tween_factory(handler, registry):
                         span.set_status(Status(StatusCode.ERROR, str(recordable_exc)))
                         span.record_exception(recordable_exc)
 
-                if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+                if span.is_recording() and getattr(span, "kind", None) == trace.SpanKind.SERVER:
                     custom_attributes = otel_wsgi.collect_custom_response_headers_attributes(
                         getattr(response, "headerlist", None)
                     )

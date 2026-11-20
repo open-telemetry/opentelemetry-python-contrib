@@ -671,7 +671,7 @@ class OpenTelemetryMiddleware:
                 duration_attrs,
                 sem_conv_opt_in_mode,
             )
-            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+            if span.is_recording() and getattr(span, "kind", None) == trace.SpanKind.SERVER:
                 custom_attributes = collect_custom_response_headers_attributes(response_headers)
                 if len(custom_attributes) > 0:
                     span.set_attributes(custom_attributes)
