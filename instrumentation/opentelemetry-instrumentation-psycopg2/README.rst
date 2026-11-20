@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-psycopg2
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry Psycopg2 Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/psycopg2/psycopg2.html>`_

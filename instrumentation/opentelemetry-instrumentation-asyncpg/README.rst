@@ -16,6 +16,12 @@ Installation
 
      pip install opentelemetry-instrumentation-asyncpg
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 

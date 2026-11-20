@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-pymssql
 
 
+Configuration
+-------------
+
+.. include:: /_includes/http-db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry pymssql Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/pymssql/pymssql.html>`_

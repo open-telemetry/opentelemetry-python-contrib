@@ -17,6 +17,12 @@ Installation
     pip install opentelemetry-instrumentation-cassandra
 
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry Cassandra Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/cassandra/cassandra.html>`_

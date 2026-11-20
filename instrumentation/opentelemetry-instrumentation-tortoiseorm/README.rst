@@ -15,6 +15,12 @@ Installation
 
      pip install opentelemetry-instrumentation-tortoiseorm
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 
