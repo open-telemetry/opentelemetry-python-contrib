@@ -28,6 +28,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
+    _get_network_metric_attributes,
 )
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
@@ -78,6 +79,75 @@ def run_with_test_server(runnable: typing.Callable, url: str, handler: typing.Ca
 
 
 SCOPE = "opentelemetry.instrumentation.aiohttp_client"
+
+
+class TestAioHttpMetricAttributes(unittest.TestCase):
+    def test_implicit_http_port_default_semconv(self):
+        attributes = _get_network_metric_attributes(
+            "http://examplehost/status/200",
+            _StabilityMode.DEFAULT,
+        )
+        self.assertEqual(
+            attributes,
+            {
+                HTTP_HOST: "examplehost",
+                NET_PEER_NAME: "examplehost",
+                NET_PEER_PORT: 80,
+            },
+        )
+
+    def test_implicit_https_port_default_semconv(self):
+        attributes = _get_network_metric_attributes(
+            "https://examplehost/status/200",
+            _StabilityMode.DEFAULT,
+        )
+        self.assertEqual(
+            attributes,
+            {
+                HTTP_HOST: "examplehost",
+                NET_PEER_NAME: "examplehost",
+                NET_PEER_PORT: 443,
+            },
+        )
+
+    def test_implicit_http_port_new_semconv(self):
+        attributes = _get_network_metric_attributes(
+            "http://examplehost/status/200",
+            _StabilityMode.HTTP,
+        )
+        self.assertEqual(
+            attributes,
+            {
+                SERVER_ADDRESS: "examplehost",
+                SERVER_PORT: 80,
+            },
+        )
+
+    def test_implicit_https_port_new_semconv(self):
+        attributes = _get_network_metric_attributes(
+            "https://examplehost/status/200",
+            _StabilityMode.HTTP,
+        )
+        self.assertEqual(
+            attributes,
+            {
+                SERVER_ADDRESS: "examplehost",
+                SERVER_PORT: 443,
+            },
+        )
+
+    def test_explicit_port_is_preserved(self):
+        attributes = _get_network_metric_attributes(
+            "http://examplehost:8080/status/200",
+            _StabilityMode.HTTP,
+        )
+        self.assertEqual(
+            attributes,
+            {
+                SERVER_ADDRESS: "examplehost",
+                SERVER_PORT: 8080,
+            },
+        )
 
 
 # pylint: disable=too-many-public-methods
