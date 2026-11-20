@@ -18,6 +18,52 @@ from opentelemetry.util.types import AttributeValue
 _LOG = getLogger(__name__)
 
 
+def _get_cluster_metadata(instance):
+    """Return the kafka-python ``ClusterMetadata`` for a producer or consumer.
+
+    ``KafkaProducer`` exposes it as ``_metadata``; ``KafkaConsumer`` as
+    ``_client.cluster``.
+    """
+    cluster = getattr(instance, "_metadata", None)
+    if cluster is not None:
+        return cluster
+    return getattr(getattr(instance, "_client", None), "cluster", None)
+
+
+def _patch_cluster_id_capture(instance) -> None:
+    """Capture the cluster id from the client's own metadata responses.
+
+    Reads from the client's already-resolved metadata; opens no extra broker
+    connection. ``ClusterMetadata`` only persists ``cluster_id`` from 2.1
+    onwards, so wrap ``update_metadata`` to store it from the
+    ``MetadataResponse``. Guarded so each client's metadata object is patched
+    at most once.
+
+    Only ``MetadataResponse`` v2+ carries a ``cluster_id``. 2.0.x caps its
+    request at v1, so the attribute is unavailable there and the span is left
+    without it; 2.1+ requests a new enough version.
+    """
+    cluster = _get_cluster_metadata(instance)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata):
+        result = original_update(metadata)
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        return result
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
+
+
+def _extract_cluster_id(instance) -> str | None:
+    cluster_id = getattr(_get_cluster_metadata(instance), "cluster_id", None)
+    return cluster_id if cluster_id else None
+
+
 class KafkaPropertiesExtractor:
     @staticmethod
     def extract_bootstrap_servers(instance):
@@ -93,6 +139,7 @@ def _get_attributes(
     bootstrap_servers: list[str],
     topic: str,
     partition: int | None = None,
+    cluster_id: str | None = None,
 ) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {
         messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
@@ -101,6 +148,8 @@ def _get_attributes(
     }
     if partition is not None:
         attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+    if cluster_id:
+        attributes[messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID] = cluster_id
     return attributes
 
 
@@ -118,7 +167,8 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
         span_name = _get_span_name("send", topic)
-        attributes = _get_attributes(bootstrap_servers, topic)
+        _patch_cluster_id_capture(instance)
+        attributes = _get_attributes(bootstrap_servers, topic, cluster_id=_extract_cluster_id(instance))
         with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER, attributes=attributes) as span:
             propagate.inject(
                 headers,
@@ -148,9 +198,10 @@ def _create_consumer_span(
     bootstrap_servers,
     args,
     kwargs,
+    cluster_id=None,
 ):
     span_name = _get_span_name("receive", record.topic)
-    attributes = _get_attributes(bootstrap_servers, record.topic, record.partition)
+    attributes = _get_attributes(bootstrap_servers, record.topic, record.partition, cluster_id)
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
@@ -177,6 +228,7 @@ def _wrap_next(
 
         if record:
             bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            _patch_cluster_id_capture(instance)
 
             extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
@@ -187,6 +239,7 @@ def _wrap_next(
                 bootstrap_servers,
                 args,
                 kwargs,
+                _extract_cluster_id(instance),
             )
         return record
 
