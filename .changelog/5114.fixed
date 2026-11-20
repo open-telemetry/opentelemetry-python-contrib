@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: fix server metrics being recorded twice when a handler raises
