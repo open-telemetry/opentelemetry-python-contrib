@@ -22,6 +22,15 @@ Usage
     client = Client(("localhost", 11211))
     client.set("some_key", "some_value")
 
+Sanitization
+------------
+
+Memcached keys are considered sensitive data, since they can contain session ids
+or user identifiers. The statement recorded on the span (``db.statement`` with
+the old semantic conventions, ``db.query.text`` with the new ones) therefore
+contains the command name followed by one ``?`` placeholder per key, so
+``get session:abc123`` is reported as ``get ?``. Values are never recorded.
+
 API
 ---
 """
@@ -133,27 +142,23 @@ def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
 
 
 def _get_query_string(arg):
-    """Return the query values given the first argument to a pymemcache command.
+    """Return the sanitized query values given the first argument to a pymemcache command.
 
-    If there are multiple query values, they are joined together
-    space-separated.
+    Memcached keys are sensitive data, so only the number of query values is
+    kept: each value is replaced by a ``?`` placeholder. If there are multiple
+    query values, the placeholders are joined together space-separated.
     """
-    keys = ""
+    query_value_count = 0
 
     if isinstance(arg, dict):
         arg = list(arg)
 
-    if isinstance(arg, str):
-        keys = arg
-    elif isinstance(arg, bytes):
-        keys = arg.decode()
-    elif isinstance(arg, list) and len(arg) >= 1:
-        if isinstance(arg[0], str):
-            keys = " ".join(arg)
-        elif isinstance(arg[0], bytes):
-            keys = b" ".join(arg).decode()
+    if isinstance(arg, (str, bytes)):
+        query_value_count = 1
+    elif isinstance(arg, list) and len(arg) >= 1 and isinstance(arg[0], (str, bytes)):
+        query_value_count = len(arg)
 
-    return keys
+    return " ".join(["?"] * query_value_count)
 
 
 def _get_address_attributes(instance, sem_conv_opt_in_mode):
