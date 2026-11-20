@@ -153,6 +153,8 @@ API
 ---
 """
 
+import importlib
+import sys
 from collections.abc import Collection, Sequence
 
 import sqlalchemy
@@ -240,6 +242,16 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         commenter_options = kwargs.get("commenter_options", {})
         enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
+        # Bind create_engine inside the async engine module before wrapping it.
+        # That module captures the name at import time; a later import would
+        # capture the wrapper and trace every async engine twice.
+        try:
+            importlib.import_module("sqlalchemy.ext.asyncio.engine")
+        except ImportError:
+            async_engine_available = False
+        else:
+            async_engine_available = True
+
         _w(
             "sqlalchemy",
             "create_engine",
@@ -278,17 +290,22 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             "Engine.connect",
             _wrap_connect(tracer),
         )
-        _w(
-            "sqlalchemy.ext.asyncio",
-            "create_async_engine",
-            _wrap_create_async_engine(
-                tracer,
-                connection_count,
-                enable_commenter,
-                commenter_options,
-                enable_attribute_commenter,
-            ),
-        )
+        if async_engine_available:
+            for async_module_name in (
+                "sqlalchemy.ext.asyncio",
+                "sqlalchemy.ext.asyncio.engine",
+            ):
+                _w(
+                    async_module_name,
+                    "create_async_engine",
+                    _wrap_create_async_engine(
+                        tracer,
+                        connection_count,
+                        enable_commenter,
+                        commenter_options,
+                        enable_attribute_commenter,
+                    ),
+                )
         if kwargs.get("engine") is not None:
             return EngineTracer(
                 tracer,
@@ -318,5 +335,11 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         unwrap(sqlalchemy.engine, "create_engine")
         unwrap(sqlalchemy.engine.create, "create_engine")
         unwrap(Engine, "connect")
-        unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
+        for async_module_name in (
+            "sqlalchemy.ext.asyncio",
+            "sqlalchemy.ext.asyncio.engine",
+        ):
+            async_module = sys.modules.get(async_module_name)
+            if async_module is not None:
+                unwrap(async_module, "create_async_engine")
         EngineTracer.remove_all_event_listeners()
