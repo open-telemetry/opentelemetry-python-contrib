@@ -960,3 +960,16 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
         self.assertEqual(span.attributes["http.request.header.x_test"], ("Value",))
+
+    def test_urlopen_pool_headers(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        pool = urllib3.HTTPConnectionPool("mock", headers={"X-Test": "Value"})
+        response = pool.urlopen("GET", "/status/200")
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        headers = dict(Mocket.last_request().headers)
+        self.assertEqual(headers.get("x-test"), "Value")
+        self.assertIn("traceparent", headers)
+        self.assertEqual(span.attributes["http.request.header.x_test"], ("Value",))
+        self.assertEqual(pool.headers, {"X-Test": "Value"})
