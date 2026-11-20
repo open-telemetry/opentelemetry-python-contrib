@@ -1,0 +1,67 @@
+interactions:
+- request:
+    body: |-
+      {
+        "texts": [
+          "Say this is a test"
+        ],
+        "input_type": "search_document"
+      }
+    headers:
+      Content-Length:
+      - '76'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250826T103001Z
+      X-Amzn-Trace-Id:
+      - Root=1-ffffffff-eeeeeeeeeeeeeeeeeeeeeeee;Parent=dddddddddddddddd;Sampled=1
+      amz-sdk-invocation-id:
+      - 66666666-7777-8888-9999-000000000000
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/cohere.embed-v4%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "836a33cc-61ec-4e65-afaf-c4628171a315",
+          "embeddings": [
+            [
+              0.0135,
+              -0.0272,
+              0.0047,
+              0.0189,
+              -0.0091,
+              0.0023,
+              0.0314,
+              -0.0168
+            ]
+          ],
+          "response_type": "embeddings_floats",
+          "texts": [
+            "Say this is a test"
+          ]
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Aug 2026 10:30:01 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '95'
+      x-amzn-RequestId:
+      - 836a33cc-61ec-4e65-afaf-c4628171a315
+    status:
+      code: 200
+      message: OK
+version: 1
