@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+
 from collections import Counter
 from types import SimpleNamespace
 from unittest import TestCase, mock
@@ -7,13 +8,15 @@ from unittest import TestCase, mock
 from pika.adapters import BaseConnection, BlockingConnection
 from pika.adapters.blocking_connection import (
     BlockingChannel,
+    _ConsumerDeliveryEvt,
     _QueueConsumerGeneratorInfo,
 )
 from pika.channel import Channel
 from pika.connection import Connection
-from pika.spec import BasicProperties
+from pika.spec import Basic, BasicProperties
 from wrapt import BoundFunctionWrapper
 
+from opentelemetry import context
 from opentelemetry.instrumentation.pika import PikaInstrumentor
 from opentelemetry.instrumentation.pika.pika_instrumentor import (
     _consumer_callback_attribute_name,
@@ -27,7 +30,8 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import NoOpTracerProvider, SpanKind, Tracer
 
 
 class TestPika(TestCase):
@@ -306,3 +310,110 @@ class TestPika(TestCase):
             self.assertEqual(_consumer_callback_attribute_name(), "on_message_callback")
         with mock.patch("pika.__version__", "0.12.0"):
             self.assertEqual(_consumer_callback_attribute_name(), "consumer_cb")
+
+
+class TestPikaNoOpTracerProvider(TestBase):
+    def test_no_op_tracer_provider_channel(self) -> None:
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
+        callback_calls = []
+        publish_spans = []
+        consume_spans = []
+
+        def on_msg(
+            channel: object,
+            method: object,
+            properties: object,
+            body: object,
+        ) -> str:
+            callback_calls.append((channel, method, properties, body))
+            return "consumed"
+
+        class FakeBlockingChannel:
+            def __init__(self) -> None:
+                self._consumer_infos = {}
+                self.publish_calls = []
+                self.connection = SimpleNamespace(params=SimpleNamespace(host="localhost", port=5672))
+
+            @property
+            def __class__(self):
+                return BlockingChannel
+
+            def basic_publish(
+                self,
+                exchange: str,
+                routing_key: str,
+                body: bytes,
+                properties: BasicProperties | None = None,
+                mandatory: bool = False,
+            ) -> str:
+                self.publish_calls.append((exchange, routing_key, body, properties, mandatory))
+                return "published"
+
+            def basic_consume(self, queue: str, *args: object, **kwargs: object) -> str:
+                consumer_callback = (
+                    kwargs.get("on_message_callback")
+                    or kwargs.get("consumer_callback")
+                    or kwargs.get("consumer_cb")
+                    or args[0]
+                )
+                self._consumer_infos[queue] = SimpleNamespace(**{callback_attr: consumer_callback})
+                return queue
+
+        channel = FakeBlockingChannel()
+        PikaInstrumentor.instrument_channel(
+            channel,
+            tracer_provider=NoOpTracerProvider(),
+            publish_hook=lambda span, _body, _props: publish_spans.append(span),
+            consume_hook=lambda span, _body, _props: consume_spans.append(span),
+        )
+
+        properties = BasicProperties(headers={})
+        publish_result = channel.basic_publish("test-exchange", "q1", b"hello", properties)
+        self.assertEqual(publish_result, "published")
+        self.assertEqual(len(channel.publish_calls), 1)
+        self.assertEqual(len(publish_spans), 1)
+        self.assertFalse(publish_spans[0].is_recording())
+
+        channel.basic_consume("q1", on_message_callback=on_msg)
+        method = Basic.Deliver(
+            exchange="test-exchange",
+            routing_key="q1",
+            consumer_tag="q1",
+            delivery_tag=1,
+        )
+        q1_callback = getattr(channel._consumer_infos["q1"], callback_attr)
+        consume_result = q1_callback(channel, method, properties, b"hello")
+
+        self.assertEqual(consume_result, "consumed")
+        self.assertEqual(callback_calls, [(channel, method, properties, b"hello")])
+        self.assertEqual(len(consume_spans), 1)
+        self.assertFalse(consume_spans[0].is_recording())
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+    def test_no_op_tracer_provider_queue_consumer_generator(self) -> None:
+        consume_spans = []
+        instrumentation = PikaInstrumentor()
+        instrumentation.instrument(
+            tracer_provider=NoOpTracerProvider(),
+            consume_hook=lambda span, _body, _props: consume_spans.append(span),
+        )
+        self.addCleanup(instrumentation.uninstrument)
+
+        generator_info = _QueueConsumerGeneratorInfo(params=("queue", False, False), consumer_tag="tag")
+        pending_events = generator_info.pending_events
+        self.assertIsInstance(pending_events, ReadyMessagesDequeProxy)
+        method = Basic.Deliver(exchange="test-exchange", routing_key="queue")
+        event = _ConsumerDeliveryEvt(method, BasicProperties(headers={}), b"hello")
+        pending_events.append(event)
+
+        try:
+            returned_event = pending_events.popleft()
+        finally:
+            active_token = getattr(pending_events, "_self_active_token", None)
+            if active_token:
+                context.detach(active_token)
+
+        self.assertIs(returned_event, event)
+        self.assertEqual(len(consume_spans), 1)
+        self.assertFalse(consume_spans[0].is_recording())
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
