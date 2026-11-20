@@ -191,6 +191,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pyramid import callbacks
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
+    SETTING_TRACER_PROVIDER,
     TWEEN_NAME,
     trace_tween_factory,
 )
@@ -206,6 +207,10 @@ if platform.python_implementation() == "PyPy":
     CALLER_LEVELS = 3
 else:
     CALLER_LEVELS = 2
+
+# Set by ``PyramidInstrumentor.instrument`` and used by ``_traced_init`` to
+# configure every new ``Configurator``.
+_tracer_provider = None
 
 
 def _traced_init(wrapped, instance, args, kwargs):
@@ -234,6 +239,8 @@ def _traced_init(wrapped, instance, args, kwargs):
         kwargs["package"] = caller_package(level=CALLER_LEVELS)
 
     wrapped(*args, **kwargs)
+    if _tracer_provider is not None:
+        instance.add_settings({SETTING_TRACER_PROVIDER: _tracer_provider})
     instance.include("opentelemetry.instrumentation.pyramid.callbacks")
 
 
@@ -253,20 +260,27 @@ class PyramidInstrumentor(BaseInstrumentor):
         # Set module-level opt-in mode in callbacks
         callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
+        global _tracer_provider  # pylint: disable=global-statement
+        _tracer_provider = kwargs.get("tracer_provider")
+
         _wrap("pyramid.config", "Configurator.__init__", _traced_init)
 
     def _uninstrument(self, **kwargs):
         """ "Disable Pyramid instrumentation"""
         # Reset module-level opt-in mode to default
         callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+        global _tracer_provider  # pylint: disable=global-statement
+        _tracer_provider = None
         unwrap(Configurator, "__init__")
 
     @staticmethod
-    def instrument_config(config):
+    def instrument_config(config, tracer_provider=None):
         """Enable instrumentation in a Pyramid configurator.
 
         Args:
             config: The Configurator to instrument.
+            tracer_provider: The ``TracerProvider`` to create spans with. If not
+                given, the global tracer provider is used.
         """
         # Initialize semantic conventions opt-in mode
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -276,6 +290,8 @@ class PyramidInstrumentor(BaseInstrumentor):
         # Set module-level opt-in mode in callbacks
         callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
+        if tracer_provider is not None:
+            config.add_settings({SETTING_TRACER_PROVIDER: tracer_provider})
         config.include("opentelemetry.instrumentation.pyramid.callbacks")
 
     @staticmethod

@@ -323,6 +323,48 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
                     self.assertEqual(point.value, 0)
 
 
+class TestTracerProvider(InstrumentationTest, WsgiTestBase):
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            PyramidInstrumentor().uninstrument()
+
+    def test_instrument_uses_given_tracer_provider(self):
+        tracer_provider, exporter = self.create_tracer_provider()
+        PyramidInstrumentor().instrument(tracer_provider=tracer_provider)
+        self.config = Configurator()
+        self._common_initialization(self.config)
+
+        resp = self.client.get("/hello/123")
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(len(exporter.get_finished_spans()), 1)
+        # The global tracer provider must not receive the span.
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+    def test_instrument_without_tracer_provider_uses_global(self):
+        PyramidInstrumentor().instrument()
+        self.config = Configurator()
+        self._common_initialization(self.config)
+
+        self.client.get("/hello/123")
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
+    def test_uninstrument_forgets_tracer_provider(self):
+        tracer_provider, exporter = self.create_tracer_provider()
+        PyramidInstrumentor().instrument(tracer_provider=tracer_provider)
+        PyramidInstrumentor().uninstrument()
+
+        PyramidInstrumentor().instrument()
+        self.config = Configurator()
+        self._common_initialization(self.config)
+        self.client.get("/hello/123")
+
+        self.assertEqual(len(exporter.get_finished_spans()), 0)
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
+
 class TestWrappedWithOtherFramework(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
