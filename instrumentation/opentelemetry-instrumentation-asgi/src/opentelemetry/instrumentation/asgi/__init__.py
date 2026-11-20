@@ -940,7 +940,7 @@ class OpenTelemetryMiddleware:
 
     def _set_server_span(self, server_span, message, status_code, duration_attrs):
         """Set server span attributes and status code."""
-        if server_span.is_recording() and server_span.kind == trace.SpanKind.SERVER and "headers" in message:
+        if server_span.is_recording() and getattr(server_span, "kind", None) == trace.SpanKind.SERVER and "headers" in message:
             custom_response_attributes = (
                 collect_custom_headers_attributes(
                     message,
