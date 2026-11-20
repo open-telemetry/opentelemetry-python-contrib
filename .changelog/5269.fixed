@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-requests`: log instead of propagating exceptions raised by hooks
