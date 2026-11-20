@@ -6,6 +6,7 @@ from functools import cache
 from typing import TypedDict
 
 import requests
+from typing_extensions import NotRequired
 
 _GCP_METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/"
 _INSTANCE = "instance"
@@ -21,11 +22,16 @@ class Project(TypedDict):
     projectId: str
 
 
-Attributes = TypedDict("Attributes", {"cluster-location": str, "cluster-name": str}, total=False)
+Attributes = TypedDict(
+    "Attributes",
+    {"cluster-location": str, "cluster-name": str, "created-by": str},
+    total=False,
+)
 
 
 class Instance(TypedDict):
     attributes: Attributes
+    hostname: NotRequired[str]
     # id can be an integer on GCE VMs or a string on other environments
     id: int | str
     machineType: str
