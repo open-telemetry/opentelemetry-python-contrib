@@ -1,7 +1,10 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
 import os
+import sys
+import types
 from unittest import mock
 
 import click
@@ -13,7 +16,12 @@ try:
 except ImportError:
     flask_cli = None
 
-from opentelemetry.instrumentation.click import ClickInstrumentor
+try:
+    import uvicorn
+except ImportError:
+    uvicorn = None
+
+from opentelemetry.instrumentation.click import ClickInstrumentor, _skip_servers
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
@@ -227,6 +235,96 @@ class ClickTestCase(TestBase):
         self.assertEqual(result.exit_code, 0)
 
         self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    def test_skip_servers_python_m_uvicorn(self):
+        @click.command()
+        def command():
+            pass
+
+        # Click's _detect_program_name always uses the literal "python"
+        # prefix. Also accept other interpreter basenames so a synthetic
+        # context matches `python3 -m uvicorn` and `python3.12 -m uvicorn`.
+        for info_name in (
+            "python -m uvicorn",
+            "python3 -m uvicorn",
+            "python3.12 -m uvicorn",
+            "python -m uvicorn.main",
+        ):
+            with self.subTest(info_name=info_name):
+                ctx = click.Context(command, info_name=info_name)
+                self.assertTrue(_skip_servers(ctx))
+
+        for info_name in ("python -m flask", "routes", "upgrade", "flask"):
+            with self.subTest(info_name=info_name):
+                ctx = click.Context(command, info_name=info_name)
+                self.assertFalse(_skip_servers(ctx))
+
+        def server():
+            pass
+
+        server.__module__ = "uvicorn.main"
+        ctx = click.Context(click.command("main")(server), info_name="main")
+        self.assertTrue(_skip_servers(ctx))
+
+    def test_python_m_uvicorn_program_name_ignored(self):
+        @click.command()
+        def command():
+            pass
+
+        for program_name in (
+            "python -m uvicorn",
+            "python3 -m uvicorn",
+            "python3.12 -m uvicorn",
+            "python -m uvicorn.main",
+        ):
+            with self.subTest(program_name=program_name):
+                self.memory_exporter.clear()
+                result = CliRunner().invoke(command, prog_name=program_name)
+                self.assertEqual(result.exit_code, 0)
+                self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    @pytest.mark.skipif(uvicorn is None, reason="requires uvicorn")
+    def test_python_m_uvicorn_invocation_ignored(self):
+        entry = importlib.import_module("uvicorn.__main__")
+        server_module = importlib.import_module("uvicorn.main")
+        cases = (
+            ("uvicorn", entry.__file__),
+            ("uvicorn", server_module.__file__),
+        )
+        for package, argv0 in cases:
+            with self.subTest(argv0=argv0):
+                self.memory_exporter.clear()
+                main_module = types.ModuleType("__main__")
+                main_module.__package__ = package
+                main_module.__file__ = argv0
+                with (
+                    mock.patch.dict(sys.modules, {"__main__": main_module}),
+                    mock.patch("sys.argv", [argv0, "app:app"]),
+                    mock.patch.object(server_module, "run") as run,
+                ):
+                    result = click.Command.main(
+                        server_module.main,
+                        args=["app:app"],
+                        standalone_mode=False,
+                    )
+                self.assertIsNone(result)
+                run.assert_called_once()
+                self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    @pytest.mark.skipif(flask_cli is None, reason="requires flask")
+    @mock.patch.dict(
+        sys.modules, {"opentelemetry.instrumentation.asgi": types.ModuleType("opentelemetry.instrumentation.asgi")}
+    )
+    def test_flask_management_command_is_traced(self):
+        @click.command("upgrade")
+        def upgrade():
+            pass
+
+        result = CliRunner().invoke(upgrade, obj=flask_cli.ScriptInfo())
+        self.assertEqual(result.exit_code, 0)
+
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.name, "upgrade")
 
     @pytest.mark.skipif(flask_cli is None, reason="requires flask")
     def test_flask_run_command_ignored(self):

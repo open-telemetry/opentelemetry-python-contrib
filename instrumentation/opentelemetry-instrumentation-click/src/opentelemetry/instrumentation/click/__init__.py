@@ -3,8 +3,9 @@
 
 """
 Instrument `click`_ CLI applications. The instrumentor will avoid instrumenting
-well-known servers (e.g. *flask run* and *uvicorn*) to avoid unexpected effects
-like every request having the same Trace ID.
+well-known servers (e.g. *flask run* and *uvicorn*, including
+``python -m uvicorn``) to avoid unexpected effects like every request having
+the same Trace ID.
 
 .. _click: https://pypi.org/project/click/
 
@@ -65,14 +66,25 @@ from opentelemetry.trace.status import StatusCode
 _logger = getLogger(__name__)
 
 
+def _is_uvicorn(ctx: click.Context) -> bool:
+    # `uvicorn` and `python -m uvicorn`. Click's _detect_program_name reports
+    # the module form as "python -m uvicorn" (or "python -m uvicorn.main"),
+    # not "uvicorn". The callback module covers that command when a runner
+    # uses another program name. Do not key off ASGI/WSGI instrumentor
+    # imports: a management command such as `flask db upgrade` still needs
+    # a span when those packages happen to be loaded.
+    info_name = ctx.info_name or ""
+    if info_name == "uvicorn" or info_name.endswith((" -m uvicorn", " -m uvicorn.main")):
+        return True
+    callback = getattr(getattr(ctx, "command", None), "callback", None)
+    return getattr(callback, "__module__", None) == "uvicorn.main"
+
+
 def _skip_servers(ctx: click.Context):
     # flask run
     if ctx.info_name == "run" and FlaskScriptInfo and isinstance(ctx.obj, FlaskScriptInfo):
         return True
-    # uvicorn
-    if ctx.info_name == "uvicorn":
-        return True
-    return False
+    return _is_uvicorn(ctx)
 
 
 def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
