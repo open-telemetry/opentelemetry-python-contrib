@@ -1150,3 +1150,32 @@ async def test_generic_exception_records_error_new_semconv(
     assert span.events[0].attributes["exception.type"] == exception_class.__qualname__
 
     AioHttpServerInstrumentor().uninstrument()
+@pytest.mark.asyncio
+async def test_middleware_handles_none_response(test_base: TestBase):
+    from aiohttp.test_utils import make_mocked_request
+    from aiohttp.web_urldispatcher import UrlMappingMatchInfo
+    from opentelemetry.instrumentation.aiohttp_server import (
+        create_aiohttp_middleware,
+    )
+
+    AioHttpServerInstrumentor().instrument()
+    try:
+        app = aiohttp.web.Application()
+
+        async def handler(_request):
+            return None
+
+        resource = app.router.add_resource("/ws")
+        route = resource.add_route("GET", handler)
+        request = make_mocked_request(
+            "GET", "/ws", match_info=UrlMappingMatchInfo({}, route)
+        )
+
+        middleware = create_aiohttp_middleware()
+        result = await middleware(request, handler)
+        assert result is None
+
+        spans = test_base.get_finished_spans()
+        assert len(spans) == 1
+    finally:
+        AioHttpServerInstrumentor().uninstrument()
