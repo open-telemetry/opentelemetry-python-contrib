@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from unittest import IsolatedAsyncioTestCase, mock
-
+import unittest
 import aiokafka
 
 from opentelemetry.instrumentation.aiokafka.utils import (
@@ -300,3 +300,133 @@ class TestUtils(IsolatedAsyncioTestCase):
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) == "partition"
         aiokafka_instance_mock.client._wait_on_metadata.side_effect = Exception("mocked error")
         assert await _extract_send_partition(aiokafka_instance_mock, self.args, self.kwargs) is None
+
+class TestAIOKafkaMetrics(unittest.IsolatedAsyncioTestCase):
+    async def test_send_metrics_with_future(self):
+        import asyncio
+        from unittest import mock
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.semconv._incubating.metrics.messaging_metrics import (
+            MESSAGING_CLIENT_OPERATION_DURATION,
+            MESSAGING_CLIENT_SENT_MESSAGES,
+        )
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        meter = meter_provider.get_meter("test")
+        op_duration = meter.create_histogram(MESSAGING_CLIENT_OPERATION_DURATION, unit="s")
+        sent_counter = meter.create_counter(MESSAGING_CLIENT_SENT_MESSAGES, unit="{message}")
+        tracer = TracerProvider().get_tracer("test")
+
+        wrapped_send = _wrap_send(tracer, None, op_duration, sent_counter)
+
+        producer = mock.MagicMock()
+        producer.partitions_for = mock.AsyncMock(return_value={0})
+
+        loop = asyncio.get_running_loop()
+        ack_future = loop.create_future()
+
+        async def fake_send(*args, **kwargs):
+            return ack_future
+
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers",
+                return_value=["localhost:9092"],
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.aiokafka.utils._extract_client_id",
+                return_value="test-client",
+            ),
+        ):
+            fut = await wrapped_send(fake_send, producer, ("my-topic",), {"value": b"hi"})
+
+        self.assertIs(fut, ack_future)
+
+        ack_future.set_result(mock.MagicMock())
+        await asyncio.sleep(0)
+
+        metrics_data = reader.get_metrics_data()
+        metrics_by_name = {
+            m.name: m
+            for rm in metrics_data.resource_metrics
+            for sm in rm.scope_metrics
+            for m in sm.metrics
+        }
+        self.assertEqual(metrics_by_name[MESSAGING_CLIENT_SENT_MESSAGES].data.data_points[0].value, 1)
+        self.assertEqual(metrics_by_name[MESSAGING_CLIENT_OPERATION_DURATION].data.data_points[0].count, 1)
+        self.assertEqual(
+            dict(metrics_by_name[MESSAGING_CLIENT_SENT_MESSAGES].data.data_points[0].attributes),
+            {
+                "messaging.system": "kafka",
+                "messaging.destination.name": "my-topic",
+                "messaging.operation.type": "send",
+            },
+        )
+
+    async def test_consume_metrics_getone_and_getmany(self):
+        from unittest import mock
+        import aiokafka
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.semconv._incubating.metrics.messaging_metrics import (
+            MESSAGING_CLIENT_CONSUMED_MESSAGES,
+            MESSAGING_CLIENT_OPERATION_DURATION,
+        )
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        meter = meter_provider.get_meter("test")
+        op_duration = meter.create_histogram(MESSAGING_CLIENT_OPERATION_DURATION, unit="s")
+        consumed_counter = meter.create_counter(MESSAGING_CLIENT_CONSUMED_MESSAGES, unit="{message}")
+        tracer = TracerProvider().get_tracer("test")
+
+        consumer = mock.MagicMock()
+
+        rec = mock.MagicMock(spec=aiokafka.ConsumerRecord)
+        rec.topic = "orders"
+        rec.partition = 0
+        rec.offset = 1
+        rec.headers = []
+        rec.key = None
+
+        async def fake_getone(*args, **kwargs):
+            return rec
+
+        tp = aiokafka.TopicPartition("orders", 0)
+
+        async def fake_getmany(*args, **kwargs):
+            return {tp: [rec, rec]}
+
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers",
+                return_value=["localhost:9092"],
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.aiokafka.utils._extract_client_id",
+                return_value="test-consumer",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group",
+                return_value="test-group",
+            ),
+        ):
+            wrapped_getone = _wrap_getone(tracer, None, op_duration, consumed_counter)
+            await wrapped_getone(fake_getone, consumer, (), {})
+
+            wrapped_getmany = _wrap_getmany(tracer, None, op_duration, consumed_counter)
+            await wrapped_getmany(fake_getmany, consumer, (), {})
+
+        metrics_data = reader.get_metrics_data()
+        metrics_by_name = {
+            m.name: m
+            for rm in metrics_data.resource_metrics
+            for sm in rm.scope_metrics
+            for m in sm.metrics
+        }
+        self.assertEqual(metrics_by_name[MESSAGING_CLIENT_CONSUMED_MESSAGES].data.data_points[0].value, 3)
+        self.assertEqual(metrics_by_name[MESSAGING_CLIENT_OPERATION_DURATION].data.data_points[0].count, 2)
