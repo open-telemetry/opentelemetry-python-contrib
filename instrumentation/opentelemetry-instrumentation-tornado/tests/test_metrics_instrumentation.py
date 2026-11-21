@@ -440,27 +440,6 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self.assertNotIn(HTTP_URL, client_span.attributes)
         self.assertNotIn(HTTP_STATUS_CODE, client_span.attributes)
 
-    def test_client_metrics_server_address_and_port_new_semconv(self):
-        response = self.fetch("/")
-        self.assertEqual(response.code, 201)
-        metrics = self.get_sorted_metrics(SCOPE)
-        client_metrics = [
-            metric
-            for metric in metrics
-            if metric.name
-            in (
-                "http.client.request.duration",
-                "http.client.request.body.size",
-                "http.client.response.body.size",
-            )
-        ]
-        self.assertEqual(len(client_metrics), 3)
-        for metric in client_metrics:
-            for point in metric.data.data_points:
-                self.assertEqual(point.attributes[SERVER_ADDRESS], "127.0.0.1")
-                self.assertEqual(point.attributes[SERVER_PORT], self.get_http_port())
-                self.assertIsInstance(point.attributes[SERVER_PORT], int)
-
     def test_server_metrics_new_semconv(self):
         """Test that server metrics use new semantic conventions in http mode."""
         response = self.fetch("/parametrized/hello/?foo=bar")
@@ -658,6 +637,9 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
                     old_client_found = True if metric.name == "http.client.duration" else old_client_found
                 if new_attribute := attributes.get("http.request.method"):
                     self.assertEqual(new_attribute, "_OTHER")
+                    if metric.name == "http.client.request.duration":
+                        self.assertEqual(attributes[SERVER_ADDRESS], "127.0.0.1")
+                        self.assertEqual(attributes[SERVER_PORT], self.get_http_port())
                     new_server_found = True if metric.name == "http.server.active_requests" else new_server_found
                     new_client_found = True if metric.name == "http.client.request.duration" else new_client_found
 
@@ -699,5 +681,13 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
             elif metric.name == "http.client.request.duration":
                 new_duration_found = True
                 self.assertEqual(metric.unit, "s")
+            if metric.name in (
+                "http.client.request.duration",
+                "http.client.request.body.size",
+                "http.client.response.body.size",
+            ):
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes[SERVER_ADDRESS], "127.0.0.1")
+                    self.assertEqual(point.attributes[SERVER_PORT], self.get_http_port())
         self.assertTrue(old_duration_found, "Old semconv client metric not found")
         self.assertTrue(new_duration_found, "New semconv client metric not found")
