@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-jinja2`: honor `suppress_instrumentation()` when rendering, compiling or loading templates
