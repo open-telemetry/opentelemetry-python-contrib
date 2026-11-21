@@ -31,6 +31,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
     URL_PATH,
@@ -633,6 +637,9 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
                     old_client_found = True if metric.name == "http.client.duration" else old_client_found
                 if new_attribute := attributes.get("http.request.method"):
                     self.assertEqual(new_attribute, "_OTHER")
+                    if metric.name == "http.client.request.duration":
+                        self.assertEqual(attributes[SERVER_ADDRESS], "127.0.0.1")
+                        self.assertEqual(attributes[SERVER_PORT], self.get_http_port())
                     new_server_found = True if metric.name == "http.server.active_requests" else new_server_found
                     new_client_found = True if metric.name == "http.client.request.duration" else new_client_found
 
@@ -674,5 +681,13 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
             elif metric.name == "http.client.request.duration":
                 new_duration_found = True
                 self.assertEqual(metric.unit, "s")
+            if metric.name in (
+                "http.client.request.duration",
+                "http.client.request.body.size",
+                "http.client.response.body.size",
+            ):
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes[SERVER_ADDRESS], "127.0.0.1")
+                    self.assertEqual(point.attributes[SERVER_PORT], self.get_http_port())
         self.assertTrue(old_duration_found, "Old semconv client metric not found")
         self.assertTrue(new_duration_found, "New semconv client metric not found")
