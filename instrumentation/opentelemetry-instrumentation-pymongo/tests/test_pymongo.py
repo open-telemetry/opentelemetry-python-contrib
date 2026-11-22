@@ -36,6 +36,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 
 
@@ -98,6 +99,76 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[NET_PEER_NAME], "test.com")
         self.assertEqual(span.attributes[NET_PEER_PORT], 1234)
         self.start_callback.assert_called_once_with(span, mock_event)
+
+    def test_started_attributes_passed_to_sampler(self):
+        sampler = CapturingSampler()
+        tracer_provider, _ = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        command_tracer = CommandTracer(tracer_provider.get_tracer(__name__))
+        mock_event = MockEvent(
+            {"command_name": "find", "find": "test_collection"},
+            ("test.com", "1234"),
+            "test_request_id",
+        )
+        command_tracer.started(event=mock_event)
+
+        self.assertEqual(sampler.name, "database_name.find")
+        self.assertEqual(sampler.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(
+            sampler.attributes,
+            {
+                DB_SYSTEM: "mongodb",
+                DB_NAME: "database_name",
+                DB_STATEMENT: "find",
+                DB_MONGODB_COLLECTION: "test_collection",
+                NET_PEER_NAME: "test.com",
+                NET_PEER_PORT: 1234,
+            },
+        )
+
+    def test_started_attributes_passed_to_sampler_new_semconv(self):
+        sampler = CapturingSampler()
+        tracer_provider, _ = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(tracer_provider.shutdown)
+        command_tracer = CommandTracer(
+            tracer_provider.get_tracer(__name__),
+            semconv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        mock_event = MockEvent(
+            {"command_name": "find", "find": "test_collection"},
+            ("test.com", "1234"),
+            "test_request_id",
+        )
+        command_tracer.started(event=mock_event)
+
+        self.assertEqual(
+            sampler.attributes,
+            {
+                DB_SYSTEM_NAME: "mongodb",
+                DB_NAMESPACE: "database_name",
+                DB_QUERY_TEXT: "find",
+                DB_COLLECTION_NAME: "test_collection",
+                SERVER_ADDRESS: "test.com",
+                SERVER_PORT: 1234,
+            },
+        )
+
+    def test_started_attributes_control_sampling(self):
+        for database_name, expected_span_count in (
+            ("database_name", 1),
+            ("other_database", 0),
+        ):
+            with self.subTest(database_name=database_name):
+                sampler = CapturingSampler(required_attributes={DB_NAME: "database_name"})
+                tracer_provider, exporter = self.create_tracer_provider(sampler=sampler)
+                self.addCleanup(tracer_provider.shutdown)
+                command_tracer = CommandTracer(tracer_provider.get_tracer(__name__))
+                mock_event = MockEvent({"command_name": "find"}, request_id=database_name)
+                mock_event.database_name = database_name
+                command_tracer.started(event=mock_event)
+                command_tracer.succeeded(event=mock_event)
+
+                self.assertEqual(len(exporter.get_finished_spans()), expected_span_count)
 
     def test_succeeded(self):
         mock_event = MockEvent({})
