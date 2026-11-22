@@ -112,7 +112,7 @@ def _use_spec_field_names(value: str | None) -> bool:
         return True
     if normalized != "legacy":
         _logger.warning(
-            "Invalid trace context field names %r for %s; defaulting to legacy",
+            "Invalid value %r for trace_context_field_names / %s; defaulting to legacy",
             value,
             OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN,
         )

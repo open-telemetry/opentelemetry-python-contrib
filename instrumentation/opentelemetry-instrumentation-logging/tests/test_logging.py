@@ -743,7 +743,10 @@ class TestLoggingInstrumentorSpecFieldNames(TestBase):
     def test_invalid_field_names_fall_back_to_legacy(self):
         with self.assertLogs("opentelemetry.instrumentation.logging", level=logging.WARNING) as logs:
             LoggingInstrumentor().instrument(inject_trace_context=True, trace_context_field_names="snake")
-        self.assertIn("Invalid trace context field names 'snake'", logs.output[0])
+        self.assertIn(
+            "Invalid value 'snake' for trace_context_field_names / OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN",
+            logs.output[0],
+        )
         self.caplog.clear()
         with self.tracer.start_as_current_span("s1"):
             record = self.emit_record()

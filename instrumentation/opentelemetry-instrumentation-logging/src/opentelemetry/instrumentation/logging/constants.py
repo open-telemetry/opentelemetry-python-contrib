@@ -131,7 +131,7 @@ Alternatively, the names can be selected via the ``trace_context_field_names`` a
 
 .. code-block::
 
-    LoggingInstrumentor(trace_context_field_names="spec")
+    LoggingInstrumentor().instrument(trace_context_field_names="spec")
 
 This env var is unset by default.
 
