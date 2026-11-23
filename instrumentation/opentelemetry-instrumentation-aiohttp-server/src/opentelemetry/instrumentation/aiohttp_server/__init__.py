@@ -208,7 +208,6 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-import pytest
 
 tracer = None
 meter_old = None

@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-server`: Guard against `None` responses in `create_aiohttp_middleware` so handlers returning `None` do not raise `AttributeError`
