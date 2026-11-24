@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: end the producer span and restore context when publishing a task fails
