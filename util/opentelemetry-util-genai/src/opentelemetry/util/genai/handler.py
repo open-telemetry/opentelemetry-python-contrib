@@ -42,7 +42,7 @@ from contextlib import AbstractContextManager
 
 from opentelemetry._logs import (
     LoggerProvider,
-    get_logger,
+    get_logger_provider,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.schemas import Schemas
@@ -98,10 +98,9 @@ class TelemetryHandler:
         )
         meter = get_meter(__name__, meter_provider=meter_provider, schema_url=schema_url)
         self._metrics_recorder = InvocationMetricsRecorder(meter)
-        self._logger = get_logger(
+        self._logger = (logger_provider or get_logger_provider()).get_logger(
             __name__,
-            __version__,
-            logger_provider,
+            version=__version__,
             schema_url=schema_url,
         )
         self._completion_hook = completion_hook or _NoOpCompletionHook()
