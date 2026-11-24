@@ -144,10 +144,10 @@ def _collect_code_attributes(
                 target = view_class.dispatch
             elif hasattr(target, "__wrapped__"):
                 target = target.__wrapped__
+            elif callable(target) and not (inspect.isroutine(target) or inspect.isclass(target)):
+                target = type(target).__call__
             else:
                 break
-        if not (inspect.isroutine(target) or inspect.isclass(target)):
-            target = type(target).__call__
 
         qual_name = getattr(target, "__qualname__", None)
         if qual_name:

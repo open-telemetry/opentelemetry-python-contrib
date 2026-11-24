@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import partial
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -81,3 +82,19 @@ class TestCollectCodeAttributes(TestCase):
         self.assertIs(type(attributes[CODE_FUNCTION_NAME]), str)
         self.assertIs(type(attributes[CODE_FILE_PATH]), str)
         self.assertIs(type(attributes[CODE_LINE_NUMBER]), int)
+
+    def test_decorated_callable_view(self) -> None:
+        class CallableView:
+            @_pass_through_decorator
+            def __call__(self) -> None:
+                return None
+
+        call = unwrap(CallableView.__call__)
+        self.assertEqual(
+            _collect_code_attributes(CallableView()),
+            {
+                CODE_FUNCTION_NAME: f"{call.__module__}.{call.__qualname__}",
+                CODE_FILE_PATH: call.__code__.co_filename,
+                CODE_LINE_NUMBER: call.__code__.co_firstlineno,
+            },
+        )
