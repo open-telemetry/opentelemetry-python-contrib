@@ -1142,7 +1142,6 @@ async def test_generic_exception_records_error_new_semconv(
     assert len(spans) == 1
 
     span = spans[0]
-    print(span.to_json())
     assert span.status.status_code == StatusCode.ERROR
     assert len(span.events) == 1
     assert span.attributes[ERROR_TYPE] == exception_class.__qualname__
@@ -1150,6 +1149,8 @@ async def test_generic_exception_records_error_new_semconv(
     assert span.events[0].attributes["exception.type"] == exception_class.__qualname__
 
     AioHttpServerInstrumentor().uninstrument()
+
+
 @pytest.mark.asyncio
 async def test_middleware_handles_none_response(test_base: TestBase):
     from aiohttp.test_utils import make_mocked_request
