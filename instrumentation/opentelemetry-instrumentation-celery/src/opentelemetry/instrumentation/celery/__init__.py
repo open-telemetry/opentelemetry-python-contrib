@@ -62,13 +62,17 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
+from contextvars import ContextVar
 from timeit import default_timer
+from typing import Any
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
-from celery import signals  # pylint: disable=no-name-in-module
+from celery import Celery, signals  # pylint: disable=no-name-in-module
+from celery.app.task import Task
 from celery.worker.request import Request  # pylint: disable=no-name-in-module
+from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -76,6 +80,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter, get_meter_provider
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
@@ -104,6 +109,12 @@ _TASK_NAME_KEY = "celery.task_name"
 # Celery does not guarantee that worker-process shutdown handlers finish, so a
 # stuck exporter must not hold a recycled pool child indefinitely.
 _PROVIDER_FLUSH_TIMEOUT_SECONDS = 1.0
+
+# Publications started by before_task_publish during the current
+# `Celery.send_task` call, so a failed publication can end its producer span.
+_PENDING_PUBLICATIONS: ContextVar[list[tuple[Task | None, str]] | None] = ContextVar(
+    "opentelemetry_celery_pending_publications", default=None
+)
 
 
 class CeleryGetter(Getter[Request]):
@@ -135,6 +146,8 @@ class CeleryInstrumentor(BaseInstrumentor):
             self.metrics = None
         if not hasattr(self, "task_id_to_start_time"):
             self.task_id_to_start_time = {}
+        if not hasattr(self, "_anonymous_publish_contexts"):
+            self._anonymous_publish_contexts: dict[str, utils.ContextTuple] = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -166,8 +179,10 @@ class CeleryInstrumentor(BaseInstrumentor):
         )
 
         self.task_id_to_start_time = {}
+        self._anonymous_publish_contexts = {}
         self.create_celery_metrics(meter)
 
+        wrap_function_wrapper(Celery, "send_task", self._trace_send_task)
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
         signals.before_task_publish.connect(self._trace_before_publish, weak=False)
@@ -177,6 +192,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.worker_process_shutdown.connect(self._flush_providers, weak=False)
 
     def _uninstrument(self, **kwargs):
+        unwrap(Celery, "send_task")
         signals.task_prerun.disconnect(self._trace_prerun)
         signals.task_postrun.disconnect(self._trace_postrun)
         signals.before_task_publish.disconnect(self._trace_before_publish)
@@ -185,6 +201,60 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.task_retry.disconnect(self._trace_retry)
         signals.worker_process_shutdown.disconnect(self._flush_providers)
         self.task_id_to_start_time = {}
+        self._anonymous_publish_contexts = {}
+
+    def _trace_send_task(
+        self,
+        wrapped: Callable[..., Any],
+        instance: Celery,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Any:
+        # after_task_publish is not sent when publishing raises, so end any
+        # producer span this call left open and restore the caller's context.
+        pending: list[tuple[Task | None, str]] = []
+        token = _PENDING_PUBLICATIONS.set(pending)
+        try:
+            return wrapped(*args, **kwargs)
+        except BaseException as exc:
+            for task, task_id in reversed(pending):
+                self._end_failed_publish(task, task_id, exc)
+            raise
+        finally:
+            _PENDING_PUBLICATIONS.reset(token)
+
+    def _end_failed_publish(self, task: Task | None, task_id: str, exc: BaseException) -> None:
+        ctx = self._pop_publish_context(task, task_id)
+        if ctx is None:
+            # after_task_publish already ended the span
+            return
+
+        _, activation, _ = ctx
+        try:
+            # use_span records the exception, sets the ERROR status, ends the
+            # span and detaches its context.
+            activation.__exit__(type(exc), exc, exc.__traceback__)
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.debug("Failed to end the producer span for task_id=%s", task_id, exc_info=True)
+
+    def _store_publish_context(self, task: Task | None, task_id: str, ctx: utils.ContextTuple) -> None:
+        if task is None:
+            # Keep a reference so the span is not ended when the activation is
+            # garbage collected before after_task_publish.
+            self._anonymous_publish_contexts[task_id] = ctx
+        else:
+            span, activation, token = ctx
+            utils.attach_context(task, task_id, span, activation, token, is_publish=True)
+
+    def _pop_publish_context(self, task: Task | None, task_id: str) -> utils.ContextTuple | None:
+        # The task may have been registered after before_task_publish ran, so
+        # check the anonymous contexts even when a task is found now.
+        ctx = self._anonymous_publish_contexts.pop(task_id, None)
+        if ctx is not None or task is None:
+            return ctx
+        ctx = utils.retrieve_context(task, task_id, is_publish=True)
+        utils.detach_context(task, task_id, is_publish=True)
+        return ctx
 
     def _trace_prerun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
@@ -283,22 +353,24 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
-        utils.attach_context(task, task_id, span, activation, None, is_publish=True)
+        self._store_publish_context(task, task_id, (span, activation, None))
+        pending = _PENDING_PUBLICATIONS.get()
+        if pending is not None:
+            pending.append((task, task_id))
 
         headers = kwargs.get("headers")
         if headers:
             inject(headers)
 
-    @staticmethod
-    def _trace_after_publish(*args, **kwargs):
+    def _trace_after_publish(self, *args, **kwargs):
         task = utils.retrieve_task_from_sender(kwargs)
         task_id = utils.retrieve_task_id_from_message(kwargs)
 
-        if task is None or task_id is None:
+        if task_id is None:
             return
 
         # retrieve and finish the Span
-        ctx = utils.retrieve_context(task, task_id, is_publish=True)
+        ctx = self._pop_publish_context(task, task_id)
 
         if ctx is None:
             logger.warning("no existing span found for task_id=%s", task_id)
@@ -307,7 +379,6 @@ class CeleryInstrumentor(BaseInstrumentor):
         _, activation, _ = ctx
 
         activation.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
-        utils.detach_context(task, task_id, is_publish=True)
 
     @staticmethod
     def _trace_failure(*args, **kwargs):

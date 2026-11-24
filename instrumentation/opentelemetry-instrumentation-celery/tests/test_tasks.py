@@ -3,6 +3,7 @@
 
 import threading
 import time
+from collections.abc import Callable
 from unittest import mock
 
 from celery.signals import (
@@ -13,6 +14,7 @@ from celery.signals import (
     worker_process_shutdown,
 )
 from kombu import Exchange, Queue
+from kombu.exceptions import SerializerNotInstalled
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import baggage, context, trace
@@ -39,6 +41,10 @@ from .celery_test_tasks import (
     task_raises,
     task_returns_baggage,
 )
+
+_UNREGISTERED_TASK_NAME = "tests.test_tasks.unregistered_task"
+# No test worker consumes this queue, so published messages are never run.
+_UNCONSUMED_QUEUE = "tests.test_tasks.unconsumed"
 
 
 class FakeTracerProvider:
@@ -117,6 +123,85 @@ class TestCeleryPublishSignal(TestBase):
 
         self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
         self.assertEqual(off_exporter.get_finished_spans(), ())
+
+
+class TestCeleryPublishFailure(TestBase):
+    def setUp(self) -> None:
+        super().setUp()
+        CeleryInstrumentor().instrument()
+        self.tracer = trace.get_tracer(__name__)
+
+    def tearDown(self) -> None:
+        CeleryInstrumentor().uninstrument()
+        super().tearDown()
+
+    def _assert_failed_publish(self, publish: Callable[[], object], task_name: str) -> None:
+        with self.tracer.start_as_current_span("parent") as parent:
+            with self.assertRaises(SerializerNotInstalled):
+                publish()
+
+            self.assertIs(trace.get_current_span(), parent)
+            with self.tracer.start_as_current_span("following-work"):
+                pass
+
+        spans = {span.name: span for span in self.memory_exporter.get_finished_spans()}
+        self.assertEqual(len(spans), 3)
+
+        producer = spans[f"apply_async/{task_name}"]
+        self.assertEqual(producer.kind, SpanKind.PRODUCER)
+        self.assertEqual(producer.parent.span_id, parent.get_span_context().span_id)
+        self.assertEqual(producer.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(producer.events), 1)
+        event = producer.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(
+            event.attributes[EXCEPTION_TYPE],
+            f"{SerializerNotInstalled.__module__}.{SerializerNotInstalled.__qualname__}",
+        )
+        self.assertIs(type(event.attributes[EXCEPTION_MESSAGE]), str)
+        self.assertIn("unavailable-serializer", event.attributes[EXCEPTION_MESSAGE])
+
+        self.assertEqual(spans["following-work"].parent.span_id, parent.get_span_context().span_id)
+
+    def test_failed_apply_async_ends_producer_span(self) -> None:
+        self._assert_failed_publish(
+            lambda: task_add.apply_async(
+                (1, 2), task_id="failed-publish", serializer="unavailable-serializer", retry=False, ignore_result=True
+            ),
+            task_add.name,
+        )
+        self.assertIsNone(utils.retrieve_context(task_add, "failed-publish", is_publish=True))
+
+    def test_failed_send_task_unregistered_ends_producer_span(self) -> None:
+        self._assert_failed_publish(
+            lambda: app.send_task(
+                _UNREGISTERED_TASK_NAME, serializer="unavailable-serializer", retry=False, ignore_result=True
+            ),
+            _UNREGISTERED_TASK_NAME,
+        )
+
+    def test_send_task_unregistered_ends_producer_span_after_publish(self) -> None:
+        current_spans: list[tuple[trace.SpanContext, bool]] = []
+
+        def capture_current_span(*args: object, **kwargs: object) -> None:
+            span = trace.get_current_span()
+            current_spans.append((span.get_span_context(), span.is_recording()))
+
+        before_task_publish.connect(capture_current_span, weak=False)
+        self.addCleanup(before_task_publish.disconnect, capture_current_span)
+
+        with self.tracer.start_as_current_span("parent") as parent:
+            app.send_task(_UNREGISTERED_TASK_NAME, queue=_UNCONSUMED_QUEUE, ignore_result=True)
+            self.assertIs(trace.get_current_span(), parent)
+
+        spans = {span.name: span for span in self.memory_exporter.get_finished_spans()}
+        self.assertEqual(len(spans), 2)
+        producer = spans[f"apply_async/{_UNREGISTERED_TASK_NAME}"]
+        self.assertEqual(producer.status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(producer.events), 0)
+
+        # The producer span stays current and recording until after_task_publish.
+        self.assertEqual(current_spans, [(producer.context, True)])
 
 
 class TestCelerySampling(TestBase):
