@@ -60,9 +60,7 @@ class AwsEcsResourceDetector(ResourceDetector):
             metadata_container = json.loads(_http_get(metadata_v4_endpoint))
             metadata_task = json.loads(_http_get(f"{metadata_v4_endpoint}/task"))
 
-            container_name = metadata_container.get("Name")
-            if container_name:
-                base_resource = base_resource.merge(Resource({ResourceAttributes.CONTAINER_NAME: container_name}))
+            base_resource = base_resource.merge(_get_container_name_resource(metadata_container))
 
             task_arn = metadata_task["TaskARN"]
             base_arn = task_arn[0 : task_arn.rindex(":")]
@@ -90,6 +88,15 @@ class AwsEcsResourceDetector(ResourceDetector):
 
             logger.warning("%s failed: %s", self.__class__.__name__, exception)
             return Resource.get_empty()
+
+
+def _get_container_name_resource(metadata_container):
+    # v4 responses without a Name keep the hostname set on the base resource.
+    container_name = metadata_container.get("Name")
+    if container_name:
+        return Resource({ResourceAttributes.CONTAINER_NAME: container_name})
+
+    return Resource.get_empty()
 
 
 def _get_logs_resource(metadata_container):
