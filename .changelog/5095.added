@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-starlette`: add http.target to server duration and size metrics
