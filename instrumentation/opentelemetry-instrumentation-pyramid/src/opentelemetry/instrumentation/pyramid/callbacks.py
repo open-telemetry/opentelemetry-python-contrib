@@ -44,7 +44,6 @@ from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
-SETTING_TRACER_PROVIDER = "opentelemetry-pyramid.tracer_provider"
 _SETTING_CALLBACKS_REGISTERED = "opentelemetry-pyramid.callbacks_registered"
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-pyramid.starttime_key"
@@ -60,15 +59,28 @@ _excluded_urls = get_excluded_urls("PYRAMID")
 _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
 
-def includeme(config):
-    config.add_settings({SETTING_TRACE_ENABLED: True})
+def _includeme_for(tracer_provider):
+    def includeme(config):
+        config.add_settings({SETTING_TRACE_ENABLED: True})
 
-    if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
-        return
+        if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
+            return
 
-    config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
-    config.add_subscriber(_before_traversal, BeforeTraversal)
-    _insert_tween(config)
+        config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
+        config.add_subscriber(_subscriber_for(tracer_provider), BeforeTraversal)
+        _insert_tween(config)
+
+    return includeme
+
+
+includeme = _includeme_for(None)
+
+
+def _subscriber_for(tracer_provider):
+    def _before_traversal(event):
+        _trace_before_traversal(event, tracer_provider)
+
+    return _before_traversal
 
 
 def _insert_tween(config):
@@ -81,7 +93,7 @@ def _insert_tween(config):
         config.add_tween(TWEEN_NAME, over=EXCVIEW)
 
 
-def _before_traversal(event):
+def _trace_before_traversal(event, tracer_provider):
     request = event.request
     request_environ = request.environ
     span_name = otel_wsgi.get_default_span_name(request_environ)
@@ -103,7 +115,7 @@ def _before_traversal(event):
     tracer = trace.get_tracer(
         __name__,
         __version__,
-        tracer_provider=request.registry.settings.get(SETTING_TRACER_PROVIDER),
+        tracer_provider=tracer_provider,
         schema_url=_get_schema_url(_sem_conv_opt_in_mode),
     )
 

@@ -191,7 +191,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pyramid import callbacks
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
-    SETTING_TRACER_PROVIDER,
     TWEEN_NAME,
     trace_tween_factory,
 )
@@ -208,40 +207,37 @@ if platform.python_implementation() == "PyPy":
 else:
     CALLER_LEVELS = 2
 
-# Set by ``PyramidInstrumentor.instrument`` and used by ``_traced_init`` to
-# configure every new ``Configurator``.
-_tracer_provider = None
 
+def _traced_init_for(tracer_provider):
+    def _traced_init(wrapped, instance, args, kwargs):
+        settings = kwargs.get("settings", {})
+        tweens = aslist(settings.get("pyramid.tweens", []))
 
-def _traced_init(wrapped, instance, args, kwargs):
-    settings = kwargs.get("settings", {})
-    tweens = aslist(settings.get("pyramid.tweens", []))
+        if tweens and TWEEN_NAME not in settings:
+            # pyramid.tweens.EXCVIEW is the name of built-in exception view provided by
+            # pyramid.  We need our tween to be before it, otherwise unhandled
+            # exceptions will be caught before they reach our tween.
+            tweens = [TWEEN_NAME] + tweens
 
-    if tweens and TWEEN_NAME not in settings:
-        # pyramid.tweens.EXCVIEW is the name of built-in exception view provided by
-        # pyramid.  We need our tween to be before it, otherwise unhandled
-        # exceptions will be caught before they reach our tween.
-        tweens = [TWEEN_NAME] + tweens
+            settings["pyramid.tweens"] = "\n".join(tweens)
 
-        settings["pyramid.tweens"] = "\n".join(tweens)
+        kwargs["settings"] = settings
 
-    kwargs["settings"] = settings
+        # `caller_package` works by walking a fixed amount of frames up the stack
+        # to find the calling package. So if we let the original `__init__`
+        # function call it, our wrapper will mess things up.
+        if not kwargs.get("package", None):
+            # Get the package for the 2nd frame up from this one.
+            # Default is `level=2` one level down (in Configurator.__init__).
+            # We want the 3rd level from _there_. Since we are already 1 level above,
+            # we need the 2nd level up from here, which will give us the package from
+            # `wrapt` instead of the desired package (the caller)
+            kwargs["package"] = caller_package(level=CALLER_LEVELS)
 
-    # `caller_package` works by walking a fixed amount of frames up the stack
-    # to find the calling package. So if we let the original `__init__`
-    # function call it, our wrapper will mess things up.
-    if not kwargs.get("package", None):
-        # Get the package for the 2nd frame up from this one.
-        # Default is `level=2` one level down (in Configurator.__init__).
-        # We want the 3rd level from _there_. Since we are already 1 level above,
-        # we need the 2nd level up from here, which will give us the package from
-        # `wrapt` instead of the desired package (the caller)
-        kwargs["package"] = caller_package(level=CALLER_LEVELS)
+        wrapped(*args, **kwargs)
+        instance.include(callbacks._includeme_for(tracer_provider))
 
-    wrapped(*args, **kwargs)
-    if _tracer_provider is not None:
-        instance.add_settings({SETTING_TRACER_PROVIDER: _tracer_provider})
-    instance.include("opentelemetry.instrumentation.pyramid.callbacks")
+    return _traced_init
 
 
 class PyramidInstrumentor(BaseInstrumentor):
@@ -260,17 +256,16 @@ class PyramidInstrumentor(BaseInstrumentor):
         # Set module-level opt-in mode in callbacks
         callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
-        global _tracer_provider  # pylint: disable=global-statement
-        _tracer_provider = kwargs.get("tracer_provider")
-
-        _wrap("pyramid.config", "Configurator.__init__", _traced_init)
+        _wrap(
+            "pyramid.config",
+            "Configurator.__init__",
+            _traced_init_for(kwargs.get("tracer_provider")),
+        )
 
     def _uninstrument(self, **kwargs):
         """ "Disable Pyramid instrumentation"""
         # Reset module-level opt-in mode to default
         callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
-        global _tracer_provider  # pylint: disable=global-statement
-        _tracer_provider = None
         unwrap(Configurator, "__init__")
 
     @staticmethod
@@ -290,9 +285,7 @@ class PyramidInstrumentor(BaseInstrumentor):
         # Set module-level opt-in mode in callbacks
         callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
-        if tracer_provider is not None:
-            config.add_settings({SETTING_TRACER_PROVIDER: tracer_provider})
-        config.include("opentelemetry.instrumentation.pyramid.callbacks")
+        config.include(callbacks._includeme_for(tracer_provider))
 
     @staticmethod
     def uninstrument_config(config):
