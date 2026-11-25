@@ -3,7 +3,8 @@ iniconfig>=2.0.0
 packaging>=24.0
 pluggy>=1.5.0
 protobuf>=5.29.5
-pytest>=7.4.4
+pygments>=2.13
+pytest>=9.0.3
 pytest-vcr>=1.0.2 ; platform_python_implementation !='PyPy'
 pyyaml>=6.0.2
 vcrpy>=7.0.0 ; platform_python_implementation !='PyPy'

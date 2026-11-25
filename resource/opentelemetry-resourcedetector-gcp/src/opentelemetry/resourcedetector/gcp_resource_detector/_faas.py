@@ -4,14 +4,20 @@
 # Implementation in this file copied from
 # https://github.com/GoogleCloudPlatform/opentelemetry-operations-go/blob/v1.8.0/detectors/gcp/faas.go
 
+import logging
 import os
 
 from opentelemetry.resourcedetector.gcp_resource_detector import _metadata
 
 _CLOUD_RUN_CONFIG_ENV = "K_CONFIGURATION"
 _CLOUD_FUNCTION_TARGET_ENV = "FUNCTION_TARGET"
+_CLOUD_RUN_JOB_ENV = "CLOUD_RUN_JOB"
+_CLOUD_RUN_EXECUTION_ENV = "CLOUD_RUN_EXECUTION"
+_CLOUD_RUN_TASK_INDEX_ENV = "CLOUD_RUN_TASK_INDEX"
 _FAAS_SERVICE_ENV = "K_SERVICE"
 _FAAS_REVISION_ENV = "K_REVISION"
+
+_logger = logging.getLogger(__name__)
 
 
 def on_cloud_run() -> bool:
@@ -22,6 +28,10 @@ def on_cloud_functions() -> bool:
     return _CLOUD_FUNCTION_TARGET_ENV in os.environ
 
 
+def on_cloud_run_job() -> bool:
+    return _CLOUD_RUN_JOB_ENV in os.environ
+
+
 def faas_name() -> str:
     """The name of the Cloud Run or Cloud Function.
 
@@ -29,6 +39,33 @@ def faas_name() -> str:
     throw exceptions.
     """
     return os.environ[_FAAS_SERVICE_ENV]
+
+
+def cloud_run_job_name() -> str:
+    """The name of the Cloud Run job.
+
+    Check that on_cloud_run_job() is true before calling this, or it may throw exceptions.
+    """
+    return os.environ[_CLOUD_RUN_JOB_ENV]
+
+
+def cloud_run_job_execution() -> str | None:
+    return os.environ.get(_CLOUD_RUN_EXECUTION_ENV)
+
+
+def cloud_run_job_task_index() -> int | None:
+    raw_index = os.environ.get(_CLOUD_RUN_TASK_INDEX_ENV)
+    if raw_index is None:
+        return None
+    try:
+        return int(raw_index)
+    except ValueError:
+        _logger.warning(
+            "Can't parse GCP Cloud Run job task index (%s): %r",
+            _CLOUD_RUN_TASK_INDEX_ENV,
+            raw_index,
+        )
+        return None
 
 
 def faas_version() -> str:

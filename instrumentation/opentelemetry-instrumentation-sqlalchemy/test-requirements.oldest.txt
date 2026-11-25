@@ -18,16 +18,16 @@ greenlet==3.2.4
     #   sqlalchemy
 iniconfig==2.3.0
     # via pytest
-packaging==21.0
+packaging==22.0
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-sqlalchemy
     #   pytest
 pluggy==1.6.0
     # via pytest
-pyparsing==3.3.3
-    # via packaging
-pytest==7.4.4
+pygments==2.21.0
+    # via pytest
+pytest==9.0.3
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-sqlalchemy/test-requirements.in

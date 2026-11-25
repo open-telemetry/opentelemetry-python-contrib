@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 from celery import Celery
+from celery.app.task import Context
 from kombu import Exchange, Queue
 
 from opentelemetry import trace as trace_api
@@ -13,188 +14,155 @@ from opentelemetry.sdk import trace
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessagingDestinationKindValues, SpanAttributes
 
 
 class TestUtils(unittest.TestCase):
     def setUp(self):
         self.app = Celery("celery.test_app")
 
-    def test_set_attributes_from_context(self):
-        # it should extract only relevant keys
-        context = {
-            "correlation_id": "44b7f305",
-            "delivery_info": {"eager": True},
-            "eta": "soon",
-            "expires": "later",
-            "hostname": "localhost",
-            "id": "44b7f305",
-            "origin": "gen8@localhost",
-            "reply_to": "44b7f305",
-            "retries": 4,
-            "timelimit": ("now", "later"),
-            "custom_meta": "custom_value",
-            "routing_key": "celery",
-        }
+    def test_get_request_attributes(self) -> None:
+        request = Context(
+            compression="gzip",
+            correlation_id="44b7f305",
+            countdown=5,
+            delivery_info={"routing_key": "celery", "priority": 4},
+            eta="soon",
+            exchange=Exchange("tasks"),
+            expires="later",
+            hostname="localhost",
+            id="44b7f305",
+            origin="gen8@localhost",
+            priority=4,
+            queue=Queue("celery"),
+            reply_to="44b7f305",
+            retries=4,
+            routing_key="celery",
+            serializer="json",
+            timelimit=(10, 20),
+            args=["secret"],
+            kwargs={"secret": "value"},
+        )
 
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
+        attributes = utils.get_request_attributes(request)
+
+        expected = {
+            "celery.compression": "gzip",
+            "celery.countdown": 5,
+            "celery.exchange": "tasks",
+            "celery.priority": 4,
+            "celery.queue": "celery",
+            "celery.serializer": "json",
+            MESSAGING_MESSAGE_ID: "44b7f305",
+            SpanAttributes.MESSAGING_CONVERSATION_ID: "44b7f305",
+            SpanAttributes.MESSAGING_DESTINATION: "celery",
+            "celery.delivery_info": str({"routing_key": "celery", "priority": 4}),
+            "celery.eta": "soon",
+            "celery.expires": "later",
+            "celery.hostname": "localhost",
+            "celery.origin": "gen8@localhost",
+            "celery.reply_to": "44b7f305",
+            "celery.retries": 4,
+            "celery.timelimit": (10, 20),
+        }
+        self.assertEqual(attributes, expected)
+        for key, value in expected.items():
+            self.assertIs(type(attributes[key]), type(value))
+
+    def test_get_request_attributes_routing_key_overrides_delivery_info(self) -> None:
+        request = Context(delivery_info={"routing_key": "delivery"}, routing_key="explicit")
+
+        attributes = utils.get_request_attributes(request)
+
+        self.assertEqual(attributes[SpanAttributes.MESSAGING_DESTINATION], "explicit")
+        self.assertIs(type(attributes[SpanAttributes.MESSAGING_DESTINATION]), str)
+
+    def test_get_request_attributes_empty_routing_objects(self) -> None:
+        self.assertEqual(utils.get_request_attributes(Context(exchange=Exchange(""), queue=Queue(""))), {})
+
+    def test_get_request_attributes_zero_publish_options(self) -> None:
+        attributes = utils.get_request_attributes(Context(countdown=0, priority=0))
+
+        self.assertEqual(attributes, {"celery.countdown": 0, "celery.priority": 0})
+        for value in attributes.values():
+            self.assertIs(type(value), int)
+
+    def test_get_request_attributes_origin_not_aliased_to_hostname(self) -> None:
+        attributes = utils.get_request_attributes(Context(origin="gen8@localhost"))
+
+        self.assertEqual(attributes, {"celery.origin": "gen8@localhost"})
+
+    def test_get_request_attributes_partial_timelimit(self) -> None:
+        for timelimit, expected in (((10, None), ["10", ""]), ((None, 20), ["", "20"])):
+            with self.subTest(timelimit=timelimit):
+                attributes = utils.get_request_attributes(Context(timelimit=timelimit))
+
+                self.assertEqual(attributes, {"celery.timelimit": expected})
+                self.assertIs(type(attributes["celery.timelimit"]), list)
+
+    def test_get_request_attributes_empty_values(self) -> None:
+        for timelimit in ((None, None), [None, None]):
+            with self.subTest(timelimit=timelimit):
+                request = Context(correlation_id=None, origin="", retries=0, timelimit=timelimit)
+                self.assertEqual(utils.get_request_attributes(request), {})
+
+    def test_get_publish_attributes(self) -> None:
+        for exchange, kind in (
+            (Exchange("direct", type="direct"), MessagingDestinationKindValues.QUEUE.value),
+            (Exchange("topic", type="topic"), MessagingDestinationKindValues.TOPIC.value),
+        ):
+            with self.subTest(exchange=exchange):
+                signal_kwargs = {
+                    "exchange": exchange,
+                    "routing_key": "celery",
+                    "declare": [Queue("celery", exchange=exchange)],
+                    "headers": {"origin": "publisher", "retries": 2},
+                    "properties": {"priority": 4, "correlation_id": "id"},
+                    "body": (["secret"], {"secret": "value"}, {}),
+                }
+                attributes = utils.get_publish_attributes(signal_kwargs)
+
+                expected = {
+                    "celery.exchange": exchange.name,
+                    SpanAttributes.MESSAGING_DESTINATION: "celery",
+                    SpanAttributes.MESSAGING_DESTINATION_KIND: kind,
+                }
+                self.assertEqual(attributes, expected)
+                for key, value in expected.items():
+                    self.assertIs(type(attributes[key]), type(value))
+
+    def test_get_publish_attributes_string_exchange(self) -> None:
+        self.assertEqual(utils.get_publish_attributes({"exchange": "celery"}), {"celery.exchange": "celery"})
+
+    def test_get_publish_attributes_declaration_types(self) -> None:
+        for exchange_type, kind in (
+            ("direct", MessagingDestinationKindValues.QUEUE.value),
+            ("topic", MessagingDestinationKindValues.TOPIC.value),
+        ):
+            exchange = Exchange("tasks", type=exchange_type)
+            for declaration in (exchange, Queue("tasks", exchange=exchange)):
+                with self.subTest(exchange_type=exchange_type, declaration=declaration):
+                    attributes = utils.get_publish_attributes({"declare": [declaration]})
+
+                    self.assertEqual(attributes, {SpanAttributes.MESSAGING_DESTINATION_KIND: kind})
+                    self.assertIs(type(attributes[SpanAttributes.MESSAGING_DESTINATION_KIND]), str)
+
+    def test_get_publish_attributes_skips_unsupported_declarations(self) -> None:
+        declarations = [object(), Exchange("broadcast", type="fanout")]
+        self.assertEqual(utils.get_publish_attributes({"declare": declarations}), {})
+
+        declarations.append(Exchange("tasks", type="topic"))
+        attributes = utils.get_publish_attributes({"declare": declarations})
 
         self.assertEqual(
-            span.attributes.get(MESSAGING_MESSAGE_ID),
-            "44b7f305",
+            attributes, {SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.TOPIC.value}
         )
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
-            "44b7f305",
-        )
-        self.assertEqual(span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery")
+        self.assertIs(type(attributes[SpanAttributes.MESSAGING_DESTINATION_KIND]), str)
 
-        self.assertEqual(span.attributes["celery.delivery_info"], str({"eager": True}))
-        self.assertEqual(span.attributes.get("celery.eta"), "soon")
-        self.assertEqual(span.attributes.get("celery.expires"), "later")
-        self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
-        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
-
-        self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
-        self.assertEqual(span.attributes.get("celery.retries"), 4)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", "later"))
-        self.assertNotIn("custom_meta", span.attributes)
-
-    def test_set_attributes_from_context_origin_not_aliased_to_hostname(self):
-        # `origin` is the publisher's nodename, not the worker hostname
-        context = {"origin": "gen8@localhost"}
-
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-
-        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
-        self.assertNotIn("celery.hostname", span.attributes)
-
-    def test_set_attributes_from_context_kombu_routing_objects(self):
-        context = {
-            "exchange": Exchange("celery_delayed_27", type="topic"),
-            "queue": Queue("celery_queue"),
-            "priority": 4,
-            "timelimit": ("soft", "hard"),
-        }
-
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
-            utils.set_attributes_from_context(span, context)
-
-        self.assertEqual(
-            span.attributes.get("celery.exchange"),
-            "celery_delayed_27",
-        )
-        self.assertEqual(span.attributes.get("celery.queue"), "celery_queue")
-        self.assertEqual(span.attributes.get("celery.priority"), 4)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("soft", "hard"))
-
-    def test_set_attributes_from_context_string_exchange(self):
-        context = {"exchange": "celery"}
-
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-
-        self.assertEqual(span.attributes.get("celery.exchange"), "celery")
-
-    def test_set_attributes_from_context_empty_kombu_names(self):
-        context = {
-            "exchange": Exchange(""),
-            "queue": Queue(""),
-        }
-
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
-            utils.set_attributes_from_context(span, context)
-
-        self.assertNotIn("celery.exchange", span.attributes)
-        self.assertNotIn("celery.queue", span.attributes)
-
-    def test_set_attributes_not_recording(self):
-        # it should extract only relevant keys
-        context = {
-            "correlation_id": "44b7f305",
-            "delivery_info": {"eager": True},
-            "eta": "soon",
-            "expires": "later",
-            "hostname": "localhost",
-            "id": "44b7f305",
-            "reply_to": "44b7f305",
-            "retries": 4,
-            "timelimit": ("now", "later"),
-            "custom_meta": "custom_value",
-            "routing_key": "celery",
-        }
-
-        mock_span = mock.Mock()
-        mock_span.is_recording.return_value = False
-        utils.set_attributes_from_context(mock_span, context)
-        self.assertFalse(mock_span.is_recording())
-        self.assertTrue(mock_span.is_recording.called)
-        self.assertFalse(mock_span.set_attribute.called)
-        self.assertFalse(mock_span.set_status.called)
-
-    def test_set_attributes_partial_timelimit_hard_limit(self):
-        # it should extract only relevant keys
-        context = {
-            "correlation_id": "44b7f305",
-            "delivery_info": {"eager": True},
-            "eta": "soon",
-            "expires": "later",
-            "hostname": "localhost",
-            "id": "44b7f305",
-            "reply_to": "44b7f305",
-            "retries": 4,
-            "timelimit": ("now", None),
-            "custom_meta": "custom_value",
-            "routing_key": "celery",
-        }
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("now", ""))
-
-    def test_set_attributes_partial_timelimit_soft_limit(self):
-        # it should extract only relevant keys
-        context = {
-            "correlation_id": "44b7f305",
-            "delivery_info": {"eager": True},
-            "eta": "soon",
-            "expires": "later",
-            "hostname": "localhost",
-            "id": "44b7f305",
-            "reply_to": "44b7f305",
-            "retries": 4,
-            "timelimit": (None, "later"),
-            "custom_meta": "custom_value",
-            "routing_key": "celery",
-        }
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-        self.assertEqual(span.attributes.get("celery.timelimit"), ("", "later"))
-
-    def test_set_attributes_from_context_empty_keys(self):
-        # it should not extract empty keys
-        context = {
-            "correlation_id": None,
-            "exchange": "",
-            "timelimit": (None, None),
-            "retries": 0,
-        }
-
-        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.set_attributes_from_context(span, context)
-
-        self.assertEqual(len(span.attributes), 0)
-        # edge case: `timelimit` can also be a list of None values
-        context = {
-            "timelimit": [None, None],
-        }
-
-        utils.set_attributes_from_context(span, context)
-
-        self.assertEqual(len(span.attributes), 0)
+    def test_get_publish_attributes_empty_values(self) -> None:
+        for signal_kwargs in ({}, {"exchange": "", "routing_key": "", "declare": None}, {"exchange": Exchange("")}):
+            with self.subTest(signal_kwargs=signal_kwargs):
+                self.assertEqual(utils.get_publish_attributes(signal_kwargs), {})
 
     def test_span_propagation(self):
         # ensure spans getter and setter works properly
