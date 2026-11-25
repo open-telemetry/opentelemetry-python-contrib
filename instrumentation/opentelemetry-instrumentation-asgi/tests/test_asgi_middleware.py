@@ -2049,6 +2049,17 @@ class TestAsgiAttributes(unittest.TestCase):
             "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
+    def test_remove_sensitive_params_from_url_query(self) -> None:
+        self.scope["query_string"] = b"X-Goog-Signature=test-value&foo=b%61r"
+
+        for mode in (_StabilityMode.DEFAULT, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP):
+            with self.subTest(mode=mode):
+                attrs = otel_asgi.collect_request_attributes(self.scope, mode)
+                if mode in (_StabilityMode.HTTP, _StabilityMode.HTTP_DUP):
+                    self.assertEqual(attrs[URL_QUERY], "X-Goog-Signature=REDACTED&foo=b%61r")
+                if mode in (_StabilityMode.DEFAULT, _StabilityMode.HTTP_DUP):
+                    self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?X-Goog-Signature=REDACTED&foo=bar")
+
     def test_collect_target_attribute_missing(self):
         self.assertIsNone(otel_asgi._collect_target_attribute(self.scope))
 
