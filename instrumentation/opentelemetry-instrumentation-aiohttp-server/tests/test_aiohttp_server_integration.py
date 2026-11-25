@@ -9,6 +9,8 @@ from http import HTTPStatus
 import aiohttp
 import pytest
 import pytest_asyncio
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_urldispatcher import UrlMappingMatchInfo
 from multidict import CIMultiDict
 
 from opentelemetry.instrumentation._semconv import (
@@ -23,6 +25,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
+    create_aiohttp_middleware,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk.metrics.export import (
@@ -1153,12 +1156,6 @@ async def test_generic_exception_records_error_new_semconv(
 
 @pytest.mark.asyncio
 async def test_middleware_handles_none_response(test_base: TestBase):
-    from aiohttp.test_utils import make_mocked_request
-    from aiohttp.web_urldispatcher import UrlMappingMatchInfo
-    from opentelemetry.instrumentation.aiohttp_server import (
-        create_aiohttp_middleware,
-    )
-
     AioHttpServerInstrumentor().instrument()
     try:
         app = aiohttp.web.Application()
