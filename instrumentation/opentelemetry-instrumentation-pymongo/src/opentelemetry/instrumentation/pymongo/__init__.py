@@ -163,41 +163,40 @@ class CommandTracer(monitoring.CommandListener):
         statement = self._get_statement_by_command_name(command_name, event)
         collection = _get_command_collection_name(event)
 
-        span = None
-        try:
-            span_attributes: dict = {}
-            _set_db_system(
+        span_attributes: dict = {}
+        _set_db_system(
+            span_attributes,
+            DbSystemValues.MONGODB.value,
+            self._semconv_opt_in_mode,
+        )
+        _set_db_name(
+            span_attributes,
+            event.database_name,
+            self._semconv_opt_in_mode,
+        )
+        _set_db_statement(
+            span_attributes,
+            statement,
+            self._semconv_opt_in_mode,
+        )
+        if collection:
+            if _report_old(self._semconv_opt_in_mode):
+                span_attributes[DB_MONGODB_COLLECTION] = collection
+            if _report_new(self._semconv_opt_in_mode):
+                span_attributes[DB_COLLECTION_NAME] = collection
+        if event.connection_id is not None:
+            _set_http_net_peer_name_client(
                 span_attributes,
-                DbSystemValues.MONGODB.value,
+                event.connection_id[0],
                 self._semconv_opt_in_mode,
             )
-            _set_db_name(
+            _set_http_peer_port_client(
                 span_attributes,
-                event.database_name,
+                event.connection_id[1],
                 self._semconv_opt_in_mode,
             )
-            _set_db_statement(
-                span_attributes,
-                statement,
-                self._semconv_opt_in_mode,
-            )
-            if collection:
-                if _report_old(self._semconv_opt_in_mode):
-                    span_attributes[DB_MONGODB_COLLECTION] = collection
-                if _report_new(self._semconv_opt_in_mode):
-                    span_attributes[DB_COLLECTION_NAME] = collection
-            if event.connection_id is not None:
-                _set_http_net_peer_name_client(
-                    span_attributes,
-                    event.connection_id[0],
-                    self._semconv_opt_in_mode,
-                )
-                _set_http_peer_port_client(
-                    span_attributes,
-                    event.connection_id[1],
-                    self._semconv_opt_in_mode,
-                )
 
+        try:
             span = self._tracer.start_span(
                 span_name,
                 kind=SpanKind.CLIENT,
