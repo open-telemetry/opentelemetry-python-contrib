@@ -57,3 +57,23 @@ class TestGetExcludedUrls(unittest.TestCase):
         self.assertFalse(exclude_list.url_disabled("/excluded_arg/123"))
         self.assertFalse(exclude_list.url_disabled("/excluded_noarg"))
         self.assertFalse(exclude_list.url_disabled("/excluded_arg/125"))
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "excluded_arg/123, ,excluded_noarg,"},
+    )
+    def test_config_ignores_empty_entries(self):
+        exclude_list = get_excluded_urls("DJANGO")
+
+        self.assertTrue(exclude_list.url_disabled("/excluded_arg/123"))
+        self.assertTrue(exclude_list.url_disabled("/excluded_noarg"))
+        self.assertFalse(exclude_list.url_disabled("/excluded_arg/125"))
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_DJANGO_EXCLUDED_URLS": " , "},
+    )
+    def test_config_only_empty_entries(self):
+        exclude_list = get_excluded_urls("DJANGO")
+
+        self.assertFalse(exclude_list.url_disabled("/excluded_arg/123"))

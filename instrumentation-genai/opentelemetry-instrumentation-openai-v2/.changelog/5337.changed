@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-v2`: pass optional arguments to `get_logger` by keyword

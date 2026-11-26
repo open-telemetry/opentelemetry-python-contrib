@@ -54,9 +54,12 @@ jobs:
           python-version: "3.10"
           architecture: "x64"
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
       - name: Install tox
-        run: pip install tox-uv
+        run: uv sync --locked --only-group tox
 
       - name: Run tests
-        run: tox -e {{ job_data.tox_env }} -- -ra
+        run: uv run --no-sync tox -e {{ job_data.tox_env }} -- -ra
   {%- endfor %}

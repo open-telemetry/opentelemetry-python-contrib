@@ -18,6 +18,7 @@ dependencies = [
   "opentelemetry-instrumentation-aiokafka[instruments]",
   "opentelemetry-instrumentation-aiopg[instruments]",
   "opentelemetry-instrumentation-asgi[instruments]",
+  "opentelemetry-instrumentation-asyncclick[instruments]",
   "opentelemetry-instrumentation-asyncio",
   "opentelemetry-instrumentation-asyncpg[instruments]",
   "opentelemetry-instrumentation-aws-lambda[instruments]",
@@ -29,6 +30,7 @@ dependencies = [
   "opentelemetry-instrumentation-confluent-kafka[instruments]",
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-django[instruments]",
+  "opentelemetry-instrumentation-exceptions",
   "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
@@ -45,6 +47,7 @@ dependencies = [
   "opentelemetry-instrumentation-psycopg2[instruments-any]",
   "opentelemetry-instrumentation-pymemcache[instruments]",
   "opentelemetry-instrumentation-pymongo[instruments]",
+  "opentelemetry-instrumentation-pymssql[instruments]",
   "opentelemetry-instrumentation-pymysql[instruments]",
   "opentelemetry-instrumentation-pyramid[instruments]",
   "opentelemetry-instrumentation-redis[instruments]",
@@ -52,6 +55,7 @@ dependencies = [
   "opentelemetry-instrumentation-requests[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-starlette[instruments]",
   "opentelemetry-instrumentation-structlog[instruments]",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
@@ -59,6 +63,7 @@ dependencies = [
   "opentelemetry-instrumentation-tortoiseorm[instruments]",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
+  "opentelemetry-instrumentation-valkey-py[instruments]",
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
@@ -91,6 +96,7 @@ opentelemetry-instrumentation-aiohttp-server = { workspace = true }
 opentelemetry-instrumentation-aiokafka = { workspace = true }
 opentelemetry-instrumentation-aiopg = { workspace = true }
 opentelemetry-instrumentation-asgi = { workspace = true }
+opentelemetry-instrumentation-asyncclick = { workspace = true }
 opentelemetry-instrumentation-asyncio = { workspace = true }
 opentelemetry-instrumentation-asyncpg = { workspace = true }
 opentelemetry-instrumentation-aws-lambda = { workspace = true }
@@ -102,6 +108,7 @@ opentelemetry-instrumentation-click = { workspace = true }
 opentelemetry-instrumentation-confluent-kafka = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-django = { workspace = true }
+opentelemetry-instrumentation-exceptions = { workspace = true }
 opentelemetry-instrumentation-falcon = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-flask = { workspace = true }
@@ -117,6 +124,7 @@ opentelemetry-instrumentation-psycopg = { workspace = true }
 opentelemetry-instrumentation-psycopg2 = { workspace = true }
 opentelemetry-instrumentation-pymemcache = { workspace = true }
 opentelemetry-instrumentation-pymongo = { workspace = true }
+opentelemetry-instrumentation-pymssql = { workspace = true }
 opentelemetry-instrumentation-pymysql = { workspace = true }
 opentelemetry-instrumentation-pyramid = { workspace = true }
 opentelemetry-instrumentation-redis = { workspace = true }
@@ -124,6 +132,7 @@ opentelemetry-instrumentation-remoulade = { workspace = true }
 opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
+opentelemetry-instrumentation-starlette = { workspace = true }
 opentelemetry-instrumentation-structlog = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-threading = { workspace = true }
@@ -131,6 +140,7 @@ opentelemetry-instrumentation-tornado = { workspace = true }
 opentelemetry-instrumentation-tortoiseorm = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
+opentelemetry-instrumentation-valkey-py = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
@@ -279,8 +289,24 @@ showcontent = true
 
 [dependency-groups]
 dev = [
+    { include-group = "tox" },
+    { include-group = "towncrier" },
+    "pre-commit",
+]
+build = [
+    "build",
+    "packaging",
+    "pip",
+    "setuptools",
+    "wheel",
+]
+tox = [
     "tox",
     "tox-uv>=1",
-    "pre-commit",
+]
+towncrier = [
     "towncrier",
+]
+twine = [
+    "twine",
 ]

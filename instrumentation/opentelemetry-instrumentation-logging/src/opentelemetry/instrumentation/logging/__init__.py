@@ -134,11 +134,31 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     """
 
     _old_factory = None
+    _our_factory = None
     _log_hook = None
     _logging_handler = None
+    _old_handlers_state = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
+
+    @staticmethod
+    def _configure_logging(log_format: str, log_level: int) -> None:
+        root = logging.getLogger()
+        old_level = root.level
+        old_handlers = list(root.handlers)
+        logging.basicConfig(format=log_format, level=log_level)
+        # Record only the handlers basicConfig actually added so that
+        # uninstrument removes exactly those and does not drop handlers the
+        # application added while instrumented.
+        added_handlers = [handler for handler in root.handlers if handler not in old_handlers]
+        LoggingInstrumentor._old_handlers_state = {
+            "old_level": old_level,
+            "added_handlers": added_handlers,
+            # basicConfig is a no-op when the root logger already has a
+            # handler. Only restore a level that instrumentation changed.
+            "configured_level": (log_level if added_handlers and old_level != log_level else None),
+        }
 
     def _instrument(self, **kwargs):
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
@@ -158,12 +178,19 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
-            logging.basicConfig(format=log_format, level=log_level)
+            LoggingInstrumentor._configure_logging(log_format, log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
+
+            # We may be stranded in the middle of a factory chain that
+            # `_uninstrument` could not unlink. `old_factory` is a closure
+            # variable, so the chain still works, but we must stop mutating
+            # records once we are no longer the installed factory.
+            if LoggingInstrumentor._our_factory is not record_factory:
+                return record
 
             if not inject_context and not callable(LoggingInstrumentor._log_hook):
                 return record
@@ -202,6 +229,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             return record
 
+        LoggingInstrumentor._our_factory = record_factory
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -231,19 +259,41 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 "log_handler_level",
                 _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
             )
-            logger_provider = get_logger_provider()
-            handler = _setup_logging_handler(
-                logger_provider=logger_provider,
+            LoggingInstrumentor._logging_handler = _setup_logging_handler(
+                logger_provider=get_logger_provider(),
                 log_code_attributes=log_code_attributes,
                 level=handler_level,
             )
-            LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
-        if LoggingInstrumentor._old_factory:
+        # `logging.setLogRecordFactory` is a single global slot that callers
+        # chain by closing over whatever factory preceded them. Restoring
+        # `_old_factory` unconditionally would therefore unlink every factory
+        # installed after ours, so only restore while we are still the head of
+        # the chain. A node cannot be removed from the middle without the
+        # cooperation of the factory that wrapped it, so otherwise we leave the
+        # chain intact and let ours turn itself into a pass-through -- clearing
+        # `_our_factory` below is what disables it.
+        if (
+            LoggingInstrumentor._our_factory is not None
+            and logging.getLogRecordFactory() is LoggingInstrumentor._our_factory
+        ):
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._our_factory = None
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
             LoggingInstrumentor._logging_handler = None
+
+        if LoggingInstrumentor._old_handlers_state is not None:
+            state = LoggingInstrumentor._old_handlers_state
+            LoggingInstrumentor._old_handlers_state = None
+
+            root = logging.getLogger()
+            if state["configured_level"] is not None and root.level == state["configured_level"]:
+                root.setLevel(state["old_level"])
+
+            for handler in list(root.handlers):
+                if handler in state["added_handlers"]:
+                    root.removeHandler(handler)

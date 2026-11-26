@@ -12,14 +12,25 @@ from opentelemetry.resource.detector.azure.aks import (
     AzureAKSResourceDetector,
 )
 from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
+from opentelemetry.sdk.resources import (
+    OTELResourceDetector,
+    get_aggregated_resources,
+)
 
 TEST_RESOURCE_ID = (
     "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
     "Microsoft.ContainerService/managedClusters/test-aks-cluster"
 )
+TEST_POD_NAME = "test-app-5f6c7d8b9f-abcde"
+TEST_POD_UID = "627cc493-f310-47de-96bd-71410b7dec09"
 
 
 class TestAzureAKSResourceDetector(unittest.TestCase):
+    def test_is_process_dependent(self) -> None:
+        detector = AzureAKSResourceDetector()
+
+        self.assertTrue(detector.is_process_dependent())
+
     @patch.dict("os.environ", {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID}, clear=True)
     def test_detects_aks_from_environment(self) -> None:
         attributes = AzureAKSResourceDetector().detect().attributes
@@ -29,10 +40,83 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
         self.assertEqual(attributes["cloud.account.id"], "test-sub")
         self.assertNotIn("k8s.cluster.name", attributes)
+        self.assertNotIn("k8s.pod.name", attributes)
+        self.assertNotIn("k8s.pod.uid", attributes)
+        self.assertNotIn("service.instance.id", attributes)
         self.assertIsInstance(attributes["cloud.provider"], str)
         self.assertIsInstance(attributes["cloud.platform"], str)
         self.assertIsInstance(attributes["cloud.resource_id"], str)
         self.assertIsInstance(attributes["cloud.account.id"], str)
+
+    def test_detects_optional_pod_identity(self) -> None:
+        cases = (
+            (
+                {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+                {"k8s.pod.name": TEST_POD_NAME, "k8s.pod.uid": TEST_POD_UID},
+            ),
+            ({"K8S_POD_NAME": TEST_POD_NAME}, {"k8s.pod.name": TEST_POD_NAME}),
+            ({"K8S_POD_UID": TEST_POD_UID}, {"k8s.pod.uid": TEST_POD_UID}),
+            (
+                {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": ""},
+                {"k8s.pod.name": TEST_POD_NAME},
+            ),
+            (
+                {"K8S_POD_NAME": "", "K8S_POD_UID": TEST_POD_UID},
+                {"k8s.pod.uid": TEST_POD_UID},
+            ),
+            ({"K8S_POD_NAME": "", "K8S_POD_UID": ""}, {}),
+            ({"HOSTNAME": "custom-hostname"}, {}),
+        )
+        for pod_environment, expected_pod_attributes in cases:
+            with (
+                self.subTest(environment=pod_environment),
+                patch.dict(
+                    "os.environ",
+                    {"CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID, **pod_environment},
+                    clear=True,
+                ),
+            ):
+                attributes = AzureAKSResourceDetector().detect().attributes
+
+                self.assertEqual(
+                    attributes,
+                    {
+                        "cloud.provider": "azure",
+                        "cloud.platform": "azure.aks",
+                        "cloud.resource_id": TEST_RESOURCE_ID,
+                        "cloud.account.id": "test-sub",
+                        **expected_pod_attributes,
+                    },
+                )
+                for key in expected_pod_attributes:
+                    self.assertIsInstance(attributes[key], str)
+
+    @patch.dict(
+        "os.environ",
+        {
+            "CLUSTER_RESOURCE_ID": TEST_RESOURCE_ID,
+            "K8S_POD_NAME": TEST_POD_NAME,
+            "K8S_POD_UID": TEST_POD_UID,
+        },
+        clear=True,
+    )
+    def test_preserves_explicit_service_instance_ids_for_workers_sharing_a_pod(self) -> None:
+        for instance_id in ("worker-1", "worker-2"):
+            with (
+                self.subTest(instance_id=instance_id),
+                patch.dict(
+                    "os.environ",
+                    {"OTEL_RESOURCE_ATTRIBUTES": f"service.name=test-service,service.instance.id={instance_id}"},
+                ),
+            ):
+                attributes = get_aggregated_resources([OTELResourceDetector(), AzureAKSResourceDetector()]).attributes
+
+                self.assertEqual(attributes["service.name"], "test-service")
+                self.assertEqual(attributes["service.instance.id"], instance_id)
+                self.assertEqual(attributes["k8s.pod.name"], TEST_POD_NAME)
+                self.assertEqual(attributes["k8s.pod.uid"], TEST_POD_UID)
+                self.assertIsInstance(attributes["k8s.pod.name"], str)
+                self.assertIsInstance(attributes["k8s.pod.uid"], str)
 
     @patch.dict(
         "os.environ",
@@ -65,7 +149,25 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
         self.assertEqual(resource.attributes, {})
 
-    @patch.dict("os.environ", {}, clear=True)
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
+    @patch(
+        "opentelemetry.resource.detector.azure.aks._AKS_METADATA_FILE_PATH",
+        "/missing/aks-cluster-metadata",
+    )
+    def test_pod_identity_alone_does_not_identify_aks(self) -> None:
+        attributes = AzureAKSResourceDetector().detect().attributes
+
+        self.assertEqual(attributes, {})
+
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
     def test_detects_aks_from_configmap_volume(self) -> None:
         with TemporaryDirectory() as directory:
             metadata_path = Path(directory) / "aks-cluster-metadata"
@@ -79,8 +181,17 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
                 attributes = AzureAKSResourceDetector().detect().attributes
 
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
+        self.assertEqual(attributes["k8s.pod.name"], TEST_POD_NAME)
+        self.assertEqual(attributes["k8s.pod.uid"], TEST_POD_UID)
+        self.assertIsInstance(attributes["k8s.pod.name"], str)
+        self.assertIsInstance(attributes["k8s.pod.uid"], str)
+        self.assertNotIn("service.instance.id", attributes)
 
-    @patch.dict("os.environ", {}, clear=True)
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
     def test_detects_aks_from_subpath_mount(self) -> None:
         with TemporaryDirectory() as directory:
             metadata_path = Path(directory) / "aks-cluster-metadata"
@@ -93,14 +204,28 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
                 attributes = AzureAKSResourceDetector().detect().attributes
 
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
+        self.assertEqual(attributes["k8s.pod.name"], TEST_POD_NAME)
+        self.assertEqual(attributes["k8s.pod.uid"], TEST_POD_UID)
+        self.assertIsInstance(attributes["k8s.pod.name"], str)
+        self.assertIsInstance(attributes["k8s.pod.uid"], str)
+        self.assertNotIn("service.instance.id", attributes)
 
-    @patch.dict("os.environ", {}, clear=True)
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
     def test_detects_aks_from_key_value_file(self) -> None:
         content = f"\ufeff# AKS metadata\r\nclusterResourceId={TEST_RESOURCE_ID}\r\n"
 
         attributes = self._detect_from_file(content)
 
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
+        self.assertEqual(attributes["k8s.pod.name"], TEST_POD_NAME)
+        self.assertEqual(attributes["k8s.pod.uid"], TEST_POD_UID)
+        self.assertIsInstance(attributes["k8s.pod.name"], str)
+        self.assertIsInstance(attributes["k8s.pod.uid"], str)
+        self.assertNotIn("service.instance.id", attributes)
 
     @patch.dict("os.environ", {}, clear=True)
     def test_explicit_key_wins_over_bare_lines(self) -> None:
@@ -110,13 +235,21 @@ class TestAzureAKSResourceDetector(unittest.TestCase):
 
         self.assertEqual(attributes["cloud.resource_id"], TEST_RESOURCE_ID)
 
-    @patch.dict("os.environ", {}, clear=True)
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
     def test_ignores_ambiguous_bare_values(self) -> None:
         attributes = self._detect_from_file(f"{TEST_RESOURCE_ID}\nstray-token\n")
 
         self.assertEqual(attributes, {})
 
-    @patch.dict("os.environ", {}, clear=True)
+    @patch.dict(
+        "os.environ",
+        {"K8S_POD_NAME": TEST_POD_NAME, "K8S_POD_UID": TEST_POD_UID},
+        clear=True,
+    )
     def test_ignores_configmap_volume_without_resource_id(self) -> None:
         with TemporaryDirectory() as directory:
             metadata_path = Path(directory) / "aks-cluster-metadata"

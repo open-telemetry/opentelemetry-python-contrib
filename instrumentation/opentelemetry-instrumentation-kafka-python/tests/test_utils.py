@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=unnecessary-dunder-call
 
+from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
@@ -9,14 +10,16 @@ from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
-    _enrich_span,
+    _get_attributes,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.test.samplertestutil import CapturingSampler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
@@ -31,35 +34,35 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._get_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     def test_wrap_send_with_topic_as_arg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
         self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
 
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._get_attributes")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
     def test_wrap_send_with_topic_as_kwarg(
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -68,7 +71,7 @@ class TestUtils(TestCase):
         self.wrap_send_helper(
             inject,
             set_span_in_context,
-            enrich_span,
+            get_attributes,
             extract_send_partition,
             extract_bootstrap_servers,
         )
@@ -77,7 +80,7 @@ class TestUtils(TestCase):
         self,
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -94,14 +97,14 @@ class TestUtils(TestCase):
         # The partition is read back from the future returned by send(), not
         # estimated from the call arguments.
         extract_send_partition.assert_called_once_with(original_send_callback.return_value)
-        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
+        tracer.start_as_current_span.assert_called_once_with(
+            expected_span_name, kind=SpanKind.PRODUCER, attributes=get_attributes.return_value
+        )
 
         span = tracer.start_as_current_span().__enter__.return_value
-        enrich_span.assert_called_once_with(
-            span,
-            extract_bootstrap_servers.return_value,
-            self.topic_name,
-            extract_send_partition.return_value,
+        get_attributes.assert_called_once_with(extract_bootstrap_servers.return_value, self.topic_name)
+        span.set_attribute.assert_called_once_with(
+            SpanAttributes.MESSAGING_KAFKA_PARTITION, extract_send_partition.return_value
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -151,12 +154,12 @@ class TestUtils(TestCase):
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
-    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._get_attributes")
     @mock.patch("opentelemetry.context.detach")
     def test_create_consumer_span(
         self,
         detach: mock.MagicMock,
-        enrich_span: mock.MagicMock,
+        get_attributes: mock.MagicMock,
         attach: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
     ) -> None:
@@ -182,12 +185,13 @@ class TestUtils(TestCase):
             expected_span_name,
             context=extracted_context,
             kind=SpanKind.CONSUMER,
+            attributes=get_attributes.return_value,
         )
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
+        get_attributes.assert_called_once_with(bootstrap_servers, record.topic, record.partition)
         consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
@@ -235,22 +239,16 @@ class TestUtils(TestCase):
 
         self.assertIsNone(partition)
 
-    def test_enrich_span_records_partition_when_present(self):
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
+    def test_get_attributes_records_partition_when_present(self) -> None:
+        attributes = _get_attributes(["localhost:9092"], self.topic_name, 2)
 
-        _enrich_span(span, ["localhost:9092"], self.topic_name, 2)
+        self.assertEqual(attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION], 2)
+        self.assertIs(type(attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION]), int)
 
-        span.set_attribute.assert_any_call(SpanAttributes.MESSAGING_KAFKA_PARTITION, 2)
+    def test_get_attributes_omits_partition_when_none(self) -> None:
+        attributes = _get_attributes(["localhost:9092"], self.topic_name, None)
 
-    def test_enrich_span_omits_partition_when_none(self):
-        span = mock.MagicMock()
-        span.is_recording.return_value = True
-
-        _enrich_span(span, ["localhost:9092"], self.topic_name, None)
-
-        recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
-        self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
+        self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, attributes)
 
 
 @mock.patch(
@@ -309,3 +307,101 @@ class TestWrapSendSpanLifetime(TestBase):
         self.assertEqual(span.kind, SpanKind.PRODUCER)
         self.assertIs(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(len(span.events), 0)
+
+
+class TestKafkaSampling(TestBase):
+    def _configure_sampler(self, sampler: CapturingSampler) -> None:
+        self.tracer_provider, self.memory_exporter = self.create_tracer_provider(sampler=sampler)
+        self.addCleanup(self.tracer_provider.shutdown)
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.client = SimpleNamespace(config={"bootstrap_servers": ["localhost:9092"]})
+
+    def test_send_attributes_passed_to_sampler(self) -> None:
+        for partition in (0, 7, None):
+            with self.subTest(partition=partition):
+                sampler = CapturingSampler()
+                self._configure_sampler(sampler)
+                future = (
+                    FutureRecordMetadata(FutureProduceResult(("topic-1", partition)), 0, None, None, -1, -1, -1)
+                    if partition is not None
+                    else mock.Mock(spec=[])
+                )
+                send = mock.Mock(return_value=future)
+                produce_hook = mock.Mock()
+                kwargs = {"partition": 0, "headers": []}
+
+                result = _wrap_send(self.tracer, produce_hook)(send, self.client, ("topic-1",), kwargs)
+
+                expected = {
+                    messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-1",
+                    SpanAttributes.MESSAGING_URL: '["localhost:9092"]',
+                }
+                self.assertIs(result, future)
+                send.assert_called_once_with("topic-1", **kwargs)
+                self.assertEqual(sampler.kind, SpanKind.PRODUCER)
+                self.assertEqual(sampler.attributes, expected)
+                for key, value in expected.items():
+                    self.assertIs(type(sampler.attributes[key]), type(value))
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                if partition is not None:
+                    expected[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
+                    self.assertIs(type(spans[0].attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION]), int)
+                self.assertEqual(spans[0].attributes, expected)
+                produce_hook.assert_called_once()
+
+    def test_consumer_attributes_passed_to_sampler(self) -> None:
+        sampler = CapturingSampler()
+        self._configure_sampler(sampler)
+        record = SimpleNamespace(topic="topic-1", partition=0, headers=[])
+        receive = mock.Mock(return_value=record)
+        consume_hook = mock.Mock()
+
+        result = _wrap_next(self.tracer, consume_hook)(receive, self.client, (), {})
+
+        expected = {
+            messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
+            SpanAttributes.MESSAGING_DESTINATION: "topic-1",
+            SpanAttributes.MESSAGING_URL: '["localhost:9092"]',
+            SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
+        }
+        self.assertIs(result, record)
+        self.assertEqual(sampler.kind, SpanKind.CONSUMER)
+        self.assertEqual(sampler.attributes, expected)
+        for key, value in expected.items():
+            self.assertIs(type(sampler.attributes[key]), type(value))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].attributes, expected)
+        consume_hook.assert_called_once()
+
+    def test_attributes_control_sampling(self) -> None:
+        for method in ("send", "receive"):
+            for topic, expected_count in (("sample", 1), ("drop", 0)):
+                with self.subTest(method=method, topic=topic):
+                    sampler = CapturingSampler(required_attributes={SpanAttributes.MESSAGING_DESTINATION: "sample"})
+                    self._configure_sampler(sampler)
+                    if method == "send":
+                        future = FutureRecordMetadata(FutureProduceResult((topic, 0)), 0, None, None, -1, -1, -1)
+                        callback = mock.Mock(return_value=future)
+                        result = _wrap_send(self.tracer, None)(callback, self.client, (topic,), {})
+                        self.assertIs(result, future)
+                    else:
+                        record = SimpleNamespace(topic=topic, partition=0, headers=[])
+                        callback = mock.Mock(return_value=record)
+                        result = _wrap_next(self.tracer, None)(callback, self.client, (), {})
+                        self.assertIs(result, record)
+                    callback.assert_called_once()
+                    self.assertEqual(len(self.memory_exporter.get_finished_spans()), expected_count)
+
+    def test_consumer_error_propagates(self) -> None:
+        self._configure_sampler(CapturingSampler())
+        error = ConnectionError("broker unavailable")
+        receive = mock.Mock(side_effect=error)
+
+        with self.assertRaises(ConnectionError) as raised:
+            _wrap_next(self.tracer, None)(receive, self.client, (), {})
+
+        self.assertIs(raised.exception, error)
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
