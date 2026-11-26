@@ -166,26 +166,47 @@ def _add_create_attributes(span: Span, args: tuple[Any, ...]):
 def _add_search_attributes(span: Span, response, args):
     _set_span_attribute_if_value(span, "redis.search.index", _value_or_none(args, 1))
     _set_span_attribute_if_value(span, "redis.search.query", _value_or_none(args, 2))
-    # Parse response from search
     # https://redis.io/docs/latest/commands/ft.search/
-    # Response in format:
-    # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
+    if isinstance(response, dict):
+        _add_resp3_search_attributes(span, response)
+        return
+    # RESP2 response in format:
+    # [total_results, first_doc_id, (score), (payload), (sortkey), first_doc(as a list), second_doc_id, ...]
+    # where score, payload and sortkey are present only when WITHSCORES,
+    # WITHPAYLOADS or WITHSORTKEYS was requested.
     # Returned documents in array format:
     # [first_field_name, first_field_value, second_field_name, second_field_value ...]
     number_of_returned_documents = _value_or_none(response, 0)
     _set_span_attribute_if_value(span, "redis.search.total", number_of_returned_documents)
     if "NOCONTENT" in args or not number_of_returned_documents:
         return
-    for document_number in range(number_of_returned_documents):
-        document_index = _value_or_none(response, 1 + 2 * document_number)
+    stride = 2 + sum(1 for flag in ("WITHSCORES", "WITHPAYLOADS", "WITHSORTKEYS") if flag in args)
+    for id_position in range(1, len(response) - stride + 2, stride):
+        document_index = response[id_position]
         if document_index:
-            document = response[2 + 2 * document_number]
+            document = response[id_position + stride - 1]
             for attribute_name_index in range(0, len(document), 2):
                 _set_span_attribute_if_value(
                     span,
                     f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}",
                     document[attribute_name_index + 1],
                 )
+
+
+def _add_resp3_search_attributes(span: Span, response: dict):
+    # RESP3 response in format:
+    # {"total_results": n, "results": [{"id": ..., "extra_attributes": {field_name: field_value, ...}}, ...]}
+    # Keys are bytes unless the client was created with decode_responses=True.
+    def get(mapping, key):
+        return mapping.get(key, mapping.get(key.encode()))
+
+    _set_span_attribute_if_value(span, "redis.search.total", get(response, "total_results"))
+    for result in get(response, "results") or []:
+        document_index = get(result, "id")
+        if document_index:
+            fields = get(result, "extra_attributes") or {}
+            for name, value in fields.items():
+                _set_span_attribute_if_value(span, f"redis.search.xdoc_{document_index}.{name}", value)
 
 
 def _build_span_meta_data_for_pipeline(
