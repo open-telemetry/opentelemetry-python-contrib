@@ -27,7 +27,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.trace import NoOpTracerProvider, SpanKind, Tracer
 
 
 class TestPika(TestCase):
@@ -306,3 +306,53 @@ class TestPika(TestCase):
             self.assertEqual(_consumer_callback_attribute_name(), "on_message_callback")
         with mock.patch("pika.__version__", "0.12.0"):
             self.assertEqual(_consumer_callback_attribute_name(), "consumer_cb")
+
+    def test_basic_publish_with_noop_tracer_provider(self) -> None:
+        PikaInstrumentor.instrument_channel(
+            self.blocking_channel,
+            tracer_provider=NoOpTracerProvider(),
+        )
+
+        properties = BasicProperties(headers={})
+        result = self.blocking_channel.basic_publish(
+            "test_exchange", "test_routing_key", b"test_body", properties=properties
+        )
+
+        self.assertEqual(
+            result,
+            self.blocking_channel.basic_publish._original_function.return_value,
+        )
+        self.blocking_channel.basic_publish._original_function.assert_called_once_with(
+            "test_exchange", "test_routing_key", b"test_body", properties, False
+        )
+
+    def test_consumer_callback_with_noop_tracer_provider(self) -> None:
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
+        setattr(
+            self.blocking_channel._consumer_infos["consumer-tag"],
+            callback_attr,
+            self.mock_callback,
+        )
+
+        PikaInstrumentor.instrument_channel(
+            self.blocking_channel,
+            tracer_provider=NoOpTracerProvider(),
+        )
+
+        method = SimpleNamespace(
+            exchange="test_exchange", routing_key="test_routing_key"
+        )
+        properties = BasicProperties(headers={})
+        decorated_callback = getattr(
+            self.blocking_channel._consumer_infos["consumer-tag"],
+            callback_attr,
+        )
+
+        result = decorated_callback(
+            self.blocking_channel, method, properties, b"test_body"
+        )
+
+        self.mock_callback.assert_called_once_with(
+            self.blocking_channel, method, properties, b"test_body"
+        )
+        self.assertEqual(result, self.mock_callback.return_value)
