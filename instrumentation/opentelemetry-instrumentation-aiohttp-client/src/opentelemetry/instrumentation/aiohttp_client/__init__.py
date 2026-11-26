@@ -323,6 +323,27 @@ def _set_http_status_code_attribute(
     )
 
 
+def _get_network_metric_attributes(url: str, sem_conv_opt_in_mode: _StabilityMode) -> dict[str, Any]:
+    """Return the network attributes recorded on the client metric labels."""
+    metric_attributes: dict[str, Any] = {}
+    try:
+        parsed_url = urlparse(url)
+        if parsed_url.hostname:
+            _set_http_host_client(metric_attributes, parsed_url.hostname, sem_conv_opt_in_mode)
+            _set_http_net_peer_name_client(metric_attributes, parsed_url.hostname, sem_conv_opt_in_mode)
+        port = parsed_url.port
+        if port is None and parsed_url.scheme in ("http", "https"):
+            # ``urlparse`` only returns an explicit port, but the connection
+            # still uses the scheme default. Record the effective port on the
+            # metric labels, like the urllib3 and urllib instrumentations do.
+            port = 443 if parsed_url.scheme == "https" else 80
+        if port:
+            _set_http_peer_port_client(metric_attributes, port, sem_conv_opt_in_mode)
+    except ValueError:
+        pass
+    return metric_attributes
+
+
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 def create_trace_config(
@@ -483,31 +504,15 @@ def create_trace_config(
 
         try:
             parsed_url = urlparse(request_url)
-            if parsed_url.hostname:
+            trace_config_ctx.metric_attributes.update(_get_network_metric_attributes(request_url, sem_conv_opt_in_mode))
+            if parsed_url.hostname and _report_new(sem_conv_opt_in_mode):
                 _set_http_host_client(
-                    trace_config_ctx.metric_attributes,
+                    span_attributes,
                     parsed_url.hostname,
                     sem_conv_opt_in_mode,
                 )
-                _set_http_net_peer_name_client(
-                    trace_config_ctx.metric_attributes,
-                    parsed_url.hostname,
-                    sem_conv_opt_in_mode,
-                )
-                if _report_new(sem_conv_opt_in_mode):
-                    _set_http_host_client(
-                        span_attributes,
-                        parsed_url.hostname,
-                        sem_conv_opt_in_mode,
-                    )
-            if parsed_url.port:
-                _set_http_peer_port_client(
-                    trace_config_ctx.metric_attributes,
-                    parsed_url.port,
-                    sem_conv_opt_in_mode,
-                )
-                if _report_new(sem_conv_opt_in_mode):
-                    _set_http_peer_port_client(span_attributes, parsed_url.port, sem_conv_opt_in_mode)
+            if parsed_url.port and _report_new(sem_conv_opt_in_mode):
+                _set_http_peer_port_client(span_attributes, parsed_url.port, sem_conv_opt_in_mode)
         except ValueError:
             pass
 
