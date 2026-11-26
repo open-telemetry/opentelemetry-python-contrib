@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-httpx`: record the request duration metrics, with `error.type`, when the request raises
