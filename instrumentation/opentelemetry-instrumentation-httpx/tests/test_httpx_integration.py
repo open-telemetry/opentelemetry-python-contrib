@@ -674,6 +674,29 @@ class BaseTestCases:
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
+        def test_requests_timeout_exception_metrics(self):
+            with respx.mock, self.assertRaises(httpx.TimeoutException):
+                respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
+                self.perform_request(self.URL)
+
+            metrics = self.assert_metrics(num_metrics=1)
+            self.assertEqual(metrics[0].name, "http.client.duration")
+            self.assertEqual(metrics[0].data.data_points[0].count, 1)
+
+        def test_requests_timeout_exception_metrics_new_semconv(self):
+            with respx.mock, self.assertRaises(httpx.TimeoutException):
+                respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
+                self.perform_request(self.URL)
+
+            metrics = self.assert_metrics(num_metrics=1)
+            self.assertEqual(metrics[0].name, "http.client.request.duration")
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                duration_data_point.attributes.get(ERROR_TYPE),
+                "TimeoutException",
+            )
+
         def test_requests_timeout_exception(self):
             with respx.mock, self.assertRaises(httpx.TimeoutException):
                 respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
@@ -839,6 +862,23 @@ class BaseTestCases:
                     SERVER_PORT: 8080,
                 },
                 expected_number_of_metrics=1,
+            )
+
+        @respx.mock
+        def test_metrics_have_error_type_with_disabled_tracing_new_semconv(
+            self,
+        ) -> None:
+            respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                client = self.create_client(self.create_transport(tracer_provider=trace.NoOpTracerProvider()))
+                mock_span.is_recording.return_value = False
+                with self.assertRaises(httpx.TimeoutException):
+                    self.perform_request(self.URL, client=client)
+
+            metrics = self.assert_metrics(num_metrics=1)
+            self.assertEqual(
+                metrics[0].data.data_points[0].attributes.get(ERROR_TYPE),
+                "TimeoutException",
             )
 
         def test_response_hook(self):
@@ -1491,6 +1531,24 @@ class BaseTestCases:
                 self.assertTrue(mock_span.is_recording.called)
                 self.assertFalse(mock_span.set_attribute.called)
                 self.assertFalse(mock_span.set_status.called)
+
+        @respx.mock
+        def test_metrics_have_error_type_with_disabled_tracing_new_semconv(
+            self,
+        ) -> None:
+            respx.get(self.URL).mock(side_effect=httpx.TimeoutException)
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                HTTPXClientInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
+                client = self.create_client()
+                mock_span.is_recording.return_value = False
+                with self.assertRaises(httpx.TimeoutException):
+                    self.perform_request(self.URL, client=client)
+
+            metrics = self.assert_metrics(num_metrics=1)
+            self.assertEqual(
+                metrics[0].data.data_points[0].attributes.get(ERROR_TYPE),
+                "TimeoutException",
+            )
 
         def test_suppress_instrumentation_new_client(self):
             HTTPXClientInstrumentor().instrument()
