@@ -507,7 +507,26 @@ class TestBotocoreInstrumentor(TestBase):
                 response_hook_result_attribute_name: 0,
             },
         )
+    @mock_aws
+    def test_response_hook_on_client_error(self):
+        response_hook_called = False
 
+        def response_hook(span, service_name, operation_name, result):
+            nonlocal response_hook_called
+            response_hook_called = True
+
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(response_hook=response_hook)
+
+        s3 = self._make_client("s3")
+
+        with self.assertRaises(ClientError):
+            s3.get_object(
+                Bucket="non-existent-bucket",
+                Key="non-existent-key",
+            )
+
+        self.assertTrue(response_hook_called)
     @mock_aws
     def test_server_attributes(self):
         # Test regional endpoint
