@@ -4,6 +4,7 @@
 # pylint: disable=too-many-lines
 
 import abc
+from logging import Handler, LogRecord, getLogger
 from unittest import mock
 
 import requests
@@ -22,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.utils import (
+    is_http_instrumentation_enabled,
     suppress_http_instrumentation,
     suppress_instrumentation,
 )
@@ -324,6 +326,62 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(span.name, "name set from hook")
         self.assertEqual(span.attributes["response_hook_attr"], "value")
+
+    def test_request_hook_raising_does_not_break_request(self):
+        def request_hook(span, request_obj):
+            raise ValueError("request hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(request_hook=request_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING") as logs:
+            result = self.perform_request(self.URL)
+
+        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.status_code, 200)
+        span = self.assert_span()
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
+        self.assertIn("Exception raised by hook", logs.output[0])
+
+    def test_response_hook_raising_does_not_break_request(self):
+        def response_hook(span, request_obj, response):
+            raise ValueError("response hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING") as logs:
+            result = self.perform_request(self.URL)
+
+        self.assertEqual(result.text, "Hello!")
+        self.assertEqual(result.status_code, 200)
+        span = self.assert_span()
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)
+        self.assertIn("Exception raised by hook", logs.output[0])
+
+    def test_hook_warning_is_logged_with_instrumentation_suppressed(self):
+        def request_hook(span, request_obj):
+            raise ValueError("request hook failed")
+
+        enabled_during_emit = []
+
+        class RecordingHandler(Handler):
+            def emit(self, record: LogRecord) -> None:
+                enabled_during_emit.append(is_http_instrumentation_enabled())
+
+        handler = RecordingHandler()
+        logger = getLogger("opentelemetry.instrumentation.requests")
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(request_hook=request_hook)
+        result = self.perform_request(self.URL)
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(enabled_during_emit, [False])
 
     def test_excluded_urls_explicit(self):
         url_404 = "http://mock/status/404"
@@ -640,6 +698,25 @@ class RequestsIntegrationTestBase(abc.ABC):
                 USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    @mock.patch(
+        "requests.adapters.HTTPAdapter.send",
+        side_effect=requests.RequestException(response=mocked_response),
+    )
+    def test_response_hook_raising_preserves_the_send_exception(self, *_, **__):
+        def response_hook(span, request_obj, response):
+            raise ValueError("response hook failed")
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(response_hook=response_hook)
+
+        with self.assertLogs("opentelemetry.instrumentation.requests", level="WARNING"):
+            with self.assertRaises(requests.RequestException):
+                self.perform_request(self.URL)
+
+        span = self.assert_span()
+        self.assertEqual(span.attributes[HTTP_STATUS_CODE], 500)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     @mock.patch("requests.adapters.HTTPAdapter.send", side_effect=Exception)
