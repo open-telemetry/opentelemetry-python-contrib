@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pymemcache`: replace every memcached key in `db.statement`/`db.query.text` with a `?` placeholder so key names are no longer recorded
