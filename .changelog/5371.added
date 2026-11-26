@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aio-pika`: Add `messaging.client.operation.duration`, `messaging.client.sent.messages`, `messaging.process.duration`, and `messaging.client.consumed.messages` metrics for publish and consume
