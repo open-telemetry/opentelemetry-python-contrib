@@ -393,6 +393,15 @@ def _instrument(
                     _set_http_peer_port_client(span_attributes, parsed_url.port, sem_conv_opt_in_mode)
                     # Use semconv library when available
                     span_attributes[NETWORK_PEER_PORT] = parsed_url.port
+            elif parsed_url.scheme in ("http", "https"):
+                # ``urlparse`` only returns an explicit port, but the connection
+                # still uses the scheme default. Record the effective port on the
+                # metric labels, like the urllib3 and urllib instrumentations do.
+                _set_http_peer_port_client(
+                    metric_labels,
+                    443 if parsed_url.scheme == "https" else 80,
+                    sem_conv_opt_in_mode,
+                )
         except ValueError:
             pass
 

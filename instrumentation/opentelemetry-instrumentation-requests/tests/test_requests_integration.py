@@ -1057,6 +1057,69 @@ class TestRequestsIntergrationMetric(TestBase):
                     )
                 self.assertEqual(data_point.count, 1)
 
+    def test_basic_metric_implicit_port(self):
+        url = "http://examplehost/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        self.perform_request(url)
+
+        expected_attributes = {
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 80,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
+        }
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "ms")
+            for data_point in metric.data.data_points:
+                self.assertDictEqual(expected_attributes, dict(data_point.attributes))
+                self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_implicit_port_new_semconv(self):
+        url = "http://examplehost/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        self.perform_request(url)
+
+        expected_attributes = {
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 80,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+        }
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "s")
+            for data_point in metric.data.data_points:
+                self.assertDictEqual(expected_attributes, dict(data_point.attributes))
+                self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_implicit_https_port_new_semconv(self):
+        url = "https://examplehost/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        self.perform_request(url)
+
+        expected_attributes = {
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            SERVER_ADDRESS: "examplehost",
+            SERVER_PORT: 443,
+            HTTP_REQUEST_METHOD: "GET",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+        }
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "s")
+            for data_point in metric.data.data_points:
+                self.assertDictEqual(expected_attributes, dict(data_point.attributes))
+                self.assertEqual(data_point.count, 1)
+
     def test_custom_histogram_boundaries(self):
         RequestsInstrumentor().uninstrument()
         custom_boundaries = (0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0)
