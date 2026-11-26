@@ -67,7 +67,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS,
-    get_excluded_urls,
 )
 
 # pylint: disable=import-error
@@ -170,12 +169,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
-        self.exclude_patch = patch(
-            "opentelemetry.instrumentation.flask._excluded_urls_from_env",
-            get_excluded_urls("FLASK"),
-        )
-        self.exclude_patch.start()
-
         self.app = Flask(__name__)
         FlaskInstrumentor().instrument_app(self.app)
 
@@ -184,7 +177,6 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
-        self.exclude_patch.stop()
         with self.disable_logging():
             FlaskInstrumentor().uninstrument_app(self.app)
 
