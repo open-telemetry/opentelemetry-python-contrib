@@ -69,6 +69,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.67b0.dev",
     "opentelemetry-instrumentation-remoulade==0.67b0.dev",
     "opentelemetry-instrumentation-requests==0.67b0.dev",
+    "opentelemetry-instrumentation-sanic==0.67b0.dev",
     "opentelemetry-instrumentation-sqlalchemy==0.67b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.67b0.dev",
     "opentelemetry-instrumentation-starlette==0.67b0.dev",
