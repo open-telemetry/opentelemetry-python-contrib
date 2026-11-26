@@ -128,10 +128,10 @@ def test_detects_cloud_functions(
     fake_metadata: _metadata.Metadata,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    # Cloud Functions (1st gen) sets FUNCTION_TARGET, K_SERVICE, and K_REVISION,
+    # without K_CONFIGURATION (which is only set on Cloud Run-backed services).
     monkeypatch.setenv("FUNCTION_TARGET", "fake-function-target")
-    # Note all K_* environment variables are set since Cloud Functions executes within Cloud
-    # Run. This tests that the detector can differentiate between them
-    monkeypatch.setenv("K_CONFIGURATION", "fake-configuration")
+    monkeypatch.setenv("FUNCTION_SIGNATURE_TYPE", "http")
     monkeypatch.setenv("K_SERVICE", "fake-service")
     monkeypatch.setenv("K_REVISION", "fake-revision")
     fake_metadata.update(
@@ -146,6 +146,41 @@ def test_detects_cloud_functions(
     )
 
     assert dict(GoogleCloudResourceDetector().detect().attributes) == snapshot
+
+
+def test_detects_cloud_run_function(
+    fake_metadata: _metadata.Metadata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Cloud Run functions (including functions deployed via `gcloud run deploy --function`
+    # and Cloud Functions 2nd gen) set both K_CONFIGURATION and FUNCTION_TARGET/FUNCTION_SIGNATURE_TYPE.
+    # They run as Cloud Run services and should detect as gcp_cloud_run with a run.googleapis.com resource ID.
+    monkeypatch.setenv("FUNCTION_TARGET", "fake-function-target")
+    monkeypatch.setenv("FUNCTION_SIGNATURE_TYPE", "http")
+    monkeypatch.setenv("K_CONFIGURATION", "fake-configuration")
+    monkeypatch.setenv("K_SERVICE", "fake-service")
+    monkeypatch.setenv("K_REVISION", "fake-revision")
+    fake_metadata.update(
+        {
+            "project": {"projectId": "fakeProject"},
+            "instance": {
+                "id": "0087244a",
+                "region": "projects/233510669999/regions/us-east4",
+            },
+        }
+    )
+
+    attrs = dict(GoogleCloudResourceDetector().detect().attributes)
+    assert attrs == {
+        "cloud.provider": "gcp",
+        "cloud.account.id": "fakeProject",
+        "cloud.platform": "gcp_cloud_run",
+        "cloud.region": "us-east4",
+        "cloud.resource_id": "//run.googleapis.com/projects/fakeProject/locations/us-east4/services/fake-service",
+        "faas.instance": "0087244a",
+        "faas.name": "fake-service",
+        "faas.version": "fake-revision",
+    }
 
 
 def test_detects_cloud_run_job(
@@ -197,6 +232,72 @@ def test_detects_cloud_run_job_without_optional_env_vars(
     }
 
 
+def test_detects_cloud_run_worker_pool(
+    snapshot,
+    fake_metadata: _metadata.Metadata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("CLOUD_RUN_WORKER_POOL", "fake-worker-pool")
+    monkeypatch.setenv("CLOUD_RUN_REVISION", "fake-worker-pool-00001")
+    fake_metadata.update(
+        {
+            "project": {"projectId": "fakeProject"},
+            "instance": {
+                "id": "0087244a",
+                "region": "projects/233510669999/regions/us-east4",
+            },
+        }
+    )
+
+    assert dict(GoogleCloudResourceDetector().detect().attributes) == snapshot
+
+
+def test_detects_cloud_run_worker_pool_without_optional_env_vars(
+    fake_metadata: _metadata.Metadata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("CLOUD_RUN_WORKER_POOL", "fake-worker-pool")
+    fake_metadata.update(
+        {
+            "project": {"projectId": "fakeProject"},
+            "instance": {
+                "id": "0087244a",
+                "region": "projects/233510669999/regions/us-east4",
+            },
+        }
+    )
+
+    attrs = dict(GoogleCloudResourceDetector().detect().attributes)
+    assert attrs == {
+        "cloud.provider": "gcp",
+        "cloud.account.id": "fakeProject",
+        "cloud.platform": "gcp_cloud_run",
+        "cloud.region": "us-east4",
+        "cloud.resource_id": "//run.googleapis.com/projects/fakeProject/locations/us-east4/workerPools/fake-worker-pool",
+        "faas.name": "fake-worker-pool",
+        "faas.instance": "0087244a",
+    }
+
+
+def test_detects_cloud_run_instance(
+    snapshot,
+    fake_metadata: _metadata.Metadata,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("CLOUD_RUN_INSTANCE", "fake-instance")
+    fake_metadata.update(
+        {
+            "project": {"projectId": "fakeProject"},
+            "instance": {
+                "id": "0087244a",
+                "region": "projects/233510669999/regions/us-east4",
+            },
+        }
+    )
+
+    assert dict(GoogleCloudResourceDetector().detect().attributes) == snapshot
+
+
 @pytest.mark.parametrize(
     ("env_vars", "project_id", "region"),
     (
@@ -229,6 +330,18 @@ def test_detects_cloud_run_job_without_optional_env_vars(
             "fakeProject",
             "projects/233510669999/regions/us-east4",
             id="cloud-run-job-empty-name",
+        ),
+        pytest.param(
+            {"CLOUD_RUN_WORKER_POOL": ""},
+            "fakeProject",
+            "projects/233510669999/regions/us-east4",
+            id="cloud-run-worker-pool-empty-name",
+        ),
+        pytest.param(
+            {"CLOUD_RUN_INSTANCE": ""},
+            "fakeProject",
+            "projects/233510669999/regions/us-east4",
+            id="cloud-run-instance-empty-name",
         ),
     ),
 )
