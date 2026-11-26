@@ -62,21 +62,6 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             client_call_details.wait_for_ready,
         )
 
-    @staticmethod
-    def add_error_details_to_span(span, exc):
-        if isinstance(exc, grpc.RpcError):
-            span.set_attribute(
-                RPC_GRPC_STATUS_CODE,
-                exc.code().value[0],
-            )
-        span.set_status(
-            Status(
-                status_code=StatusCode.ERROR,
-                description=f"{type(exc).__name__}: {exc}",
-            )
-        )
-        span.record_exception(exc)
-
     def _start_interceptor_span(self, method):
         # method _should_ be a string here but due to a bug in grpc, it is
         # populated with a bytes object. Handle both cases such that we
