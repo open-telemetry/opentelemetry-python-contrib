@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from sys import modules
+from unittest import mock
 
 from django import VERSION, conf
 from django.http import HttpResponse
@@ -18,6 +19,9 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
     INVALID_SPAN_ID,
     INVALID_TRACE_ID,
+)
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
 )
 
 DJANGO_2_0 = VERSION >= (2, 0)
@@ -140,3 +144,20 @@ class TestFunctionalDjango(TestBase):
 
         # At least one exemplar was generated
         self.assertGreater(exemplar_count, 0)
+
+    @mock.patch.dict(
+        "os.environ",
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "content-type,content-length,custom-test-header"},
+    )
+    def test_custom_request_headers_content_type_and_length(self):
+        self._client.post(
+            "/test/",
+            data='{"a": 1}',
+            content_type="application/json",
+            HTTP_CUSTOM_TEST_HEADER="test-value",
+        )
+
+        span = self.memory_exporter.get_finished_spans()[-1]
+        self.assertEqual(span.attributes["http.request.header.content_type"], ("application/json",))
+        self.assertEqual(span.attributes["http.request.header.content_length"], ("8",))
+        self.assertEqual(span.attributes["http.request.header.custom_test_header"], ("test-value",))
