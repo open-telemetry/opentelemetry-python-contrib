@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: invoke log hooks without an active span
