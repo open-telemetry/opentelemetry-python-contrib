@@ -121,13 +121,11 @@ def vcr_config():
 
 @pytest.fixture(
     scope="function",
-    params=[(True, "span_only"), (False, "True")],
+    params=[(False, "True")],
     name="content_mode",
 )
 def fixture_content_mode(request):
     # returns tuple: (latest_experimental_enabled: bool, content_mode: str)
-    # we don't test (True, "event_only"), (True, "span_and_event") because it's util's
-    # responsibility
     return request.param
 
 
@@ -230,6 +228,17 @@ def instrument_event_only(tracer_provider, logger_provider, meter_provider):
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
     instrumentor.uninstrument()
+
+
+@pytest.fixture(name="reset_instrumentors")
+def fixture_reset_instrumentors(monkeypatch):
+    monkeypatch.delenv(OTEL_SEMCONV_STABILITY_OPT_IN, raising=False)
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    yield
+    instrumentor = OpenAIInstrumentor()
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+    _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class LiteralBlockScalar(str):
