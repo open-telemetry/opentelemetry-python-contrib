@@ -20,8 +20,10 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_new_with_server_attrs,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
+    _server_duration_attrs_new_with_server_attrs,
     _server_duration_attrs_old,
     _StabilityMode,
 )
@@ -192,6 +194,7 @@ class _DjangoMiddleware:
     _duration_histogram_new = None
     _active_request_counter = None
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+    _server_attributes_in_metrics: bool = False
     _collect_view_code_attributes = False
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
@@ -288,6 +291,7 @@ class _DjangoMiddleware:
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes,
             self._sem_conv_opt_in_mode,
+            self._server_attributes_in_metrics,
         )
 
         request.META[self._environ_active_request_attr_key] = active_requests_count_attrs
@@ -444,7 +448,11 @@ class _DjangoMiddleware:
                     duration_attrs_old,
                 )
             if self._duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(duration_attrs, _StabilityMode.HTTP)
+                duration_attrs_new = _parse_duration_attrs(
+                    duration_attrs,
+                    _StabilityMode.HTTP,
+                    self._server_attributes_in_metrics,
+                )
                 self._duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
@@ -468,19 +476,23 @@ class _DjangoMiddleware:
         return response
 
 
-def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT):
+def _parse_duration_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new,
+        _server_duration_attrs_new_with_server_attrs if server_attributes else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT, server_attributes: bool = False
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
+        _server_active_requests_count_attrs_new_with_server_attrs
+        if server_attributes
+        else _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )

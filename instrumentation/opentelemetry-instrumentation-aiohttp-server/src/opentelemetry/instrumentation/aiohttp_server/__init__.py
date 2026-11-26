@@ -139,6 +139,23 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Server address and port in metrics
+**********************************
+``server.address`` and ``server.port`` are opt-in attributes of the HTTP server metrics and are not recorded by
+default. Set ``enable_server_attributes_in_metrics`` to ``True`` to add them to
+``http.server.request.duration`` and ``http.server.active_requests``:
+
+.. code:: python
+
+    AioHttpServerInstrumentor().instrument(enable_server_attributes_in_metrics=True)
+
+This only affects metrics that follow the new HTTP semantic conventions, that is when
+``OTEL_SEMCONV_STABILITY_OPT_IN`` is set to ``http`` or ``http/dup``.
+
+Note:
+    ``server.address`` can come from the ``Host`` request header, so enabling these attributes can increase
+    the cardinality of the metrics.
+
 .. include:: /_includes/http-semconv.rst
 
 API
@@ -163,8 +180,10 @@ from opentelemetry.instrumentation._semconv import (
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_new_with_server_attrs,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
+    _server_duration_attrs_new_with_server_attrs,
     _server_duration_attrs_old,
     _set_http_flavor_version,
     _set_http_method,
@@ -217,13 +236,20 @@ duration_histogram_new = None
 active_requests_counter = None
 _excluded_urls = None
 _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+_server_attributes_in_metrics: bool = False
 
 
-def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT):
+def _parse_active_request_count_attrs(
+    req_attrs,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    server_attributes: bool = False,
+):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
-        _server_active_requests_count_attrs_new,
+        _server_active_requests_count_attrs_new_with_server_attrs
+        if server_attributes
+        else _server_active_requests_count_attrs_new,
         sem_conv_opt_in_mode,
     )
 
@@ -231,11 +257,12 @@ def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _Stabilit
 def _parse_duration_attrs(
     req_attrs: dict[str, str | None],
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    server_attributes: bool = False,
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
         _server_duration_attrs_old,
-        _server_duration_attrs_new,
+        _server_duration_attrs_new_with_server_attrs if server_attributes else _server_duration_attrs_new,
         sem_conv_opt_in_mode,
     )
 
@@ -433,6 +460,7 @@ def create_aiohttp_middleware(
         active_requests_count_attrs = _parse_active_request_count_attrs(
             request_attrs,
             _sem_conv_opt_in_mode,
+            _server_attributes_in_metrics,
         )
 
         with _tracer.start_as_current_span(
@@ -488,7 +516,11 @@ def create_aiohttp_middleware(
                     duration_attrs_old = _parse_duration_attrs(request_attrs, _StabilityMode.DEFAULT)
                     duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
                 if duration_histogram_new:
-                    duration_attrs_new = _parse_duration_attrs(request_attrs, _StabilityMode.HTTP)
+                    duration_attrs_new = _parse_duration_attrs(
+                        request_attrs,
+                        _StabilityMode.HTTP,
+                        _server_attributes_in_metrics,
+                    )
                     duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
                 active_requests_counter.add(-1, active_requests_count_attrs)
             return resp
@@ -536,6 +568,9 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
 
         global _sem_conv_opt_in_mode  # pylint: disable=global-statement
         _sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
+        global _server_attributes_in_metrics  # pylint: disable=global-statement
+        _server_attributes_in_metrics = kwargs.get("enable_server_attributes_in_metrics", False)
 
         global tracer  # pylint: disable=global-statement
         tracer = trace.get_tracer(

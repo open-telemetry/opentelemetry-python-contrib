@@ -174,7 +174,21 @@ _server_active_requests_count_attrs_old = [
 _server_active_requests_count_attrs_new = [
     HTTP_REQUEST_METHOD,
     URL_SCHEME,
-    # TODO: Support SERVER_ADDRESS AND SERVER_PORT
+]
+
+# server.address and server.port are opt-in on HTTP server metrics. Each
+# instrumentation picks one of these lists instead of the default ones when
+# the user enables them.
+_server_duration_attrs_new_with_server_attrs = [
+    *_server_duration_attrs_new,
+    SERVER_ADDRESS,
+    SERVER_PORT,
+]
+
+_server_active_requests_count_attrs_new_with_server_attrs = [
+    *_server_active_requests_count_attrs_new,
+    SERVER_ADDRESS,
+    SERVER_PORT,
 ]
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
