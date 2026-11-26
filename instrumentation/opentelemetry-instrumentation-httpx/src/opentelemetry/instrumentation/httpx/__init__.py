@@ -907,7 +907,7 @@ class _SyncOpenTelemetryTransportBase(typing.Generic[_SyncTransportT]):
     ) -> None:
         self._transport.__exit__(exc_type, exc_value, traceback)
 
-    # pylint: disable=R0914
+    # pylint: disable=R0912,R0914
     def handle_request(
         self,
         *args: typing.Any,
@@ -990,11 +990,10 @@ class _SyncOpenTelemetryTransportBase(typing.Generic[_SyncTransportT]):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception:
-                if span.is_recording() and _report_new(self._sem_conv_opt_in_mode):
+            if exception and _report_new(self._sem_conv_opt_in_mode):
+                if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
-                raise exception.with_traceback(exception.__traceback__)
+                metric_attributes[ERROR_TYPE] = type(exception).__qualname__
 
             if self._duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
@@ -1015,6 +1014,9 @@ class _SyncOpenTelemetryTransportBase(typing.Generic[_SyncTransportT]):
                     _StabilityMode.HTTP,
                 )
                 self._duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+
+            if exception:
+                raise exception.with_traceback(exception.__traceback__)
 
         # ``response`` can only be ``None`` when the wrapped transport raised,
         # in which case the exception was re-raised above; the tuple form is
@@ -1106,7 +1108,7 @@ class _AsyncOpenTelemetryTransportBase(typing.Generic[_AsyncTransportT]):
     ) -> None:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
-    # pylint: disable=R0914
+    # pylint: disable=R0912,R0914
     async def handle_async_request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
@@ -1186,12 +1188,10 @@ class _AsyncOpenTelemetryTransportBase(typing.Generic[_AsyncTransportT]):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception:
-                if span.is_recording() and _report_new(self._sem_conv_opt_in_mode):
+            if exception and _report_new(self._sem_conv_opt_in_mode):
+                if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
-
-                raise exception.with_traceback(exception.__traceback__)
+                metric_attributes[ERROR_TYPE] = type(exception).__qualname__
 
             if self._duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
@@ -1212,6 +1212,9 @@ class _AsyncOpenTelemetryTransportBase(typing.Generic[_AsyncTransportT]):
                     _StabilityMode.HTTP,
                 )
                 self._duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+
+            if exception:
+                raise exception.with_traceback(exception.__traceback__)
 
         # ``response`` can only be ``None`` when the wrapped transport raised,
         # in which case the exception was re-raised above; the tuple form is
@@ -1357,7 +1360,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
         unwrap(module.AsyncHTTPTransport, "handle_async_request")
 
     @staticmethod
-    def _handle_request_wrapper(  # pylint: disable=too-many-locals
+    def _handle_request_wrapper(  # pylint: disable=too-many-branches,too-many-locals
         wrapped: typing.Callable[..., typing.Any],
         instance: httpx.HTTPTransport,
         args: tuple[typing.Any, ...],
@@ -1452,11 +1455,10 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception:
-                if span.is_recording() and _report_new(sem_conv_opt_in_mode):
+            if exception and _report_new(sem_conv_opt_in_mode):
+                if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
-                raise exception.with_traceback(exception.__traceback__)
+                metric_attributes[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
@@ -1478,10 +1480,13 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
                 )
                 duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
 
+            if exception:
+                raise exception.with_traceback(exception.__traceback__)
+
         return response
 
     @staticmethod
-    async def _handle_async_request_wrapper(  # pylint: disable=too-many-locals
+    async def _handle_async_request_wrapper(  # pylint: disable=too-many-branches,too-many-locals
         wrapped: typing.Callable[..., typing.Awaitable[typing.Any]],
         instance: httpx.AsyncHTTPTransport,
         args: tuple[typing.Any, ...],
@@ -1576,10 +1581,10 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
                         ResponseInfo(status_code, headers, stream, extensions),
                     )
 
-            if exception:
-                if span.is_recording() and _report_new(sem_conv_opt_in_mode):
+            if exception and _report_new(sem_conv_opt_in_mode):
+                if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                raise exception.with_traceback(exception.__traceback__)
+                metric_attributes[ERROR_TYPE] = type(exception).__qualname__
 
             if duration_histogram_old is not None:
                 duration_attrs_old = _filter_semconv_duration_attrs(
@@ -1600,6 +1605,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor, typing.Generic[_ClientT]):
                     _StabilityMode.HTTP,
                 )
                 duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+
+            if exception:
+                raise exception.with_traceback(exception.__traceback__)
 
         return response
 
