@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asyncclick`: allow `wrapt` 2.x by widening the requirement to `wrapt >= 1.0.0, < 3.0.0`
