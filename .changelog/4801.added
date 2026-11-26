@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pymysql`: add `capture_parameters` option to `instrument` and `instrument_connection` to capture query parameters as span attributes
