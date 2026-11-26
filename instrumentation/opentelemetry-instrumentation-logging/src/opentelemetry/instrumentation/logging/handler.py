@@ -126,6 +126,18 @@ _TRACE_CONTEXT_ATTRS = (
     "otelServiceName",
 )
 
+# Names injected instead of the ones above when the LoggingInstrumentor is asked
+# for the field names of the "Trace Context in non-OTLP Log Formats" spec.
+# Unlike the otel-prefixed names, these are generic enough for an application
+# to pass as its own `extra` attributes, so they are only skipped while the
+# instrumentor is injecting them.
+_SPEC_TRACE_CONTEXT_ATTRS = (
+    "span_id",
+    "trace_id",
+    "trace_flags",
+    "service_name",
+)
+
 
 class LoggingHandler(logging.Handler):
     """A handler class which writes logging records, in OTLP format, to
@@ -134,6 +146,10 @@ class LoggingHandler(logging.Handler):
     """
 
     _is_emitting: ContextVar[bool] = ContextVar("_is_emitting", default=False)
+
+    # Injected trace context attributes that are not exported as log attributes.
+    # The LoggingInstrumentor extends this while it injects the spec names.
+    _skipped_trace_context_attrs: frozenset[str] = frozenset(_TRACE_CONTEXT_ATTRS)
 
     def __init__(
         self,
@@ -153,7 +169,9 @@ class LoggingHandler(logging.Handler):
         # first-class trace_id, span_id and trace_flags fields, and the service
         # name in the resource, so keeping the copies here only duplicates them.
         attributes = {
-            k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS and k not in _TRACE_CONTEXT_ATTRS
+            k: v
+            for k, v in vars(record).items()
+            if k not in _RESERVED_ATTRS and k not in LoggingHandler._skipped_trace_context_attrs
         }
 
         # Promote otel.event.name (stable) or event.name (deprecated) to the

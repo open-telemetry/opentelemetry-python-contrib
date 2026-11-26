@@ -51,6 +51,7 @@ from os import environ
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
+    _DEFAULT_SPEC_LOGGING_FORMAT,
     _MODULE_DOC,
     DEFAULT_LOGGING_FORMAT,
 )
@@ -61,14 +62,20 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_HANDLER_LEVEL,
     OTEL_PYTHON_LOG_LEVEL,
+    OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN,
 )
 from opentelemetry.instrumentation.logging.handler import (
+    _SPEC_TRACE_CONTEXT_ATTRS,
+    _TRACE_CONTEXT_ATTRS,
+    LoggingHandler,
     _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
 from opentelemetry.trace import (
     INVALID_SPAN,
     INVALID_SPAN_CONTEXT,
+    SpanContext,
+    TracerProvider,
     get_current_span,
     get_tracer_provider,
 )
@@ -99,6 +106,42 @@ def _get_log_level(level_name: str | None) -> int | None:
     return result
 
 
+def _use_spec_field_names(value: str | None) -> bool:
+    normalized = (value or "legacy").strip().lower()
+    if normalized == "spec":
+        return True
+    if normalized != "legacy":
+        _logger.warning(
+            "Invalid value %r for trace_context_field_names / %s; defaulting to legacy",
+            value,
+            OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN,
+        )
+    return False
+
+
+def _get_service_name(tracer_provider: TracerProvider) -> str:
+    resource = getattr(tracer_provider, "resource", None)
+    if resource:
+        return resource.attributes.get("service.name") or ""
+    return ""
+
+
+def _inject_legacy_trace_context(record: logging.LogRecord, service_name: str, ctx: SpanContext | None) -> None:
+    record.otelSpanID = format(ctx.span_id, "016x") if ctx is not None else "0"
+    record.otelTraceID = format(ctx.trace_id, "032x") if ctx is not None else "0"
+    record.otelTraceSampled = ctx.trace_flags.sampled if ctx is not None else False
+    record.otelServiceName = service_name
+
+
+def _inject_spec_trace_context(record: logging.LogRecord, service_name: str, ctx: SpanContext | None) -> None:
+    # The spec leaves the trace context fields optional, but a format string
+    # needs every key it references to exist.
+    record.span_id = format(ctx.span_id, "016x") if ctx is not None else ""
+    record.trace_id = format(ctx.trace_id, "032x") if ctx is not None else ""
+    record.trace_flags = format(ctx.trace_flags, "02x") if ctx is not None else ""
+    record.service_name = service_name
+
+
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     __doc__ = f"""An instrumentor for stdlib logging module.
 
@@ -120,6 +163,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             and calls logging.basicConfig() with a format string that includes those attributes.
         inject_trace_context: When set to True, injects trace context attributes
             into every log record without modifying the logging format.
+        trace_context_field_names: Selects the names of the injected trace context attributes.
+            ``"legacy"`` (the default) injects ``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``
+            and ``otelServiceName``. ``"spec"`` injects ``span_id``, ``trace_id``, ``trace_flags``
+            and ``service_name`` instead.
         logging_format: Accepts a string and sets it as the logging format when set_logging_format
             is set to True.
         log_level: Accepts one of the following values and sets the logging level to it.
@@ -173,14 +220,24 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower() == "true",
         )
 
+        spec_field_names = _use_spec_field_names(
+            kwargs.get(
+                "trace_context_field_names",
+                environ.get(OTEL_PYTHON_LOG_TRACE_CONTEXT_FIELD_NAMES_OPT_IN),
+            )
+        )
+
         if set_logging_format:
-            log_format = (
-                kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or DEFAULT_LOGGING_FORMAT
+            log_format = kwargs.get("logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)) or (
+                _DEFAULT_SPEC_LOGGING_FORMAT if spec_field_names else DEFAULT_LOGGING_FORMAT
             )
             log_level = kwargs.get("log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))) or logging.INFO
             LoggingInstrumentor._configure_logging(log_format, log_level)
 
         inject_context = set_logging_format or kwargs.get("inject_trace_context", False)
+
+        if inject_context and spec_field_names:
+            LoggingHandler._skipped_trace_context_attrs = frozenset(_TRACE_CONTEXT_ATTRS + _SPEC_TRACE_CONTEXT_ATTRS)
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
@@ -195,37 +252,30 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             if not inject_context and not callable(LoggingInstrumentor._log_hook):
                 return record
 
-            if inject_context:
-                record.otelSpanID = "0"
-                record.otelTraceID = "0"
-                record.otelTraceSampled = False
-
-                nonlocal service_name
-                if service_name is None:
-                    resource = getattr(provider, "resource", None)
-                    if resource:
-                        service_name = resource.attributes.get("service.name") or ""
-                    else:
-                        service_name = ""
-
-                record.otelServiceName = service_name
-
+            ctx = None
             span = get_current_span()
             if span != INVALID_SPAN:
-                ctx = span.get_span_context()
-                if ctx != INVALID_SPAN_CONTEXT:
-                    if inject_context:
-                        record.otelSpanID = format(ctx.span_id, "016x")
-                        record.otelTraceID = format(ctx.trace_id, "032x")
-                        record.otelTraceSampled = ctx.trace_flags.sampled
+                span_context = span.get_span_context()
+                if span_context != INVALID_SPAN_CONTEXT:
+                    ctx = span_context
 
-                    if callable(LoggingInstrumentor._log_hook):
-                        try:
-                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
-                                span, record
-                            )
-                        except Exception:  # pylint: disable=W0703
-                            pass
+            if inject_context:
+                nonlocal service_name
+                if service_name is None:
+                    service_name = _get_service_name(provider)
+
+                if spec_field_names:
+                    _inject_spec_trace_context(record, service_name, ctx)
+                else:
+                    _inject_legacy_trace_context(record, service_name, ctx)
+
+            if ctx is not None and callable(LoggingInstrumentor._log_hook):
+                try:
+                    LoggingInstrumentor._log_hook(  # pylint: disable=E1102
+                        span, record
+                    )
+                except Exception:  # pylint: disable=W0703
+                    pass
 
             return record
 
@@ -281,6 +331,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
         LoggingInstrumentor._old_factory = None
         LoggingInstrumentor._our_factory = None
+        LoggingHandler._skipped_trace_context_attrs = frozenset(_TRACE_CONTEXT_ATTRS)
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(LoggingInstrumentor._logging_handler)
