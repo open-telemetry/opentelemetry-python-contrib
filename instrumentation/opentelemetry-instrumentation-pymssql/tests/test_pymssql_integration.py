@@ -14,6 +14,9 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 
@@ -152,6 +155,27 @@ class TestPyMSSQLIntegration(TestBase):
         span = spans_list[0]
 
         self.assertIs(span.resource, resource)
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_custom_meter_provider(self):
+        meter_provider, metrics_reader = self.create_meter_provider()
+
+        PyMSSQLInstrumentor().instrument(meter_provider=meter_provider)
+
+        cnx = pymssql.connect(database="test")  # pylint: disable=no-member
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test")
+
+        metrics_data = metrics_reader.get_metrics_data()
+        self.assertIsNotNone(metrics_data)
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_data.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument

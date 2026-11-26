@@ -102,6 +102,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         https://docs.python.org/3/library/sqlite3.html
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         for module in self._TO_WRAP:
             dbapi.wrap_connect(
@@ -112,6 +113,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 _CONNECTION_ATTRIBUTES,
                 version=__version__,
                 tracer_provider=tracer_provider,
+                meter_provider=meter_provider,
             )
 
     def _uninstrument(self, **kwargs: Any) -> None:

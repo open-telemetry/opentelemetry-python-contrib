@@ -167,6 +167,7 @@ class TestPsycopg2InstrumentorParameters(TestBase):
             },
             version=__version__,
             tracer_provider=None,
+            meter_provider=None,
             db_api_integration_factory=DatabaseApiIntegration,
             enable_commenter=False,
             commenter_options={},

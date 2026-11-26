@@ -241,6 +241,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         Psycopg: http://initd.org/psycopg/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
         enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
@@ -253,6 +254,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             db_api_integration_factory=DatabaseApiIntegration,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,

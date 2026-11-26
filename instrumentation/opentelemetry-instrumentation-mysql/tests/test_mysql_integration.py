@@ -24,6 +24,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+)
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_QUERY_TEXT,
@@ -150,6 +153,25 @@ class TestMysqlIntegration(TestBase):
         span = span_list[0]
 
         self.assertIs(span.resource, resource)
+
+    @mock.patch("mysql.connector.connect")
+    def test_custom_meter_provider(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
+        meter_provider, metrics_reader = self.create_meter_provider()
+
+        MySQLInstrumentor().instrument(meter_provider=meter_provider)
+        connect_and_execute_query()
+
+        metrics_data = metrics_reader.get_metrics_data()
+        self.assertIsNotNone(metrics_data)
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_data.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
