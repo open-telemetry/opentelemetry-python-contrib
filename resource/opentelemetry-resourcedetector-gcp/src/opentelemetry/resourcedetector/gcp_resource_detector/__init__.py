@@ -62,16 +62,25 @@ def _gke_resource() -> Resource:
 
 def _gce_resource() -> Resource:
     zone_and_region = _gce.availability_zone_and_region()
-    return _make_resource(
-        {
-            ResourceAttributes.CLOUD_PLATFORM_KEY: ResourceAttributes.GCP_COMPUTE_ENGINE,
-            ResourceAttributes.CLOUD_AVAILABILITY_ZONE: zone_and_region.zone,
-            ResourceAttributes.CLOUD_REGION: zone_and_region.region,
-            ResourceAttributes.HOST_TYPE: _gce.host_type(),
-            ResourceAttributes.HOST_ID: _gce.host_id(),
-            ResourceAttributes.HOST_NAME: _gce.host_name(),
-        }
-    )
+    instance_name = _gce.host_name()
+    attrs: dict[str, AttributeValue] = {
+        ResourceAttributes.CLOUD_PLATFORM_KEY: ResourceAttributes.GCP_COMPUTE_ENGINE,
+        ResourceAttributes.CLOUD_AVAILABILITY_ZONE: zone_and_region.zone,
+        ResourceAttributes.CLOUD_REGION: zone_and_region.region,
+        ResourceAttributes.HOST_TYPE: _gce.host_type(),
+        ResourceAttributes.HOST_ID: _gce.host_id(),
+        ResourceAttributes.HOST_NAME: instance_name,
+        ResourceAttributes.GCP_GCE_INSTANCE_NAME: instance_name,
+    }
+    if hostname := _gce.instance_hostname():
+        attrs[ResourceAttributes.GCP_GCE_INSTANCE_HOSTNAME] = hostname
+    if mig := _gce.managed_instance_group():
+        attrs[ResourceAttributes.GCP_GCE_INSTANCE_GROUP_MANAGER_NAME] = mig.name
+        if mig.type == "zone":
+            attrs[ResourceAttributes.GCP_GCE_INSTANCE_GROUP_MANAGER_ZONE] = mig.location
+        else:
+            attrs[ResourceAttributes.GCP_GCE_INSTANCE_GROUP_MANAGER_REGION] = mig.location
+    return _make_resource(attrs)
 
 
 def _cloud_run_resource() -> Resource:

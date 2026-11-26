@@ -75,6 +75,8 @@
     'cloud.platform': 'gcp_compute_engine',
     'cloud.provider': 'gcp',
     'cloud.region': 'us-east4',
+    'gcp.gce.instance.hostname': 'fakeName.c.fakeProject.internal',
+    'gcp.gce.instance.name': 'fakeName',
     'host.id': '0087244a',
     'host.name': 'fakeName',
     'host.type': 'fakeMachineType',
