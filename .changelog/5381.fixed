@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: stop `FT.SEARCH` raising `KeyError` on RESP3 clients and `IndexError` with `WITHSCORES`, `WITHPAYLOADS` or `WITHSORTKEYS`

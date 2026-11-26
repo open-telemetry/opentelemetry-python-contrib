@@ -13,6 +13,7 @@ import pytest
 import redis
 import redis.asyncio
 from fakeredis.aioredis import FakeRedis
+from redis.commands.search.query import Query
 from redis.exceptions import ConnectionError as redis_ConnectionError
 from redis.exceptions import WatchError
 
@@ -196,6 +197,45 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(span.attributes.get(response_attribute_name), test_value)
+
+    def _search(self, query, response, protocol=2):
+        redis_client = redis.Redis(protocol=protocol)
+        connection = redis.connection.Connection(protocol=protocol)
+        redis_client.connection = connection
+        with mock.patch.object(connection, "send_command"):
+            with mock.patch.object(redis_client, "parse_response", return_value=response):
+                result = redis_client.ft("idx").search(query)
+        (span,) = self.memory_exporter.get_finished_spans()
+        self.assertEqual(span.name, "redis.search")
+        return result, span
+
+    def test_search_attributes(self):
+        _, span = self._search(Query("hello"), [1, b"doc:1", [b"title", b"hello world"]])
+        self.assertEqual(span.attributes["redis.search.total"], 1)
+        self.assertEqual(span.attributes["redis.search.xdoc_b'doc:1'.b'title'"], b"hello world")
+
+    def test_search_attributes_with_scores(self):
+        result, span = self._search(
+            Query("hello").with_scores(),
+            [1, b"doc:1", b"0.5", [b"title", b"hello world"]],
+        )
+        self.assertEqual(result.total, 1)
+        self.assertEqual(span.attributes["redis.search.total"], 1)
+        self.assertEqual(span.attributes["redis.search.xdoc_b'doc:1'.b'title'"], b"hello world")
+
+    def test_search_attributes_resp3(self):
+        response = {
+            b"attributes": [],
+            b"format": b"STRING",
+            b"results": [
+                {b"id": b"doc:1", b"extra_attributes": {b"title": b"hello world"}, b"values": []},
+            ],
+            b"total_results": 1,
+            b"warning": [],
+        }
+        _, span = self._search(Query("hello"), response, protocol=3)
+        self.assertEqual(span.attributes["redis.search.total"], 1)
+        self.assertEqual(span.attributes["redis.search.xdoc_b'doc:1'.b'title'"], b"hello world")
 
     def test_request_hook(self):
         redis_client = redis.Redis()
