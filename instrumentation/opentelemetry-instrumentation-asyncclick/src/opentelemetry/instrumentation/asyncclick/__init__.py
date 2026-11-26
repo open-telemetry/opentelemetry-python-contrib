@@ -131,7 +131,7 @@ def _get_exit_code(exc: BaseException) -> int:
         # sys.exit(None) exits 0, sys.exit("message") exits 1
         if exc.code is None:
             return 0
-        return exc.code if isinstance(exc.code, int) else 1
+        return int(exc.code) if isinstance(exc.code, int) else 1
     return getattr(exc, "exit_code", 1)
 
 

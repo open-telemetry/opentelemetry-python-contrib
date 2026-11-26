@@ -19,6 +19,14 @@ from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
 
 
+def _sys_exit_command(code):
+    @click.command()
+    def command():
+        raise SystemExit(code)
+
+    return command
+
+
 class ClickTestCase(TestBase):
     # pylint: disable=unbalanced-tuple-unpacking
     def setUp(self):
@@ -216,6 +224,22 @@ class ClickTestCase(TestBase):
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
         self.assertEqual(span.attributes["process.exit.code"], 0)
         self.assertNotIn("error.type", span.attributes)
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_cli_command_sys_exit_bool_records_int_exit_code(self):
+        for code, expected, status in (
+            (True, 1, StatusCode.ERROR),
+            (False, 0, StatusCode.UNSET),
+        ):
+            with self.subTest(code=code):
+                self.memory_exporter.clear()
+                CliRunner().invoke(_sys_exit_command(code))
+
+                (span,) = self.memory_exporter.get_finished_spans()
+                self.assertEqual(span.status.status_code, status)
+                exit_code = span.attributes["process.exit.code"]
+                self.assertIs(type(exit_code), int)
+                self.assertEqual(exit_code, expected)
 
     def test_uvicorn_cli_command_ignored(self):
         @click.command("uvicorn")

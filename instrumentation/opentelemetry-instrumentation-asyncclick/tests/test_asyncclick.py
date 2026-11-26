@@ -40,6 +40,14 @@ def run_asyncclick_command_test(
     return asyncio.run(_run())
 
 
+def _sys_exit_command(code: object) -> asyncclick.Command:
+    @asyncclick.command()
+    async def command() -> None:
+        raise SystemExit(code)
+
+    return command
+
+
 class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
     # pylint: disable=unbalanced-tuple-unpacking
     def setUp(self):  # pylint: disable=invalid-name
@@ -314,6 +322,22 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes["process.exit.code"], 3)
         self.assertEqual(span.attributes["error.type"], "SystemExit")
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_sys_exit_bool_records_int_exit_code(self) -> None:
+        for code, expected, status in (
+            (True, 1, StatusCode.ERROR),
+            (False, 0, StatusCode.UNSET),
+        ):
+            with self.subTest(code=code):
+                self.memory_exporter.clear()
+                run_asyncclick_command_test(_sys_exit_command(code))
+
+                (span,) = self.memory_exporter.get_finished_spans()
+                self.assertEqual(span.status.status_code, status)
+                exit_code = span.attributes["process.exit.code"]
+                self.assertIs(type(exit_code), int)
+                self.assertEqual(exit_code, expected)
 
     @mock.patch("sys.argv", ["command.py"])
     def test_context_object_passing(self):

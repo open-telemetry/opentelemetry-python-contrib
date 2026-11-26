@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asyncclick`: record a boolean `sys.exit()` code as an int
