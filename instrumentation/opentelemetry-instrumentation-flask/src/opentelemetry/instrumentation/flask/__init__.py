@@ -304,8 +304,6 @@ _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
-_excluded_urls_from_env = get_excluded_urls("FLASK")
-
 flask_version = version("flask")
 
 # Global constant for Flask 3.1+ streaming context cleanup
@@ -705,7 +703,7 @@ class FlaskInstrumentor(BaseInstrumentor):
         _InstrumentedFlask._tracer_provider = tracer_provider
         excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFlask._excluded_urls = (
-            _excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)
+            parse_excluded_urls(excluded_urls) if excluded_urls is not None else get_excluded_urls("FLASK")
         )
         enable_commenter = kwargs.get("enable_commenter", True)
         _InstrumentedFlask._enable_commenter = enable_commenter
@@ -747,7 +745,9 @@ class FlaskInstrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.HTTP,
             )
-            excluded_urls = parse_excluded_urls(excluded_urls) if excluded_urls is not None else _excluded_urls_from_env
+            excluded_urls = (
+                parse_excluded_urls(excluded_urls) if excluded_urls is not None else get_excluded_urls("FLASK")
+            )
             meter = get_meter(
                 __name__,
                 __version__,

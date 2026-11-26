@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-flask`: read URL exclusion env vars at setup
