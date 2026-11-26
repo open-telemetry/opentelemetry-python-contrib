@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-remoulade`: set an error status and record the exception on the process span when an actor raises
