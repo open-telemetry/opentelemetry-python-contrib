@@ -497,7 +497,7 @@ class _TraceMiddleware:
         if _report_new(self._sem_conv_opt_in_mode) and req.uri_template and req_attrs is not None:
             req_attrs[HTTP_ROUTE] = req.uri_template
         try:
-            if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+            if span.is_recording() and getattr(span, "kind", None) == trace.SpanKind.SERVER:
                 # Check if low-cardinality route is available as per semantic-conventions
                 if req.uri_template:
                     span.update_name(f"{req.method} {req.uri_template}")

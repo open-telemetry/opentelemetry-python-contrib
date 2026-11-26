@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import functools
 import logging
 
@@ -93,6 +94,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
         )
 
     async def _wrap_unary_response(self, continuation, span):
+        call = None
         try:
             call = await continuation()
 
@@ -114,6 +116,10 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
                 callback(call)
 
             return call
+        except asyncio.CancelledError:
+            if call is not None and hasattr(call, "cancel"):
+                call.cancel()
+            raise
         except grpc.aio.AioRpcError as exc:
             self.add_error_details_to_span(span, exc)
             raise exc

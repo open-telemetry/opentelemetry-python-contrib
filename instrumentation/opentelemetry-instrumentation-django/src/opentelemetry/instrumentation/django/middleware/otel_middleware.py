@@ -391,7 +391,7 @@ class _DjangoMiddleware:
                     sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
                 )
 
-                if span.is_recording() and span.kind == SpanKind.SERVER:
+                if span.is_recording() and getattr(span, "kind", None) == SpanKind.SERVER:
                     custom_headers = {}
                     for key, value in response.items():
                         asgi_setter.set(custom_headers, key, value)
@@ -411,7 +411,7 @@ class _DjangoMiddleware:
                     duration_attrs=duration_attrs,
                     sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
                 )
-                if span.is_recording() and span.kind == SpanKind.SERVER:
+                if span.is_recording() and getattr(span, "kind", None) == SpanKind.SERVER:
                     custom_attributes = wsgi_collect_custom_response_headers_attributes(response.items())
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)

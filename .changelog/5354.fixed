@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: Cancel underlying `grpc.aio` call when `asyncio.CancelledError` is raised in `_wrap_unary_response`
