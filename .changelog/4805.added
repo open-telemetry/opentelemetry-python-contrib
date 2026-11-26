@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tortoiseorm`: Capture query parameters as `db.query.parameter.<key>` under the new database semantic conventions when `capture_parameters` is enabled
