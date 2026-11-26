@@ -25,14 +25,16 @@ _INSTRUMENTATION_MODULE_NAME = "opentelemetry.instrumentation.aio_pika"
 
 class AioPikaInstrumentor(BaseInstrumentor):
     @staticmethod
-    def _instrument_queue(tracer: Tracer):
+    def _instrument_queue(tracer: Tracer, consume_hook: Callable | None = None):
         async def wrapper(wrapped, instance, args, kwargs):
             async def consume(
                 callback: Callable[[AbstractIncomingMessage], Any],
                 *fargs,
                 **fkwargs,
             ):
-                decorated_callback = CallbackDecorator(tracer, instance).decorate(callback)
+                decorated_callback = CallbackDecorator(
+                    tracer, instance, consume_hook=consume_hook
+                ).decorate(callback)
                 return await wrapped(decorated_callback, *fargs, **fkwargs)
 
             return await consume(*args, **kwargs)
@@ -40,23 +42,27 @@ class AioPikaInstrumentor(BaseInstrumentor):
         wrapt.wrap_function_wrapper(Queue, "consume", wrapper)
 
     @staticmethod
-    def _instrument_exchange(tracer: Tracer):
+    def _instrument_exchange(tracer: Tracer, publish_hook: Callable | None = None):
         async def wrapper(wrapped, instance, args, kwargs):
-            decorated_publish = PublishDecorator(tracer, instance).decorate(wrapped)
+            decorated_publish = PublishDecorator(
+                tracer, instance, publish_hook=publish_hook
+            ).decorate(wrapped)
             return await decorated_publish(*args, **kwargs)
 
         wrapt.wrap_function_wrapper(Exchange, "publish", wrapper)
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
+        publish_hook = kwargs.get("publish_hook", None)
+        consume_hook = kwargs.get("consume_hook", None)
         tracer = trace.get_tracer(
             _INSTRUMENTATION_MODULE_NAME,
             __version__,
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        self._instrument_queue(tracer)
-        self._instrument_exchange(tracer)
+        self._instrument_queue(tracer, consume_hook=consume_hook)
+        self._instrument_exchange(tracer, publish_hook=publish_hook)
 
     @staticmethod
     def _uninstrument_queue():
