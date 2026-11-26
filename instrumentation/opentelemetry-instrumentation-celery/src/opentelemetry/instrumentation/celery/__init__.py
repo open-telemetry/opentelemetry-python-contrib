@@ -62,13 +62,17 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
+from contextlib import ExitStack
+from contextvars import ContextVar
 from timeit import default_timer
+from typing import Any
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
-from celery import signals  # pylint: disable=no-name-in-module
+from celery import Celery, signals  # pylint: disable=no-name-in-module
 from celery.worker.request import Request  # pylint: disable=no-name-in-module
+from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -76,6 +80,7 @@ from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter, get_meter_provider
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
@@ -104,6 +109,10 @@ _TASK_NAME_KEY = "celery.task_name"
 # Celery does not guarantee that worker-process shutdown handlers finish, so a
 # stuck exporter must not hold a recycled pool child indefinitely.
 _PROVIDER_FLUSH_TIMEOUT_SECONDS = 1.0
+
+# Publish signals have no failure callback. The sending call owns cleanup when
+# publication raises before after_task_publish can finish the producer span.
+_publish_span_stack: ContextVar[ExitStack | None] = ContextVar("celery_publish_span_stack", default=None)
 
 
 class CeleryGetter(Getter[Request]):
@@ -168,6 +177,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.task_id_to_start_time = {}
         self.create_celery_metrics(meter)
 
+        wrap_function_wrapper("celery.app.base", "Celery.send_task", self._trace_send_task)
         signals.task_prerun.connect(self._trace_prerun, weak=False)
         signals.task_postrun.connect(self._trace_postrun, weak=False)
         signals.before_task_publish.connect(self._trace_before_publish, weak=False)
@@ -177,6 +187,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.worker_process_shutdown.connect(self._flush_providers, weak=False)
 
     def _uninstrument(self, **kwargs):
+        unwrap(Celery, "send_task")
         signals.task_prerun.disconnect(self._trace_prerun)
         signals.task_postrun.disconnect(self._trace_postrun)
         signals.before_task_publish.disconnect(self._trace_before_publish)
@@ -257,6 +268,17 @@ class CeleryInstrumentor(BaseInstrumentor):
         if token is not None:
             context_api.detach(token)
 
+    @staticmethod
+    def _trace_send_task(
+        wrapped: Callable[..., Any], _instance: Celery, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
+        with ExitStack() as stack:
+            token = _publish_span_stack.set(stack)
+            try:
+                return wrapped(*args, **kwargs)
+            finally:
+                _publish_span_stack.reset(token)
+
     def _trace_before_publish(self, *args, **kwargs):
         task = utils.retrieve_task_from_sender(kwargs)
         task_id = utils.retrieve_task_id_from_message(kwargs)
@@ -283,6 +305,10 @@ class CeleryInstrumentor(BaseInstrumentor):
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
+        stack = _publish_span_stack.get()
+        if stack is not None:
+            stack.callback(utils.detach_context, task, task_id, is_publish=True)
+            stack.push(activation)
         utils.attach_context(task, task_id, span, activation, None, is_publish=True)
 
         headers = kwargs.get("headers")
@@ -291,6 +317,11 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def _trace_after_publish(*args, **kwargs):
+        stack = _publish_span_stack.get()
+        if stack is not None:
+            stack.close()
+            return
+
         task = utils.retrieve_task_from_sender(kwargs)
         task_id = utils.retrieve_task_id_from_message(kwargs)
 
