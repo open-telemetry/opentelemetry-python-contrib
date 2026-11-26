@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: do not block interceptor return on call.code() in aio unary responses
