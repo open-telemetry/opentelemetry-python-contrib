@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pymongo`: Pass the db, collection and peer attributes to the command span at creation so samplers can use them
