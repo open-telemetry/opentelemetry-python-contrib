@@ -10,7 +10,6 @@ from collections.abc import Generator
 
 import pytest
 
-import opentelemetry._logs._internal
 from opentelemetry._logs import (
     SeverityNumber,
     get_logger_provider,
@@ -25,7 +24,7 @@ from opentelemetry.sdk._logs.export import (
     SimpleLogRecordProcessor,
 )
 from opentelemetry.semconv.attributes import exception_attributes
-from opentelemetry.util._once import Once
+from opentelemetry.test.globals_test import reset_logging_globals
 
 # pylint: disable=redefined-outer-name
 
@@ -33,7 +32,7 @@ from opentelemetry.util._once import Once
 @pytest.fixture
 def log_exporter() -> Generator[InMemoryLogRecordExporter, None, None]:
     snapshot = get_logger_provider()
-    opentelemetry._logs._internal._LOGGER_PROVIDER_SET_ONCE = Once()
+    reset_logging_globals()
     provider = LoggerProvider()
     exporter = InMemoryLogRecordExporter()
     provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
@@ -41,7 +40,7 @@ def log_exporter() -> Generator[InMemoryLogRecordExporter, None, None]:
     try:
         yield exporter
     finally:
-        opentelemetry._logs._internal._LOGGER_PROVIDER_SET_ONCE = Once()
+        reset_logging_globals()
         set_logger_provider(snapshot)
 
 
