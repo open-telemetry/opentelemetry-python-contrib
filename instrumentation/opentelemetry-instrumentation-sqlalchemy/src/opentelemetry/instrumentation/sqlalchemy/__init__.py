@@ -46,9 +46,15 @@ Database client metrics
 ***********************
 Connection pool usage is reported as the ``db.client.connection.count``
 metric, with the ``db.client.connection.pool.name`` and
-``db.client.connection.state`` (``idle``/``used``) attributes. See the
+``db.client.connection.state`` (``idle``/``used``) attributes. The time it
+takes to open a new DBAPI connection is reported as the
+``db.client.connection.create_time`` histogram, in seconds, with the
+``db.client.connection.pool.name`` attribute. See the
 `database semantic conventions
 <https://opentelemetry.io/docs/specs/semconv/database/>`_ for more information.
+
+``db.client.connection.idle.min`` is not reported, because SQLAlchemy pools
+have no minimum idle setting.
 
 SQLCommenter
 ************
@@ -177,6 +183,7 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv._incubating.metrics.db_metrics import (
     create_db_client_connection_count,
+    create_db_client_connection_create_time,
 )
 from opentelemetry.trace import get_tracer
 
@@ -235,6 +242,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         )
 
         connection_count = create_db_client_connection_count(meter)
+        connection_create_time = create_db_client_connection_create_time(meter)
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
@@ -249,6 +257,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_create_time=connection_create_time,
             ),
         )
         _w(
@@ -260,6 +269,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_create_time=connection_create_time,
             ),
         )
         _w(
@@ -271,6 +281,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_create_time=connection_create_time,
             ),
         )
         _w(
@@ -287,6 +298,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
+                connection_create_time=connection_create_time,
             ),
         )
         if kwargs.get("engine") is not None:
@@ -297,6 +309,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
+                connection_create_time=connection_create_time,
             )
         if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), Sequence):
             return [
@@ -307,6 +320,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                     kwargs.get("enable_attribute_commenter", False),
+                    connection_create_time=connection_create_time,
                 )
                 for engine in kwargs.get("engines")
             ]
