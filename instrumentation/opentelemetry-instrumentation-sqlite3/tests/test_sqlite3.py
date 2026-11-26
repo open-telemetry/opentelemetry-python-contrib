@@ -6,6 +6,8 @@ import sqlite3
 from sqlite3 import dbapi2
 from unittest import mock
 
+from wrapt import ObjectProxy
+
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -322,3 +324,221 @@ class TestSQLite3Integration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
             self.assertEqual(span.attributes[DB_STATEMENT], "SELECT 1")
             self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT 1")
+
+
+class TestSQLite3ConnectionShortcuts(TestBase):
+    def tearDown(self) -> None:
+        SQLite3Instrumentor().uninstrument()
+        super().tearDown()
+
+    def _connect(self, connection_mode: str) -> sqlite3.Connection:
+        SQLite3Instrumentor().uninstrument()
+        if connection_mode == "manual":
+            connection = sqlite3.connect(":memory:")
+            connection = SQLite3Instrumentor.instrument_connection(connection, tracer_provider=self.tracer_provider)
+        else:
+            SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+            module = sqlite3 if connection_mode == "sqlite3" else dbapi2
+            connection = module.connect(":memory:")
+        self.addCleanup(connection.close)
+        self.memory_exporter.clear()
+        return connection
+
+    def test_connection_execute(self) -> None:
+        for mode in ("sqlite3", "dbapi2", "manual"):
+            with self.subTest(connection_mode=mode):
+                connection = self._connect(mode)
+                with self.tracer_provider.get_tracer(__name__).start_as_current_span("parent") as parent:
+                    cursor = connection.execute("SELECT ?", (7,))
+                self.addCleanup(cursor.close)
+                self.assertEqual(cursor.fetchall(), [(7,)])
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 2)
+                span = spans[0]
+                self.assertEqual(span.name, "SELECT")
+                self.assertEqual(span.attributes[DB_STATEMENT], "SELECT ?")
+                self.assertIsInstance(span.attributes[DB_STATEMENT], str)
+                self.assertEqual(span.parent, parent.get_span_context())
+                self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+                cursor.execute("SELECT 8")
+                self.assertEqual(cursor.fetchone(), (8,))
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 3)
+
+    def test_connection_executemany(self) -> None:
+        for mode in ("sqlite3", "dbapi2", "manual"):
+            with self.subTest(connection_mode=mode):
+                connection = self._connect(mode)
+                cursor = connection.cursor()
+                self.addCleanup(cursor.close)
+                cursor.execute("CREATE TABLE test (id integer)")
+                self.memory_exporter.clear()
+                result = connection.executemany("INSERT INTO test VALUES (?)", [(1,), (2,)])
+                self.addCleanup(result.close)
+                self.assertEqual(result.rowcount, 2)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].name, "INSERT")
+                self.assertEqual(spans[0].attributes[DB_STATEMENT], "INSERT INTO test VALUES (?)")
+                result.execute("SELECT id FROM test ORDER BY id")
+                self.assertEqual(result.fetchall(), [(1,), (2,)])
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2)
+
+    def test_connection_executescript(self) -> None:
+        for mode in ("sqlite3", "dbapi2", "manual"):
+            with self.subTest(connection_mode=mode):
+                connection = self._connect(mode)
+                script = "CREATE TABLE test (id integer); INSERT INTO test VALUES (1);"
+                cursor = connection.executescript(script)
+                self.addCleanup(cursor.close)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes[DB_STATEMENT], script)
+                cursor.execute("SELECT id FROM test")
+                self.assertEqual(cursor.fetchone(), (1,))
+                self.assertEqual(len(self.memory_exporter.get_finished_spans()), 2)
+
+    def test_connection_shortcut_errors(self) -> None:
+        connection = self._connect("sqlite3")
+        for method, args in (
+            ("execute", ("SELECT * FROM nonexistent_table",)),
+            ("executemany", ("INSERT INTO nonexistent_table VALUES (?)", [(1,)])),
+            ("executescript", ("SELECT * FROM nonexistent_table;",)),
+        ):
+            with self.subTest(method=method):
+                self.memory_exporter.clear()
+                with self.assertRaisesRegex(sqlite3.OperationalError, "no such table: nonexistent_table"):
+                    getattr(connection, method)(*args)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertIs(spans[0].status.status_code, trace_api.StatusCode.ERROR)
+
+    def test_connection_shortcuts_suppressed(self) -> None:
+        connection = self._connect("sqlite3")
+        setup_cursor = connection.cursor()
+        self.addCleanup(setup_cursor.close)
+        setup_cursor.execute("CREATE TABLE test (id integer)")
+        self.memory_exporter.clear()
+        with suppress_instrumentation():
+            for method, args in (
+                ("execute", ("INSERT INTO test VALUES (?)", (1,))),
+                ("executemany", ("INSERT INTO test VALUES (?)", [(2,)])),
+                ("executescript", ("INSERT INTO test VALUES (3);",)),
+            ):
+                cursor = getattr(connection, method)(*args)
+                self.addCleanup(cursor.close)
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+        setup_cursor.execute("SELECT id FROM test ORDER BY id")
+        self.assertEqual(setup_cursor.fetchall(), [(1,), (2,), (3,)])
+
+    def test_connection_execute_uninstrumented(self) -> None:
+        connection = self._connect("manual")
+        connection = SQLite3Instrumentor.uninstrument_connection(connection)
+        cursor = connection.execute("SELECT 1")
+        self.addCleanup(cursor.close)
+        self.assertEqual(cursor.fetchone(), (1,))
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+
+    def test_connection_execute_semconv(self) -> None:
+        for mode, query_attribute in (
+            ("database", DB_QUERY_TEXT),
+            ("database/dup", DB_QUERY_TEXT),
+        ):
+            with self.subTest(semconv_mode=mode), use_semconv_opt_in(mode):
+                connection = self._connect("sqlite3")
+                cursor = connection.execute("SELECT 1")
+                self.addCleanup(cursor.close)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes[query_attribute], "SELECT 1")
+                self.assertIsInstance(spans[0].attributes[query_attribute], str)
+                self.assertEqual(spans[0].attributes[DB_SYSTEM_NAME], "sqlite")
+                if mode == "database":
+                    self.assertNotIn(DB_STATEMENT, spans[0].attributes)
+                else:
+                    self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 1")
+
+    def test_connection_execute_no_op_tracer_provider(self) -> None:
+        SQLite3Instrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+        cursor = connection.execute("SELECT 1")
+        self.addCleanup(cursor.close)
+        self.assertEqual(cursor.fetchone(), (1,))
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+
+    def test_connection_factory_preserves_shortcuts(self) -> None:
+        class CustomConnection(sqlite3.Connection):
+            def execute(self, sql: str, parameters: tuple[int, ...] = ()) -> sqlite3.Cursor:
+                self.execute_calls = getattr(self, "execute_calls", 0) + 1
+                return super().execute(sql, parameters)
+
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        connection = sqlite3.connect(":memory:", factory=CustomConnection)
+        self.addCleanup(connection.close)
+        cursor = connection.execute("SELECT ?", (1,))
+        self.addCleanup(cursor.close)
+        self.assertEqual(cursor.fetchone(), (1,))
+        self.assertEqual(connection.execute_calls, 1)
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
+    def test_instrument_connection_idempotent(self) -> None:
+        connection = self._connect("manual")
+        self.assertIs(SQLite3Instrumentor.instrument_connection(connection), connection)
+        cursor = connection.execute("SELECT 1")
+        self.addCleanup(cursor.close)
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
+
+    def test_instrument_connection_preserves_existing_proxy(self) -> None:
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+        proxy = ObjectProxy(connection)
+        self.assertIs(
+            SQLite3Instrumentor.instrument_connection(proxy, tracer_provider=self.tracer_provider),
+            proxy,
+        )
+
+    def test_connection_shortcuts_without_operation(self) -> None:
+        connection = SQLite3Instrumentor.instrument_connection(
+            sqlite3.connect(":memory:"),
+            tracer_provider=trace_api.NoOpTracerProvider(),
+        )
+        self.addCleanup(connection.close)
+        for query in ("", " ", "\n\t", "/* comment only */"):
+            for method in ("execute", "executemany", "executescript"):
+                with self.subTest(query=query, method=method):
+                    args = (query, [()]) if method == "executemany" else (query,)
+                    try:
+                        native_cursor = getattr(connection.__wrapped__, method)(*args)
+                    except sqlite3.Error as native_error:
+                        with self.assertRaises(type(native_error)) as traced_error:
+                            getattr(connection, method)(*args)
+                        self.assertEqual(str(traced_error.exception), str(native_error))
+                    else:
+                        native_cursor.close()
+                        cursor = getattr(connection, method)(*args)
+                        self.addCleanup(cursor.close)
+                        self.assertIsInstance(cursor, sqlite3.Cursor)
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
+
+    def test_returned_cursor_without_operation(self) -> None:
+        connection = SQLite3Instrumentor.instrument_connection(
+            sqlite3.connect(":memory:"),
+            tracer_provider=trace_api.NoOpTracerProvider(),
+        )
+        self.addCleanup(connection.close)
+        cursor = connection.execute("SELECT 1")
+        self.addCleanup(cursor.close)
+        for query in ("", " ", "\n\t", "/* comment only */"):
+            for method in ("execute", "executemany"):
+                with self.subTest(query=query, method=method):
+                    args = (query, [()]) if method == "executemany" else (query,)
+                    try:
+                        native_result = getattr(cursor.__wrapped__, method)(*args)
+                    except sqlite3.Error as native_error:
+                        with self.assertRaises(type(native_error)) as traced_error:
+                            getattr(cursor, method)(*args)
+                        self.assertEqual(str(traced_error.exception), str(native_error))
+                    else:
+                        self.assertIs(native_result, cursor.__wrapped__)
+                        self.assertIsInstance(getattr(cursor, method)(*args), sqlite3.Cursor)
+        self.assertEqual(self.memory_exporter.get_finished_spans(), ())
