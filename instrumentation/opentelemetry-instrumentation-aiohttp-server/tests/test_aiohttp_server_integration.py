@@ -9,6 +9,8 @@ from http import HTTPStatus
 import aiohttp
 import pytest
 import pytest_asyncio
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_urldispatcher import UrlMappingMatchInfo
 from multidict import CIMultiDict
 
 from opentelemetry.instrumentation._semconv import (
@@ -23,6 +25,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
+    create_aiohttp_middleware,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk.metrics.export import (
@@ -1142,7 +1145,6 @@ async def test_generic_exception_records_error_new_semconv(
     assert len(spans) == 1
 
     span = spans[0]
-    print(span.to_json())
     assert span.status.status_code == StatusCode.ERROR
     assert len(span.events) == 1
     assert span.attributes[ERROR_TYPE] == exception_class.__qualname__
@@ -1150,3 +1152,28 @@ async def test_generic_exception_records_error_new_semconv(
     assert span.events[0].attributes["exception.type"] == exception_class.__qualname__
 
     AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_middleware_handles_none_response(test_base: TestBase):
+    AioHttpServerInstrumentor().instrument()
+    try:
+        app = aiohttp.web.Application()
+
+        async def handler(_request):
+            return None
+
+        resource = app.router.add_resource("/ws")
+        route = resource.add_route("GET", handler)
+        request = make_mocked_request(
+            "GET", "/ws", match_info=UrlMappingMatchInfo({}, route)
+        )
+
+        middleware = create_aiohttp_middleware()
+        result = await middleware(request, handler)
+        assert result is None
+
+        spans = test_base.get_finished_spans()
+        assert len(spans) == 1
+    finally:
+        AioHttpServerInstrumentor().uninstrument()

@@ -447,15 +447,18 @@ def create_aiohttp_middleware(
             active_requests_counter.add(1, active_requests_count_attrs)
             try:
                 resp = await handler(request)
-                set_status_code(
-                    span,
-                    resp.status,
-                    request_attrs,
-                    _sem_conv_opt_in_mode,
-                )
-                if span.is_recording():
-                    response_headers_attributes = collect_response_headers_attributes(resp)
-                    span.set_attributes(response_headers_attributes)
+                if resp is not None:
+                    set_status_code(
+                        span,
+                        resp.status,
+                        request_attrs,
+                        _sem_conv_opt_in_mode,
+                    )
+                    if span.is_recording():
+                        response_headers_attributes = (
+                            collect_response_headers_attributes(resp)
+                        )
+                        span.set_attributes(response_headers_attributes)
             except web.HTTPServerError as ex:
                 set_status_code(
                     span,
