@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: instrument each async engine once, and don't fail when SQLAlchemy's asyncio support (greenlet) isn't installed
