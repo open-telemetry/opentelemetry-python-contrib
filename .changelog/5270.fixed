@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-urllib3`: redact credentials and sensitive query parameters from the URL attribute
