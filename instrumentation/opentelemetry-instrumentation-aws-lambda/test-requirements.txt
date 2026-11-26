@@ -11,4 +11,5 @@ wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
 -e propagator/opentelemetry-propagator-aws-xray
+-e util/opentelemetry-util-http
 -e instrumentation/opentelemetry-instrumentation-aws-lambda

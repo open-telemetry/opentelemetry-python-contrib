@@ -242,6 +242,35 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
                 self.assertEqual(len(spans), 1)
                 self.assertEqual(spans[0].attributes, expected)
 
+    def test_http_target_redacts_sensitive_query_parameters(self) -> None:
+        cases = (
+            (
+                {
+                    **MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT,
+                    "queryStringParameters": {"X-Amz-Credential": "test&value", "foo": "a b"},
+                },
+                "/{proxy+}?X-Amz-Credential=REDACTED&foo=a+b",
+            ),
+            (
+                {
+                    **MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
+                    "rawQueryString": "%58-Amz-Signature=test%26value&X-Amz-Signature=second&foo=b%61r",
+                },
+                "/path/to/resource?%58-Amz-Signature=REDACTED&X-Amz-Signature=REDACTED&foo=b%61r",
+            ),
+        )
+        for event, expected_target in cases:
+            with self.subTest(expected_target=expected_target):
+                sampler = CapturingSampler()
+                self._instrument_with_sampler(sampler)
+
+                mock_execute_lambda(event)
+
+                self.assertEqual(sampler.attributes[HTTP_TARGET], expected_target)
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].attributes[HTTP_TARGET], expected_target)
+
     def test_response_status_not_passed_to_sampler(self) -> None:
         sampler = CapturingSampler()
         with mock.patch.dict("os.environ", {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"}):
