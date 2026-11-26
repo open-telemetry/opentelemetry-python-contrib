@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: show an INFO startup confirmation and requested debug diagnostics on stderr before application logging is configured
