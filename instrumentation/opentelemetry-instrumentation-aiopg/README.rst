@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-aiopg
 
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 

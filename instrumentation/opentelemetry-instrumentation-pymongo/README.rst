@@ -14,6 +14,12 @@ Installation
     pip install opentelemetry-instrumentation-pymongo
 
 
+Configuration
+-------------
+
+.. include:: /_includes/db-semconv.rst
+
+
 References
 ----------
 * `OpenTelemetry pymongo Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/pymongo/pymongo.html>`_
