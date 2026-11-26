@@ -173,6 +173,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         https://github.com/pymssql/pymssql/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         dbapi.wrap_connect(
             __name__,
@@ -181,6 +182,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             _DATABASE_SYSTEM,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             # pymssql does not keep the connection attributes in its connection object;
             # instead, we get the attributes from the connect method (which is done
             # via PyMSSQLDatabaseApiIntegration.wrapped_connection)

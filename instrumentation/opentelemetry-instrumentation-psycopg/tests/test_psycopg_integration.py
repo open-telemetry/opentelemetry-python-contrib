@@ -29,6 +29,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+)
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_QUERY_TEXT,
@@ -367,6 +370,26 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         self.assertIs(span.resource, resource)
+
+    def test_custom_meter_provider(self):
+        meter_provider, metrics_reader = self.create_meter_provider()
+
+        PsycopgInstrumentor().instrument(meter_provider=meter_provider)
+
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test")
+
+        metrics_data = metrics_reader.get_metrics_data()
+        self.assertIsNotNone(metrics_data)
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_data.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     # pylint: disable=unused-argument
     def test_instrument_connection(self):
@@ -898,6 +921,26 @@ class TestPostgresqlIntegrationAsync(PostgresqlIntegrationTestMixin, TestBase, I
         self.assertEqual(spans_list[0].attributes["db.statement.parameters"], str(params))
 
     # pylint: disable=unused-argument
+    async def test_custom_meter_provider_async(self):
+        meter_provider, metrics_reader = self.create_meter_provider()
+
+        PsycopgInstrumentor().instrument(meter_provider=meter_provider)
+
+        cnx = await psycopg.AsyncConnection.connect("test")
+        async with cnx.cursor() as cursor:
+            await cursor.execute("SELECT * FROM test")
+
+        metrics_data = metrics_reader.get_metrics_data()
+        self.assertIsNotNone(metrics_data)
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_data.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertEqual(self.get_sorted_metrics(), [])
+
     async def test_not_recording_async(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()

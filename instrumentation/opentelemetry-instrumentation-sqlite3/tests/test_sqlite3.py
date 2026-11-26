@@ -23,6 +23,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+)
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_QUERY_TEXT,
@@ -214,6 +217,26 @@ class TestSQLite3Integration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def test_custom_meter_provider(self):
+        """Should record metrics with the meter provider passed to instrument()."""
+        meter_provider, metrics_reader = self.create_meter_provider()
+        SQLite3Instrumentor().instrument(meter_provider=meter_provider)
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        metrics_data = metrics_reader.get_metrics_data()
+        self.assertIsNotNone(metrics_data)
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_data.resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertEqual(self.get_sorted_metrics(), [])
 
     def test_suppress_instrumentation(self):
         """Should produce no spans when suppressed."""
