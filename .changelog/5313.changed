@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pika`: pass known attributes at span creation for sampler visibility

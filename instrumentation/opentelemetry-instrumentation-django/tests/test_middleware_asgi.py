@@ -10,7 +10,11 @@ import pytest
 from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test import SimpleTestCase
-from django.test.utils import setup_test_environment, teardown_test_environment
+from django.test.utils import (
+    override_settings,
+    setup_test_environment,
+    teardown_test_environment,
+)
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
@@ -35,6 +39,11 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_URL,
 )
 from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
+from opentelemetry.semconv.attributes.code_attributes import (
+    CODE_FILE_PATH,
+    CODE_FUNCTION_NAME,
+    CODE_LINE_NUMBER,
+)
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_TYPE,
@@ -75,6 +84,7 @@ from .views import (
     async_excluded_noarg2,
     async_route_span_name,
     async_traced,
+    async_traced_decorated_partial,
     async_traced_template,
     async_with_custom_header,
 )
@@ -89,6 +99,7 @@ else:
 
 urlpatterns = [
     re_path(r"^traced/", async_traced),
+    re_path(r"^traced_decorated_partial/", async_traced_decorated_partial),
     re_path(r"^traced_custom_header/", async_with_custom_header),
     re_path(r"^route/(?P<year>[0-9]{4})/template/$", async_traced_template),
     re_path(r"^error/", async_error),
@@ -257,6 +268,82 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_STATUS_CODE], 200)
+
+    async def test_code_attributes_async_view(self):
+        _django_instrumentor.uninstrument()
+        with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "true"}):
+            _django_instrumentor.instrument()
+        # override_settings mutates the settings object Django internals
+        # hold a reference to; the plain settings.configure() done in
+        # setUpClass is not visible to the URL resolver when another test
+        # module configured settings first in the same process.
+        with override_settings(ROOT_URLCONF=modules[__name__]):
+            await self.async_client.get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIs(type(span.attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(span.attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(span.attributes[CODE_LINE_NUMBER]), int)
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{async_traced.__module__}.async_traced",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            async_traced.__code__.co_filename,
+        )
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            async_traced.__code__.co_firstlineno,
+        )
+
+    async def test_code_attributes_async_decorated_partial_view(self) -> None:
+        _django_instrumentor.uninstrument()
+        with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "true"}):
+            _django_instrumentor.instrument()
+        with override_settings(ROOT_URLCONF=modules[__name__]):
+            response = await self.async_client.get("/traced_decorated_partial/")
+        self.assertEqual(response.status_code, 200)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertEqual(
+            {key: attributes.get(key) for key in (CODE_FUNCTION_NAME, CODE_FILE_PATH, CODE_LINE_NUMBER)},
+            {
+                CODE_FUNCTION_NAME: f"{async_traced.__module__}.{async_traced.__qualname__}",
+                CODE_FILE_PATH: async_traced.__code__.co_filename,
+                CODE_LINE_NUMBER: async_traced.__code__.co_firstlineno,
+            },
+        )
+        self.assertIs(type(attributes[CODE_FUNCTION_NAME]), str)
+        self.assertIs(type(attributes[CODE_FILE_PATH]), str)
+        self.assertIs(type(attributes[CODE_LINE_NUMBER]), int)
+
+    async def test_code_attributes_async_view_new_semconv(self):
+        await self.test_code_attributes_async_view()
+
+    async def test_code_attributes_async_view_both_semconv(self):
+        await self.test_code_attributes_async_view()
+
+    async def test_code_attributes_disabled(self):
+        _django_instrumentor.uninstrument()
+        with patch.dict("os.environ", {"OTEL_PYTHON_DJANGO_CODE_ATTRIBUTES": "false"}):
+            _django_instrumentor.instrument()
+        with (
+            override_settings(ROOT_URLCONF=modules[__name__]),
+            patch(
+                "opentelemetry.instrumentation.django.middleware.otel_middleware._collect_code_attributes"
+            ) as collect,
+        ):
+            await self.async_client.get("/traced/")
+        collect.assert_not_called()
+        span = self.memory_exporter.get_finished_spans()[0]
+        for key in (CODE_FUNCTION_NAME, CODE_FILE_PATH, CODE_LINE_NUMBER):
+            self.assertNotIn(key, span.attributes)
 
     async def test_traced_get_new_semconv(self):
         await self.async_client.get("/traced/")

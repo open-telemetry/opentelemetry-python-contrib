@@ -1,0 +1,2 @@
+`opentelemetry-util-http`: add `redact_query_string` to redact sensitive
+values in a bare query string

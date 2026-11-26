@@ -392,10 +392,13 @@ def _instrument(
                     span.record_exception(exception)
 
                 if event_type is _LambdaEventType.API_GATEWAY and isinstance(result, dict) and result.get("statusCode"):
+                    status_code = result.get("statusCode")
                     span.set_attribute(
                         HTTP_STATUS_CODE,
-                        result.get("statusCode"),
+                        status_code,
                     )
+                    if isinstance(status_code, int) and 500 <= status_code < 600:
+                        span.set_status(Status(StatusCode.ERROR))
         finally:
             if token:
                 context_api.detach(token)

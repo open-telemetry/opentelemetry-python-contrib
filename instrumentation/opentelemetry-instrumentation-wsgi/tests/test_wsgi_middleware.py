@@ -12,6 +12,7 @@ from unittest import mock
 from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
+from opentelemetry import baggage
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -196,6 +197,7 @@ _recommended_metrics_attrs_both = {
 SCOPE = "opentelemetry.instrumentation.wsgi"
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
         super().setUp()
@@ -334,6 +336,29 @@ class TestWsgiApplication(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
         self.validate_response(response, old_sem_conv=True, new_sem_conv=True)
+
+    def test_baggage_extracted_and_active_in_wrapped_app(self):
+        baggage_in_wrapped_app = {}
+
+        def wsgi_capture_baggage(environ, start_response):
+            baggage_in_wrapped_app.update(baggage.get_all())
+            return simple_wsgi(environ, start_response)
+
+        self.environ["HTTP_BAGGAGE"] = "key1=value1,key2=value2,key3=1%2F3"
+        app = otel_wsgi.OpenTelemetryMiddleware(wsgi_capture_baggage)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(
+            baggage_in_wrapped_app,
+            {"key1": "value1", "key2": "value2", "key3": "1/3"},
+        )
+
+    def test_baggage_detached_after_response_is_consumed(self):
+        self.environ["HTTP_BAGGAGE"] = "key1=value1"
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(dict(baggage.get_all()), {})
 
     def test_hooks(self):
         hook_headers = (
@@ -611,6 +636,165 @@ class TestWsgiAttributes(unittest.TestCase):
                 URL_SCHEME: "http",
             },
         )
+
+    _SENSITIVE_QUERY = "file=a.txt&Signature=SUPERSECRET&AWSAccessKeyId=AKIA123"
+    _REDACTED_QUERY = "file=a.txt&Signature=REDACTED&AWSAccessKeyId=REDACTED"
+
+    def _setup_sensitive_request(self, target_key="RAW_URI"):
+        # Only `target_key` may carry the raw target, so each test reliably
+        # exercises the branch it names.
+        self.environ.pop("RAW_URI", None)
+        self.environ.pop("REQUEST_URI", None)
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["QUERY_STRING"] = self._SENSITIVE_QUERY
+        self.environ[target_key] = f"/download?{self._SENSITIVE_QUERY}"
+
+    def assert_no_secrets_leaked(self, attrs):
+        for key, value in attrs.items():
+            if isinstance(value, str):
+                self.assertNotIn("SUPERSECRET", value, f"leaked via {key}")
+                self.assertNotIn("AKIA123", value, f"leaked via {key}")
+
+    def test_request_attributes_redacts_query_old_semconv(self):
+        self._setup_sensitive_request()
+
+        attrs = otel_wsgi.collect_request_attributes(self.environ)
+
+        self.assertEqual(attrs[HTTP_TARGET], f"/download?{self._REDACTED_QUERY}")
+        self.assertIsInstance(attrs[HTTP_TARGET], str)
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_query_new_semconv(self):
+        self._setup_sensitive_request()
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertEqual(attrs[URL_QUERY], self._REDACTED_QUERY)
+        self.assertIsInstance(attrs[URL_QUERY], str)
+        self.assertEqual(attrs[URL_PATH], "/download")
+        self.assertIsInstance(attrs[URL_PATH], str)
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_query_both_semconv(self):
+        self._setup_sensitive_request()
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[HTTP_TARGET], f"/download?{self._REDACTED_QUERY}")
+        self.assertEqual(attrs[URL_QUERY], self._REDACTED_QUERY)
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_query_from_request_uri(self):
+        # uWSGI reports the raw target as REQUEST_URI rather than RAW_URI.
+        self._setup_sensitive_request(target_key="REQUEST_URI")
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertEqual(attrs[URL_QUERY], self._REDACTED_QUERY)
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_preserves_query_without_sensitive_params(self):
+        # Nothing to redact must round-trip byte for byte, including params
+        # with no value and percent-encoded values.
+        query = "flag&a=&b=1%20x&file=a.txt"
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["QUERY_STRING"] = query
+        self.environ["RAW_URI"] = f"/download?{query}"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[URL_QUERY], query)
+        self.assertEqual(attrs[HTTP_TARGET], f"/download?{query}")
+
+    def test_request_attributes_redacts_query_with_unparsable_target(self):
+        # The raw target is attacker controlled and may not be a valid URL.
+        # Redaction must still apply and must not raise.
+        self.environ["REQUEST_URI"] = f"http://example.com[invalid?{self._SENSITIVE_QUERY}"
+        self.environ["PATH_INFO"] = "/safe/path"
+        self.environ["QUERY_STRING"] = self._SENSITIVE_QUERY
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[URL_QUERY], self._REDACTED_QUERY)
+        self.assertEqual(attrs[URL_PATH], "/safe/path")
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_target_with_several_question_marks(self):
+        # Only the first `?` delimits the query, so a later one stays inside
+        # the query and must not stop the real `Signature` being redacted.
+        query = "next=/x?y=1&Signature=SUPERSECRET"
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["QUERY_STRING"] = query
+        self.environ["RAW_URI"] = f"/download?{query}"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[HTTP_TARGET], "/download?next=/x?y=1&Signature=REDACTED")
+        self.assertEqual(attrs[URL_QUERY], "next=/x?y=1&Signature=REDACTED")
+        self.assertEqual(attrs[URL_PATH], "/download")
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_target_without_query_string(self):
+        # PEP 3333 does not oblige a server to supply QUERY_STRING, so the
+        # target must be redacted from its own query rather than from it.
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["RAW_URI"] = f"/download?{self._SENSITIVE_QUERY}"
+        self.environ.pop("QUERY_STRING", None)
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[HTTP_TARGET], f"/download?{self._REDACTED_QUERY}")
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_redacts_percent_encoded_param_name(self):
+        self.environ["PATH_INFO"] = "/download"
+        self.environ["QUERY_STRING"] = "%53ignature=SUPERSECRET"
+        self.environ["RAW_URI"] = "/download?%53ignature=SUPERSECRET"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertEqual(attrs[URL_QUERY], "%53ignature=REDACTED")
+        self.assertEqual(attrs[HTTP_TARGET], "/download?%53ignature=REDACTED")
+        self.assert_no_secrets_leaked(attrs)
+
+    def test_request_attributes_path_keeps_wsgi_decoding(self):
+        # PATH_INFO is already url-decoded by the server; redacting the raw
+        # target must not change which value url.path reports.
+        self.environ["PATH_INFO"] = "/a b/c"
+        self.environ["QUERY_STRING"] = self._SENSITIVE_QUERY
+        self.environ["RAW_URI"] = f"/a%20b/c?{self._SENSITIVE_QUERY}"
+
+        attrs = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertEqual(attrs[URL_PATH], "/a b/c")
+        self.assertEqual(attrs[URL_QUERY], self._REDACTED_QUERY)
 
     def validate_url(
         self,

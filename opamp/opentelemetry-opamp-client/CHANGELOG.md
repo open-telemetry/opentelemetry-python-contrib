@@ -15,6 +15,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 0.6b0 (2026-11-11)
+
+### Added
+
+- `opentelemetry-opamp-client`: accept an `AgentToServer` message in
+  `OpAMPAgent.send()` and add `OpAMPClient.prepare_message()`
+  ([#5107](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5107))
+
+### Changed
+
+- `opentelemetry-opamp-client`: the `OpAMPClient.build_*_message()` methods
+  return an `AgentToServer` message instead of bytes; its instance UID and
+  sequence number are set when it is sent
+  ([#5107](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5107))
+
+### Fixed
+
+- `opentelemetry-opamp-client`: adopt the instance UID assigned by the server
+  ([#5096](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5096))
+- `opentelemetry-opamp-client`: fix repeated sequence numbers and gaps after
+  retries
+  ([#5107](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5107))
+- `opentelemetry-opamp-client`: send the instance UID HTTP header matching each
+  message
+  ([#5285](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5285))
+- Retry the initial state report until a response is received or shutdown
+  interrupts it, enabling heartbeats only after a response and preserving
+  completion callbacks for failed sends.
+  ([#5287](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5287))
+
+## Version 0.5b0 (2026-10-26)
+
+### Changed
+
+- `opentelemetry-opamp-client`: replaced uuid-utils with a pure Python UUIDv7
+  backport from CPython
+  ([#5207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5207))
+
 ## Version 0.4b0 (2026-10-07)
 
 ### Added
