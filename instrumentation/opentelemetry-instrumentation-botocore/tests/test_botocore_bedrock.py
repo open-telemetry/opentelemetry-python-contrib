@@ -14,6 +14,9 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock import (
+    _BedrockRuntimeExtension,
+)
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
@@ -3076,3 +3079,19 @@ def get_anthropic_tool_config():
             },
         }
     ]
+
+def test_extract_attributes_with_invalid_json_body():
+    call_context = mock.MagicMock()
+    call_context.operation = "InvokeModel"
+    call_context.params = {
+        "modelId": "amazon.titan-text-lite-v1",
+        "body": "{invalid json",
+    }
+
+    extension = _BedrockRuntimeExtension(call_context)
+    attributes = {}
+
+    extension.extract_attributes(attributes)
+
+    assert attributes["gen_ai.request.model"] == "amazon.titan-text-lite-v1"
+    assert attributes["gen_ai.operation.name"] == "chat"
