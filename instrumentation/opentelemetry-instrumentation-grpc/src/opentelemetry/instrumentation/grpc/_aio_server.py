@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from timeit import default_timer
+
 import grpc
 import grpc.aio
 
@@ -91,6 +93,8 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
 
     def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):
+            start = default_timer()
+            rpc_error = None
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -105,6 +109,7 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                         return await behavior(request_or_iterator, context)
 
                     except Exception as error:
+                        rpc_error = error
                         # Bare exceptions are likely to be gRPC aborts, which
                         # we handle in our context wrapper.
                         # Here, we're interested in uncaught exceptions.
@@ -112,11 +117,15 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
+                    finally:
+                        self._record_call_duration(start, handler_call_details, context, rpc_error)
 
         return _unary_interceptor
 
     def _intercept_aio_server_stream(self, behavior, handler_call_details):
         async def _stream_interceptor(request_or_iterator, context):
+            start = default_timer()
+            rpc_error = None
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -130,9 +139,12 @@ class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetr
                             yield response
 
                     except Exception as error:
+                        rpc_error = error
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
+                    finally:
+                        self._record_call_duration(start, handler_call_details, context, rpc_error)
 
         return _stream_interceptor

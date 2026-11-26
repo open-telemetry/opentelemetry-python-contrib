@@ -12,6 +12,7 @@ Implementation of the service-side open-telemetry interceptor.
 
 import logging
 from contextlib import contextmanager
+from timeit import default_timer
 from urllib.parse import unquote
 
 import grpc
@@ -32,7 +33,11 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SYSTEM,
 )
 
-from ._utilities import _server_status
+from ._utilities import (
+    _create_server_call_duration,
+    _record_server_call_duration,
+    _server_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,9 +183,20 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer, filter_=None):
+    def __init__(self, tracer, filter_=None, meter=None):
         self._tracer = tracer
         self._filter = filter_
+        self._call_duration = _create_server_call_duration(meter) if meter is not None else None
+
+    def _record_call_duration(self, start, handler_call_details, context, error):
+        # _self_code is set by the grpc.aio servicer context proxy, _code by the sync wrapper
+        code = getattr(context, "_self_code", None)
+        if code is None:
+            code = getattr(context, "_code", None)
+        # uncaught exceptions which are not aborts are reported as UNKNOWN by grpc
+        if error is not None and code in (None, grpc.StatusCode.OK):
+            code = grpc.StatusCode.UNKNOWN
+        _record_server_call_duration(self._call_duration, start, handler_call_details.method, code)
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -268,6 +284,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         context,
                     )
 
+                start = default_timer()
+                rpc_error = None
                 with self._set_remote_context(context):
                     with self._start_span(
                         handler_call_details,
@@ -282,6 +300,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             return behavior(request_or_iterator, context)
 
                         except Exception as error:
+                            rpc_error = error
                             # Bare exceptions are likely to be gRPC aborts, which
                             # we handle in our context wrapper.
                             # Here, we're interested in uncaught exceptions.
@@ -289,6 +308,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             if type(error) != Exception:  # noqa: E721
                                 span.record_exception(error)
                             raise error
+                        finally:
+                            self._record_call_duration(start, handler_call_details, context, rpc_error)
 
             return telemetry_interceptor
 
@@ -298,6 +319,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     # to return a *new* generator or various upstream things
     # get confused, or we'll lose the consistent trace
     def _intercept_server_stream(self, behavior, handler_call_details, request_or_iterator, context):
+        start = default_timer()
+        rpc_error = None
         with self._set_remote_context(context):
             with self._start_span(handler_call_details, context, set_status_on_exception=False) as span:
                 context = _OpenTelemetryServicerContext(context, span)
@@ -306,7 +329,10 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     yield from behavior(request_or_iterator, context)
 
                 except Exception as error:
+                    rpc_error = error
                     # pylint:disable=unidiomatic-typecheck
                     if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
                     raise error
+                finally:
+                    self._record_call_duration(start, handler_call_details, context, rpc_error)
