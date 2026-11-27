@@ -1,17 +1,19 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 from collections import Counter
+from contextvars import copy_context
 from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from pika.adapters import BaseConnection, BlockingConnection
 from pika.adapters.blocking_connection import (
     BlockingChannel,
+    _ConsumerDeliveryEvt,
     _QueueConsumerGeneratorInfo,
 )
 from pika.channel import Channel
 from pika.connection import Connection
-from pika.spec import BasicProperties
+from pika.spec import Basic, BasicProperties
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.pika import PikaInstrumentor
@@ -286,6 +288,37 @@ class TestPika(TestCase):
         instrumentation.uninstrument()
         generator_info = _QueueConsumerGeneratorInfo(params=("queue", False, False), consumer_tag="tag")
         self.assertFalse(isinstance(generator_info.pending_events, ReadyMessagesDequeProxy))
+
+    def test_exported_span_instrumentation_scope_name(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+        self.addCleanup(tracer_provider.shutdown)
+
+        self.blocking_channel.connection = SimpleNamespace(params=SimpleNamespace(host="localhost", port=5672))
+        PikaInstrumentor.instrument_channel(self.blocking_channel, tracer_provider=tracer_provider)
+        self.blocking_channel.basic_publish("exchange", "queue", b"message")
+
+        instrumentation = PikaInstrumentor()
+        instrumentation.instrument(tracer_provider=tracer_provider)
+        self.addCleanup(instrumentation.uninstrument)
+        generator = _QueueConsumerGeneratorInfo(params=("queue", False, False), consumer_tag="tag")
+        event = _ConsumerDeliveryEvt(
+            Basic.Deliver(exchange="exchange", routing_key="queue"),
+            BasicProperties(headers={}),
+            b"message",
+        )
+        generator.pending_events.append(event)
+        self.assertIs(copy_context().run(generator.pending_events.popleft), event)
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(
+            [(span.kind, span.instrumentation_scope.name) for span in spans],
+            [
+                (SpanKind.PRODUCER, "opentelemetry.instrumentation.pika"),
+                (SpanKind.CONSUMER, "opentelemetry.instrumentation.pika"),
+            ],
+        )
 
     def test_uninstrument_blocking_channel_functions(self) -> None:
         original_function = self.blocking_channel.basic_publish
