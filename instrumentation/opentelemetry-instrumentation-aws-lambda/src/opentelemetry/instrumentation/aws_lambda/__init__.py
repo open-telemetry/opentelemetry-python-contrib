@@ -111,6 +111,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import redact_query_string
 
 logger = logging.getLogger(__name__)
 
@@ -252,8 +253,9 @@ def _get_api_gateway_v1_proxy_attributes(
     if "resource" in lambda_event:
         attributes[HTTP_ROUTE] = lambda_event["resource"]
 
-        if lambda_event.get("queryStringParameters"):
-            attributes[HTTP_TARGET] = f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}"
+        if query_parameters := lambda_event.get("queryStringParameters"):
+            query_string = redact_query_string(urlencode(query_parameters))
+            attributes[HTTP_TARGET] = f"{lambda_event['resource']}?{query_string}"
         else:
             attributes[HTTP_TARGET] = lambda_event["resource"]
     return attributes
@@ -279,8 +281,9 @@ def _get_api_gateway_v2_proxy_attributes(
             attributes[HTTP_USER_AGENT] = http["userAgent"]
         if "path" in http:
             attributes[HTTP_ROUTE] = http["path"]
-            if lambda_event.get("rawQueryString"):
-                attributes[HTTP_TARGET] = f"{http['path']}?{lambda_event['rawQueryString']}"
+            if raw_query_string := lambda_event.get("rawQueryString"):
+                query_string = redact_query_string(str(raw_query_string))
+                attributes[HTTP_TARGET] = f"{http['path']}?{query_string}"
             else:
                 attributes[HTTP_TARGET] = http["path"]
     return attributes
