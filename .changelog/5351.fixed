@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pyramid`: `PyramidInstrumentor.instrument` and `instrument_config` now use the given `tracer_provider` instead of the global one

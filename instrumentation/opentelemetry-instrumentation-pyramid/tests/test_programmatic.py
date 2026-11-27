@@ -102,6 +102,21 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
+    def test_instrument_config_uses_given_tracer_provider(self):
+        tracer_provider, exporter = self.create_tracer_provider()
+        config = Configurator()
+        PyramidInstrumentor().instrument_config(config, tracer_provider=tracer_provider)
+        self._common_initialization(config)
+
+        resp = self.client.get("/hello/123")
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(len(exporter.get_finished_spans()), 1)
+        # The configurator set up in ``setUp`` uses the global provider, but the
+        # one above must not.
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+        PyramidInstrumentor().uninstrument_config(config)
+
     def test_simple(self):
         expected_attrs = expected_attributes(
             {

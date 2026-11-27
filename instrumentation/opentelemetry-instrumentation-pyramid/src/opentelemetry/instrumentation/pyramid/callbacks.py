@@ -59,15 +59,28 @@ _excluded_urls = get_excluded_urls("PYRAMID")
 _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
 
-def includeme(config):
-    config.add_settings({SETTING_TRACE_ENABLED: True})
+def _includeme_for(tracer_provider):
+    def _includeme(config):
+        config.add_settings({SETTING_TRACE_ENABLED: True})
 
-    if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
-        return
+        if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
+            return
 
-    config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
-    config.add_subscriber(_before_traversal, BeforeTraversal)
-    _insert_tween(config)
+        config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
+        config.add_subscriber(_subscriber_for(tracer_provider), BeforeTraversal)
+        _insert_tween(config)
+
+    return _includeme
+
+
+includeme = _includeme_for(None)
+
+
+def _subscriber_for(tracer_provider):
+    def _before_traversal(event):
+        _trace_before_traversal(event, tracer_provider)
+
+    return _before_traversal
 
 
 def _insert_tween(config):
@@ -80,7 +93,7 @@ def _insert_tween(config):
         config.add_tween(TWEEN_NAME, over=EXCVIEW)
 
 
-def _before_traversal(event):
+def _trace_before_traversal(event, tracer_provider):
     request = event.request
     request_environ = request.environ
     span_name = otel_wsgi.get_default_span_name(request_environ)
@@ -102,6 +115,7 @@ def _before_traversal(event):
     tracer = trace.get_tracer(
         __name__,
         __version__,
+        tracer_provider=tracer_provider,
         schema_url=_get_schema_url(_sem_conv_opt_in_mode),
     )
 
