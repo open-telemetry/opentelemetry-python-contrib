@@ -314,6 +314,7 @@ from opentelemetry.util.http import (
     normalise_response_header_name,
     normalize_user_agent,
     parse_excluded_urls,
+    redact_query_string,
     redact_url,
     sanitize_method,
 )
@@ -382,9 +383,12 @@ def collect_request_attributes(scope, sem_conv_opt_in_mode=_StabilityMode.DEFAUL
     dictionary to be used as span creation attributes."""
     server_host, port, http_url = get_host_port_url_tuple(scope)
     query_string = scope.get("query_string")
-    if query_string and http_url:
+    if query_string:
         if isinstance(query_string, bytes):
             query_string = query_string.decode("utf8")
+        # Redact before unquoting so encoded delimiters stay within their values.
+        query_string = redact_query_string(query_string)
+    if query_string and http_url:
         http_url += "?" + urllib.parse.unquote(query_string)
     result = {}
 
