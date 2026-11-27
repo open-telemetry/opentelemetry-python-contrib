@@ -60,7 +60,7 @@ _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
 
 def _includeme_for(tracer_provider):
-    def includeme(config):
+    def _includeme(config):
         config.add_settings({SETTING_TRACE_ENABLED: True})
 
         if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
@@ -70,7 +70,7 @@ def _includeme_for(tracer_provider):
         config.add_subscriber(_subscriber_for(tracer_provider), BeforeTraversal)
         _insert_tween(config)
 
-    return includeme
+    return _includeme
 
 
 includeme = _includeme_for(None)
