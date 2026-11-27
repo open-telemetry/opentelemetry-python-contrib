@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiopg`: pass query span attributes to samplers
