@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import logging
 import time
 import typing
 from collections.abc import Coroutine
@@ -16,6 +17,8 @@ from opentelemetry.instrumentation.dbapi import (
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import SpanKind
+
+_logger = logging.getLogger(__name__)
 
 
 # pylint: disable=abstract-method,no-member
@@ -121,9 +124,22 @@ class AsyncCursorTracer(CursorTracer):
                 else self._db_api_integration.name
             )
 
-        with self._db_api_integration._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+        attribute_groups = []
+        attributes = {}
+        try:
+            for group in self._iter_span_attributes(cursor, args):
+                attributes = {**attributes, **group}
+                attribute_groups.append(group)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning("Failed to collect aiopg span attributes")
+
+        with self._db_api_integration._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=attributes or None
+        ) as span:
+            # Preserve the existing writes when a sampler supplies its own attributes.
             if span.is_recording():
-                self._populate_span(span, cursor, *args)
+                for group in attribute_groups:
+                    span.set_attributes(group)
             start_time = time.perf_counter()
             error = None
             try:

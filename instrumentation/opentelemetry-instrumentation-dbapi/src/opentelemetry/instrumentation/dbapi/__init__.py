@@ -186,7 +186,7 @@ import logging
 import re
 import sys
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
@@ -768,6 +768,16 @@ class CursorTracer(Generic[CursorT]):
     ):
         if not span.is_recording():
             return
+        for attributes in self._iter_span_attributes(cursor, args, is_batch=is_batch):
+            span.set_attributes(attributes)
+
+    def _iter_span_attributes(
+        self,
+        cursor: CursorT,
+        args: Sequence[Any],
+        *,
+        is_batch: bool = False,
+    ) -> Iterator[dict[str, Any]]:
         statement = self.get_statement(cursor, args)
         sem_conv_mode = self._db_api_integration._sem_conv_opt_in_mode_db
         span_attrs = {}
@@ -784,10 +794,8 @@ class CursorTracer(Generic[CursorT]):
         )
         _set_db_statement(span_attrs, statement, sem_conv_mode)
 
-        # Set all collected attributes
-        span.set_attributes(span_attrs)
-
-        span.set_attributes(self._db_api_integration.span_attributes)
+        yield span_attrs
+        yield self._db_api_integration.span_attributes
 
         if self._db_api_integration.capture_parameters and len(args) > 1:
             query_parameter_attributes = {}
@@ -797,7 +805,7 @@ class CursorTracer(Generic[CursorT]):
                 sem_conv_mode,
                 is_batch=is_batch,
             )
-            span.set_attributes(query_parameter_attributes)
+            yield query_parameter_attributes
 
     def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:
