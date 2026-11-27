@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-confluent-kafka`: add support for `AIOProducer` and `AIOConsumer`
