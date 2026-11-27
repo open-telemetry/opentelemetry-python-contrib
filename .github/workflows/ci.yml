@@ -22,15 +22,24 @@ jobs:
     uses: ./.github/workflows/misc.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   lint:
     uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
-  tests:
-    uses: ./.github/workflows/test.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
+  test_0:
+    name: tests
+    uses: ./.github/workflows/test_0.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
+  test_1:
+    name: tests
+    uses: ./.github/workflows/test_1.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
+  test_2:
+    name: tests
+    uses: ./.github/workflows/test_2.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
 
   check:
     if: always()
     needs:
       - misc
       - lint
-      - tests
+      - test_0
+      - test_1
+      - test_2
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed

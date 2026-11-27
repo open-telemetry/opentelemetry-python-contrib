@@ -193,23 +193,55 @@ def get_misc_job_datas(tox_envs: list) -> list:
     return misc_job_datas
 
 
-def _generate_workflow(job_datas: list, name: str, workflow_directory_path: Path) -> None:
+def _generate_workflow(
+    job_datas: list,
+    name: str,
+    workflow_directory_path: Path,
+    file_name: str | None = None,
+    **template_variables,
+) -> None:
     env = Environment(loader=FileSystemLoader(Path(__file__).parent))
-    with open(workflow_directory_path.joinpath(f"{name}.yml"), "w") as yml_file:
+    with open(workflow_directory_path.joinpath(f"{file_name or name}.yml"), "w") as yml_file:
         yml_file.write(
             env.get_template(f"{name}.yml.j2").render(
                 job_datas=job_datas,
+                **template_variables,
             )
         )
         yml_file.write("\n")
 
 
-def generate_test_workflow(tox_ini_path: Path, workflow_directory_path: Path, *operating_systems) -> None:
-    _generate_workflow(
-        get_test_job_datas(get_tox_envs(tox_ini_path), operating_systems),
-        "test",
-        workflow_directory_path,
-    )
+# GitHub fails a run on every push and pull request for a workflow file larger
+# than 500 KB, even for one that is only called by another workflow:
+# https://docs.github.com/en/actions/reference/limits#workflow-file-size
+# A test job takes about 850 bytes, so the test jobs are split over workflow
+# files of at most 250 jobs, about 210 KB each.
+_MAX_TEST_JOBS_PER_WORKFLOW = 250
+_test_workflow_file_regex = re_compile(r"test_\d+\.yml")
+
+
+def generate_test_workflow(tox_ini_path: Path, workflow_directory_path: Path, *operating_systems) -> list[str]:
+    job_datas = get_test_job_datas(get_tox_envs(tox_ini_path), operating_systems)
+
+    # Remove the files of a previous run, which may have needed more of them.
+    for path in workflow_directory_path.iterdir():
+        if _test_workflow_file_regex.fullmatch(path.name):
+            path.unlink()
+
+    test_workflows = []
+
+    for file_number, start in enumerate(range(0, len(job_datas), _MAX_TEST_JOBS_PER_WORKFLOW)):
+        test_workflow = f"test_{file_number}"
+        _generate_workflow(
+            job_datas[start : start + _MAX_TEST_JOBS_PER_WORKFLOW],
+            "test",
+            workflow_directory_path,
+            file_name=test_workflow,
+            file_number=file_number,
+        )
+        test_workflows.append(test_workflow)
+
+    return test_workflows
 
 
 def generate_lint_workflow(
@@ -246,9 +278,12 @@ def generate_misc_workflow(
 
 def generate_ci_workflow(
     workflow_directory_path: Path,
+    test_workflows: list[str],
 ) -> None:
     with open(workflow_directory_path.joinpath("ci.yml"), "w") as ci_yml_file:
         ci_yml_file.write(
-            Environment(loader=FileSystemLoader(Path(__file__).parent)).get_template("ci.yml.j2").render()
+            Environment(loader=FileSystemLoader(Path(__file__).parent))
+            .get_template("ci.yml.j2")
+            .render(test_workflows=test_workflows)
         )
         ci_yml_file.write("\n")

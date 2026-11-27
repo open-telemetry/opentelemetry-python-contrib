@@ -22,15 +22,21 @@ jobs:
     uses: ./.github/workflows/misc.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
   lint:
     uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
-  tests:
-    uses: ./.github/workflows/test.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
+  {#- The test workflows share the caller name, so their checks keep the "tests / " prefix. #}
+  {%- for test_workflow in test_workflows %}
+  {{ test_workflow }}:
+    name: tests
+    uses: ./.github/workflows/{{ test_workflow }}.yml # zizmor: ignore[self-repository] run the candidate's generated workflow
+  {%- endfor %}
 
   check:
     if: always()
     needs:
       - misc
       - lint
-      - tests
+      {%- for test_workflow in test_workflows %}
+      - {{ test_workflow }}
+      {%- endfor %}
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed
