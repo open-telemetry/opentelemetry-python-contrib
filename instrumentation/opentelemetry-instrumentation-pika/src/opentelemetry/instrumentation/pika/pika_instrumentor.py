@@ -20,7 +20,10 @@ from pika.connection import Connection
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pika import utils
-from opentelemetry.instrumentation.pika.package import _instruments
+from opentelemetry.instrumentation.pika.package import (
+    _instrumentation_name,
+    _instruments,
+)
 from opentelemetry.instrumentation.pika.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import Tracer, TracerProvider
@@ -114,7 +117,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             _LOG.warning("Attempting to instrument Pika channel while already instrumented!")
             return
         tracer = trace.get_tracer(
-            __name__,
+            _instrumentation_name,
             __version__,
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
@@ -173,7 +176,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         tracer_provider: TracerProvider | None,
         consume_hook: utils.HookT = utils.dummy_callback,
     ) -> None:
-        tracer = trace.get_tracer(__name__, __version__, tracer_provider)
+        tracer = trace.get_tracer(_instrumentation_name, __version__, tracer_provider)
 
         def wrapper(wrapped, instance, args, kwargs):
             res = wrapped(*args, **kwargs)
