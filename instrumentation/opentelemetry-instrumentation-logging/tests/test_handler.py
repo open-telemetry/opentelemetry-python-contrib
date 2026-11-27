@@ -206,6 +206,27 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    def test_log_record_exception_message_uses_str_of_exception(self):
+        """exception.message is str(exception), as Span.record_exception exports"""
+        for exc, expected in (
+            (OSError(2, "No such file or directory"), "[Errno 2] No such file or directory"),
+            (ValueError("bad value", 42), "('bad value', 42)"),
+        ):
+            with self.subTest(exception=repr(exc)):
+                processor, logger, handler = set_up_test_logging(logging.ERROR)
+                try:
+                    raise exc
+                except type(exc):
+                    with self.assertLogs(level=logging.ERROR):
+                        logger.exception("failed")
+
+                record = processor.get_log_record(0)
+                self.assertEqual(
+                    record.log_record.attributes[exception_attributes.EXCEPTION_MESSAGE],
+                    expected,
+                )
+                logger.removeHandler(handler)
+
     def test_log_record_recursive_exception(self):
         """Exception information will be included in attributes even though it is recursive"""
         processor, logger, handler = set_up_test_logging(logging.ERROR)
@@ -290,7 +311,7 @@ class TestLoggingHandler(unittest.TestCase):
         )
         self.assertEqual(
             record.log_record.attributes[exception_attributes.EXCEPTION_MESSAGE],
-            "CustomException message",
+            "CustomException stringified",
         )
         stack_trace = record.log_record.attributes[exception_attributes.EXCEPTION_STACKTRACE]
         self.assertIsInstance(stack_trace, str)
