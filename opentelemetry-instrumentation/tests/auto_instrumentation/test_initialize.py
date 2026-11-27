@@ -150,3 +150,27 @@ class TestInitialize(TestCase):
         # pylint:disable=no-self-use
         auto_instrumentation.initialize()
         logger_mock.error.assert_not_called()
+
+    @patch.dict("os.environ", {"OTEL_CONFIG_FILE": "/tmp/otel.yaml"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_instrumentors")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_configurators")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
+    def test_skips_load_instrumentors_when_otel_config_file_set(
+        self, load_distro_mock, load_configurators_mock, load_instrumentors_mock
+    ):
+        auto_instrumentation.initialize()
+        load_distro_mock.assert_called_once()
+        load_configurators_mock.assert_called_once()
+        load_instrumentors_mock.assert_not_called()
+
+    @patch.dict("os.environ", {"OTEL_CONFIG_FILE": ""}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_instrumentors")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_configurators")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
+    def test_loads_instrumentors_when_otel_config_file_empty(
+        self, load_distro_mock, load_configurators_mock, load_instrumentors_mock
+    ):
+        auto_instrumentation.initialize()
+        load_distro_mock.assert_called_once()
+        load_configurators_mock.assert_called_once()
+        load_instrumentors_mock.assert_called_once_with(load_distro_mock.return_value)

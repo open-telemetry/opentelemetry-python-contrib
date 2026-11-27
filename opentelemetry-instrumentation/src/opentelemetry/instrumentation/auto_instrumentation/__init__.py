@@ -133,7 +133,12 @@ def _initialize(*, swallow_exceptions: bool = True) -> None:
         distro = _load_distro()
         distro.configure()
         _load_configurators()
-        _load_instrumentors(distro)
+        if environ.get("OTEL_CONFIG_FILE"):
+            _logger.debug(
+                "Skipping automatic instrumentor discovery because OTEL_CONFIG_FILE is set"
+            )
+        else:
+            _load_instrumentors(distro)
     except Exception as exc:  # pylint: disable=broad-except
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:
