@@ -80,6 +80,16 @@ def _insert_tween(config):
         config.add_tween(TWEEN_NAME, over=EXCVIEW)
 
 
+def _get_request_url(request):
+    try:
+        return request.url
+    except UnicodeDecodeError:
+        # WebOb decodes the path as UTF-8, so a request whose path is not
+        # valid UTF-8 raises here, before the application's own error
+        # handling gets a chance to respond. Fall back to the raw WSGI URL.
+        return wsgiref_util.request_uri(request.environ)
+
+
 def _before_traversal(event):
     request = event.request
     request_environ = request.environ
@@ -204,7 +214,7 @@ def trace_tween_factory(handler, registry):
     # pylint: disable=too-many-branches
     def trace_tween(request):
         # pylint: disable=unnecessary-dunder-call, too-many-locals
-        if _excluded_urls.url_disabled(request.url):
+        if _excluded_urls.url_disabled(_get_request_url(request)):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything
             return handler(request)

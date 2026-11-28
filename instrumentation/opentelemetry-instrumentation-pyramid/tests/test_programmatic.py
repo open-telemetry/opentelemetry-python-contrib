@@ -4,6 +4,9 @@
 from unittest.mock import Mock, patch
 
 from pyramid.config import Configurator
+from pyramid.exceptions import URLDecodeError
+from pyramid.request import Request
+from pyramid.response import Response
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -14,7 +17,11 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
-from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+from opentelemetry.instrumentation.pyramid import (
+    PyramidInstrumentor,
+    callbacks,
+)
+from opentelemetry.instrumentation.pyramid.callbacks import _get_request_url
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -260,6 +267,37 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
         self.assertEqual(mock_logger.warning.called, True)
+
+    def test_invalid_utf8_url_reaches_app_error_handling(self):
+        # WSGI servers pass the raw request path as a latin-1 string, and
+        # b"\xde~" is not valid UTF-8, so WebOb cannot decode request.url.
+        # Pyramid reports that as URLDecodeError, which the application
+        # handles with its own exception view.
+        self.config.add_view(
+            lambda exc, request: Response("bad url", status=400),
+            context=URLDecodeError,
+        )
+        self._common_initialization(self.config)
+
+        resp = self.client.get(
+            "/",
+            environ_overrides={"PATH_INFO": "/a/\xde~\xc7\x1fY"},
+        )
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual([b"bad url"], list(resp.response))
+        resp.close()
+
+    def test_get_request_url_invalid_utf8(self):
+        request = Request.blank("/", environ={"PATH_INFO": "/excluded_noarg/\xde~"})
+        self.assertEqual(
+            _get_request_url(request),
+            "http://localhost:80/excluded_noarg/%DE~",
+        )
+        self.assertTrue(callbacks._excluded_urls.url_disabled(_get_request_url(request)))
+
+    def test_get_request_url_valid(self):
+        request = Request.blank("/hello/123?q=1")
+        self.assertEqual(_get_request_url(request), request.url)
 
     def test_exclude_lists(self):
         self.client.get("/excluded_arg/123")
