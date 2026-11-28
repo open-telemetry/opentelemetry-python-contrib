@@ -1,0 +1,190 @@
+Parse and validate configuration files with ruamel.yaml and fastjsonschema.
+
+opentelemetry-configuration uses pyyaml and jsonschema, which have no pure-Python wheels (jsonschema needs
+rpds-py), so they are excluded (vendor-excludes.txt) and the vendored, pure-Python ruamel.yaml and
+fastjsonschema stand in for them:
+
+* YAML: ruamel.yaml's PyYAML-style SafeLoader (with the same Node classes, resolve() and
+  construct_document()). It resolves scalars with the YAML 1.2 core schema, which the configuration
+  spec requires (PyYAML implements YAML 1.1, where e.g. "on" and "no" are booleans).
+* Schema: a fastjsonschema validator compiled once. Its draft 2019-09 generator, used for the 2020-12
+  $schema, covers every keyword the schema uses ($ref into $defs, oneOf, exclusiveMinimum, ...).
+  Errors map to the same ConfigurationError messages.
+
+The schema is also read relative to this file rather than with importlib.resources.files(
+"opentelemetry.configuration"), which would resolve the application's package.
+
+diff --git a/opentelemetry/configuration/file/_loader.py b/opentelemetry/configuration/file/_loader.py
+index dfa0037..44029a9 100644
+--- a/opentelemetry/configuration/file/_loader.py
++++ b/opentelemetry/configuration/file/_loader.py
+@@ -3,7 +3,6 @@
+ 
+ """Configuration file loading and parsing."""
+ 
+-import importlib.resources
+ import json
+ import logging
+ import os
+@@ -14,32 +13,23 @@ from typing import Any
+ from opentelemetry.agent._vendor.opentelemetry.configuration._conversion import _dict_to_dataclass
+ from opentelemetry.agent._vendor.opentelemetry.configuration._exceptions import (
+     ConfigurationError,
+-    MissingDependencyError,
+ )
+ from opentelemetry.agent._vendor.opentelemetry.configuration.file._env_substitution import (
+     substitute_env_vars,
+ )
+ from opentelemetry.agent._vendor.opentelemetry.configuration.models import OpenTelemetryConfiguration
+ 
+-try:
+-    import yaml
+-except ImportError as exc:
+-    raise MissingDependencyError(
+-        package="pyyaml",
+-        feature="File configuration",
+-        install_name="opentelemetry-sdk",
+-        extras="file-configuration",
+-    ) from exc
+-
+-try:
+-    import jsonschema
+-except ImportError as exc:
+-    raise MissingDependencyError(
+-        package="jsonschema",
+-        feature="File configuration",
+-        install_name="opentelemetry-sdk",
+-        extras="file-configuration",
+-    ) from exc
++# opentelemetry-agent: pyyaml and jsonschema have no pure-Python wheels (jsonschema needs rpds-py),
++# so the vendored ruamel.yaml (its pure-Python, PyYAML-style loader API) and fastjsonschema stand in.
++from opentelemetry.agent._vendor import fastjsonschema
++from opentelemetry.agent._vendor.ruamel.yaml import nodes as _yaml_nodes
++from opentelemetry.agent._vendor.ruamel.yaml.error import YAMLError
++from opentelemetry.agent._vendor.ruamel.yaml.loader import SafeLoader as _RuamelSafeLoader
++
++
++class SafeLoader(_RuamelSafeLoader):
++    # Only ruamel.yaml's YAML class sets the composer's nesting limit; 0 means none, like PyYAML.
++    max_depth = 0
+ 
+ # Schema version vendored in schema.json. ``file_format`` values are accepted
+ # per the configuration spec's versioning rules: the major version must match,
+@@ -50,15 +40,24 @@ _SUPPORTED_SCHEMA_MAJOR = 1
+ _SUPPORTED_SCHEMA_MINOR = 1
+ 
+ _schema_cache: list[dict] = []
++_validator_cache: list[Any] = []
+ 
+ 
+ def _get_schema() -> dict:
+     if not _schema_cache:
+-        schema_path = importlib.resources.files("opentelemetry.configuration") / "schema.json"
++        # opentelemetry-agent: resolve the schema relative to this (vendored) package, not by name.
++        schema_path = Path(__file__).resolve().parent.parent / "schema.json"
+         _schema_cache.append(json.loads(schema_path.read_text(encoding="utf-8")))
+     return _schema_cache[0]
+ 
+ 
++def _get_validator() -> Any:
++    # Compiling the schema generates and executes Python code; do it once.
++    if not _validator_cache:
++        _validator_cache.append(fastjsonschema.compile(_get_schema()))
++    return _validator_cache[0]
++
++
+ _logger = logging.getLogger(__name__)
+ 
+ _YAML_STR_TAG = "tag:yaml.org,2002:str"
+@@ -73,8 +72,8 @@ _STANDALONE_ENV_REF = re.compile(r"\A\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}\Z"
+ 
+ 
+ def _substitute_env_in_yaml_node(
+-    node: yaml.Node,
+-    loader: yaml.SafeLoader,
++    node: _yaml_nodes.Node,
++    loader: SafeLoader,
+     visited: set[int] | None = None,
+ ):
+     """Apply env-var substitution to string configuration values in a node tree.
+@@ -120,7 +119,7 @@ def _substitute_env_in_yaml_node(
+     # The parser hands this function the value node of attribute_count_limit,
+     # which has value="${LIMIT}", tag=str, style=None (plain/unquoted). Then:
+     #
+-    #   1. isinstance(node, yaml.ScalarNode) -> True: it is a leaf value.
++    #   1. isinstance(node, ScalarNode) -> True: it is a leaf value.
+     #   2. node.tag == _YAML_STR_TAG -> True: "${LIMIT}" is not a number or
+     #      bool, so the parser tagged it str. We substitute in place, giving
+     #      node.value = "100".
+@@ -131,7 +130,7 @@ def _substitute_env_in_yaml_node(
+     #
+     # Counter-cases that reach check 3 but stop there: "${LIMIT}" quoted fails
+     # the style test; x${LIMIT} fails the regex. Both keep the str tag.
+-    if isinstance(node, yaml.ScalarNode):
++    if isinstance(node, _yaml_nodes.ScalarNode):
+         # A ``ScalarNode`` is a leaf -- one configuration value. Only a
+         # ``str``-tagged one can hold a ``${VAR}`` reference (nodes the parser
+         # already typed as int, float, bool or null cannot), so those are the
+@@ -153,12 +152,12 @@ def _substitute_env_in_yaml_node(
+                 # str) YAML would assign to ``node.value``; the ``(True, False)``
+                 # implicit-flag pair marks it as a plain scalar so that
+                 # type-guessing applies, exactly as during normal parsing.
+-                node.tag = loader.resolve(yaml.ScalarNode, node.value, (True, False))
+-    elif isinstance(node, yaml.SequenceNode):
++                node.tag = loader.resolve(_yaml_nodes.ScalarNode, node.value, (True, False))
++    elif isinstance(node, _yaml_nodes.SequenceNode):
+         # A sequence (list): each item is itself a value node -- recurse.
+         for item in node.value:
+             _substitute_env_in_yaml_node(item, loader, visited)
+-    elif isinstance(node, yaml.MappingNode):
++    elif isinstance(node, _yaml_nodes.MappingNode):
+         # A mapping (dict): recurse into values only; keys are not
+         # substitution candidates per the spec. A merge key (``<<: *base``)
+         # appears here as an ordinary pair whose value node is the anchored
+@@ -197,7 +196,8 @@ def _parse_config_content(content: str, suffix: str, file_path: str | os.PathLik
+     try:
+         if suffix == ".json":
+             return _substitute_env_in_json_value(json.loads(content))
+-        yaml_loader = yaml.SafeLoader(content)
++        # YAML 1.2 core schema, as the configuration spec requires (PyYAML implements YAML 1.1).
++        yaml_loader = SafeLoader(content)
+         try:
+             root_node = yaml_loader.get_single_node()
+             if root_node is None:
+@@ -206,7 +206,7 @@ def _parse_config_content(content: str, suffix: str, file_path: str | os.PathLik
+             return yaml_loader.construct_document(root_node)
+         finally:
+             yaml_loader.dispose()
+-    except yaml.YAMLError as exc:
++    except YAMLError as exc:
+         _logger.exception("Failed to parse YAML from %s", file_path)
+         raise ConfigurationError(f"Failed to parse YAML: {exc}") from exc
+     except json.JSONDecodeError as exc:
+@@ -294,19 +294,17 @@ def _validate_schema(data: dict) -> None:
+         ConfigurationError: If the data does not conform to the schema.
+     """
+     try:
+-        jsonschema.validate(
+-            instance=data,
+-            schema=_get_schema(),
+-            cls=jsonschema.Draft202012Validator,
+-        )
+-    except jsonschema.ValidationError as exc:
++        _get_validator()(data)
++    except fastjsonschema.JsonSchemaValueException as exc:
++        # The path starts with the root's name ("data").
++        path = exc.path[1:]
+         raise ConfigurationError(
+-            f"Configuration does not match schema: {exc.message} (at {' -> '.join(str(p) for p in exc.absolute_path)})"
+-            if exc.absolute_path
++            f"Configuration does not match schema: {exc.message} (at {' -> '.join(str(p) for p in path)})"
++            if path
+             else f"Configuration does not match schema: {exc.message}"
+         ) from exc
+-    except jsonschema.SchemaError as exc:
+-        raise ConfigurationError(f"Invalid configuration schema: {exc.message}") from exc
++    except fastjsonschema.JsonSchemaDefinitionException as exc:
++        raise ConfigurationError(f"Invalid configuration schema: {exc}") from exc
+ 
+ 
+ def _validate_file_format(data: dict) -> None:

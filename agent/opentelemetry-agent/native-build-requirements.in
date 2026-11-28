@@ -1,0 +1,2 @@
+# Build-time requirements of the native extensions (see [tool.opentelemetry-vendor.native]).
+setuptools

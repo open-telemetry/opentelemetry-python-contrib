@@ -1,0 +1,40 @@
+Look up the CA bundle in the vendored certifi package.
+
+Upstream passes the top-level name "certifi" to importlib.resources, which would import
+the application's certifi (or fail if it isn't installed). __package__ resolves to the
+vendored package.
+
+diff --git a/certifi/core.py b/certifi/core.py
+--- a/certifi/core.py
++++ b/certifi/core.py
+@@ -37,14 +37,14 @@ if sys.version_info >= (3, 11):
+             # We also have to hold onto the actual context manager, because
+             # it will do the cleanup whenever it gets garbage collected, so
+             # we will also store that at the global level as well.
+-            _CACERT_CTX = as_file(files("certifi").joinpath("cacert.pem"))
++            _CACERT_CTX = as_file(files(__package__).joinpath("cacert.pem"))
+             _CACERT_PATH = str(_CACERT_CTX.__enter__())
+             atexit.register(exit_cacert_ctx)
+ 
+         return _CACERT_PATH
+ 
+     def contents() -> str:
+-        return files("certifi").joinpath("cacert.pem").read_text(encoding="ascii")
++        return files(__package__).joinpath("cacert.pem").read_text(encoding="ascii")
+ 
+ else:
+ 
+@@ -73,11 +73,11 @@ else:
+             # We also have to hold onto the actual context manager, because
+             # it will do the cleanup whenever it gets garbage collected, so
+             # we will also store that at the global level as well.
+-            _CACERT_CTX = get_path("certifi", "cacert.pem")
++            _CACERT_CTX = get_path(__package__, "cacert.pem")
+             _CACERT_PATH = str(_CACERT_CTX.__enter__())
+             atexit.register(exit_cacert_ctx)
+ 
+         return _CACERT_PATH
+ 
+     def contents() -> str:
+-        return read_text("certifi", "cacert.pem", encoding="ascii")
++        return read_text(__package__, "cacert.pem", encoding="ascii")

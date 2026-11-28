@@ -1,0 +1,53 @@
+Build protobuf's upb extension under the agent's vendor namespace, as abi3.
+
+The extension's module name, its type names (their __module__) and the Python modules it imports by
+absolute name all come from the PYUPB_* macros in python/protobuf.h; they are moved under
+opentelemetry.agent._vendor so the vendored extension never imports (or poses as) the application's
+protobuf. PYUPB_DESCRIPTOR_PROTO_PACKAGE is a protobuf package name (google.protobuf.FileDescriptorProto,
+...), not a Python module, and stays. setup.py builds the extension under the new name with the limited
+API (cp310-abi3), like upstream's Bazel-built wheels.
+
+diff --git a/python/protobuf.h b/python/protobuf.h
+--- a/python/protobuf.h
++++ b/python/protobuf.h
+@@ -22,12 +22,12 @@
+ #include "upb/mem/arena.h"
+ #include "upb/reflection/def.h"
+ 
+-#define PYUPB_PROTOBUF_PUBLIC_PACKAGE "google.protobuf"
+-#define PYUPB_PROTOBUF_INTERNAL_PACKAGE "google.protobuf.internal"
++#define PYUPB_PROTOBUF_PUBLIC_PACKAGE "opentelemetry.agent._vendor.google.protobuf"
++#define PYUPB_PROTOBUF_INTERNAL_PACKAGE "opentelemetry.agent._vendor.google.protobuf.internal"
+ #define PYUPB_DESCRIPTOR_PROTO_PACKAGE "google.protobuf"
+-#define PYUPB_MODULE_NAME "google._upb._message"
++#define PYUPB_MODULE_NAME "opentelemetry.agent._vendor.google._upb._message"
+ 
+-#define PYUPB_DESCRIPTOR_MODULE "google.protobuf.descriptor_pb2"
++#define PYUPB_DESCRIPTOR_MODULE "opentelemetry.agent._vendor.google.protobuf.descriptor_pb2"
+ #define PYUPB_RETURN_OOM return PyErr_SetNone(PyExc_MemoryError), NULL
+ 
+ struct PyUpb_WeakMap;
+diff --git a/setup.py b/setup.py
+--- a/setup.py
++++ b/setup.py
+@@ -84,13 +84,19 @@ setup(
+     install_requires=[],
+     ext_modules=[
+         Extension(
+-            'google._upb._message',
++            # Vendored by opentelemetry-agent under its private namespace.
++            'opentelemetry.agent._vendor.google._upb._message',
+             srcs,
+             include_dirs=[current_dir, os.path.join(current_dir, 'utf8_range')],
+             language='c',
+             extra_link_args=extra_link_args,
+             extra_compile_args=extra_compile_args,
++            # One stable-ABI build for CPython 3.10+, like upstream's abi3 wheels. It
++            # must be compiled against Python 3.10 headers.
++            define_macros=[('Py_LIMITED_API', '0x030A0000')],
++            py_limited_api=True,
+         )
+     ],
++    options={'bdist_wheel': {'py_limited_api': 'cp310'}},
+     python_requires='>=3.10',
+ )
