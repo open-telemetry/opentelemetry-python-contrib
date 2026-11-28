@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pyramid`: handle request paths that are not valid UTF-8 instead of raising `UnicodeDecodeError`
