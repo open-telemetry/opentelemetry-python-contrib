@@ -582,8 +582,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
+        client = self.client()
         start = default_timer()
-        self.client().simulate_get("/hello/756")
+        client.simulate_get("/hello/756")
         duration_s = default_timer() - start
 
         metrics = self.get_sorted_metrics(SCOPE)
@@ -602,10 +603,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.unit == "ms":
-                        self.assertAlmostEqual(
-                            max(round(duration_s * 1000), 0),
+                        self.assertGreaterEqual(point.sum, 0)
+                        self.assertLessEqual(
                             point.sum,
-                            delta=10,
+                            max(round(duration_s * 1000), 0) + 1,
                         )
                     elif metric.unit == "s":
                         self.assertAlmostEqual(max(duration_s, 0), point.sum, delta=10)
